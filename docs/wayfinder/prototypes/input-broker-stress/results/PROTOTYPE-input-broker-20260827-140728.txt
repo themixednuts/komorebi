@@ -1,0 +1,49 @@
+PROTOTYPE ONLY - input broker under privilege and device stress
+timestamp=2026-08-27T14:07:28.7962475-05:00
+os=Microsoft Windows NT 6.2.9200.0
+processors=24
+observerIntegrity=medium
+logonSid=S-1-5-5-0-1459490
+mouse=Logitech G305 LIGHTSPEED
+manufacturerMaximumReportRateHz=1000
+4000Hz=UNTESTED no capable attached device
+8000Hz=UNTESTED no capable attached device
+generation=6
+sessionBoundaries=0
+desktopBoundaries=2
+deviceChanges=2
+staleCanariesRejected=1
+brokerRttP95Microseconds=27
+mediumHooks=STATS events=954 mouseMoves=0 f12=0/0 x2=0/0 injected=954 suppressed=0 ownP99Us=15.8 ownMaxUs=266.3 queueDepth=0 queueMax=0 queueDrops=0 stale=0
+rawInput=events=985 buffered=16 noCoalesce=0 medianIntervalHz=50 previewP95Ms=7.78
+
+Evidence log
+14:05:19.242 observer started at integrity=medium logonSid=S-1-5-5-0-1459490
+14:05:19.245 physical mouse identified as Logitech G305 LIGHTSPEED, manufacturer maximum 1000 Hz
+14:05:19.245 4000 Hz and 8000 Hz marked UNTESTED because no capable physical device is attached
+14:05:19.307 input generation advanced to 2 because raw input device change
+14:05:19.308 input generation advanced to 3 because raw input device change
+14:06:36.756 boundary canary armed at generation=3; it must be rejected after the next boundary
+14:06:37.058 input generation advanced to 4 because desktop switch
+14:06:41.406 input generation advanced to 5 because desktop switch
+14:06:41.591 broker connected: READY S-1-5-5-0-1459490 39688
+14:06:41.808 target HWNDs medium=7406046 elevated=2753296
+14:06:41.814 broker ping n=200 p95=27us
+14:06:41.814 PASS stale boundary canary rejected old=3 current=5
+14:06:54.989 target HWNDs medium=7406046 elevated=2753296
+14:06:54.991 medium direct move=OK MOVE restore=OK MOVE
+14:06:54.991 elevated direct move=ERR MOVE 5 restore=ERR MOVE 5
+14:06:54.995 elevated broker move=OK MOVE restore=OK MOVE
+14:06:54.999 elevated direct focus=OK
+14:06:54.999 elevated broker focus=OK FOCUS
+14:07:03.147 medium hook mode=OBSERVE
+14:07:05.923 medium hook mode=SUPPRESS
+14:07:12.075 broker hook mode=OK HOOK OBSERVE
+14:07:13.734 broker hook mode=OK HOOK SUPPRESS
+14:07:15.957 sample idle started for 15s with loadWorkers=0; move G305 continuously now
+14:07:18.836 sample ignored because another sample is running
+14:07:21.781 sample ignored because another sample is running
+14:07:23.895 boundary canary armed at generation=5; it must be rejected after the next boundary
+14:07:26.191 broker crash response=OK CRASH
+14:07:26.191 input generation advanced to 6 because broker crash
+14:07:26.191 PASS observer remained responsive after broker crash

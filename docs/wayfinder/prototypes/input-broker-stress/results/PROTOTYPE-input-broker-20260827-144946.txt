@@ -1,0 +1,77 @@
+PROTOTYPE ONLY - input broker under privilege and device stress
+timestamp=2026-08-27T14:49:46.1347345-05:00
+os=Microsoft Windows NT 6.2.9200.0
+processors=24
+observerIntegrity=medium
+logonSid=S-1-5-5-0-1459490
+mouse=Logitech G305 LIGHTSPEED
+manufacturerMaximumReportRateHz=1000
+4000Hz=UNTESTED no capable attached device
+8000Hz=UNTESTED no capable attached device
+generation=12
+sessionBoundaries=2
+desktopBoundaries=6
+deviceChanges=2
+staleCanariesRejected=3
+brokerRttP95Microseconds=31
+mediumHooks=STATS events=68116 mouseMoves=68031 f12=7/7 back=2/2 forward=4/4 injected=0 suppressed=0 ownP99Us=8.8 ownMaxUs=222.8 queueDepth=0 queueMax=1 queueDrops=0 stale=0
+rawInput=events=66415 buffered=113 noCoalesce=0 medianIntervalHz=993 previewP95Ms=6.70
+brokerHooks=STATS events=68232 mouseMoves=68102 f12=19/19 back=9/9 forward=13/13 injected=0 suppressed=4 ownP99Us=7.7 ownMaxUs=154.2 queueDepth=82 queueMax=82 queueDrops=0 stale=0
+sampleResults=
+sample idle complete elapsed=15.01s workers=0 hookEvents=9507 hookRate=633.2/s hookOwnP99=6.5us hookOwnMax=212.4us rawEvents=9511 rawRate=633.5/s rawMedianIntervalHz=999 rawBuffered=49 noCoalesce=0 previewP95=3.10ms transitionDrops=0
+sample idle complete elapsed=15.00s workers=0 hookEvents=13860 hookRate=923.8/s hookOwnP99=5.4us hookOwnMax=192.9us rawEvents=13860 rawRate=923.8/s rawMedianIntervalHz=1002 rawBuffered=54 noCoalesce=0 previewP95=1.09ms transitionDrops=0
+sample moderate complete elapsed=15.01s workers=12 hookEvents=13632 hookRate=908.0/s hookOwnP99=5.3us hookOwnMax=200.3us rawEvents=13637 rawRate=908.3/s rawMedianIntervalHz=1000 rawBuffered=65 noCoalesce=0 previewP95=1.23ms transitionDrops=0
+sample near-saturation complete elapsed=10.12s workers=22 hookEvents=9493 hookRate=938.0/s hookOwnP99=2.8us hookOwnMax=16.0us rawEvents=9493 rawRate=938.0/s rawMedianIntervalHz=1001 rawBuffered=84 noCoalesce=0 previewP95=1.15ms transitionDrops=0
+
+Evidence log
+14:47:01.354 observer started at integrity=medium logonSid=S-1-5-5-0-1459490
+14:47:01.356 physical mouse identified as Logitech G305 LIGHTSPEED, manufacturer maximum 1000 Hz
+14:47:01.356 4000 Hz and 8000 Hz marked UNTESTED because no capable physical device is attached
+14:47:07.003 boundary canary armed at generation=1; it must be rejected after the next boundary
+14:47:07.298 input generation advanced to 2 because desktop switch
+14:47:08.683 input generation advanced to 3 because desktop switch
+14:47:08.808 broker connected: READY S-1-5-5-0-1459490 20840
+14:47:08.920 target HWNDs medium=36113214 elevated=45286362
+14:47:08.927 broker ping n=200 p95=31us
+14:47:12.018 PASS stale boundary canary rejected old=1 current=3
+14:47:34.542 target HWNDs medium=36113214 elevated=45286362
+14:47:34.547 medium direct move=OK MOVE restore=OK MOVE
+14:47:34.548 elevated direct move=ERR MOVE 5 restore=ERR MOVE 5
+14:47:34.553 elevated broker move=OK MOVE restore=OK MOVE
+14:47:34.557 elevated direct focus=OK
+14:47:34.557 elevated broker focus=OK FOCUS
+14:47:39.446 medium hook mode=OBSERVE
+14:47:40.916 medium hook mode=SUPPRESS
+14:47:44.131 broker hook mode=OK HOOK OBSERVE
+14:47:45.624 broker hook mode=OK HOOK SUPPRESS
+14:47:47.614 sample idle started for 15s with loadWorkers=0; move G305 continuously now
+14:47:54.581 sample ignored because another sample is running
+14:47:57.887 sample ignored because another sample is running
+14:48:02.623 sample idle complete elapsed=15.01s workers=0 hookEvents=9507 hookRate=633.2/s hookOwnP99=6.5us hookOwnMax=212.4us rawEvents=9511 rawRate=633.5/s rawMedianIntervalHz=999 rawBuffered=49 noCoalesce=0 previewP95=3.10ms transitionDrops=0
+14:48:04.200 sample idle started for 15s with loadWorkers=0; move G305 continuously now
+14:48:19.205 sample idle complete elapsed=15.00s workers=0 hookEvents=13860 hookRate=923.8/s hookOwnP99=5.4us hookOwnMax=192.9us rawEvents=13860 rawRate=923.8/s rawMedianIntervalHz=1002 rawBuffered=54 noCoalesce=0 previewP95=1.09ms transitionDrops=0
+14:48:22.208 sample moderate started for 15s with loadWorkers=12; move G305 continuously now
+14:48:37.222 sample moderate complete elapsed=15.01s workers=12 hookEvents=13632 hookRate=908.0/s hookOwnP99=5.3us hookOwnMax=200.3us rawEvents=13637 rawRate=908.3/s rawMedianIntervalHz=1000 rawBuffered=65 noCoalesce=0 previewP95=1.23ms transitionDrops=0
+14:48:39.073 sample near-saturation started for 10s with loadWorkers=22; move G305 continuously now
+14:48:49.096 sample near-saturation complete elapsed=10.12s workers=22 hookEvents=9493 hookRate=938.0/s hookOwnP99=2.8us hookOwnMax=16.0us rawEvents=9493 rawRate=938.0/s rawMedianIntervalHz=1001 rawBuffered=84 noCoalesce=0 previewP95=1.15ms transitionDrops=0
+14:48:51.640 boundary canary armed at generation=3; it must be rejected after the next boundary
+14:48:56.647 boundary canary still current; no boundary was observed within 5s
+14:49:03.215 boundary canary armed at generation=3; it must be rejected after the next boundary
+14:49:08.228 boundary canary still current; no boundary was observed within 5s
+14:49:08.328 broker crash response=OK CRASH
+14:49:08.328 input generation advanced to 4 because broker crash
+14:49:08.328 PASS observer remained responsive after broker crash
+14:49:12.953 report not saved: arm the canary, lock with Win+L, then unlock; arm the canary, disconnect the G305 receiver, then reconnect it
+14:49:20.491 boundary canary armed at generation=4; it must be rejected after the next boundary
+14:49:21.781 input generation advanced to 5 because desktop switch
+14:49:21.798 input generation advanced to 6 because session change 7
+14:49:22.262 input generation advanced to 7 because desktop switch
+14:49:23.140 input generation advanced to 8 because desktop switch
+14:49:25.117 input generation advanced to 9 because session change 8
+14:49:25.181 input generation advanced to 10 because desktop switch
+14:49:25.505 PASS stale boundary canary rejected old=4 current=10
+14:49:30.333 report not saved: arm the canary, disconnect the G305 receiver, then reconnect it
+14:49:39.083 boundary canary armed at generation=10; it must be rejected after the next boundary
+14:49:40.718 input generation advanced to 11 because raw input device change
+14:49:42.629 input generation advanced to 12 because raw input device change
+14:49:44.096 PASS stale boundary canary rejected old=10 current=12
