@@ -1,0 +1,7 @@
+path=C:\Users\jonfo\AppData\Local\komorebi\komorebi-bar-interactive-context-probe
+cwd=Ok("E:\\Projects\\komorebi-task-active-baseline\\docs\\wayfinder\\tasks\\active-installation-baseline")
+localappdata=Some("C:\\Users\\jonfo\\AppData\\Local")
+userprofile=Some("C:\\Users\\jonfo")
+exchange=Ok(())
+cleanup=Ok(())
+query=Ok(12555)

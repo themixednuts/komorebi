@@ -1,0 +1,7 @@
+path=C:\Users\jonfo\AppData\Local\komorebi\komorebi-bar-scheduled-context-probe
+cwd=Ok("C:\\WINDOWS\\system32")
+localappdata=Some("C:\\Users\\jonfo\\AppData\\Local")
+userprofile=Some("C:\\Users\\jonfo")
+exchange=Err(Os { code: 10050, kind: NetworkDown, message: "A socket operation encountered a dead network." })
+cleanup=Err(Os { code: 3, kind: NotFound, message: "The system cannot find the path specified." })
+query=Err(Os { code: 10050, kind: NetworkDown, message: "A socket operation encountered a dead network." })
