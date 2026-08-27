@@ -164,9 +164,17 @@ _Avoid_: static configuration, active installation
 A named response to committed manager events or manager-owned timers that may request typed actions under an explicit capability grant. It never runs inside a manager transition or native effect.
 _Avoid_: window rule, callback command, startup script
 
-**Lua extension**:
-An owner-installed script that observes manager events and requests typed manager actions through an explicit capability grant. It does not own authoritative state or receive raw native handles.
-_Avoid_: native plugin, arbitrary manager code
+**Extension package**:
+An immutable, explicitly installed bundle of non-executable manifest data and text Lua modules that runs under its own identity, capability grant, generation, and isolated Rust host process. Installation does not grant authority or make the package trusted.
+_Avoid_: plugin DLL, loose script folder
+
+**Extension principal**:
+The manager-resolved identity that binds one exact extension package, active generation, and grant revision to every event, request, contribution, stored value, and diagnostic it produces.
+_Avoid_: script name, self-declared plugin identity
+
+**Extension contribution**:
+A bounded, declarative, toolkit-independent item offered by an extension package to manager-owned control surfaces, such as a namespaced action, status item, settings form, or palette search source. It contains no renderer callback or native handle.
+_Avoid_: widget plugin, UI callback
 
 **Feasibility spike**:
 A disposable, measured experiment that establishes what Windows permits and where the practical limits lie before a feature is designed.
