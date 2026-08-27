@@ -88,6 +88,22 @@ _Avoid_: native-looking, skin
 The single searchable set of window-management actions exposed through first-party controls and external launchers.
 _Avoid_: shortcuts list, duplicate command menus
 
+**Binding**:
+A stable mapping from a normalized physical trigger and foreground context in one binding mode to a typed action or mode transition.
+_Avoid_: hotkey command, shell shortcut
+
+**Binding mode**:
+A named input context in the manager's hierarchical binding map. Entering a child mode changes which bindings own input until the mode exits, expires, or is cancelled.
+_Avoid_: submap process, key layer
+
+**Input authority**:
+The one active component allowed to interpret global keyboard and mouse input as manager bindings. External tools may invoke manager actions, but they do not share capture authority with first-party input.
+_Avoid_: hook priority, input compatibility
+
+**Input suspension**:
+A temporary first-party pass-through state that clears active modes, held interactions, and repeats while retaining a protected route to resume capture.
+_Avoid_: manager pause, input cancellation
+
 **Workspace**:
 An ordered manager-owned arrangement of application windows on one monitor. Exactly one ordinary workspace is active per monitor, and a scratchpad does not replace it.
 _Avoid_: virtual desktop, desktop
