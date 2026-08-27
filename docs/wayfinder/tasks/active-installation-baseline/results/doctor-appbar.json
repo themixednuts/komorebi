@@ -1,0 +1,374 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-08-27T15:29:44.4557702-05:00",
+  "passed": false,
+  "summary": {
+    "check_count": 23,
+    "failed_count": 4,
+    "failed_checks": [
+      "applications-schema",
+      "workspace-bindings",
+      "komorebi-ipc-state",
+      "bar-socket-markers"
+    ]
+  },
+  "paths": {
+    "spec": "E:\\Projects\\komorebi-task-active-baseline\\docs\\wayfinder\\tasks\\active-installation-baseline\\baseline.spec.json",
+    "active_bar": "C:\\Users\\jonfo\\AppData\\Local\\Programs\\komorebi-personal\\installations\\bar-0.1.41-1687650786b1\\komorebi-bar.exe",
+    "wallpapers": "C:\\Users\\jonfo\\Pictures\\Komorebi\\Ultrawide",
+    "theme": "C:\\Users\\jonfo\\AppData\\Local\\Microsoft\\Windows\\Themes\\Komorebi Ultrawide.theme",
+    "komorebi_config": "C:\\Users\\jonfo\\komorebi.json",
+    "applications": "C:\\Users\\jonfo\\applications.json",
+    "whkd": "C:\\Users\\jonfo\\.config\\whkdrc",
+    "repository": "E:\\Projects\\komorebi",
+    "live_slideshow": [
+      "C:\\Users\\jonfo\\Pictures\\Komorebi\\Ultrawide"
+    ]
+  },
+  "hashes": {
+    "active_bar_sha256": "1687650786B1DE43FBB4448A2FA8FE3EE03D31CCC7E4C6C0894B8040BD083807",
+    "wallpaper_manifest_sha256": "66F1B9E0F0BB3A0459B49AA3C7E9BFAEAFA2FFCCCE223F73C2BBFC4795858175",
+    "theme_sha256": "DB0898C4D6BE2255695E64A81BCA580580147E322F8E1F481BA70BF9F4E2A1AD",
+    "wallpaper_cache_sha256": "E616B00FD6915907CC03108A25B6372C05B4FE0CD08509C23A61356BA451DE77",
+    "komorebi_config_sha256": "80516F37199977F8D0CBC10037A30E43B79EF6899477A2D686650310CCB58482",
+    "bar_config_sha256": "7188FD8759A2E5AAE0C41ACAA861447A4824D401453B39AB774FC664C923E7F5",
+    "applications_sha256": "5D19B35A3C89FC0F737924E04A32EC5631B5541E8E71F10CA5358E8BE5654763",
+    "whkd_sha256": "B9C48EA988C5E5EF25C7954F9E191EA5405B17ACCF816B103A95638A09BC8072"
+  },
+  "wallpaper_files": [
+    {
+      "name": "01-01-demon-slayer-lineup-5120x1280-5120x1440.jpg",
+      "path": "C:\\Users\\jonfo\\Pictures\\Komorebi\\Ultrawide\\01-01-demon-slayer-lineup-5120x1280-5120x1440.jpg",
+      "bytes": 2671403,
+      "sha256": "65CEE749432820AABCD9843B4F1522A32ADC4405F6E0F338D61277EF76EA25D2"
+    },
+    {
+      "name": "02-02-naruto-kurama-5120x2880-5120x1440.jpg",
+      "path": "C:\\Users\\jonfo\\Pictures\\Komorebi\\Ultrawide\\02-02-naruto-kurama-5120x2880-5120x1440.jpg",
+      "bytes": 682139,
+      "sha256": "475C9FAB71D0A54C573D3F5A40B91BAB9C74314B064FD91D2B9F31FFAC2494CD"
+    },
+    {
+      "name": "04-04-ducati-panigale-v4-official-8256x5504-5120x1440.jpg",
+      "path": "C:\\Users\\jonfo\\Pictures\\Komorebi\\Ultrawide\\04-04-ducati-panigale-v4-official-8256x5504-5120x1440.jpg",
+      "bytes": 693151,
+      "sha256": "20E9004EA8741E73C18766E48B3154D0EB5502A519C11F7C9CB5F711A3D779BA"
+    },
+    {
+      "name": "05-mclaren-p1-native-5120x1440.jpg",
+      "path": "C:\\Users\\jonfo\\Pictures\\Komorebi\\Ultrawide\\05-mclaren-p1-native-5120x1440.jpg",
+      "bytes": 1173678,
+      "sha256": "5DCDEE30D9E7D5FB0A5A8FD505392B6953A08182472C82A0E77E33F51A9B9EE6"
+    },
+    {
+      "name": "06-06-mclaren-gts-5120x2880-5120x1440.jpg",
+      "path": "C:\\Users\\jonfo\\Pictures\\Komorebi\\Ultrawide\\06-06-mclaren-gts-5120x2880-5120x1440.jpg",
+      "bytes": 889593,
+      "sha256": "6FE5656E477B2C442CBF37BBF6691C58CB8F2E03EA9CBF67B5E59DE0D1A0FDA8"
+    },
+    {
+      "name": "09-09-nezuko-wisteria-3840x2160-5120x1440.jpg",
+      "path": "C:\\Users\\jonfo\\Pictures\\Komorebi\\Ultrawide\\09-09-nezuko-wisteria-3840x2160-5120x1440.jpg",
+      "bytes": 1099460,
+      "sha256": "1117BF910E09ADC04721E651672CCED2CCBBC3C6D3EBCC54AD3547BE2C8B47BC"
+    },
+    {
+      "name": "10-10-mclaren-788hs-15504x11628-5120x1440.jpg",
+      "path": "C:\\Users\\jonfo\\Pictures\\Komorebi\\Ultrawide\\10-10-mclaren-788hs-15504x11628-5120x1440.jpg",
+      "bytes": 629750,
+      "sha256": "E57469B648B020A3180CACDB0FC485102B820979B3F6B535FB3B824DD860329D"
+    },
+    {
+      "name": "11-11-mclaren-w1-side-7680x4320-5120x1440.jpg",
+      "path": "C:\\Users\\jonfo\\Pictures\\Komorebi\\Ultrawide\\11-11-mclaren-w1-side-7680x4320-5120x1440.jpg",
+      "bytes": 1193305,
+      "sha256": "D85B7E818BEA52FA158F7B3163C97BA3082B7CF2A145C067CABC75C64D940CDC"
+    },
+    {
+      "name": "12-12-mclaren-w1-rear-5120x2880-5120x1440.jpg",
+      "path": "C:\\Users\\jonfo\\Pictures\\Komorebi\\Ultrawide\\12-12-mclaren-w1-rear-5120x2880-5120x1440.jpg",
+      "bytes": 886935,
+      "sha256": "C2615FE796B76E36FABDAD6B04C51EC9CEFEF4B2C0AFE2EC0923028D02A37023"
+    },
+    {
+      "name": "13-13-ducati-panigale-dark-8256x5504-5120x1440.jpg",
+      "path": "C:\\Users\\jonfo\\Pictures\\Komorebi\\Ultrawide\\13-13-ducati-panigale-dark-8256x5504-5120x1440.jpg",
+      "bytes": 567940,
+      "sha256": "A7CD89F40BCFF36EAECFA00582EDA879B0638B8B3B88ECF4745CA375BC4AD66B"
+    },
+    {
+      "name": "14-14-ducati-panigale-track-official-8640x5760-5120x1440.jpg",
+      "path": "C:\\Users\\jonfo\\Pictures\\Komorebi\\Ultrawide\\14-14-ducati-panigale-track-official-8640x5760-5120x1440.jpg",
+      "bytes": 1128489,
+      "sha256": "790667E77A1E514B9219942B0937F1796E50493F1DD18C0ABF6CF16269CC8D0C"
+    },
+    {
+      "name": "15-15-evo-x-autumn-3840x2160-5120x1440.jpg",
+      "path": "C:\\Users\\jonfo\\Pictures\\Komorebi\\Ultrawide\\15-15-evo-x-autumn-3840x2160-5120x1440.jpg",
+      "bytes": 1814978,
+      "sha256": "65F06CEBF654D3EC709D440B748B8BEE3F5B92F74A0AE9A3CA8F26DC966CDE9D"
+    },
+    {
+      "name": "18-18-tanjiro-nezuko-ultrawide-6880x2880-5120x1440.jpg",
+      "path": "C:\\Users\\jonfo\\Pictures\\Komorebi\\Ultrawide\\18-18-tanjiro-nezuko-ultrawide-6880x2880-5120x1440.jpg",
+      "bytes": 2262108,
+      "sha256": "4D377E34E62C0885C1A17F4EA29417591C1E1CC0EDFE75723FEF87BAAE555EF2"
+    },
+    {
+      "name": "19-19-nezuko-zenitsu-5120x1440.jpg",
+      "path": "C:\\Users\\jonfo\\Pictures\\Komorebi\\Ultrawide\\19-19-nezuko-zenitsu-5120x1440.jpg",
+      "bytes": 1236885,
+      "sha256": "D7E11622B3AA6ED7A7145067647E6E95511ED0305357BD7DC8833C4D67B17D32"
+    },
+    {
+      "name": "20-20-demon-slayer-group-5120x2880-5120x1440.jpg",
+      "path": "C:\\Users\\jonfo\\Pictures\\Komorebi\\Ultrawide\\20-20-demon-slayer-group-5120x2880-5120x1440.jpg",
+      "bytes": 1496148,
+      "sha256": "44D440A09744668536C7CED5390CCC377862FE020867F190FBF940482F5D0FF1"
+    },
+    {
+      "name": "21-21-tanjiro-zenitsu-giyu-scenery-5120x2880-5120x1440.jpg",
+      "path": "C:\\Users\\jonfo\\Pictures\\Komorebi\\Ultrawide\\21-21-tanjiro-zenitsu-giyu-scenery-5120x2880-5120x1440.jpg",
+      "bytes": 946308,
+      "sha256": "434D13B19F0D38FB4E06B9CD5AB1023CEDBAC7971609B7E54FE44CEA25AE4A22"
+    },
+    {
+      "name": "22-22-naruto-team7-5120x2880-5120x1440.jpg",
+      "path": "C:\\Users\\jonfo\\Pictures\\Komorebi\\Ultrawide\\22-22-naruto-team7-5120x2880-5120x1440.jpg",
+      "bytes": 1249234,
+      "sha256": "A760AB17C936DD2878F9F8EB98FD21C958C3EB899CCFBE4DA9C3943AE96F0459"
+    },
+    {
+      "name": "23-23-naruto-team7-dark-5120x2880-5120x1440.jpg",
+      "path": "C:\\Users\\jonfo\\Pictures\\Komorebi\\Ultrawide\\23-23-naruto-team7-dark-5120x2880-5120x1440.jpg",
+      "bytes": 487778,
+      "sha256": "0914774795C15CB54B50CB28B8CECCCD35101A2758B19CE50F58A4C4B753ED6B"
+    },
+    {
+      "name": "24-24-naruto-kurama-5120x2880-5120x1440.jpg",
+      "path": "C:\\Users\\jonfo\\Pictures\\Komorebi\\Ultrawide\\24-24-naruto-kurama-5120x2880-5120x1440.jpg",
+      "bytes": 1047696,
+      "sha256": "EB77F4B3F4AFA984D8B787B25526202BD3743D1CDE4E7BA8D4A22CAA1ECC0980"
+    },
+    {
+      "name": "25-25-evo-x-clean-track-3840x2160-5120x1440.jpg",
+      "path": "C:\\Users\\jonfo\\Pictures\\Komorebi\\Ultrawide\\25-25-evo-x-clean-track-3840x2160-5120x1440.jpg",
+      "bytes": 1635107,
+      "sha256": "0C3568A0E079014FE19D70B97DA9F7B4EB7B44061C47BE01570405E6C0034A78"
+    },
+    {
+      "name": "26-26-naruto-vs-sasuke-5120x2880-5120x1440.jpg",
+      "path": "C:\\Users\\jonfo\\Pictures\\Komorebi\\Ultrawide\\26-26-naruto-vs-sasuke-5120x2880-5120x1440.jpg",
+      "bytes": 768813,
+      "sha256": "EC2018763C8D77448CE6DCAE4D82DBADBF8587F1B5E5F0EA6B97393149B3D8CF"
+    },
+    {
+      "name": "27-27-naruto-cast-5120x2880-5120x1440.jpg",
+      "path": "C:\\Users\\jonfo\\Pictures\\Komorebi\\Ultrawide\\27-27-naruto-cast-5120x2880-5120x1440.jpg",
+      "bytes": 1763012,
+      "sha256": "BC62CFB92E788E7E425498868F1FE054AA219EDAE0A9ED1CD2E08F0C6BA1684C"
+    }
+  ],
+  "processes": {
+    "manager": [
+      {
+        "ProcessId": 36664,
+        "ExecutablePath": "C:\\Program Files\\komorebi\\bin\\komorebi.exe",
+        "CommandLine": "\"C:\\Program Files\\komorebi\\bin\\komorebi.exe\" "
+      }
+    ],
+    "bar": [
+      {
+        "ProcessId": 28508,
+        "ExecutablePath": "C:\\Users\\jonfo\\AppData\\Local\\Programs\\komorebi-personal\\installations\\bar-0.1.41-1687650786b1\\komorebi-bar.exe",
+        "CommandLine": "\"C:\\Users\\jonfo\\AppData\\Local\\Programs\\komorebi-personal\\installations\\bar-0.1.41-1687650786b1\\komorebi-bar.exe\""
+      }
+    ],
+    "whkd": [
+      {
+        "ProcessId": 21100,
+        "ExecutablePath": "C:\\Program Files\\whkd\\bin\\whkd.exe",
+        "CommandLine": "\"C:\\Program Files\\whkd\\bin\\whkd.exe\" "
+      }
+    ]
+  },
+  "checks": [
+    {
+      "name": "spec-version",
+      "passed": true,
+      "expected": 1,
+      "actual": 1
+    },
+    {
+      "name": "active-bar-file",
+      "passed": true,
+      "expected": "C:\\Users\\jonfo\\AppData\\Local\\Programs\\komorebi-personal\\installations\\bar-0.1.41-1687650786b1\\komorebi-bar.exe",
+      "actual": "C:\\Users\\jonfo\\AppData\\Local\\Programs\\komorebi-personal\\installations\\bar-0.1.41-1687650786b1\\komorebi-bar.exe"
+    },
+    {
+      "name": "active-bar-hash",
+      "passed": true,
+      "expected": "1687650786B1DE43FBB4448A2FA8FE3EE03D31CCC7E4C6C0894B8040BD083807",
+      "actual": "1687650786B1DE43FBB4448A2FA8FE3EE03D31CCC7E4C6C0894B8040BD083807"
+    },
+    {
+      "name": "appbar-task-action",
+      "passed": true,
+      "expected": "C:\\Users\\jonfo\\AppData\\Local\\Programs\\komorebi-personal\\installations\\bar-0.1.41-1687650786b1\\komorebi-bar.exe",
+      "actual": "C:\\Users\\jonfo\\AppData\\Local\\Programs\\komorebi-personal\\installations\\bar-0.1.41-1687650786b1\\komorebi-bar.exe"
+    },
+    {
+      "name": "active-bar-process",
+      "passed": true,
+      "expected": [
+        "C:\\Users\\jonfo\\AppData\\Local\\Programs\\komorebi-personal\\installations\\bar-0.1.41-1687650786b1\\komorebi-bar.exe"
+      ],
+      "actual": [
+        "C:\\Users\\jonfo\\AppData\\Local\\Programs\\komorebi-personal\\installations\\bar-0.1.41-1687650786b1\\komorebi-bar.exe"
+      ]
+    },
+    {
+      "name": "wallpaper-count",
+      "passed": true,
+      "expected": 22,
+      "actual": 22
+    },
+    {
+      "name": "wallpaper-manifest",
+      "passed": true,
+      "expected": "66F1B9E0F0BB3A0459B49AA3C7E9BFAEAFA2FFCCCE223F73C2BBFC4795858175",
+      "actual": "66F1B9E0F0BB3A0459B49AA3C7E9BFAEAFA2FFCCCE223F73C2BBFC4795858175"
+    },
+    {
+      "name": "current-theme",
+      "passed": true,
+      "expected": "C:\\Users\\jonfo\\AppData\\Local\\Microsoft\\Windows\\Themes\\Komorebi Ultrawide.theme",
+      "actual": "C:\\Users\\jonfo\\AppData\\Local\\Microsoft\\Windows\\Themes\\Komorebi Ultrawide.theme"
+    },
+    {
+      "name": "theme-has-no-source-path",
+      "passed": true,
+      "expected": "no source checkout path",
+      "actual": null
+    },
+    {
+      "name": "theme-wallpaper-root",
+      "passed": true,
+      "expected": "C:\\Users\\jonfo\\Pictures\\Komorebi\\Ultrawide",
+      "actual": "C:\\Users\\jonfo\\Pictures\\Komorebi\\Ultrawide"
+    },
+    {
+      "name": "theme-wallpaper-items",
+      "passed": true,
+      "expected": {
+        "count": 22,
+        "root": "C:\\Users\\jonfo\\Pictures\\Komorebi\\Ultrawide"
+      },
+      "actual": {
+        "outside_root": [],
+        "count": 22
+      }
+    },
+    {
+      "name": "live-slideshow-root",
+      "passed": true,
+      "expected": [
+        "C:\\Users\\jonfo\\Pictures\\Komorebi\\Ultrawide"
+      ],
+      "actual": [
+        "C:\\Users\\jonfo\\Pictures\\Komorebi\\Ultrawide"
+      ]
+    },
+    {
+      "name": "wallpaper-cache",
+      "passed": true,
+      "expected": "C:\\Users\\jonfo\\AppData\\Roaming\\Microsoft\\Windows\\Themes\\TranscodedWallpaper",
+      "actual": "C:\\Users\\jonfo\\AppData\\Roaming\\Microsoft\\Windows\\Themes\\TranscodedWallpaper"
+    },
+    {
+      "name": "configured-workspaces",
+      "passed": true,
+      "expected": 7,
+      "actual": 7
+    },
+    {
+      "name": "applications-schema",
+      "passed": false,
+      "expected": "https://raw.githubusercontent.com/LGUG2Z/komorebi/v0.1.41/schema.asc.json",
+      "actual": "https://raw.githubusercontent.com/LGUG2Z/komorebi/master/schema.asc.json"
+    },
+    {
+      "name": "komorebi-schema-pinned",
+      "passed": true,
+      "expected": "versioned schema URL",
+      "actual": "https://raw.githubusercontent.com/LGUG2Z/komorebi/v0.1.41/schema.json"
+    },
+    {
+      "name": "bar-schema-pinned",
+      "passed": true,
+      "expected": "versioned schema URL",
+      "actual": "https://raw.githubusercontent.com/LGUG2Z/komorebi/v0.1.41/schema.bar.json"
+    },
+    {
+      "name": "workspace-bindings",
+      "passed": false,
+      "expected": "indices below 7",
+      "actual": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "name": "komorebic-check",
+      "passed": true,
+      "expected": 0,
+      "actual": 0
+    },
+    {
+      "name": "komorebi-ipc-state",
+      "passed": false,
+      "expected": "exit 0 and JSON response",
+      "actual": {
+        "output": "thread 'main' (15436) panicked at komorebic\\src\\main.rs:1577:23:\r\nAn invalid argument was supplied. (os error 10022)\r\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace",
+        "exit_code": 101
+      }
+    },
+    {
+      "name": "manager-socket-marker",
+      "passed": true,
+      "expected": "C:\\Users\\jonfo\\AppData\\Local\\komorebi\\komorebi.sock",
+      "actual": true
+    },
+    {
+      "name": "bar-socket-markers",
+      "passed": false,
+      "expected": "zero or one live marker",
+      "actual": [
+        "komorebi-bar-cornbraid",
+        "komorebi-bar-cymbaleer",
+        "komorebi-bar-ferromanganeses",
+        "komorebi-bar-thenal"
+      ]
+    },
+    {
+      "name": "fork-push-remote",
+      "passed": true,
+      "expected": "https://github.com/themixednuts/komorebi.git",
+      "actual": "https://github.com/themixednuts/komorebi.git"
+    }
+  ]
+}

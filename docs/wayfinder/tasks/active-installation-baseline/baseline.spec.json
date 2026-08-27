@@ -1,0 +1,43 @@
+{
+  "version": 2,
+  "active_bar": {
+    "source_path": "C:\\Users\\jonfo\\Documents\\Codex\\2026-08-27\\https-github-com-lgug2z-komorebi-https\\outputs\\komorebi-bar.exe",
+    "path": "C:\\Users\\jonfo\\AppData\\Local\\Programs\\komorebi-personal\\installations\\bar-0.1.41-1687650786b1\\komorebi-bar.exe",
+    "sha256": "1687650786B1DE43FBB4448A2FA8FE3EE03D31CCC7E4C6C0894B8040BD083807",
+    "startup_shortcut": "C:\\Users\\jonfo\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Komorebi AppBar.lnk"
+  },
+  "wallpapers": {
+    "source_path": "C:\\Users\\jonfo\\Documents\\Codex\\2026-08-27\\https-github-com-lgug2z-komorebi-https\\outputs\\Komorebi-Ultrawide-Theme\\Wallpapers",
+    "path": "C:\\Users\\jonfo\\Pictures\\Komorebi\\Ultrawide",
+    "file_count": 22,
+    "manifest_sha256": "66F1B9E0F0BB3A0459B49AA3C7E9BFAEAFA2FFCCCE223F73C2BBFC4795858175"
+  },
+  "windows": {
+    "theme_path": "C:\\Users\\jonfo\\AppData\\Local\\Microsoft\\Windows\\Themes\\Komorebi Ultrawide.theme",
+    "wallpaper_cache_path": "C:\\Users\\jonfo\\AppData\\Roaming\\Microsoft\\Windows\\Themes\\TranscodedWallpaper"
+  },
+  "komorebi": {
+    "executable_path": "C:\\Program Files\\komorebi\\bin\\komorebi.exe",
+    "client_path": "C:\\Program Files\\komorebi\\bin\\komorebic.exe",
+    "config_path": "C:\\Users\\jonfo\\komorebi.json",
+    "bar_config_path": "C:\\Users\\jonfo\\komorebi.bar.json",
+    "applications_path": "C:\\Users\\jonfo\\applications.json",
+    "whkd_config_path": "C:\\Users\\jonfo\\.config\\whkdrc",
+    "data_path": "C:\\Users\\jonfo\\AppData\\Local\\komorebi",
+    "runtime_target_path": "C:\\Users\\jonfo\\.local\\share\\komorebi\\runtime",
+    "startup_shortcut": "C:\\Users\\jonfo\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Komorebi.lnk",
+    "startup_target": "C:\\Program Files\\komorebi\\bin\\komorebic-no-console.exe",
+    "startup_arguments": "start --whkd",
+    "workspace_count": 7,
+    "applications_schema": "https://raw.githubusercontent.com/LGUG2Z/komorebi/v0.1.41/schema.asc.json"
+  },
+  "repository": {
+    "path": "E:\\Projects\\komorebi",
+    "origin_push_url": "https://github.com/themixednuts/komorebi.git"
+  },
+  "disabled_scheduled_tasks": [
+    "Komorebi",
+    "Komorebi AppBar"
+  ],
+  "forbidden_active_root": "C:\\Users\\jonfo\\Documents\\Codex\\2026-08-27\\https-github-com-lgug2z-komorebi-https"
+}
