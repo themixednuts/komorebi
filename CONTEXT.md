@@ -156,6 +156,14 @@ _Avoid_: shortcuts window, PowerToys adapter
 A typed source of command-palette results with its own query, privacy, ranking, and activation rules.
 _Avoid_: command type, untyped result list
 
+**Configuration profile**:
+A durable owner-authored declaration of manager policy, bindings, shell choices, and automations compiled as one revision from one selected source plus explicit manager-owned edits. Live window state and generated recovery data are not part of it.
+_Avoid_: static configuration, active installation
+
+**Automation**:
+A named response to committed manager events or manager-owned timers that may request typed actions under an explicit capability grant. It never runs inside a manager transition or native effect.
+_Avoid_: window rule, callback command, startup script
+
 **Lua extension**:
 An owner-installed script that observes manager events and requests typed manager actions through an explicit capability grant. It does not own authoritative state or receive raw native handles.
 _Avoid_: native plugin, arbitrary manager code
