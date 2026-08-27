@@ -88,6 +88,18 @@ _Avoid_: native-looking, skin
 The single searchable set of window-management actions exposed through first-party controls and external launchers.
 _Avoid_: shortcuts list, duplicate command menus
 
+**Workspace**:
+An ordered manager-owned arrangement of application windows on one monitor. Exactly one ordinary workspace is active per monitor, and a scratchpad does not replace it.
+_Avoid_: virtual desktop, desktop
+
+**Scratchpad**:
+A named manager-owned collection of application windows that can be presented above an ordinary workspace on one monitor or held hidden without changing that workspace.
+_Avoid_: special workspace, hidden workspace
+
+**Scratchpad presentation**:
+The one monitor attachment through which a scratchpad is shown, including its layout, placement, focus, and z-order intent. A scratchpad has at most one presentation.
+_Avoid_: scratchpad workspace, overlay window
+
 **Action**:
 A fully typed request to change manager-owned state or behavior. Queries, search results, transport controls, and arbitrary command strings are not actions.
 _Avoid_: socket message, palette result
