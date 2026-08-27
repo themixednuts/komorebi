@@ -144,6 +144,22 @@ _Avoid_: static descriptor, action result
 One identified attempt to execute a fully bound action against an expected manager revision and under resolved caller authority.
 _Avoid_: key press, socket write
 
+**Control protocol**:
+The versioned local contract through which authenticated clients discover catalog entries, observe authorized manager views, subscribe to committed events, and invoke actions. It exposes stable domain values rather than manager, transport, or UI implementation types.
+_Avoid_: SocketMessage API, IPC schema
+
+**Control principal**:
+The identity and authority the manager assigns to one authenticated control connection from operating-system and launch evidence. A client-declared name, role, or grant cannot create it.
+_Avoid_: client ID, claimed role
+
+**Manager epoch**:
+The identity of one lifetime of authoritative manager state. State revisions and event positions are comparable only inside the same manager epoch.
+_Avoid_: process ID, boot number
+
+**Event cursor**:
+A manager epoch and committed-event position that identifies subscription progress. It supports bounded resume and makes a missing delivery require an explicit snapshot resynchronization.
+_Avoid_: last notification, socket offset
+
 **Control surface**:
 The first-party interface for finding, understanding, and invoking entries from the command catalog.
 _Avoid_: shortcuts window, general-purpose launcher
