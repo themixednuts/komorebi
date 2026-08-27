@@ -88,6 +88,22 @@ _Avoid_: native-looking, skin
 The single searchable set of window-management actions exposed through first-party controls and external launchers.
 _Avoid_: shortcuts list, duplicate command menus
 
+**Action**:
+A fully typed request to change manager-owned state or behavior. Queries, search results, transport controls, and arbitrary command strings are not actions.
+_Avoid_: socket message, palette result
+
+**Action definition**:
+The stable discoverable identity and meaning of one action, including its parameters, description, permitted uses, confirmation policy, and undo policy. It contains no caller-specific or live state.
+_Avoid_: CLI subcommand, wire schema
+
+**Action offer**:
+A revisioned view of an action definition for one caller, enriched with current availability, current value, dynamic parameter choices, and active bindings.
+_Avoid_: static descriptor, action result
+
+**Action invocation**:
+One identified attempt to execute a fully bound action against an expected manager revision and under resolved caller authority.
+_Avoid_: key press, socket write
+
 **Control surface**:
 The first-party interface for finding, understanding, and invoking entries from the command catalog.
 _Avoid_: shortcuts window, general-purpose launcher
