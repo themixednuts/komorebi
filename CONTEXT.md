@@ -92,6 +92,18 @@ _Avoid_: shortcuts list, duplicate command menus
 An ordered manager-owned arrangement of application windows on one monitor. Exactly one ordinary workspace is active per monitor, and a scratchpad does not replace it.
 _Avoid_: virtual desktop, desktop
 
+**Window tag**:
+A stable manager-owned label asserted on a window with recorded provenance and lifetime. Tags describe membership or intent without mutating the application window.
+_Avoid_: application label, window property
+
+**Window rule**:
+A named declarative policy that contributes tags or manager intent while its typed predicate and lifecycle apply. A window rule cannot execute arbitrary commands or call native APIs.
+_Avoid_: callback, command script
+
+**Window policy explanation**:
+The revisioned account of observed facts, matching rules, conflicts, suppressed contributions, and winning manager intent for one window.
+_Avoid_: debug log, rule trace
+
 **Scratchpad**:
 A named manager-owned collection of application windows that can be presented above an ordinary workspace on one monitor or held hidden without changing that workspace.
 _Avoid_: special workspace, hidden workspace
