@@ -1,5 +1,7 @@
 # Interactive stacks prototype result
 
+Artifacts: [interactive HTML](https://github.com/themixednuts/komorebi/blob/prototype/interactive-stacks/docs/wayfinder/prototypes/interactive-stacks/interactive-stacks-prototype.html), [browserless interaction checks](https://github.com/themixednuts/komorebi/blob/prototype/interactive-stacks/docs/wayfinder/prototypes/interactive-stacks/interaction-model.test.cjs), and [prototype branch](https://github.com/themixednuts/komorebi/tree/prototype/interactive-stacks/docs/wayfinder/prototypes/interactive-stacks).
+
 ## Decision
 
 Use direct semantic targets on the destination container:
