@@ -120,6 +120,22 @@ _Avoid_: callback, command script
 The revisioned account of observed facts, matching rules, conflicts, suppressed contributions, and winning manager intent for one window.
 _Avoid_: debug log, rule trace
 
+**Window family**:
+One foreign top-level root and the currently observed owned windows that must retain their application-defined ownership and focus relationships. Membership follows window identity and owner relationships, not process identity.
+_Avoid_: process window group, reparented window tree
+
+**Surface role**:
+The manager's revisioned classification of one foreign window within its window family, such as primary window, dialog, utility window, menu, tooltip, or unknown transient surface.
+_Avoid_: window type, style guess
+
+**Modal constraint**:
+A known or unresolved condition in a window family that may redirect or block interaction through a dialog. While it remains active or uncertain, the manager does not hide, move away, or bypass the affected family.
+_Avoid_: modal flag, blocked window
+
+**Placement coordination**:
+A manager request that preserves a foreign window's size, ownership, styles, and activation behavior while recovering or applying an explicitly configured position.
+_Avoid_: popup management, window takeover
+
 **Scratchpad**:
 A named manager-owned collection of application windows that can be presented above an ordinary workspace on one monitor or held hidden without changing that workspace.
 _Avoid_: special workspace, hidden workspace
