@@ -268,6 +268,10 @@ _Avoid_: widget plugin, UI callback
 One headless Rust process that owns exactly one active extension principal and its embedded LuaJIT state. It starts inside a unique LPAC identity before any package code runs and is replaceable as a unit.
 _Avoid_: plugin thread, shared script runtime
 
+**Extension launch context**:
+The manager's classified relationship to an existing Windows Job that determines whether an extension host receives a standalone inner Job, breaks away into one, nests one compatibly, or is refused before activation.
+_Avoid_: assumed no-breakaway Job, best-effort containment
+
 **Compatibility capability**:
 A narrowly named Windows LPAC capability needed for the host runtime itself to initialize, not authority granted to extension code. Each one remains explicit and is rejected if adversarial probes show it opens an unrelated resource surface.
 _Avoid_: default capability, trusted runtime access
