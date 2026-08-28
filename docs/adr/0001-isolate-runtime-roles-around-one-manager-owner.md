@@ -1,0 +1,3 @@
+# Isolate runtime roles around one manager owner
+
+The Windows manager will keep authoritative state in one medium-integrity manager process and isolate shell presentation, global input, LuaJIT, brokered extension I/O, recovery, elevated effects, and experimental Windows integrations by runtime role. A monolith would make every renderer, hook, script, and optional Windows API failure a manager failure, while a fully distributed design would split manager invariants across processes. Role processes therefore exchange typed, generation-fenced values over authenticated named pipes and never share manager authority.

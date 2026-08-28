@@ -56,6 +56,34 @@ _Avoid_: crash loop, factory reset
 The accessible AppBar, palette, overview, notification history or proved presenter, quick controls, and optional OSD surfaces owned by the Windows manager while Explorer remains available for recovery.
 _Avoid_: DWM replacement, Explorer replacement
 
+**Runtime role**:
+A separately authenticated manager component whose authority, lifetime, and failure contract are fixed by its role rather than claimed by the process itself.
+_Avoid_: helper process, trusted child
+
+**Manager owner**:
+The sole runtime role allowed to commit authoritative state and issue effect plans during one manager epoch.
+_Avoid_: main process, shared manager
+
+**Shell role host**:
+A replaceable runtime role that owns one class of manager shell windows and projects typed shell state without owning manager intent.
+_Avoid_: UI manager, renderer process
+
+**Recovery authority**:
+The manager-independent runtime role that selects the active installation, resolves interrupted promotion, and reaches a known-good installation or Safe Stop.
+_Avoid_: watchdog, manager restart loop
+
+**Capability broker**:
+A replaceable runtime role that performs one bounded external effect after the manager has admitted its typed authority.
+_Avoid_: privileged manager, ambient service
+
+**Elevated effect broker**:
+The short-lived high-integrity capability broker for exact window effects that Windows blocks at medium integrity.
+_Avoid_: elevated manager, admin service
+
+**Windows adapter**:
+A narrow boundary that translates between manager-owned values and one documented Windows contract while containing native handles, raw errors, and thread-affinity rules.
+_Avoid_: Windows service, Win32 helper
+
 **Personal shell profile**:
 The selection of manager-owned features, consent-gated modes, and Explorer recovery routes enabled for the active installation. It keeps Explorer available unless a separate disposable shell-replacement experiment explicitly removes it.
 _Avoid_: shell replacement, product defaults
@@ -116,9 +144,9 @@ _Avoid_: workspace, manager desktop
 A filtered native notification that tells the manager to re-observe the Windows desktop visibility domain without claiming what changed. The primary Windows 11 wake is the desktop window's accessibility-name change; managed-window cloak changes are corroborating wakes.
 _Avoid_: desktop-changed fact, polling tick
 
-**Desktop settlement burst**:
-A bounded sequence of public per-window observations started by a desktop observation wake and stopped after three equal cohort snapshots. Candidate or unavailable evidence cannot change window visibility.
-_Avoid_: background polling, desktop debounce timer
+**Desktop observation pass**:
+One public per-window observation pass queued by a desktop observation wake. Wakes coalesce while a pass is pending, and a wake received during the pass queues one later pass without a timer or equality loop.
+_Avoid_: settlement polling, desktop debounce timer
 
 **Container**:
 One ordered layout position in a workspace that holds one or more application windows. A multi-window container exposes one active member at a time without becoming a new workspace.
