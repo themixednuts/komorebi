@@ -264,6 +264,26 @@ _Avoid_: script name, self-declared plugin identity
 A bounded, declarative, toolkit-independent item offered by an extension package to manager-owned control surfaces, such as a namespaced action, status item, settings form, or palette search source. It contains no renderer callback or native handle.
 _Avoid_: widget plugin, UI callback
 
+**Extension host**:
+One headless Rust process that owns exactly one active extension principal and its embedded LuaJIT state. It starts inside a unique LPAC identity before any package code runs and is replaceable as a unit.
+_Avoid_: plugin thread, shared script runtime
+
+**Compatibility capability**:
+A narrowly named Windows LPAC capability needed for the host runtime itself to initialize, not authority granted to extension code. Each one remains explicit and is rejected if adversarial probes show it opens an unrelated resource surface.
+_Avoid_: default capability, trusted runtime access
+
+**Authenticated extension channel**:
+A host-created, bounded local pipe session accepted only after its DACL, remote-client policy, kernel-reported client process, LPAC package SID, Job membership, nonce, extension principal, and generation agree.
+_Avoid_: local socket, connected pipe
+
+**Authenticated ready**:
+The point at which an extension host has started inside its assigned LPAC and Job, connected to its channel, and passed peer authentication. Adversarial probes and extension activation occur after this point and are measured separately.
+_Avoid_: process created, pipe connected
+
+**Shared-host control**:
+The measured in-process LuaJIT baseline used to quantify the speed and memory exchanged for losing process isolation. It is evidence, not a supported production topology.
+_Avoid_: fallback plugin host, fast mode
+
 **Feasibility spike**:
 A disposable, measured experiment that establishes what Windows permits and where the practical limits lie before a feature is designed.
 _Avoid_: assumption, production prototype

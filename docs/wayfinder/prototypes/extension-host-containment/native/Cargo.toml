@@ -1,0 +1,71 @@
+[package]
+name = "wayfinder-extension-containment-prototype"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[workspace]
+resolver = "3"
+
+[dependencies]
+anyhow = "1.0.100"
+mlua = { version = "0.11.4", features = ["luajit", "vendored", "serialize"] }
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.145"
+sha2 = "0.10.9"
+uuid = { version = "1.18.1", features = ["v4"] }
+windows-sys = { version = "0.61.2", features = [
+  "Win32_Foundation",
+  "Win32_Globalization",
+  "Win32_Networking_WinSock",
+  "Win32_Security",
+  "Win32_Security_Authorization",
+  "Win32_Security_Isolation",
+  "Win32_Storage_FileSystem",
+  "Win32_System_Console",
+  "Win32_System_Com",
+  "Win32_System_Diagnostics_Debug",
+  "Win32_System_Environment",
+  "Win32_System_IO",
+  "Win32_System_JobObjects",
+  "Win32_System_LibraryLoader",
+  "Win32_System_Memory",
+  "Win32_System_Pipes",
+  "Win32_System_ProcessStatus",
+  "Win32_System_Registry",
+  "Win32_System_RemoteDesktop",
+  "Win32_System_SystemInformation",
+  "Win32_System_SystemServices",
+  "Win32_System_Threading",
+  "Win32_System_WindowsProgramming",
+  "Win32_UI_Shell",
+  "Win32_UI_WindowsAndMessaging",
+] }
+
+[[bin]]
+name = "containment-host"
+path = "src/bin/host.rs"
+
+[[bin]]
+name = "containment-rust-child"
+path = "src/bin/rust_child.rs"
+
+[[bin]]
+name = "containment-lua-child"
+path = "src/bin/lua_child.rs"
+
+[[bin]]
+name = "containment-minimal-child"
+path = "src/bin/minimal_child.rs"
+
+[lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+unused_must_use = "deny"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+dbg_macro = "deny"
+todo = "deny"
+unwrap_used = "deny"
+undocumented_unsafe_blocks = "deny"
