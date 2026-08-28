@@ -1,0 +1,786 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Disposable interactive stacks prototype</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #090b12;
+      --panel: #111521;
+      --panel-2: #171d2b;
+      --line: #2b3448;
+      --muted: #98a4ba;
+      --text: #eef3ff;
+      --accent: #8b7cff;
+      --accent-2: #4ee0bd;
+      --danger: #ff718a;
+      --warning: #ffc86b;
+      --shadow: 0 20px 60px #0009;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-width: 980px;
+      min-height: 100vh;
+      overflow: hidden;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 18% 12%, #24204d55, transparent 32%),
+        radial-gradient(circle at 82% 78%, #0d6b6250, transparent 32%),
+        var(--bg);
+      font: 14px/1.4 "Segoe UI Variable", "Segoe UI", sans-serif;
+    }
+
+    button { font: inherit; }
+    button:focus-visible, [tabindex]:focus-visible { outline: 2px solid white; outline-offset: 2px; }
+
+    .app {
+      display: grid;
+      grid-template-rows: 58px minmax(0, 1fr) 36px;
+      height: 100vh;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 20px;
+      border-bottom: 1px solid var(--line);
+      background: #0c1019d9;
+      backdrop-filter: blur(20px);
+    }
+
+    header h1 { margin: 0; font-size: 15px; font-weight: 650; }
+    .throwaway { color: var(--warning); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+    .spacer { flex: 1; }
+
+    .toolbar { display: flex; gap: 8px; }
+    .toolbar button, .secondary {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 7px 11px;
+      color: var(--text);
+      background: var(--panel-2);
+      cursor: pointer;
+    }
+    .toolbar button:hover, .secondary:hover { border-color: var(--accent); background: #222941; }
+    .toolbar button[aria-pressed="true"] { border-color: var(--danger); color: #ffdce3; background: #3b1722; }
+
+    main {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 292px;
+      min-height: 0;
+    }
+
+    .stage {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 0;
+      padding: 22px;
+      overflow: auto;
+    }
+
+    .monitors {
+      display: grid;
+      grid-template-columns: minmax(560px, 1.35fr) minmax(390px, 1fr);
+      gap: 18px;
+      width: 100%;
+      max-width: 1380px;
+      height: min(690px, calc(100vh - 138px));
+      min-height: 480px;
+    }
+
+    .monitor {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid #53617b;
+      border-radius: 15px;
+      background: linear-gradient(145deg, #172033, #0b1020 70%);
+      box-shadow: var(--shadow), inset 0 0 0 5px #080a10;
+    }
+
+    .monitor::before {
+      content: attr(data-label);
+      position: absolute;
+      z-index: 20;
+      left: 15px;
+      bottom: 10px;
+      color: #cbd4e7aa;
+      font-size: 11px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      pointer-events: none;
+    }
+
+    .workspace { position: absolute; inset: 8px; }
+
+    .container {
+      position: absolute;
+      padding: 5px;
+      transition: left 160ms ease, top 160ms ease, width 160ms ease, height 160ms ease;
+    }
+
+    .window {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      border: 1px solid #3a4660;
+      border-radius: 10px;
+      background: #141a28;
+      box-shadow: 0 12px 36px #0006;
+    }
+
+    .window.focused { border-color: #9286ff; box-shadow: 0 0 0 1px #9286ff, 0 14px 42px #0008; }
+    .window.locked { border-color: #d7a54a; }
+
+    .stackbar {
+      display: flex;
+      align-items: stretch;
+      gap: 3px;
+      height: 34px;
+      padding: 3px;
+      background: #0e1320;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .tab {
+      position: relative;
+      display: flex;
+      align-items: center;
+      min-width: 0;
+      flex: 1;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      padding: 0 8px;
+      color: #aab5cb;
+      background: transparent;
+      cursor: grab;
+      user-select: none;
+    }
+    .tab.active { color: white; background: #252c40; border-color: #3a4660; }
+    .tab:hover { background: #21283a; }
+    .tab-slot {
+      width: 8px;
+      flex: 0 0 8px;
+      border-radius: 4px;
+      background: transparent;
+    }
+    body.dragging .tab-slot { background: #6d60ff55; }
+    .tab-slot.candidate { background: var(--accent-2); }
+
+    .titlebar {
+      display: flex;
+      align-items: center;
+      height: 36px;
+      padding: 0 11px;
+      gap: 8px;
+      background: #1d2434;
+      border-bottom: 1px solid #2f394f;
+      cursor: grab;
+      user-select: none;
+    }
+    .titlebar:active, .tab:active { cursor: grabbing; }
+    .app-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent-2); box-shadow: 0 0 12px #4ee0bd88; }
+    .title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+    .titlebar .meta { margin-left: auto; color: var(--muted); font-size: 11px; }
+    .lock {
+      display: grid;
+      place-items: center;
+      width: 28px;
+      height: 26px;
+      margin-left: 2px;
+      border: 0;
+      border-radius: 6px;
+      color: #b9c3d7;
+      background: transparent;
+      cursor: pointer;
+    }
+    .lock:hover { background: #343e54; }
+    .locked .lock { color: var(--warning); }
+
+    .content {
+      height: calc(100% - 36px);
+      padding: 16px;
+      color: #9faac0;
+      background:
+        linear-gradient(90deg, transparent 12px, #ffffff08 13px, transparent 14px) 0 0 / 48px 48px,
+        linear-gradient(#ffffff06 1px, transparent 1px) 0 0 / 100% 30px,
+        linear-gradient(145deg, #171e2e, #101522);
+    }
+    .has-stackbar .content { height: calc(100% - 70px); }
+    .content strong { display: block; color: #d8e0ef; font-size: clamp(14px, 1.5vw, 22px); margin-bottom: 8px; }
+    .content p { max-width: 30ch; margin: 0; }
+
+    .drop-layer { display: none; position: absolute; inset: 0; z-index: 12; }
+    body.dragging .drop-layer { display: block; }
+    .drop-action {
+      border: 1px solid #aca3ff99;
+      color: white;
+      background: #5b4ee5c8;
+      backdrop-filter: blur(8px);
+      cursor: copy;
+    }
+    .drop-action[data-disabled="true"] { color: #ffe2ac; border-color: #d7a54a99; background: #614a22d0; cursor: not-allowed; }
+    .drop-action.candidate { color: #061512; border-color: white; background: var(--accent-2); box-shadow: 0 0 0 3px #4ee0bd44; }
+
+    body[data-variant="direct"] .drop-layer { inset: 4px; }
+    body[data-variant="direct"] .drop-action { position: absolute; display: grid; place-items: center; font-weight: 650; }
+    body[data-variant="direct"] .drop-action[data-action="top"] { left: 24%; right: 24%; top: 0; height: 25%; border-radius: 8px 8px 4px 4px; }
+    body[data-variant="direct"] .drop-action[data-action="bottom"] { left: 24%; right: 24%; bottom: 0; height: 25%; border-radius: 4px 4px 8px 8px; }
+    body[data-variant="direct"] .drop-action[data-action="left"] { left: 0; top: 25%; bottom: 25%; width: 25%; border-radius: 8px 4px 4px 8px; }
+    body[data-variant="direct"] .drop-action[data-action="right"] { right: 0; top: 25%; bottom: 25%; width: 25%; border-radius: 4px 8px 8px 4px; }
+    body[data-variant="direct"] .drop-action[data-action="stack"] { inset: 27%; border-radius: 10px; }
+
+    body[data-variant="rail"] .drop-layer { display: none; }
+    body.dragging[data-variant="rail"] .container:hover .drop-layer,
+    body.dragging[data-variant="rail"] .container.keyboard-target .drop-layer { display: flex; }
+    body[data-variant="rail"] .drop-layer {
+      inset: auto 10px 10px 10px;
+      height: 45px;
+      gap: 5px;
+      padding: 5px;
+      border: 1px solid #77839a;
+      border-radius: 11px;
+      background: #111724ed;
+      box-shadow: 0 12px 32px #000b;
+    }
+    body[data-variant="rail"] .drop-action { flex: 1; min-width: 34px; border-radius: 7px; }
+    body[data-variant="rail"] .drop-action[data-action="stack"] { flex: 1.8; }
+
+    body[data-variant="compass"] .drop-layer { place-items: center; pointer-events: none; }
+    body.dragging[data-variant="compass"] .container:hover .drop-layer,
+    body.dragging[data-variant="compass"] .container.keyboard-target .drop-layer { display: grid; }
+    body[data-variant="compass"] .compass {
+      position: relative;
+      width: 164px;
+      height: 164px;
+      border: 1px solid #948aff;
+      border-radius: 50%;
+      background: #101525e8;
+      box-shadow: 0 18px 45px #000b;
+      pointer-events: auto;
+    }
+    body[data-variant="compass"] .drop-action { position: absolute; width: 52px; height: 42px; border-radius: 10px; }
+    body[data-variant="compass"] .drop-action[data-action="top"] { left: 56px; top: 7px; }
+    body[data-variant="compass"] .drop-action[data-action="bottom"] { left: 56px; bottom: 7px; }
+    body[data-variant="compass"] .drop-action[data-action="left"] { left: 7px; top: 61px; }
+    body[data-variant="compass"] .drop-action[data-action="right"] { right: 7px; top: 61px; }
+    body[data-variant="compass"] .drop-action[data-action="stack"] { left: 56px; top: 61px; }
+
+    aside {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      border-left: 1px solid var(--line);
+      background: #0f131d;
+    }
+    .aside-section { padding: 17px; border-bottom: 1px solid var(--line); }
+    .aside-section h2 { margin: 0 0 8px; font-size: 13px; }
+    .aside-section p { margin: 0; color: var(--muted); font-size: 12px; }
+    .readout { display: grid; gap: 9px; margin-top: 12px; }
+    .readout div { display: grid; grid-template-columns: 72px 1fr; gap: 8px; font-size: 12px; }
+    .readout dt { color: var(--muted); }
+    .readout dd { margin: 0; color: #e4e9f4; overflow-wrap: anywhere; }
+    .shortcuts { display: grid; gap: 7px; margin-top: 11px; color: #cbd3e3; font-size: 12px; }
+    kbd { min-width: 27px; padding: 2px 6px; border: 1px solid #46516a; border-bottom-width: 2px; border-radius: 5px; color: white; background: #20283a; font: 11px/1.4 ui-monospace, monospace; }
+    .log { flex: 1; min-height: 0; overflow: auto; padding: 14px 17px; }
+    .log h2 { margin: 0 0 10px; font-size: 13px; }
+    .log ol { margin: 0; padding: 0; list-style: none; display: grid; gap: 7px; }
+    .log li { padding: 8px 9px; border-left: 2px solid #58647b; color: #aeb8cc; background: #151a25; font: 11px/1.35 ui-monospace, monospace; }
+    .log li:first-child { border-color: var(--accent-2); color: #e8fff9; }
+
+    footer {
+      display: flex;
+      align-items: center;
+      padding: 0 18px;
+      border-top: 1px solid var(--line);
+      color: #b5bfd1;
+      background: #0c1019;
+      font-size: 12px;
+    }
+    #status { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .variant-switcher {
+      position: fixed;
+      z-index: 100;
+      left: 50%;
+      bottom: 8px;
+      display: flex;
+      gap: 3px;
+      transform: translateX(-50%);
+      padding: 4px;
+      border: 1px solid #4a566d;
+      border-radius: 11px;
+      background: #111620ef;
+      box-shadow: 0 10px 30px #0009;
+    }
+    .variant-switcher button { border: 0; border-radius: 7px; padding: 5px 10px; color: #aab5c8; background: transparent; cursor: pointer; }
+    .variant-switcher button.active { color: white; background: #5c4ee5; }
+
+    .ghost {
+      position: fixed;
+      z-index: 90;
+      width: 190px;
+      padding: 10px 12px;
+      transform: translate(14px, 14px);
+      border: 1px solid #bdb6ff;
+      border-radius: 9px;
+      color: white;
+      background: #29224edb;
+      box-shadow: var(--shadow);
+      pointer-events: none;
+    }
+    .ghost small { display: block; color: #c5c0ff; margin-top: 2px; }
+
+    .toast {
+      position: fixed;
+      z-index: 110;
+      top: 72px;
+      left: 50%;
+      max-width: 520px;
+      transform: translateX(-50%);
+      padding: 11px 15px;
+      border: 1px solid #ff91a5;
+      border-radius: 10px;
+      color: #ffe6eb;
+      background: #3f1721ed;
+      box-shadow: var(--shadow);
+    }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <span class="throwaway">Disposable prototype</span>
+      <h1>Interactive stacks and visual drop behavior</h1>
+      <div class="spacer"></div>
+      <div class="toolbar">
+        <button id="keyboard-place" type="button">Place focused window</button>
+        <button id="stale" type="button" aria-pressed="false">Simulate stale target</button>
+        <button id="reset" type="button">Reset</button>
+      </div>
+    </header>
+    <main>
+      <section class="stage" aria-label="Two-monitor window placement simulation">
+        <div id="monitors" class="monitors"></div>
+      </section>
+      <aside>
+        <section class="aside-section">
+          <h2 id="variant-title">Direct semantic zones</h2>
+          <p id="variant-copy"></p>
+          <dl class="readout">
+            <div><dt>Window</dt><dd id="read-window">None</dd></div>
+            <div><dt>Target</dt><dd id="read-target">None</dd></div>
+            <div><dt>State</dt><dd id="read-state">Idle</dd></div>
+            <div><dt>Revision</dt><dd id="read-revision">r1</dd></div>
+          </dl>
+        </section>
+        <section class="aside-section">
+          <h2>Same intent, pointer or keyboard</h2>
+          <div class="shortcuts">
+            <span><kbd>drag</kbd> title or stack tab</span>
+            <span><kbd>Space</kbd> pick up focused window</span>
+            <span><kbd>←↑↓→</kbd> choose target container</span>
+            <span><kbd>Tab</kbd> choose stack or split side</span>
+            <span><kbd>Enter</kbd> commit exact target</span>
+            <span><kbd>Esc</kbd> cancel without mutation</span>
+          </div>
+        </section>
+        <section class="log">
+          <h2>Committed facts</h2>
+          <ol id="event-log"></ol>
+        </section>
+      </aside>
+    </main>
+    <footer><span id="status" aria-live="polite">Ready. Drag any title bar or stackbar tab.</span></footer>
+  </div>
+
+  <div class="variant-switcher" aria-label="Prototype variants">
+    <button type="button" data-variant-switch="direct">1 Direct zones</button>
+    <button type="button" data-variant-switch="rail">2 Action rail</button>
+    <button type="button" data-variant-switch="compass">3 Compass</button>
+  </div>
+  <div id="ghost" class="ghost hidden"></div>
+  <div id="toast" class="toast hidden" role="alert"></div>
+
+  <script>
+    const variants = {
+      direct: {
+        title: "Direct semantic zones",
+        copy: "Five large targets live on the destination window: center stacks, edges split. Stackbar insertion slots remain exact."
+      },
+      rail: {
+        title: "Context action rail",
+        copy: "Hover chooses a destination first; a compact action rail then separates structural intent from the window surface."
+      },
+      compass: {
+        title: "Pointer compass",
+        copy: "A radial command target minimizes pointer travel but obscures more content and adds a second visual language."
+      }
+    };
+
+    const seed = () => ({
+      revision: 1,
+      focusedWindow: "browser",
+      staleNextCommit: false,
+      containers: [
+        { id: "c1", monitor: 0, rect: [0, 0, 50, 100], locked: false, windows: ["browser", "docs"], focused: "browser" },
+        { id: "c2", monitor: 0, rect: [50, 0, 50, 50], locked: true, windows: ["terminal"], focused: "terminal" },
+        { id: "c3", monitor: 0, rect: [50, 50, 50, 50], locked: false, windows: ["editor"], focused: "editor" },
+        { id: "c4", monitor: 1, rect: [0, 0, 100, 100], locked: false, windows: ["chat"], focused: "chat" }
+      ],
+      windows: {
+        browser: { title: "Research — Browser", app: "Browser", copy: "Two related windows share this layout position." },
+        docs: { title: "Interaction notes", app: "Docs", copy: "Drag this tab to reorder, stack elsewhere, or split." },
+        terminal: { title: "build · pwsh", app: "Terminal", copy: "This group is locked in its layout position." },
+        editor: { title: "placement.rs", app: "Editor", copy: "Drop a window on an edge to create a split." },
+        chat: { title: "Design review", app: "Chat", copy: "Cross-monitor placement uses the same exact target." }
+      },
+      log: ["r1 workspace seed observed"]
+    });
+
+    let model = seed();
+    let drag = null;
+    let nextGeneration = 1;
+    let keyTargetIndex = 0;
+    let keyActionIndex = 0;
+    const actions = ["stack", "left", "right", "top", "bottom"];
+    const labels = { stack: "Stack", left: "Split left", right: "Split right", top: "Split above", bottom: "Split below" };
+    const monitorsEl = document.querySelector("#monitors");
+    const ghostEl = document.querySelector("#ghost");
+    const statusEl = document.querySelector("#status");
+    const toastEl = document.querySelector("#toast");
+
+    function currentVariant() {
+      const value = new URLSearchParams(location.search).get("variant") || "direct";
+      return variants[value] ? value : "direct";
+    }
+
+    function setVariant(value) {
+      const url = new URL(location.href);
+      url.searchParams.set("variant", value);
+      history.replaceState({}, "", url);
+      applyVariant();
+      render();
+    }
+
+    function applyVariant() {
+      const value = currentVariant();
+      document.body.dataset.variant = value;
+      document.querySelector("#variant-title").textContent = variants[value].title;
+      document.querySelector("#variant-copy").textContent = variants[value].copy;
+      document.querySelectorAll("[data-variant-switch]").forEach(button => {
+        button.classList.toggle("active", button.dataset.variantSwitch === value);
+      });
+    }
+
+    function containerForWindow(windowId) {
+      return model.containers.find(container => container.windows.includes(windowId));
+    }
+
+    function targetLabel(candidate) {
+      if (!candidate) return "None";
+      const container = model.containers.find(item => item.id === candidate.containerId);
+      const targetWindow = container && model.windows[container.focused];
+      if (candidate.action === "reorder") {
+        const before = candidate.before ? model.windows[candidate.before].app : "end";
+        return `Insert before ${before}`;
+      }
+      return `${labels[candidate.action]} ${targetWindow ? targetWindow.app : "empty workspace"}`;
+    }
+
+    function zoneMarkup(container) {
+      const buttons = actions.map(action => {
+        const disabled = container.locked && action === "stack";
+        const short = { stack: "Stack", left: "←", right: "→", top: "↑", bottom: "↓" }[action];
+        const text = currentVariant() === "direct" ? labels[action] : short;
+        return `<button class="drop-action" type="button" data-action="${action}" data-container="${container.id}" data-disabled="${disabled}" aria-label="${labels[action]}">${text}</button>`;
+      }).join("");
+      return currentVariant() === "compass" ? `<div class="compass">${buttons}</div>` : buttons;
+    }
+
+    function render() {
+      const monitorNames = ["Monitor 1 · 2560×1440 · 125%", "Monitor 2 · 1920×1080 · 100%"];
+      monitorsEl.innerHTML = monitorNames.map((name, monitorIndex) => {
+        const containers = model.containers.filter(item => item.monitor === monitorIndex).map(container => {
+          const active = model.windows[container.focused];
+          const stackbar = container.windows.length > 1 ? `<div class="stackbar" role="tablist">${container.windows.map((windowId, index) => {
+            const window = model.windows[windowId];
+            return `<span class="tab-slot" data-slot-container="${container.id}" data-slot-before="${windowId}"></span><div class="tab ${windowId === container.focused ? "active" : ""}" role="tab" tabindex="0" data-drag-window="${windowId}" data-container="${container.id}">${window.app}</div>${index === container.windows.length - 1 ? `<span class="tab-slot" data-slot-container="${container.id}" data-slot-before=""></span>` : ""}`;
+          }).join("")}</div>` : "";
+          const locked = container.locked ? "locked" : "";
+          const focused = model.focusedWindow === container.focused ? "focused" : "";
+          const keyboardTarget = drag?.kind === "keyboard" && model.containers[keyTargetIndex]?.id === container.id ? "keyboard-target" : "";
+          return `<div class="container ${keyboardTarget}" data-container-shell="${container.id}" style="left:${container.rect[0]}%;top:${container.rect[1]}%;width:${container.rect[2]}%;height:${container.rect[3]}%">
+            <article class="window ${locked} ${focused} ${stackbar ? "has-stackbar" : ""}" data-container-window="${container.id}">
+              ${stackbar}
+              <div class="titlebar" tabindex="0" data-drag-window="${container.focused}" data-container="${container.id}">
+                <span class="app-dot"></span><span class="title">${active.title}</span><span class="meta">${container.windows.length > 1 ? `${container.windows.length} stacked` : "single"}</span>
+                <button class="lock" type="button" data-lock="${container.id}" aria-label="${container.locked ? "Unlock" : "Lock"} group">${container.locked ? "◆" : "◇"}</button>
+              </div>
+              <div class="content"><strong>${active.app}</strong><p>${active.copy}</p></div>
+              <div class="drop-layer">${zoneMarkup(container)}</div>
+            </article>
+          </div>`;
+        }).join("");
+        return `<section class="monitor" data-monitor="${monitorIndex}" data-label="${name}"><div class="workspace">${containers}</div></section>`;
+      }).join("");
+
+      if (drag?.candidate) {
+        const selector = drag.candidate.action === "reorder"
+          ? `[data-slot-container="${drag.candidate.containerId}"][data-slot-before="${drag.candidate.before || ""}"]`
+          : `[data-container="${drag.candidate.containerId}"][data-action="${drag.candidate.action}"]`;
+        document.querySelector(selector)?.classList.add("candidate");
+      }
+
+      document.querySelector("#read-window").textContent = drag ? model.windows[drag.windowId].title : model.windows[model.focusedWindow].title;
+      document.querySelector("#read-target").textContent = targetLabel(drag?.candidate);
+      document.querySelector("#read-state").textContent = drag ? `${drag.kind === "keyboard" ? "Keyboard" : "Pointer"} preview · g${drag.generation}` : "Idle";
+      document.querySelector("#read-revision").textContent = `r${model.revision}`;
+      document.querySelector("#event-log").innerHTML = model.log.slice().reverse().map(item => `<li>${item}</li>`).join("");
+      document.querySelector("#stale").setAttribute("aria-pressed", String(model.staleNextCommit));
+    }
+
+    function setCandidate(candidate) {
+      if (!drag) return;
+      const container = model.containers.find(item => item.id === candidate.containerId);
+      if (!container) return;
+      const sameWindowOnly = container.windows.length === 1 && container.windows[0] === drag.windowId;
+      if (sameWindowOnly && candidate.action !== "reorder") candidate.invalid = "Source and target are the same group";
+      if (container.locked && (candidate.action === "stack" || candidate.action === "reorder")) candidate.invalid = "Locked group rejects membership changes";
+      drag.candidate = candidate;
+      const detail = candidate.invalid ? `${targetLabel(candidate)} unavailable: ${candidate.invalid}` : targetLabel(candidate);
+      statusEl.textContent = detail;
+      render();
+    }
+
+    function beginDrag(windowId, kind, x = 0, y = 0) {
+      if (drag) cancelDrag("Replaced by a newer placement session");
+      const source = containerForWindow(windowId);
+      if (source?.locked) {
+        showToast("Unlock this group before changing its membership or position.");
+        statusEl.textContent = "Locked source rejected; layout unchanged.";
+        render();
+        return false;
+      }
+      model.focusedWindow = windowId;
+      drag = { windowId, kind, generation: nextGeneration++, baseRevision: model.revision, candidate: null };
+      document.body.classList.add("dragging");
+      if (kind === "pointer") {
+        ghostEl.innerHTML = `${model.windows[windowId].title}<small>Preview only · no layout mutation</small>`;
+        ghostEl.classList.remove("hidden");
+        moveGhost(x, y);
+      } else {
+        keyTargetIndex = Math.max(0, model.containers.findIndex(item => !item.windows.includes(windowId)));
+        keyActionIndex = 0;
+        const target = model.containers[keyTargetIndex];
+        setCandidate({ containerId: target.id, action: actions[keyActionIndex] });
+      }
+      statusEl.textContent = "Placement preview started. Release or Enter to commit; Escape cancels.";
+      render();
+      return true;
+    }
+
+    function moveGhost(x, y) {
+      ghostEl.style.left = `${x}px`;
+      ghostEl.style.top = `${y}px`;
+    }
+
+    function cancelDrag(reason = "Placement cancelled; layout unchanged") {
+      drag = null;
+      document.body.classList.remove("dragging");
+      ghostEl.classList.add("hidden");
+      statusEl.textContent = reason;
+      render();
+    }
+
+    function removeWindow(windowId) {
+      const source = containerForWindow(windowId);
+      if (!source) return;
+      source.windows = source.windows.filter(item => item !== windowId);
+      if (source.focused === windowId) source.focused = source.windows[0];
+      if (source.windows.length === 0) model.containers = model.containers.filter(item => item.id !== source.id);
+    }
+
+    function splitTarget(container, action, windowId) {
+      const [left, top, width, height] = container.rect;
+      const horizontal = action === "left" || action === "right";
+      const first = action === "left" || action === "top";
+      let sourceRect, targetRect;
+      if (horizontal) {
+        sourceRect = [first ? left : left + width / 2, top, width / 2, height];
+        targetRect = [first ? left + width / 2 : left, top, width / 2, height];
+      } else {
+        sourceRect = [left, first ? top : top + height / 2, width, height / 2];
+        targetRect = [left, first ? top + height / 2 : top, width, height / 2];
+      }
+      container.rect = targetRect;
+      const nextId = `c${Math.max(0, ...model.containers.map(item => Number(item.id.slice(1)) || 0)) + 1}`;
+      model.containers.push({ id: nextId, monitor: container.monitor, rect: sourceRect, locked: false, windows: [windowId], focused: windowId });
+    }
+
+    function commitDrag() {
+      if (!drag || !drag.candidate) return cancelDrag("No target selected; layout unchanged");
+      const request = { ...drag, candidate: { ...drag.candidate } };
+      if (request.candidate.invalid) {
+        showToast(request.candidate.invalid);
+        return cancelDrag(`Drop rejected: ${request.candidate.invalid}. Layout unchanged.`);
+      }
+      if (model.staleNextCommit) {
+        model.staleNextCommit = false;
+        showToast("Target changed before commit. Fresh state kept; retry the placement.");
+        return cancelDrag("Stale target rejected; layout unchanged and source preserved.");
+      }
+      if (model.revision !== request.baseRevision) {
+        showToast("Workspace changed before commit. Fresh state kept; retry the placement.");
+        return cancelDrag("Revision mismatch rejected; layout unchanged and source preserved.");
+      }
+      const target = model.containers.find(item => item.id === request.candidate.containerId);
+      if (!target) {
+        showToast("Destination no longer exists.");
+        return cancelDrag("Missing target rejected; layout unchanged.");
+      }
+      const action = request.candidate.action;
+      if (action === "reorder") {
+        removeWindow(request.windowId);
+        const refreshed = model.containers.find(item => item.id === target.id);
+        if (!refreshed) return cancelDrag("Destination disappeared; layout unchanged.");
+        const index = request.candidate.before ? refreshed.windows.indexOf(request.candidate.before) : refreshed.windows.length;
+        refreshed.windows.splice(index < 0 ? refreshed.windows.length : index, 0, request.windowId);
+        refreshed.focused = request.windowId;
+      } else if (action === "stack") {
+        removeWindow(request.windowId);
+        const refreshed = model.containers.find(item => item.id === target.id);
+        if (!refreshed) return cancelDrag("Destination disappeared; layout unchanged.");
+        refreshed.windows.push(request.windowId);
+        refreshed.focused = request.windowId;
+      } else {
+        const targetSnapshot = { id: target.id, monitor: target.monitor, rect: [...target.rect] };
+        removeWindow(request.windowId);
+        const refreshed = model.containers.find(item => item.id === targetSnapshot.id);
+        if (!refreshed) return cancelDrag("Cannot split the source against itself; layout unchanged.");
+        splitTarget(refreshed, action, request.windowId);
+      }
+      model.focusedWindow = request.windowId;
+      model.revision += 1;
+      model.log.push(`r${model.revision} ${targetLabel(request.candidate)} ← ${model.windows[request.windowId].app}`);
+      const settled = `${targetLabel(request.candidate)} committed at r${model.revision}`;
+      drag = null;
+      document.body.classList.remove("dragging");
+      ghostEl.classList.add("hidden");
+      statusEl.textContent = settled;
+      render();
+    }
+
+    function showToast(message) {
+      toastEl.textContent = message;
+      toastEl.classList.remove("hidden");
+      clearTimeout(showToast.timer);
+      showToast.timer = setTimeout(() => toastEl.classList.add("hidden"), 2600);
+    }
+
+    document.addEventListener("pointerdown", event => {
+      const lock = event.target.closest("[data-lock]");
+      if (lock) {
+        event.stopPropagation();
+        const container = model.containers.find(item => item.id === lock.dataset.lock);
+        container.locked = !container.locked;
+        model.revision += 1;
+        model.log.push(`r${model.revision} ${container.locked ? "locked" : "unlocked"} ${container.id}`);
+        statusEl.textContent = `${container.locked ? "Locked" : "Unlocked"} group ${container.id}`;
+        render();
+        return;
+      }
+      const handle = event.target.closest("[data-drag-window]");
+      if (handle && event.button === 0) {
+        event.preventDefault();
+        beginDrag(handle.dataset.dragWindow, "pointer", event.clientX, event.clientY);
+      }
+    });
+
+    document.addEventListener("pointermove", event => {
+      if (!drag || drag.kind !== "pointer") return;
+      moveGhost(event.clientX, event.clientY);
+      const hit = document.elementFromPoint(event.clientX, event.clientY);
+      const slot = hit?.closest("[data-slot-container]");
+      if (slot) return setCandidate({ containerId: slot.dataset.slotContainer, action: "reorder", before: slot.dataset.slotBefore || null });
+      const action = hit?.closest("[data-action]");
+      if (action) return setCandidate({ containerId: action.dataset.container, action: action.dataset.action });
+    });
+
+    document.addEventListener("pointerup", event => {
+      if (drag?.kind === "pointer" && event.button === 0) commitDrag();
+    });
+
+    document.addEventListener("click", event => {
+      const switcher = event.target.closest("[data-variant-switch]");
+      if (switcher) setVariant(switcher.dataset.variantSwitch);
+      const tab = event.target.closest(".tab");
+      if (tab && !drag) {
+        const container = model.containers.find(item => item.id === tab.dataset.container);
+        container.focused = tab.dataset.dragWindow;
+        model.focusedWindow = tab.dataset.dragWindow;
+        statusEl.textContent = `Focused ${model.windows[tab.dataset.dragWindow].title}`;
+        render();
+      }
+    });
+
+    document.querySelector("#reset").addEventListener("click", () => {
+      model = seed();
+      cancelDrag("Prototype reset to r1");
+    });
+    document.querySelector("#stale").addEventListener("click", () => {
+      model.staleNextCommit = !model.staleNextCommit;
+      statusEl.textContent = model.staleNextCommit ? "Next otherwise-valid commit will be rejected as stale." : "Stale-target simulation disarmed.";
+      render();
+    });
+    document.querySelector("#keyboard-place").addEventListener("click", () => beginDrag(model.focusedWindow, "keyboard"));
+
+    document.addEventListener("keydown", event => {
+      const editing = /INPUT|TEXTAREA|SELECT/.test(event.target.tagName);
+      if (editing) return;
+      if (event.key === "Escape" && drag) {
+        event.preventDefault();
+        return cancelDrag();
+      }
+      if (!drag && event.key === " ") {
+        event.preventDefault();
+        return beginDrag(model.focusedWindow, "keyboard");
+      }
+      if (drag?.kind === "keyboard") {
+        if (["ArrowLeft", "ArrowUp", "ArrowRight", "ArrowDown"].includes(event.key)) {
+          event.preventDefault();
+          const delta = event.key === "ArrowLeft" || event.key === "ArrowUp" ? -1 : 1;
+          keyTargetIndex = (keyTargetIndex + delta + model.containers.length) % model.containers.length;
+          setCandidate({ containerId: model.containers[keyTargetIndex].id, action: actions[keyActionIndex] });
+        } else if (event.key === "Tab") {
+          event.preventDefault();
+          keyActionIndex = (keyActionIndex + (event.shiftKey ? -1 : 1) + actions.length) % actions.length;
+          setCandidate({ containerId: model.containers[keyTargetIndex].id, action: actions[keyActionIndex] });
+        } else if (event.key === "Enter") {
+          event.preventDefault();
+          commitDrag();
+        }
+        return;
+      }
+      if (["ArrowLeft", "ArrowRight"].includes(event.key)) {
+        const focusedControl = document.activeElement?.closest?.("button, [tabindex]");
+        if (focusedControl) return;
+        const order = Object.keys(variants);
+        const index = order.indexOf(currentVariant());
+        const next = event.key === "ArrowLeft" ? index - 1 : index + 1;
+        setVariant(order[(next + order.length) % order.length]);
+      }
+    });
+
+    applyVariant();
+    render();
+  </script>
+</body>
+</html>
