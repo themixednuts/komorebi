@@ -272,6 +272,18 @@ _Avoid_: manager event, desired state
 One ordered and atomic change to authoritative state caused by an accepted input. A transition records its revision and the effects and facts it produces.
 _Avoid_: command handler, Win32 operation
 
+**Motion presentation**:
+A temporary visual account of an already committed transition. It is never authoritative and may be skipped or cut short without changing manager intent.
+_Avoid_: transition, animated state
+
+**Presentation cover**:
+The first complete, privacy-safe visual frame that prevents partial native placement from becoming visible while a motion presentation begins.
+_Avoid_: screenshot, loading frame
+
+**Visual settlement**:
+The end of a motion presentation, when its temporary visuals are gone and any remaining mismatch with manager intent is an explicit reconciliation or degradation concern.
+_Avoid_: animation finished, native success
+
 **Effect plan**:
 The ordered native work derived from a transition, with each effect classified by its required, convergent, or best-effort behavior.
 _Avoid_: transaction, side-effect call
