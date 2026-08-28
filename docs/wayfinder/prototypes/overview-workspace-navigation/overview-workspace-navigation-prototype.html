@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Wayfinder overview prototype</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #f3f4f0;
+      --muted: #949c9c;
+      --panel: #111718;
+      --panel-2: #172021;
+      --line: #2b3737;
+      --acid: #c9ff4a;
+      --cyan: #56e5e2;
+      --coral: #ff7c66;
+      --violet: #b2a3ff;
+      --shadow: 0 24px 80px #000a;
+      font: 14px/1.35 "Segoe UI Variable", "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-width: 1000px;
+      min-height: 680px;
+      overflow: hidden;
+      color: var(--ink);
+      background:
+        linear-gradient(120deg, #0d1716 0 28%, transparent 28%),
+        radial-gradient(circle at 70% 20%, #25463d66, transparent 34%),
+        #080b0c;
+    }
+    button { color: inherit; font: inherit; }
+    button:focus-visible, [tabindex]:focus-visible { outline: 2px solid white; outline-offset: 3px; }
+    .app { display: grid; grid-template-rows: 64px minmax(0, 1fr) 58px; height: 100vh; }
+    header { display: flex; align-items: center; gap: 14px; padding: 0 24px; border-bottom: 1px solid var(--line); background: #080c0ddd; backdrop-filter: blur(22px); }
+    .mark { display: grid; place-items: center; width: 29px; height: 29px; color: #0a0d0d; background: var(--acid); font: 800 16px/1 Consolas, monospace; transform: rotate(-4deg); }
+    h1 { margin: 0; font-size: 15px; letter-spacing: .03em; }
+    .eyebrow { color: var(--acid); font: 700 10px/1.2 Consolas, monospace; letter-spacing: .13em; text-transform: uppercase; }
+    .spacer { flex: 1; }
+    .chip, .key { border: 1px solid var(--line); background: #141b1c; }
+    .chip { padding: 6px 10px; border-radius: 999px; color: #cbd2d0; font-size: 12px; }
+    .key { padding: 2px 6px; border-radius: 4px; color: var(--muted); font: 11px Consolas, monospace; }
+    #stage { position: relative; min-height: 0; overflow: hidden; }
+    .variant { height: 100%; }
+    .label { color: var(--muted); font: 700 10px Consolas, monospace; letter-spacing: .11em; text-transform: uppercase; }
+    .workspace-tab, .window-card, .scratch-item, .rail-item { cursor: pointer; user-select: none; }
+    .workspace-tab { border: 1px solid var(--line); background: #111818; }
+    .workspace-tab.active { color: #09100e; border-color: var(--acid); background: var(--acid); }
+    .appicon { display: grid; place-items: center; flex: 0 0 auto; width: 24px; height: 24px; border-radius: 6px; color: white; background: #394443; font: 700 11px Consolas, monospace; }
+    .thumb { position: relative; overflow: hidden; min-height: 80px; background: linear-gradient(145deg, #223033, #101617); }
+    .thumb::before { content: ""; position: absolute; inset: 0; opacity: .8; background: repeating-linear-gradient(90deg, transparent 0 37px, #ffffff0a 38px), repeating-linear-gradient(0deg, transparent 0 27px, #ffffff08 28px); }
+    .thumb.code { background: linear-gradient(135deg, #1f2d31, #10241c); }
+    .thumb.web { background: linear-gradient(135deg, #18334a, #121c25); }
+    .thumb.chat { background: linear-gradient(135deg, #3b2e62, #171420); }
+    .thumb.reverse { background: linear-gradient(135deg, #3f3540, #171416); }
+    .thumb.game { background: linear-gradient(135deg, #14375b, #101821); }
+    .thumb.protected { background: #151919; }
+    .thumb.protected::after { content: "PROTECTED CONTENT"; position: absolute; inset: 0; display: grid; place-items: center; color: #b9c1bf; font: 700 10px Consolas, monospace; letter-spacing: .12em; background: repeating-linear-gradient(135deg, #ffffff05 0 8px, transparent 8px 16px); }
+    .window-meta { display: flex; align-items: center; gap: 9px; padding: 9px 10px; background: #111718; }
+    .window-meta strong { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+    .window-meta small { display: block; color: var(--muted); font-size: 10px; }
+    .window-card { overflow: hidden; border: 1px solid #334140; border-radius: 10px; background: var(--panel); box-shadow: 0 10px 34px #0006; transition: transform 140ms ease, border-color 140ms ease; }
+    .window-card:hover { border-color: var(--cyan); transform: translateY(-2px); }
+    .window-card.focused { border-color: var(--acid); box-shadow: 0 0 0 1px var(--acid), 0 16px 50px #0009; }
+    .stack-count { margin-left: auto; padding: 2px 5px; border: 1px solid #4c5a59; border-radius: 4px; color: var(--cyan); font: 10px Consolas, monospace; }
+    .drop-target { border-color: var(--cyan) !important; box-shadow: inset 0 0 0 2px var(--cyan), 0 0 36px #56e5e233 !important; }
+    .drag-ghost { position: fixed; z-index: 99; display: none; pointer-events: none; padding: 8px 12px; border: 1px solid var(--cyan); border-radius: 7px; color: #061313; background: var(--cyan); font-weight: 750; box-shadow: var(--shadow); }
+    body.dragging .drag-ghost { display: block; }
+
+    /* Spatial map: physical monitor topology is the main navigation object. */
+    .spatial { display: grid; grid-template-rows: 46px minmax(0, 1fr) 78px; padding: 16px 22px 12px; gap: 12px; }
+    .spatial-top { display: flex; align-items: center; gap: 10px; }
+    .spatial-top .workspace-tab { padding: 8px 13px; border-radius: 5px 14px 5px 5px; }
+    .monitor-field { display: grid; grid-template-columns: 1.75fr .86fr; gap: 18px; align-items: center; width: 100%; height: 100%; margin: auto; }
+    .monitor-frame { position: relative; display: grid; grid-template-rows: 34px minmax(0, 1fr); min-height: 310px; aspect-ratio: 32/9; overflow: hidden; border: 1px solid #53605f; border-radius: 9px; background: #0c1112; box-shadow: var(--shadow), inset 0 0 0 5px #050707; }
+    .monitor-frame.side { aspect-ratio: 16/10; }
+    .monitor-head { display: flex; align-items: center; padding: 0 12px; border-bottom: 1px solid #293534; color: #bdc6c3; background: #141b1b; font: 700 10px Consolas, monospace; letter-spacing: .08em; }
+    .monitor-head span:last-child { margin-left: auto; color: var(--muted); }
+    .monitor-layout { display: grid; grid-template-columns: 1.45fr .8fr; grid-template-rows: 1fr 1fr; gap: 8px; padding: 8px; }
+    .monitor-layout .window-card:first-child { grid-row: 1 / 3; }
+    .monitor-layout.single { display: grid; grid-template: 1fr / 1fr; }
+    .spatial .thumb { height: calc(100% - 43px); }
+    .spatial-scratch { display: flex; align-items: center; gap: 9px; padding: 9px 12px; border: 1px dashed #53605f; border-radius: 8px; background: #0d1212; }
+    .scratch-item { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border: 1px solid #344140; border-radius: 6px; background: #17201f; }
+
+    /* Focus board: workspace and hierarchy first, one large decision surface. */
+    .focus-board { display: grid; grid-template-columns: 238px minmax(0, 1fr) 286px; min-height: 100%; }
+    .focus-rail { padding: 22px 14px; border-right: 1px solid var(--line); background: #0c1111; }
+    .focus-rail h2 { margin: 5px 8px 18px; font: 650 20px/1.1 "Segoe UI Variable", sans-serif; }
+    .rail-group { margin: 18px 0 8px; padding: 0 8px; color: #65706e; font: 700 10px Consolas, monospace; letter-spacing: .12em; }
+    .rail-item { display: grid; grid-template-columns: 24px 1fr auto; align-items: center; gap: 9px; width: 100%; padding: 10px 9px; border: 0; border-left: 2px solid transparent; color: #b8c0be; background: transparent; text-align: left; }
+    .rail-item.active { color: white; border-color: var(--acid); background: linear-gradient(90deg, #c9ff4a17, transparent); }
+    .rail-item .count { color: #687370; font: 10px Consolas, monospace; }
+    .focus-canvas { display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 17px; padding: 28px; background: radial-gradient(circle at 50% 36%, #19302b 0, transparent 42%); }
+    .canvas-title { display: flex; align-items: end; gap: 14px; }
+    .canvas-title h2 { margin: 0; font-size: clamp(24px, 3vw, 46px); line-height: .95; letter-spacing: -.04em; }
+    .canvas-title p { margin: 0 0 3px; color: var(--muted); }
+    .focus-grid { display: grid; grid-template-columns: 1.35fr .8fr; grid-template-rows: 1fr 1fr; gap: 13px; min-height: 0; }
+    .focus-grid .window-card:first-child { grid-row: 1 / 3; }
+    .focus-grid .thumb { height: calc(100% - 43px); }
+    .inspect { padding: 26px 20px; border-left: 1px solid var(--line); background: #101616; }
+    .inspect h3 { margin: 8px 0 3px; font-size: 18px; }
+    .inspect p { margin: 0 0 22px; color: var(--muted); }
+    .detail-row { display: flex; justify-content: space-between; padding: 10px 0; border-top: 1px solid #293333; }
+    .detail-row span:first-child { color: var(--muted); }
+    .action { width: 100%; margin-top: 9px; padding: 10px; border: 1px solid #384543; border-radius: 6px; background: #192120; text-align: left; cursor: pointer; }
+
+    /* Familiar: Windows Task View geometry, manager semantics in a bottom filmstrip. */
+    .familiar { display: grid; grid-template-rows: 48px minmax(0, 1fr) 148px; padding: 16px 38px 14px; gap: 12px; background: linear-gradient(#0b1111e6, #101817f3); }
+    .familiar-search { display: flex; align-items: center; gap: 12px; width: min(640px, 50vw); margin: auto; padding: 10px 15px; border: 1px solid #465250; border-radius: 8px; color: var(--muted); background: #161d1dcc; }
+    .gallery { display: grid; grid-template-columns: repeat(3, minmax(220px, 1fr)); align-content: center; gap: 20px; max-width: 1600px; width: 100%; margin: auto; }
+    .gallery .window-card { border-radius: 4px; }
+    .gallery .thumb { height: clamp(140px, 22vh, 280px); }
+    .desktop-strip { display: grid; grid-template-columns: 1fr auto; gap: 18px; align-items: stretch; padding-top: 12px; border-top: 1px solid #3c4846; }
+    .desktop-list { display: flex; gap: 12px; min-width: 0; }
+    .desktop-card { position: relative; flex: 1; max-width: 290px; padding: 12px; border: 1px solid #3a4644; border-radius: 5px; color: #b9c1bf; background: linear-gradient(145deg, #22312e, #121817); cursor: pointer; }
+    .desktop-card.active { border-color: white; box-shadow: 0 0 0 2px #ffffff30; }
+    .desktop-card strong { display: block; margin-bottom: 22px; color: white; }
+    .mini-windows { display: flex; gap: 4px; height: 36px; }
+    .mini-windows span { flex: 1; border: 1px solid #53605e; background: #1d2826; }
+    .scratch-column { min-width: 210px; padding: 10px 13px; border: 1px dashed #586461; border-radius: 5px; background: #101615; }
+
+    footer { display: flex; align-items: center; gap: 9px; padding: 0 18px; border-top: 1px solid var(--line); background: #090d0edd; backdrop-filter: blur(20px); }
+    .variant-switch { flex: 0 0 auto; padding: 7px 12px; border: 1px solid #34403f; border-radius: 6px; color: #aeb7b5; background: #141b1b; cursor: pointer; }
+    .variant-switch.active { color: #07100d; border-color: var(--acid); background: var(--acid); }
+    #status { min-width: 0; margin-left: auto; overflow: hidden; color: #8e9996; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+    @media (max-width: 1250px) { .focus-board { grid-template-columns: 205px 1fr 240px; } .gallery { grid-template-columns: repeat(2, 1fr); } .gallery .window-card:last-child { display: none; } }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="mark">K</div>
+      <div><div class="eyebrow">Disposable prototype</div><h1>Overview / workspace navigation</h1></div>
+      <div class="spacer"></div>
+      <span class="chip">Windows Desktop 2 · settled</span>
+      <span class="chip"><span class="key">Esc</span> close</span>
+    </header>
+    <main id="stage" aria-live="polite"></main>
+    <footer>
+      <span class="label">Compare</span>
+      <button class="variant-switch" data-variant="spatial">A · Spatial map</button>
+      <button class="variant-switch" data-variant="focus">B · Focus board</button>
+      <button class="variant-switch" data-variant="familiar">C · Task View hybrid</button>
+      <span id="status">Choose a window or drag it to a workspace target.</span>
+    </footer>
+  </div>
+  <div class="drag-ghost" id="ghost">Move window</div>
+  <script>
+    const variants = ["spatial", "focus", "familiar"];
+    const apps = {
+      codex: ["CX", "Codex", "Wayfinder · overview contract", "code"],
+      chrome: ["CH", "Chrome", "Windows API reference", "web"],
+      terminal: [">_", "Terminal", "cargo test --release", "code"],
+      discord: ["DC", "Discord", "General", "chat"],
+      ghidra: ["GH", "Ghidra", "Decompiler", "reverse"],
+      steam: ["ST", "Steam", "Library", "game"],
+      music: ["♪", "Music", "Protected preview", "protected"],
+    };
+    let selected = "codex";
+    let active = { main: "BUILD", side: "REVERSE" };
+    let drag = null;
+    const stage = document.querySelector("#stage");
+    const status = document.querySelector("#status");
+    const ghost = document.querySelector("#ghost");
+
+    function card(id, stack = 0) {
+      const [icon, app, title, kind] = apps[id];
+      return `<article class="window-card ${selected === id ? "focused" : ""}" tabindex="0" draggable="true" data-window="${id}">
+        <div class="thumb ${kind}"></div><div class="window-meta"><span class="appicon">${icon}</span><span><strong>${title}</strong><small>${app}</small></span>${stack ? `<span class="stack-count">${stack} STACK</span>` : ""}</div></article>`;
+    }
+    function workspaceButton(name, monitor) {
+      return `<button class="workspace-tab ${active[monitor] === name ? "active" : ""}" data-workspace="${name}" data-monitor="${monitor}">${name}</button>`;
+    }
+    function spatial() {
+      return `<section class="variant spatial">
+        <div class="spatial-top"><span class="label">Manager workspaces</span>${workspaceButton("BUILD", "main")}${workspaceButton("COMMS", "main")}${workspaceButton("REVERSE", "side")}${workspaceButton("PLAY", "side")}<span class="spacer"></span><span class="chip">drag across monitors</span></div>
+        <div class="monitor-field">
+          <div class="monitor-frame" data-drop-workspace="${active.main}"><div class="monitor-head"><span>MONITOR 1 · 5120×1440</span><span>${active.main}</span></div><div class="monitor-layout">${card("codex", 2)}${card("terminal")}${card("chrome")}</div></div>
+          <div class="monitor-frame side" data-drop-workspace="${active.side}"><div class="monitor-head"><span>MONITOR 2</span><span>${active.side}</span></div><div class="monitor-layout single">${active.side === "PLAY" ? card("steam") : card("ghidra")}</div></div>
+        </div>
+        <div class="spatial-scratch" data-drop-workspace="SCRATCHPAD"><span class="label">Scratchpad · above current workspace</span><div class="scratch-item"><span class="appicon">♪</span><span>Music</span><span class="key">S</span></div><span class="spacer"></span><span class="label">direct targets preserve monitor geometry</span></div>
+      </section>`;
+    }
+    function railItem(name, monitor, count) {
+      return `<button class="rail-item ${active[monitor] === name ? "active" : ""}" data-workspace="${name}" data-monitor="${monitor}"><span>${active[monitor] === name ? "●" : "○"}</span><strong>${name}</strong><span class="count">${count}</span></button>`;
+    }
+    function focusBoard() {
+      const current = active.main;
+      return `<section class="variant focus-board">
+        <nav class="focus-rail"><span class="label">Navigate</span><h2>Everything,<br>by structure.</h2><div class="rail-group">MONITOR 1</div>${railItem("BUILD", "main", 3)}${railItem("COMMS", "main", 1)}<div class="rail-group">MONITOR 2</div>${railItem("REVERSE", "side", 1)}${railItem("PLAY", "side", 1)}<div class="rail-group">SPECIAL</div>${railItem("SCRATCHPAD", "scratch", 1)}</nav>
+        <div class="focus-canvas" data-drop-workspace="${current}"><div class="canvas-title"><h2>${current}</h2><p>Monitor 1 · BSP · 3 windows · revision 7</p></div><div class="focus-grid">${card("codex", 2)}${card("terminal")}${card("chrome")}</div></div>
+        <aside class="inspect"><span class="label">Selection</span><h3>${apps[selected][2]}</h3><p>${apps[selected][1]} · live DWM preview</p><div class="detail-row"><span>Container</span><strong>01 / stack</strong></div><div class="detail-row"><span>Workspace</span><strong>${current}</strong></div><div class="detail-row"><span>Monitor</span><strong>1</strong></div><button class="action">↵ Activate window</button><button class="action">M Move to workspace…</button><button class="action">S Send to scratchpad</button></aside>
+      </section>`;
+    }
+    function desktop(name, monitor, count) {
+      return `<div class="desktop-card ${active[monitor] === name ? "active" : ""}" data-workspace="${name}" data-monitor="${monitor}"><strong>${name}</strong><div class="mini-windows">${Array.from({length: count}, () => "<span></span>").join("")}</div><small>${monitor === "main" ? "Monitor 1" : "Monitor 2"}</small></div>`;
+    }
+    function familiar() {
+      return `<section class="variant familiar"><div class="familiar-search">⌕ <span>Type to find a window, workspace, or scratchpad</span><span class="spacer"></span><span class="key">Ctrl K</span></div><div class="gallery">${card("codex", 2)}${card("terminal")}${card("chrome")}</div><div class="desktop-strip"><div class="desktop-list">${desktop("BUILD", "main", 3)}${desktop("COMMS", "main", 1)}${desktop("REVERSE", "side", 1)}${desktop("PLAY", "side", 1)}</div><div class="scratch-column" data-drop-workspace="SCRATCHPAD"><span class="label">Scratchpad</span><div class="scratch-item"><span class="appicon">♪</span><span>Music</span></div></div></div></section>`;
+    }
+    function currentVariant() {
+      const value = new URLSearchParams(location.search).get("variant");
+      return variants.includes(value) ? value : "spatial";
+    }
+    function render() {
+      const variant = currentVariant();
+      stage.innerHTML = variant === "spatial" ? spatial() : variant === "focus" ? focusBoard() : familiar();
+      document.querySelectorAll("[data-variant]").forEach(button => button.classList.toggle("active", button.dataset.variant === variant));
+    }
+    function setVariant(variant) {
+      history.replaceState(null, "", `${location.pathname}?variant=${variant}`);
+      status.textContent = `${variant === "spatial" ? "Spatial map" : variant === "focus" ? "Focus board" : "Task View hybrid"} selected.`;
+      render();
+    }
+    document.addEventListener("click", event => {
+      const switcher = event.target.closest("[data-variant]");
+      if (switcher) return setVariant(switcher.dataset.variant);
+      const windowCard = event.target.closest("[data-window]");
+      if (windowCard) { selected = windowCard.dataset.window; status.textContent = `Selected ${apps[selected][2]}. Enter activates it once.`; return render(); }
+      const workspace = event.target.closest("[data-workspace]");
+      if (workspace) { active[workspace.dataset.monitor] = workspace.dataset.workspace; status.textContent = `Showing ${workspace.dataset.workspace} on ${workspace.dataset.monitor}.`; return render(); }
+    });
+    document.addEventListener("dragstart", event => {
+      const card = event.target.closest("[data-window]");
+      if (!card) return;
+      drag = card.dataset.window; document.body.classList.add("dragging"); ghost.textContent = `Move ${apps[drag][1]}`;
+    });
+    document.addEventListener("dragover", event => {
+      const target = event.target.closest("[data-drop-workspace], [data-workspace]");
+      if (!target || !drag) return;
+      event.preventDefault(); document.querySelectorAll(".drop-target").forEach(node => node.classList.remove("drop-target")); target.classList.add("drop-target");
+    });
+    document.addEventListener("drop", event => {
+      const target = event.target.closest("[data-drop-workspace], [data-workspace]");
+      if (!target || !drag) return;
+      event.preventDefault(); const name = target.dataset.dropWorkspace || target.dataset.workspace; status.textContent = `${apps[drag][1]} → ${name}; semantic target ready for revision check.`; drag = null; document.body.classList.remove("dragging"); render();
+    });
+    document.addEventListener("dragend", () => { drag = null; document.body.classList.remove("dragging"); document.querySelectorAll(".drop-target").forEach(node => node.classList.remove("drop-target")); });
+    document.addEventListener("pointermove", event => { if (drag) { ghost.style.left = `${event.clientX + 14}px`; ghost.style.top = `${event.clientY + 14}px`; } });
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape") { status.textContent = "Closed without changing manager state."; return; }
+      if (event.key === "Enter") { status.textContent = `Activation requested once for ${apps[selected][1]}; overview dismisses first.`; return; }
+      if (["ArrowLeft", "ArrowRight"].includes(event.key) && !event.target.closest("button, [tabindex]")) {
+        const index = variants.indexOf(currentVariant()); const delta = event.key === "ArrowLeft" ? -1 : 1; setVariant(variants[(index + delta + variants.length) % variants.length]);
+      }
+    });
+    render();
+  </script>
+</body>
+</html>
