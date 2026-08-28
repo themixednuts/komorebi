@@ -29,7 +29,8 @@ use windows_sys::Win32::System::WindowsProgramming::{
 };
 
 use crate::protocol::{
-    ChildFacts, ChildFrame, FaultScenario, FrameCodec, FrameLimit, HostFrame, RuntimeKind,
+    ChildFacts, ChildFrame, ExtensionWorkload, FaultScenario, FrameCodec, FrameLimit, HostFrame,
+    RuntimeKind,
 };
 use crate::windows::{OwnedHandle, current_user_sid, process_token_identity, wide};
 
@@ -89,7 +90,7 @@ impl AuthenticatedExtension {
 
 #[derive(Debug, Clone, Copy)]
 pub(super) enum ExtensionBehavior {
-    Normal,
+    Normal(ExtensionWorkload),
     Fault(FaultScenario),
 }
 
@@ -396,10 +397,14 @@ fn child_environment(
     let pipe_timeout = policy.pipe().connect_timeout().as_millis().to_string();
     let echo_samples = policy.workload().echo_samples().to_string();
     let trace = std::env::var_os("WAYFINDER_TRACE").unwrap_or_default();
-    let fault_scenario = match behavior {
-        ExtensionBehavior::Normal => String::new(),
-        ExtensionBehavior::Fault(scenario) => serde_json::to_string(&scenario)?,
+    let (fault_scenario, workload) = match behavior {
+        ExtensionBehavior::Normal(workload) => (String::new(), workload),
+        ExtensionBehavior::Fault(scenario) => (
+            serde_json::to_string(&scenario)?,
+            ExtensionWorkload::LaunchScale,
+        ),
     };
+    let workload = serde_json::to_string(&workload)?;
     let allocation_chunk = policy.faults().allocation_chunk_bytes().to_string();
     EnvironmentBlock::build(
         vec![
@@ -432,6 +437,7 @@ fn child_environment(
             EnvironmentEntry::new("KOMOREBI_PROTOTYPE_ECHO_SAMPLES", echo_samples),
             EnvironmentEntry::new("KOMOREBI_PROTOTYPE_TRACE", trace),
             EnvironmentEntry::new("KOMOREBI_PROTOTYPE_FAULT_SCENARIO", fault_scenario),
+            EnvironmentEntry::new("KOMOREBI_PROTOTYPE_WORKLOAD", workload),
             EnvironmentEntry::new(
                 "KOMOREBI_PROTOTYPE_ALLOCATION_CHUNK_BYTES",
                 allocation_chunk,

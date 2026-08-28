@@ -10,24 +10,26 @@ The full-hardened run used a unique LPAC SID, `lpacAppExperience`, Win32k disabl
 
 | Topology | Cohort | Wall time | Authenticated-ready p50 | Authenticated-ready p99 | Private commit | Echo p99 |
 |---|---:|---:|---:|---:|---:|---:|
-| Isolated Rust hosts | 1 | 282.98 ms | 219.51 ms | 219.51 ms | 0.84 MiB | 79.10 us |
-| Isolated Rust hosts | 4 | 337.24 ms | 228.97 ms | 234.34 ms | 3.38 MiB | 96.40 us |
-| Isolated Rust hosts | 16 | 594.41 ms | 298.77 ms | 334.32 ms | 13.68 MiB | 226.70 us |
-| Shared LuaJIT control | 16 | 1.25 ms | n/a | n/a | 0.27 MiB incremental | 0.10 us |
+| Isolated Rust hosts | 1 | 315.15 ms | 268.02 ms | 268.02 ms | 0.85 MiB | 95.50 us |
+| Isolated Rust hosts | 4 | 286.78 ms | 217.91 ms | 219.18 ms | 3.44 MiB | 82.60 us |
+| Isolated Rust hosts | 16 | 577.51 ms | 353.05 ms | 363.51 ms | 13.88 MiB | 144.20 us |
+| Shared LuaJIT control | 16 | 0.98 ms | n/a | n/a | 0.13 MiB incremental | 0.10 us |
 
 The shared control is much cheaper, but one native crash or memory-corruption fault terminates all 16 contexts. The isolated cohort limits that fault to one extension and remains small enough for this personal Windows manager.
 
-One detailed full-hardened run authenticated Rust in 1200.44 ms at 0.85 MiB private commit and LuaJIT in 10778.94 ms at 0.93 MiB. The LuaJIT start is a real outlier retained in the raw evidence. AppContainer profile creation dominates this disposable harness and varies heavily with system state; the scale table is the latest sample, while the repeated distribution below is the stronger decision evidence.
+One detailed full-hardened run authenticated Rust in 1275.02 ms at 0.85 MiB private commit and LuaJIT in 1141.16 ms at 0.93 MiB. AppContainer profile creation dominates this disposable harness and varies heavily with system state; the scale table is the latest sample, while the repeated distribution below is the stronger decision evidence.
 
 ## Repeated launch distributions
 
 Each process count ran five times with a fresh AppContainer profile and fresh process on every sample. The first observation is retained as descriptive evidence, then four immediate repeats form the resident-cache distribution.
 
+Scale children use the typed `launch_scale` workload: they authenticate, run every containment probe, exercise storage, and measure IPC, but deliberately omit live HTTP so network latency and external availability do not contaminate process-launch evidence. The two detailed runtimes and the restart replacement use `full_broker` and perform fresh, uncached live requests.
+
 | Hosts | Warm samples | Cohort wall p50 | Cohort wall p99 | Ready p99 across samples | Echo p99 across samples | Aggregate commit p99 |
 |---:|---:|---:|---:|---:|---:|---:|
-| 1 | 4 | 273.35 ms | 282.98 ms | 219.51 ms | 133.00 us | 0.85 MiB |
-| 4 | 4 | 337.24 ms | 347.52 ms | 242.67 ms | 118.60 us | 3.38 MiB |
-| 16 | 4 | 601.46 ms | 686.81 ms | 389.68 ms | 263.80 us | 13.68 MiB |
+| 1 | 4 | 300.37 ms | 315.15 ms | 268.02 ms | 106.50 us | 0.87 MiB |
+| 4 | 4 | 286.78 ms | 287.66 ms | 219.18 ms | 159.20 us | 3.44 MiB |
+| 16 | 4 | 554.74 ms | 577.51 ms | 363.51 ms | 144.20 us | 13.88 MiB |
 
 All 12 warm cohort samples (84 host processes) exited, allowed zero forbidden probes, and cleaned up their profiles. The raw report retains every sample rather than only the percentiles.
 
@@ -37,39 +39,45 @@ A true OS-cold launch remains an explicit measured-method limitation, not a miss
 
 | Fault | IPC observation | Termination | Trigger to observation | Job kill to exit |
 |---|---|---|---:|---:|
-| LuaJIT-invoked native abort | disconnected, `0xC0000409` | natural crash | 1228.65 ms | n/a |
-| CPU loop | deadline | forced Job | 5009.63 ms | 0.99 ms |
-| allocation pressure | disconnected, `0xC0000409` | natural abort | 1231.92 ms | n/a |
-| deadlock | deadline | forced Job | 5006.95 ms | 1.07 ms |
-| indefinite kernel wait | deadline | forced Job | 5006.74 ms | 1.08 ms |
-| pipe stall | deadline | forced Job | 5005.20 ms | 1.14 ms |
+| LuaJIT-invoked native abort | disconnected, `0xC0000409` | natural crash | 1224.49 ms | n/a |
+| CPU loop | deadline | forced Job | 5002.43 ms | 1.27 ms |
+| allocation pressure | disconnected, `0xC0000409` | natural abort | 1179.29 ms | n/a |
+| deadlock | deadline | forced Job | 5001.62 ms | 1.22 ms |
+| indefinite kernel wait | deadline | forced Job | 5000.56 ms | 1.18 ms |
+| pipe stall | deadline | forced Job | 4998.35 ms | 1.24 ms |
 | clean disconnect | disconnected, `0x00000000` | natural exit | 0.002 ms | n/a |
 
 Every blocking fault stayed inside its one-process Job and the whole Job terminated after the configured native wait deadline. The Lua scenario enters a native callback from LuaJIT and calls the non-unwinding Rust abort primitive; Windows reports the fast-fail process status rather than a Lua error.
 
 ## Host responsiveness during a contained fault
 
-The harness armed a real LPAC CPU-loop child, then put its pipe deadline and Job termination on a dedicated extension-supervision thread while the harness main thread remained the only manager-state owner. An independent requester submitted 64 zero-buffered, revisioned commands. All 64 requests and acknowledgements occurred inside the measured 5000.68 ms armed-fault window; the final manager revision was 65, action round-trip latency was 2.10 us p50 and 22.80 us p99/max, and the fault Job still terminated with the configured `0xDEAD` exit code.
+The harness armed a real LPAC CPU-loop child, then put its pipe deadline and Job termination on a dedicated extension-supervision thread while the harness main thread remained the only manager-state owner. An independent requester submitted 64 zero-buffered, revisioned commands. All 64 requests and acknowledgements occurred inside the measured 5000.27 ms armed-fault window; the final manager revision was 65, action round-trip latency was 0.80 us p50 and 44.00 us p99/max, and the fault Job still terminated with the configured `0xDEAD` exit code.
 
 This proves the selected ownership split remains responsive under this CPU-fault workload. It does not claim scheduler behavior for the eventual production manager until that code uses the same separation and is exercised by its vertical tests.
 
 ## Parent lifetime and restart recovery
 
-An external observer launched a nested containment host and opened the exact LPAC child process handle before allowing the parent to exit. The child had already acknowledged an armed infinite kernel wait, so pipe disconnect could not produce a normal child exit. Both normal parent teardown (`0x00000000`) and an abort without Rust destructors (`0xC0000409`) closed the Job and left the child already signaled when the parent exit became observable; the follow-up waits took 0.0019 ms and 0.0017 ms, respectively. Cleanup removed both AppContainer profiles for each run.
+An external observer launched a nested containment host and opened the exact LPAC child process handle before allowing the parent to exit. The child had already acknowledged an armed infinite kernel wait, so pipe disconnect could not produce a normal child exit. Both normal parent teardown (`0x00000000`) and an abort without Rust destructors (`0xC0000409`) closed the Job and left the child already signaled when the parent exit became observable; the follow-up waits took 0.0015 ms and 0.0010 ms, respectively. Cleanup removed both AppContainer profiles for each run.
 
-The supervisor then terminated generation 2, consumed its one `RestartPermit`, authenticated generation 3 on a fresh protected pipe, completed the full broker session, rejected a generation 2 frame, and denied a second restart permit. Measured recovery was 649.16 ms.
+The supervisor then terminated generation 2, consumed its one `RestartPermit`, authenticated generation 3 on a fresh protected pipe, completed the full broker session, rejected a generation 2 frame, and denied a second restart permit. Measured recovery was 681.26 ms.
 
 ## IPC backpressure and transport comparison
 
-The protected named-pipe test armed a real LPAC child that intentionally stopped reading. One 49,152-byte payload completed into the 65,536-byte pipe buffer; the next write remained pending and was cancelled at the single 5-second operation deadline (4998.27 ms). The harness settled the exact overlapped operation before releasing its buffer, terminated the child Job, and observed the process tree exit. This is kernel-event-driven overlapped I/O; there is no poll interval or per-channel I/O thread.
+The protected named-pipe test armed a real LPAC child that intentionally stopped reading. One 49,152-byte payload completed into the 65,536-byte pipe buffer; the next write remained pending and was cancelled at the single 5-second operation deadline (5001.93 ms). The harness settled the exact overlapped operation before releasing its buffer, terminated the child Job, and observed the process tree exit. This is kernel-event-driven overlapped I/O; there is no poll interval or per-channel I/O thread.
 
-A separate full-trust child echoed 32 frames over Windows AF_UNIX with a 39.10 us p99. Both LPAC children were denied while initializing Winsock (`10107`). AF_UNIX also exposes a narrow byte `sun_path`; the probe uses ASCII and rejects arbitrary WTF-16 endpoint names rather than converting them lossily. It provides no public peer PID/token binding equivalent to the protected named-pipe checks. Keep authenticated named pipes for extension IPC.
+A separate full-trust child echoed 32 frames over Windows AF_UNIX with a 41.30 us p99. Both LPAC children were denied while initializing Winsock (`10107`). AF_UNIX also exposes a narrow byte `sun_path`; the probe uses ASCII and rejects arbitrary WTF-16 endpoint names rather than converting them lossily. It provides no public peer PID/token binding equivalent to the protected named-pipe checks. Keep authenticated named pipes for extension IPC.
 
 ## Durable broker storage
 
 The host migrated a real schema-1 store to schema 2 through a synced stage and atomic `ReplaceFileW`, rolled it back from the retained backup, and migrated it forward again without losing the legacy value. It then committed a revisioned update, rejected a stale compare-and-swap, enforced a 384 KiB principal quota and 256-entry ceiling with checked arithmetic, rejected a corrupt snapshot one byte beyond its calculated maximum before parsing it, abandoned a fully synced stage to simulate a crash, removed exactly one orphan on reopen, and preserved the last committed value.
 
 Uninstall-with-retention preserved the principal's data. A second principal could not observe the first principal's key. Explicit deletion removed the data, a second deletion converged successfully, and cleanup left no evidence directory. The protocol exposes logical keys and values only; the raw report confirms no backing path was exposed to a child.
+
+## Brokered HTTP
+
+The host fetched `https://example.com/` over a live TLS connection and received status 200, 559 bytes, and `text/html`. The child had no direct Winsock authority; its broker request returned only the status and bounded byte count.
+
+Scripted adversarial transports proved that the broker rejects non-HTTPS URLs, credentials, non-443 ports, hosts outside the exact configured allowlist, non-global DNS answers, a public-to-private DNS change on redirect, excessive redirects, excessive response headers, MIME mismatches, excessive declared or streamed bodies, and aggregate-byte quota exhaustion. A reader that revoked the grant during a body read was rejected before more data could be accepted. The real adapter pins the validated address set into the connection and disables automatic redirects, retries, system proxy discovery, referrers, caller-defined headers, and content decompression; every redirect returns through authorization and DNS resolution.
 
 ## Adversarial observations
 
@@ -101,4 +109,4 @@ The current experimental sandbox-creation API is not suitable as the production 
 
 The harness now proves CPU, allocation, deadlock, indefinite-wait, pipe-stall, disconnect, and Lua-invoked native-crash containment; manager-state responsiveness during a supervised CPU fault; graceful and aborted parent kill-on-close behavior; one-restart recovery; stale-generation rejection; bounded malformed/oversized frames; stalled-read and backpressured-write cancellation; AF_UNIX comparison; handle-duplication denial; and direct/cross-extension/reparse-path ACL enforcement.
 
-Production implementation still requires complete HTTP redirect/DNS-rebinding/private-address/header/MIME/quota/revocation policy and explicit nested-Job launch-context coverage. A true OS-cold launch remains explicitly limited to a future boot-orchestrated measurement. The ticket remains open until the remaining proof obligations are measured or explicitly marked as limitations.
+Production implementation still requires explicit nested-Job launch-context coverage. A true OS-cold launch remains explicitly limited to a future boot-orchestrated measurement. The ticket remains open until the nested-Job obligation is measured or explicitly marked as a limitation.

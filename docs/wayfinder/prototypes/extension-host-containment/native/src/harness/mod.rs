@@ -1,8 +1,6 @@
 use std::ffi::OsStr;
 use std::fs;
-use std::io::{Read, Write};
 use std::mem::size_of;
-use std::net::{TcpStream, ToSocketAddrs};
 use std::path::{Path, PathBuf};
 use std::ptr::null;
 use std::time::{Duration, Instant};
@@ -35,6 +33,7 @@ mod distribution;
 mod environment;
 mod evidence;
 mod fault;
+mod http;
 mod ipc;
 mod launch;
 mod lifetime;
@@ -46,12 +45,13 @@ mod session;
 mod storage;
 mod windows_boundary;
 
-use crate::protocol::ParentExitMode;
+use crate::protocol::{ExtensionWorkload, ParentExitMode};
 use af_unix::run_comparison as run_af_unix_comparison;
 use backpressure::run as run_backpressure;
 use distribution::run as run_launch_distribution;
 use evidence::{binary as binary_evidence, boundary as boundary_evidence, command_output};
 use fault::run as run_faults;
+use http::run_evidence as run_http_evidence;
 use launch::{ExtensionBehavior, launch as launch_extension};
 use lifetime::run_suite as run_parent_lifetime;
 use policy::ContainmentPolicy;
@@ -150,11 +150,9 @@ fn run_evidence(policy: &ContainmentPolicy) -> Result<()> {
     );
     let version = windows_version()?;
     let binaries = collect_binary_evidence(&executable_dir, &lua, &fault)?;
+    let http = run_http_evidence(policy)?;
 
-    let mut runs = Vec::new();
-    for (runtime, executable) in [(RuntimeKind::Rust, rust), (RuntimeKind::LuaJit, lua)] {
-        runs.push(run_extension(runtime, &executable, &private_file, policy)?);
-    }
+    let runs = run_detailed_extensions(&rust, &lua, &private_file, policy)?;
     let af_unix = run_af_unix_comparison(&std::env::current_exe()?, policy, &runs)?;
     let faults = run_faults(&fault, &private_file, policy)?;
     let host_responsiveness = run_host_responsiveness(&fault, &private_file, policy)?;
@@ -196,6 +194,7 @@ fn run_evidence(policy: &ContainmentPolicy) -> Result<()> {
         },
         binaries,
         boundary: boundary_evidence(policy),
+        http,
         runs,
         af_unix,
         faults,
@@ -238,11 +237,32 @@ fn collect_binary_evidence(
     .collect()
 }
 
+fn run_detailed_extensions(
+    rust: &Path,
+    lua: &Path,
+    private_file: &Path,
+    policy: &ContainmentPolicy,
+) -> Result<Vec<RunReport>> {
+    [(RuntimeKind::Rust, rust), (RuntimeKind::LuaJit, lua)]
+        .into_iter()
+        .map(|(runtime, executable)| {
+            run_extension(
+                runtime,
+                executable,
+                private_file,
+                policy,
+                ExtensionWorkload::FullBroker,
+            )
+        })
+        .collect()
+}
+
 fn run_extension(
     runtime: RuntimeKind,
     executable: &Path,
     private_file: &Path,
     policy: &ContainmentPolicy,
+    workload: ExtensionWorkload,
 ) -> Result<RunReport> {
     let generation = policy.workload().generation();
     let mut extension = launch_extension(
@@ -250,7 +270,7 @@ fn run_extension(
         executable,
         private_file,
         policy,
-        ExtensionBehavior::Normal,
+        ExtensionBehavior::Normal(workload),
         generation,
     )?;
 
@@ -382,34 +402,6 @@ fn private_commit(process: windows_sys::Win32::Foundation::HANDLE) -> Result<usi
         return Err(std::io::Error::last_os_error()).context("query child private commit");
     }
     Ok(memory.PrivateUsage)
-}
-
-fn broker_http(url: &str) -> Result<(u16, usize)> {
-    ensure!(
-        url == "http://example.com/",
-        "URL is outside the prototype allowlist"
-    );
-    let address = ("example.com", 80)
-        .to_socket_addrs()?
-        .next()
-        .context("host DNS returned no example.com address")?;
-    let mut stream = TcpStream::connect_timeout(&address, Duration::from_secs(3))?;
-    stream.set_read_timeout(Some(Duration::from_secs(3)))?;
-    stream.write_all(
-        b"GET / HTTP/1.1\r\nHost: example.com\r\nConnection: close\r\nUser-Agent: komorebi-wayfinder/0\r\n\r\n",
-    )?;
-    let mut response = Vec::new();
-    stream.take(1024 * 1024).read_to_end(&mut response)?;
-    let first_line = response
-        .split(|byte| *byte == b'\n')
-        .next()
-        .context("HTTP response has no status line")?;
-    let status = std::str::from_utf8(first_line)?
-        .split_whitespace()
-        .nth(1)
-        .context("HTTP response has no status")?
-        .parse()?;
-    Ok((status, response.len()))
 }
 
 fn run_shared_host_control(policy: &ContainmentPolicy) -> Result<SharedHostControl> {

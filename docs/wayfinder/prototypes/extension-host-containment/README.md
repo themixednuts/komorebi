@@ -26,6 +26,8 @@ The suite also measures a full-trust, second-process Windows AF_UNIX echo using 
 
 Brokered storage is manager-private and principal-bound. The evidence suite exercises checked compare-and-swap revisions, byte and entry quotas, bounded corrupt-snapshot reads, synced unique staging, atomic Windows replacement, legacy-schema migration and rollback, recovery of a deliberately abandoned stage, uninstall retention, explicit deletion, and cross-principal isolation. The child sees logical keys and values, never a backing path.
 
+Brokered HTTP is also manager-owned. Every request and redirect is reparsed against the configured HTTPS host and MIME allowlists, resolved again, rejected if any address is non-global, and connected through the exact approved socket addresses. The adapter disables automatic redirects, retries, proxies, referrers, decompression, and extension-defined headers; the broker enforces request, header, response, aggregate-byte, redirect, timeout, and revocation limits.
+
 The harness uses one narrowly scoped compatibility capability, `lpacAppExperience`. It does not grant registry, COM, clipboard, or network capabilities. The adversarial probes verify that those surfaces remain denied.
 
 This branch is evidence only. None of the code is production extension infrastructure.

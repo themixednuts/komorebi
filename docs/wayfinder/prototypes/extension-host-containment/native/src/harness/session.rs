@@ -7,7 +7,7 @@ use windows_sys::Win32::Foundation::HANDLE;
 
 use crate::protocol::{ChildFrame, ExtensionGeneration, HostFrame, ProbeOutcome};
 
-use super::broker_http;
+use super::http::fetch;
 use super::ipc::PipeChannel;
 use super::policy::ContainmentPolicy;
 use super::report::Verification;
@@ -137,7 +137,7 @@ impl SessionState {
                 generation: _,
                 request,
                 url,
-            } => self.http_get(channel, request, &url)?,
+            } => self.http_get(channel, request, &url, policy)?,
             ChildFrame::ProbeReport {
                 generation: _,
                 probes,
@@ -192,14 +192,20 @@ impl SessionState {
         Ok(())
     }
 
-    fn http_get(&mut self, channel: &mut PipeChannel, request: u64, url: &str) -> Result<()> {
-        match broker_http(url) {
-            Ok((status, bytes)) => {
-                self.brokered_http_status = Some(status);
+    fn http_get(
+        &mut self,
+        channel: &mut PipeChannel,
+        request: u64,
+        url: &str,
+        policy: &ContainmentPolicy,
+    ) -> Result<()> {
+        match fetch(policy.http(), url) {
+            Ok(response) => {
+                self.brokered_http_status = Some(response.status);
                 channel.send(&HostFrame::HttpResult {
                     request,
-                    status,
-                    bytes,
+                    status: response.status,
+                    bytes: response.bytes,
                 })?;
             }
             Err(error) => {

@@ -4,7 +4,7 @@ use std::time::Instant;
 
 use anyhow::{Context, Result, anyhow, bail, ensure};
 
-use crate::protocol::{ExpectedOutcome, ObservedOutcome, RuntimeKind};
+use crate::protocol::{ExpectedOutcome, ExtensionWorkload, ObservedOutcome, RuntimeKind};
 
 use super::policy::ContainmentPolicy;
 use super::report::{LaunchCohortDistribution, LaunchDistributionEvidence, RunReport, ScaleReport};
@@ -59,7 +59,15 @@ fn run_cohort(
         let policy = policy.clone();
         let worker = std::thread::Builder::new()
             .name(format!("scale-extension-{index}"))
-            .spawn(move || run_extension(RuntimeKind::Rust, &executable, &private_file, &policy));
+            .spawn(move || {
+                run_extension(
+                    RuntimeKind::Rust,
+                    &executable,
+                    &private_file,
+                    &policy,
+                    ExtensionWorkload::LaunchScale,
+                )
+            });
         match worker {
             Ok(worker) => workers.push(worker),
             Err(error) => {

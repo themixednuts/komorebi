@@ -20,6 +20,12 @@ struct NativeEnvironmentBlock(Vec<u16>);
 struct StoragePrincipal(ExtensionPackageId);
 struct StorageKey(String);
 struct StorageRevision(NonZeroU64);
+struct HttpGrantRevision(NonZeroU64);
+struct ApprovedHttpRequest {
+    url: Url,
+    host: String,
+    addresses: Box<[SocketAddr]>,
+}
 
 struct ExtensionPrincipal {
     package: ExtensionPackageId,
@@ -170,6 +176,8 @@ LaunchDistribution::measure(policy.repetitions, policy.cohort_sizes)
 
 Every sample receives a fresh AppContainer profile and process. The harness does not claim an OS-cold launch: Windows file and image cache state is global, and this unattended process has neither a reboot boundary nor a safe process-local cache reset. A future cold-launch claim requires a boot-orchestrated run; clearing unrelated system cache is outside this prototype's authority.
 
+`ExtensionWorkload::LaunchScale` excludes live HTTP from launch cohorts while retaining authentication, containment probes, storage, and IPC. `ExtensionWorkload::FullBroker` is used by the detailed Rust/LuaJIT runs and restart replacement. This is a typed launch input, not an ambient flag or response cache.
+
 Windows AF_UNIX remains a measured transport comparison, not a candidate security boundary. This probe restricts its byte `sun_path` to ASCII and rejects any endpoint that cannot be represented exactly, while the public socket surface supplies no named-pipe-equivalent client PID/token binding. The LPAC token also denied Winsock initialization on the target machine.
 
 ## Broker request call stack
@@ -187,6 +195,31 @@ PipeReader::read_bounded_frame(channel)
 ```
 
 Package code never receives a native handle, filesystem path, ambient network socket, renderer callback, or manager reference.
+
+## Brokered HTTP call stack
+
+```text
+ExtensionBroker::fetch(authenticated_principal, input)
+  -> HttpGrantGate::issue() -> HttpGrantRevision
+  -> Url::parse(input)
+  -> for initial request and every redirect
+    -> HttpGrantGate::ensure_active(revision)
+    -> HttpPolicy::authorize(url)
+      -> require HTTPS, no credentials, port 443, exact configured DNS host
+      -> SystemResolver::resolve(host, 443)
+      -> HttpAcl::reject_non_global(addresses)
+      -> ApprovedHttpRequest { normalized_url, host, exact_addresses }
+    -> HttpBudget::begin_request_checked()
+    -> ReqwestAdapter::execute(ApprovedHttpRequest)
+      -> pin exact addresses with resolve_to_addrs
+      -> TLS 1.2 minimum and hostname verification
+      -> no proxy, automatic redirect, retry, referrer, decompression, or caller headers
+    -> authorize redirect target through this same stack, or
+    -> validate status, header bytes, MIME, Content-Length, response bytes, and total bytes
+    -> check grant before and after every body read
+```
+
+The extension can submit only a URL string. It cannot submit a method, headers, proxy, resolver, socket address, retry policy, or redirect policy. DNS validation and connection use the same resolved address set, closing the check-then-resolve rebinding gap. A revoked grant fails before another hop and around every body chunk; there is no revocation poll interval.
 
 ## Durable storage call stack
 

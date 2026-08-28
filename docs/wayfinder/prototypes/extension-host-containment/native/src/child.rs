@@ -15,8 +15,8 @@ use windows_sys::Win32::Networking::WinSock::{
 
 use crate::child_pipe;
 use crate::protocol::{
-    ChildFrame, ExpectedOutcome, ExtensionGeneration, FrameCodec, FrameLimit, HostFrame,
-    ObservedOutcome, ProbeOutcome, RuntimeKind,
+    ChildFrame, ExpectedOutcome, ExtensionGeneration, ExtensionWorkload, FrameCodec, FrameLimit,
+    HostFrame, ObservedOutcome, ProbeOutcome, RuntimeKind,
 };
 use crate::windows::{
     clipboard_probe, current_child_facts, harden_dll_search, other_window_message_probe,
@@ -47,6 +47,8 @@ pub fn run(runtime: RuntimeKind) -> Result<()> {
         required_text_env("KOMOREBI_PROTOTYPE_PIPE_TIMEOUT_MS")?.parse::<u32>()?,
     ));
     let echo_samples = required_text_env("KOMOREBI_PROTOTYPE_ECHO_SAMPLES")?.parse::<u64>()?;
+    let workload: ExtensionWorkload =
+        serde_json::from_str(&required_text_env("KOMOREBI_PROTOTYPE_WORKLOAD")?)?;
     let codec = FrameCodec::new(frame_limit);
 
     let facts = current_child_facts(dll_search_hardened)?;
@@ -76,6 +78,7 @@ pub fn run(runtime: RuntimeKind) -> Result<()> {
         reparse_file: &reparse_file,
         parent_pid,
         echo_samples,
+        workload,
     };
     exercise_authenticated_session(&mut pipe, codec, generation, inputs)
 }
@@ -89,6 +92,7 @@ struct SessionInputs<'a> {
     reparse_file: &'a Path,
     parent_pid: u32,
     echo_samples: u64,
+    workload: ExtensionWorkload,
 }
 
 fn exercise_authenticated_session(
@@ -167,15 +171,17 @@ fn exercise_authenticated_session(
         },
     )?;
     let _: HostFrame = codec.read(&mut *pipe)?;
-    codec.write(
-        &mut *pipe,
-        &ChildFrame::HttpGet {
-            generation,
-            request: 3,
-            url: "http://example.com/".to_owned(),
-        },
-    )?;
-    let _: HostFrame = codec.read(&mut *pipe)?;
+    if inputs.workload == ExtensionWorkload::FullBroker {
+        codec.write(
+            &mut *pipe,
+            &ChildFrame::HttpGet {
+                generation,
+                request: 3,
+                url: "https://example.com/".to_owned(),
+            },
+        )?;
+        let _: HostFrame = codec.read(&mut *pipe)?;
+    }
     codec.write(
         &mut *pipe,
         &ChildFrame::Goodbye {

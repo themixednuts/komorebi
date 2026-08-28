@@ -13,6 +13,7 @@ pub(super) struct HarnessReport {
     pub(super) invocation: InvocationEvidence,
     pub(super) binaries: Vec<BinaryEvidence>,
     pub(super) boundary: BoundaryEvidence,
+    pub(super) http: HttpEvidence,
     pub(super) runs: Vec<RunReport>,
     pub(super) af_unix: AfUnixEvidence,
     pub(super) faults: Vec<FaultEvidence>,
@@ -25,6 +26,29 @@ pub(super) struct HarnessReport {
     pub(super) shared_host_control: SharedHostControl,
     pub(super) storage: StorageEvidence,
     pub(super) cleanup: CleanupEvidence,
+}
+
+#[derive(Debug, Serialize)]
+pub(super) struct HttpEvidence {
+    pub(super) live_status: u16,
+    pub(super) live_bytes: usize,
+    pub(super) live_media_type: String,
+    pub(super) https_only: Verification,
+    pub(super) exact_host_allowlist: Verification,
+    pub(super) non_global_address_rejected: Verification,
+    pub(super) dns_rebinding_rejected: Verification,
+    pub(super) approved_resolution_pinned: Verification,
+    pub(super) every_redirect_reauthorized: Verification,
+    pub(super) redirect_limit_enforced: Verification,
+    pub(super) automatic_redirects_disabled: Verification,
+    pub(super) automatic_retries_disabled: Verification,
+    pub(super) system_proxy_disabled: Verification,
+    pub(super) extension_headers_unrepresentable: Verification,
+    pub(super) response_header_limit_enforced: Verification,
+    pub(super) media_type_allowlist_enforced: Verification,
+    pub(super) response_byte_limit_enforced: Verification,
+    pub(super) total_byte_quota_enforced: Verification,
+    pub(super) midstream_revocation_enforced: Verification,
 }
 
 #[derive(Debug, Serialize)]

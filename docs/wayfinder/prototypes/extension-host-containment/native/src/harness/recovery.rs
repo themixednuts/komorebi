@@ -5,7 +5,7 @@ use anyhow::{Context, Result, ensure};
 use windows_sys::Win32::Foundation::WAIT_OBJECT_0;
 use windows_sys::Win32::System::Threading::WaitForSingleObject;
 
-use crate::protocol::{ExtensionGeneration, RuntimeKind};
+use crate::protocol::{ExtensionGeneration, ExtensionWorkload, RuntimeKind};
 
 use super::launch::{AuthenticatedExtension, ExtensionBehavior, launch};
 use super::policy::ContainmentPolicy;
@@ -44,7 +44,7 @@ fn launch_replacement(
         executable,
         private_file,
         policy,
-        ExtensionBehavior::Normal,
+        ExtensionBehavior::Normal(ExtensionWorkload::FullBroker),
         generation,
     )?;
     Ok((extension, generation))
@@ -62,7 +62,7 @@ pub(super) fn run(
         executable,
         private_file,
         policy,
-        ExtensionBehavior::Normal,
+        ExtensionBehavior::Normal(ExtensionWorkload::FullBroker),
         initial_generation,
     )?;
     initial.terminate_tree(policy.faults().termination_exit_code())?;
