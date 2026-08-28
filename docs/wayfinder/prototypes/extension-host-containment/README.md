@@ -18,6 +18,8 @@ An outer observer also proves Job kill-on-close when the containment host exits 
 
 Named-pipe connect, read, and write use overlapped Win32 operations, manual-reset kernel events, and one total deadline per frame. A deadline cancels the exact operation with `CancelIoEx` and settles its `OVERLAPPED` before returning. There is no timer poll, retry sleep, or worker thread per channel.
 
+An event-driven responsiveness probe arms a contained CPU loop on a dedicated extension-supervision thread while the harness main thread remains the manager-state owner. Every measured revisioned command must be requested and acknowledged inside that exact fault window.
+
 The suite also measures a full-trust, second-process Windows AF_UNIX echo using a deliberately ASCII endpoint. AF_UNIX is retained only as comparison evidence: the LPAC children cannot initialize Winsock, its narrow `sun_path` cannot represent arbitrary WTF-16 names, and it does not provide the named-pipe peer PID/token checks required by this boundary.
 
 The harness uses one narrowly scoped compatibility capability, `lpacAppExperience`. It does not grant registry, COM, clipboard, or network capabilities. The adversarial probes verify that those surfaces remain denied.

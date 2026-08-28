@@ -16,6 +16,7 @@ pub(super) struct HarnessReport {
     pub(super) runs: Vec<RunReport>,
     pub(super) af_unix: AfUnixEvidence,
     pub(super) faults: Vec<FaultEvidence>,
+    pub(super) host_responsiveness: HostResponsivenessEvidence,
     pub(super) backpressure: BackpressureEvidence,
     pub(super) parent_lifetime: Vec<ParentLifetimeEvidence>,
     pub(super) restart_recovery: RestartRecoveryEvidence,
@@ -82,6 +83,23 @@ pub(super) struct FaultEvidence {
     pub(super) trigger_to_observation_ms: f64,
     pub(super) termination_to_exit_ms: Option<f64>,
     pub(super) exit_code: u32,
+}
+
+#[derive(Debug, Serialize)]
+pub(super) struct HostResponsivenessEvidence {
+    pub(super) scenario: FaultScenario,
+    pub(super) manager_owner: &'static str,
+    pub(super) fault_supervision: &'static str,
+    pub(super) synchronization: &'static str,
+    pub(super) command_samples: usize,
+    pub(super) final_manager_revision: u64,
+    pub(super) commands_settled_within_fault_window: Verification,
+    pub(super) action_roundtrip_p50_us: f64,
+    pub(super) action_roundtrip_p99_us: f64,
+    pub(super) action_roundtrip_max_us: f64,
+    pub(super) fault_window_ms: f64,
+    pub(super) fault_process_tree_terminated: Verification,
+    pub(super) fault_exit_code: u32,
 }
 
 #[derive(Debug, Clone, Copy, Serialize)]

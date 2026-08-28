@@ -40,6 +40,7 @@ mod lifetime;
 mod policy;
 mod recovery;
 mod report;
+mod responsiveness;
 mod session;
 mod windows_boundary;
 
@@ -56,6 +57,7 @@ use report::{
     CleanupEvidence, HarnessReport, InvocationEvidence, PlatformEvidence, RunReport, ScaleReport,
     SharedHostControl, ToolchainEvidence, Verification, WindowsPathEvidence,
 };
+use responsiveness::run as run_host_responsiveness;
 use session::serve as serve_session;
 use windows_boundary::{delete_profile, profile_cleanup_succeeded};
 
@@ -151,6 +153,7 @@ fn run_evidence(policy: &ContainmentPolicy) -> Result<()> {
     }
     let af_unix = run_af_unix_comparison(&std::env::current_exe()?, policy, &runs)?;
     let faults = run_faults(&fault, &private_file, policy)?;
+    let host_responsiveness = run_host_responsiveness(&fault, &private_file, policy)?;
     let backpressure = run_backpressure(&fault, &private_file, policy)?;
     let parent_lifetime = run_parent_lifetime(&executable_dir, &private_file, policy)?;
     let restart_recovery = run_restart_recovery(
@@ -191,6 +194,7 @@ fn run_evidence(policy: &ContainmentPolicy) -> Result<()> {
         runs,
         af_unix,
         faults,
+        host_responsiveness,
         backpressure,
         parent_lifetime,
         restart_recovery,

@@ -131,6 +131,24 @@ PipeChannel::send(frame_deadline)
 
 `PipeChannel` is a small typed state machine: `AwaitingChild -> HostMaySend -> Closed`. Progress loops exist only to finish a partially completed frame; readiness is driven by kernel events, not polling, sleeps, or one thread per channel.
 
+## Fault-isolated manager ownership call stack
+
+```text
+ResponsivenessProbe::run(cpu_loop)
+  -> ExtensionSupervisorLane::arm_fault()
+    -> ArmedFault { extension, scenario, armed_at }
+  -> ManagerCommandRequester::submit(sequence, reply_port)
+  -> ManagerStateOwner::settle(command, current_revision)
+    -> ManagerRevision::advance_checked()
+    -> ManagerSettlement { sequence, revision, request_identity }
+  -> requester acknowledges settlement
+  -> ExtensionSupervisorLane::observe_and_terminate()
+    -> ObservedFault { evidence, armed_at, observed_at }
+  -> require every request and acknowledgement inside [armed_at, observed_at]
+```
+
+The extension-supervision lane owns child IPC deadlines and Job termination. The main manager-state owner never waits on an extension pipe. A zero-capacity request channel applies structural backpressure, and every spawned lane is joined on success and failure.
+
 Windows AF_UNIX remains a measured transport comparison, not a candidate security boundary. This probe restricts its byte `sun_path` to ASCII and rejects any endpoint that cannot be represented exactly, while the public socket surface supplies no named-pipe-equivalent client PID/token binding. The LPAC token also denied Winsock initialization on the target machine.
 
 ## Broker request call stack
