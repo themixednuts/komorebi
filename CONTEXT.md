@@ -108,6 +108,26 @@ _Avoid_: manager pause, input cancellation
 An ordered manager-owned arrangement of application windows on one monitor. Exactly one ordinary workspace is active per monitor, and a scratchpad does not replace it.
 _Avoid_: virtual desktop, desktop
 
+**Container**:
+One ordered layout position in a workspace that holds one or more application windows. A multi-window container exposes one active member at a time without becoming a new workspace.
+_Avoid_: tile window, tab group
+
+**Stack**:
+A container with two or more ordered window members sharing one layout position. Its stackbar presents the order and active member but does not own them.
+_Avoid_: window list, tabbed window
+
+**Container lock**:
+Explicit protection that prevents a container from being moved or having its membership or order changed. Other containers may be placed beside it and workspace relayout may change its geometry, but unlocking is never implicit.
+_Avoid_: fixed rectangle, drop guard
+
+**Placement session**:
+One generation-fenced attempt to move a stable window identity from its committed source toward an exact structural target. Previewing or cancelling a placement session does not change manager intent.
+_Avoid_: drag state, pending move
+
+**Placement target**:
+A revision-bound semantic destination that names an exact container insertion index, split side, or empty workspace position. Screen coordinates may discover a target but are not the target itself.
+_Avoid_: drop rectangle, cursor position
+
 **Window tag**:
 A stable manager-owned label asserted on a window with recorded provenance and lifetime. Tags describe membership or intent without mutating the application window.
 _Avoid_: application label, window property
