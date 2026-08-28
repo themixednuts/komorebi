@@ -16,6 +16,10 @@ The launch and probe stack keeps Windows paths and environment values in native 
 
 An outer observer also proves Job kill-on-close when the containment host exits normally or aborts without destructors. A typed one-restart budget then admits one fresh generation, verifies reconnection and stale-generation rejection, and refuses a second restart.
 
+Named-pipe connect, read, and write use overlapped Win32 operations, manual-reset kernel events, and one total deadline per frame. A deadline cancels the exact operation with `CancelIoEx` and settles its `OVERLAPPED` before returning. There is no timer poll, retry sleep, or worker thread per channel.
+
+The suite also measures a full-trust, second-process Windows AF_UNIX echo using a deliberately ASCII endpoint. AF_UNIX is retained only as comparison evidence: the LPAC children cannot initialize Winsock, its narrow `sun_path` cannot represent arbitrary WTF-16 names, and it does not provide the named-pipe peer PID/token checks required by this boundary.
+
 The harness uses one narrowly scoped compatibility capability, `lpacAppExperience`. It does not grant registry, COM, clipboard, or network capabilities. The adversarial probes verify that those surfaces remain denied.
 
 This branch is evidence only. None of the code is production extension infrastructure.

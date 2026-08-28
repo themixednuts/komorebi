@@ -107,6 +107,32 @@ ExtensionSupervisor::recover(failed_generation)
 
 The production manager state thread will request activation and receive a typed outcome; this disposable evidence harness runs the same launch stack synchronously.
 
+## Native transport call stack
+
+```text
+ExtensionChannelFactory::accept(process, deadline)
+  -> ConnectNamedPipe(overlapped_event)
+  -> WaitForMultipleObjects(connection_event | process_exit, remaining_deadline)
+  -> cancel_and_settle_exact_operation_on_deadline()
+
+PipeChannel::receive(frame_deadline)
+  -> FrameCodec::read_declared_length(max_frame_bytes)
+  -> OverlappedTransfer::read_exact(manual_reset_event, total_deadline)
+  -> CancelIoEx(exact_overlapped) on deadline
+  -> GetOverlappedResult(wait=true) before buffer or OVERLAPPED expires
+  -> FrameCodec::decode()
+
+PipeChannel::send(frame_deadline)
+  -> FrameCodec::encode(max_frame_bytes)
+  -> OverlappedTransfer::write_all(manual_reset_event, total_deadline)
+  -> CancelIoEx(exact_overlapped) on backpressure deadline
+  -> GetOverlappedResult(wait=true) before buffer or OVERLAPPED expires
+```
+
+`PipeChannel` is a small typed state machine: `AwaitingChild -> HostMaySend -> Closed`. Progress loops exist only to finish a partially completed frame; readiness is driven by kernel events, not polling, sleeps, or one thread per channel.
+
+Windows AF_UNIX remains a measured transport comparison, not a candidate security boundary. This probe restricts its byte `sun_path` to ASCII and rejects any endpoint that cannot be represented exactly, while the public socket surface supplies no named-pipe-equivalent client PID/token binding. The LPAC token also denied Winsock initialization on the target machine.
+
 ## Broker request call stack
 
 ```text

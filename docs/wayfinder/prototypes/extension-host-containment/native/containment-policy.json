@@ -25,7 +25,9 @@
     "cohort_sizes": [1, 4, 16],
     "shared_host_contexts": 16,
     "shared_host_noop_samples": 32,
-    "storage_value_limit_bytes": 262144
+    "storage_value_limit_bytes": 262144,
+    "backpressure_payload_bytes": 49152,
+    "backpressure_attempt_limit": 4
   },
   "faults": {
     "scenarios": [

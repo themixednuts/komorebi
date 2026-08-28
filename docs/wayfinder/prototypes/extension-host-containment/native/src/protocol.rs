@@ -1,4 +1,5 @@
 use std::io::{self, Read, Write};
+use std::mem::size_of;
 use std::num::{NonZeroU64, NonZeroUsize};
 use std::str::FromStr;
 
@@ -128,6 +129,11 @@ impl FrameCodec {
         Self { limit }
     }
 
+    #[must_use]
+    pub const fn limit(self) -> FrameLimit {
+        self.limit
+    }
+
     /// Writes one length-prefixed JSON frame within this codec's limit.
     ///
     /// # Errors
@@ -135,6 +141,17 @@ impl FrameCodec {
     /// Returns an error when serialization fails, the payload exceeds the configured limit, or
     /// the writer fails.
     pub fn write(&self, writer: &mut impl Write, frame: &impl Serialize) -> io::Result<()> {
+        let encoded = self.encode(frame)?;
+        writer.write_all(&encoded)?;
+        writer.flush()
+    }
+
+    /// Encodes one length-prefixed JSON frame within this codec's limit.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when serialization fails or the payload exceeds the configured limit.
+    pub fn encode(&self, frame: &impl Serialize) -> io::Result<Vec<u8>> {
         let payload = serde_json::to_vec(frame).map_err(io::Error::other)?;
         if payload.len() > self.limit.bytes() {
             return Err(io::Error::new(
@@ -144,9 +161,30 @@ impl FrameCodec {
         }
         let length = u32::try_from(payload.len())
             .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "frame length overflow"))?;
-        writer.write_all(&length.to_le_bytes())?;
-        writer.write_all(&payload)?;
-        writer.flush()
+        let encoded_capacity = payload
+            .len()
+            .checked_add(size_of::<u32>())
+            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "frame size overflow"))?;
+        let mut encoded = Vec::with_capacity(encoded_capacity);
+        encoded.extend_from_slice(&length.to_le_bytes());
+        encoded.extend_from_slice(&payload);
+        Ok(encoded)
+    }
+
+    /// Decodes one JSON payload within this codec's limit.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the payload exceeds the configured limit or is not valid JSON for
+    /// `T`.
+    pub fn decode<T: for<'de> Deserialize<'de>>(&self, payload: &[u8]) -> io::Result<T> {
+        if payload.len() > self.limit.bytes() {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "frame too large",
+            ));
+        }
+        serde_json::from_slice(payload).map_err(io::Error::other)
     }
 
     /// Reads one length-prefixed JSON frame within this codec's limit.
@@ -158,7 +196,12 @@ impl FrameCodec {
     pub fn read<T: for<'de> Deserialize<'de>>(&self, reader: &mut impl Read) -> io::Result<T> {
         let mut length = [0_u8; 4];
         reader.read_exact(&mut length)?;
-        let length = u32::from_le_bytes(length) as usize;
+        let length = usize::try_from(u32::from_le_bytes(length)).map_err(|_| {
+            io::Error::new(
+                io::ErrorKind::InvalidData,
+                "frame length does not fit usize",
+            )
+        })?;
         if length > self.limit.bytes() {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
@@ -167,7 +210,7 @@ impl FrameCodec {
         }
         let mut payload = vec![0_u8; length];
         reader.read_exact(&mut payload)?;
-        serde_json::from_slice(&payload).map_err(io::Error::other)
+        self.decode(&payload)
     }
 }
 
@@ -278,6 +321,11 @@ pub enum HostFrame {
     },
     RunFault {
         generation: ExtensionGeneration,
+    },
+    BackpressureChunk {
+        generation: ExtensionGeneration,
+        sequence: u64,
+        payload: String,
     },
 }
 

@@ -4,6 +4,7 @@ use std::process::Command;
 
 use anyhow::{Context, Result, ensure};
 use sha2::{Digest, Sha256};
+use windows_sys::Win32::Storage::FileSystem::FILE_FLAG_OVERLAPPED;
 use windows_sys::Win32::System::Pipes::{
     PIPE_READMODE_BYTE, PIPE_REJECT_REMOTE_CLIENTS, PIPE_TYPE_BYTE, PIPE_WAIT,
 };
@@ -45,7 +46,11 @@ pub(super) fn boundary(policy: &ContainmentPolicy) -> BoundaryEvidence {
         job_memory_limit_bytes: job.memory_limit_bytes(),
         job_cpu_hard_cap_basis_points: job.cpu_hard_cap_basis_points(),
         ipc: "host-owned named pipe with exact principal DACL and kernel peer verification",
-        pipe_flags: PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT | PIPE_REJECT_REMOTE_CLIENTS,
+        pipe_flags: PIPE_TYPE_BYTE
+            | PIPE_READMODE_BYTE
+            | PIPE_WAIT
+            | PIPE_REJECT_REMOTE_CLIENTS
+            | FILE_FLAG_OVERLAPPED,
         pipe_buffer_bytes: pipe.buffer_bytes(),
         maximum_frame_bytes: pipe.maximum_frame_bytes(),
         dll_search: "application directory, System32, and explicit user directories only",

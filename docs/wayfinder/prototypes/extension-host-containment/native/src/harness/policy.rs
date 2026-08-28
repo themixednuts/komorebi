@@ -43,6 +43,8 @@ pub(super) struct WorkloadPolicy {
     shared_host_contexts: NonZeroUsize,
     shared_host_noop_samples: NonZeroUsize,
     storage_value_limit_bytes: NonZeroUsize,
+    backpressure_payload_bytes: NonZeroUsize,
+    backpressure_attempt_limit: NonZeroUsize,
 }
 
 #[derive(Debug, Clone)]
@@ -95,6 +97,8 @@ struct RawWorkloadPolicy {
     shared_host_contexts: usize,
     shared_host_noop_samples: usize,
     storage_value_limit_bytes: usize,
+    backpressure_payload_bytes: usize,
+    backpressure_attempt_limit: usize,
 }
 
 #[derive(Debug, Deserialize)]
@@ -170,6 +174,10 @@ impl TryFrom<RawContainmentPolicy> for ContainmentPolicy {
             "maximum_frame_bytes cannot exceed pipe buffer_bytes"
         );
         ensure!(
+            raw.workload.backpressure_payload_bytes < raw.pipe.maximum_frame_bytes,
+            "backpressure_payload_bytes must leave room for protocol framing"
+        );
+        ensure!(
             raw.job.cpu_hard_cap_basis_points <= 10_000,
             "cpu_hard_cap_basis_points cannot exceed 10000"
         );
@@ -218,6 +226,14 @@ impl TryFrom<RawContainmentPolicy> for ContainmentPolicy {
                     raw.workload.storage_value_limit_bytes,
                 )
                 .context("storage_value_limit_bytes must be nonzero")?,
+                backpressure_payload_bytes: NonZeroUsize::new(
+                    raw.workload.backpressure_payload_bytes,
+                )
+                .context("backpressure_payload_bytes must be nonzero")?,
+                backpressure_attempt_limit: NonZeroUsize::new(
+                    raw.workload.backpressure_attempt_limit,
+                )
+                .context("backpressure_attempt_limit must be nonzero")?,
             },
             faults: FaultPolicy {
                 scenarios: nonempty_unique_scenarios(raw.faults.scenarios)?,
@@ -308,6 +324,14 @@ impl WorkloadPolicy {
     pub(super) const fn storage_value_limit_bytes(&self) -> usize {
         self.storage_value_limit_bytes.get()
     }
+
+    pub(super) const fn backpressure_payload_bytes(&self) -> usize {
+        self.backpressure_payload_bytes.get()
+    }
+
+    pub(super) const fn backpressure_attempt_limit(&self) -> usize {
+        self.backpressure_attempt_limit.get()
+    }
 }
 
 impl FaultPolicy {
@@ -368,7 +392,7 @@ mod tests {
                 "job":{"active_process_limit":1,"memory_limit_bytes":1024,"cpu_hard_cap_basis_points":2000,"kill_on_close":true,"ui_restrictions":true},
                 "pipe":{"buffer_bytes":65536,"maximum_frame_bytes":65536,"connect_timeout_ms":1000,"operation_timeout_ms":1000},
                 "process":{"disable_win32k":true,"restrict_child_processes":true,"opt_out_all_application_packages":true},
-                "workload":{"generation":2,"echo_samples":32,"cohort_sizes":[1,4,16],"shared_host_contexts":16,"shared_host_noop_samples":32,"storage_value_limit_bytes":262144},
+                "workload":{"generation":2,"echo_samples":32,"cohort_sizes":[1,4,16],"shared_host_contexts":16,"shared_host_noop_samples":32,"storage_value_limit_bytes":262144,"backpressure_payload_bytes":49152,"backpressure_attempt_limit":4},
                 "faults":{"scenarios":["cpu_loop","allocation_pressure","deadlock","indefinite_wait","pipe_stall","disconnect","lua_jit_native_crash"],"allocation_chunk_bytes":1048576,"termination_exit_code":57005}
             }"#,
         )

@@ -3,9 +3,8 @@ use std::fs;
 use std::io::{Read, Write};
 use std::mem::size_of;
 use std::net::{TcpStream, ToSocketAddrs};
-use std::os::windows::io::AsRawHandle;
 use std::path::{Path, PathBuf};
-use std::ptr::{null, null_mut};
+use std::ptr::null;
 use std::time::{Duration, Instant};
 
 use crate::protocol::{ExpectedOutcome, ObservedOutcome, RuntimeKind};
@@ -13,11 +12,7 @@ use crate::windows::{OwnedHandle, windows_version};
 use anyhow::{Context, Result, bail, ensure};
 use mlua::{ChunkMode, Lua, LuaOptions, StdLib};
 use uuid::Uuid;
-use windows_sys::Win32::Foundation::{
-    ERROR_NOT_FOUND, ERROR_OPERATION_ABORTED, ERROR_PIPE_CONNECTED, GetLastError, WAIT_OBJECT_0,
-    WAIT_TIMEOUT,
-};
-use windows_sys::Win32::System::IO::CancelSynchronousIo;
+use windows_sys::Win32::Foundation::WAIT_OBJECT_0;
 use windows_sys::Win32::System::JobObjects::{
     CreateJobObjectW, JOB_OBJECT_CPU_RATE_CONTROL_ENABLE, JOB_OBJECT_CPU_RATE_CONTROL_HARD_CAP,
     JOB_OBJECT_LIMIT_ACTIVE_PROCESS, JOB_OBJECT_LIMIT_JOB_MEMORY,
@@ -29,14 +24,13 @@ use windows_sys::Win32::System::JobObjects::{
     JOBOBJECT_EXTENDED_LIMIT_INFORMATION, JobObjectBasicUIRestrictions,
     JobObjectCpuRateControlInformation, JobObjectExtendedLimitInformation, SetInformationJobObject,
 };
-use windows_sys::Win32::System::Pipes::ConnectNamedPipe;
 use windows_sys::Win32::System::ProcessStatus::{
     K32GetProcessMemoryInfo, PROCESS_MEMORY_COUNTERS_EX,
 };
-use windows_sys::Win32::System::Threading::{
-    GetExitCodeProcess, WaitForMultipleObjects, WaitForSingleObject,
-};
+use windows_sys::Win32::System::Threading::{GetExitCodeProcess, WaitForSingleObject};
 
+mod af_unix;
+mod backpressure;
 mod environment;
 mod evidence;
 mod fault;
@@ -50,6 +44,8 @@ mod session;
 mod windows_boundary;
 
 use crate::protocol::ParentExitMode;
+use af_unix::run_comparison as run_af_unix_comparison;
+use backpressure::run as run_backpressure;
 use evidence::{binary as binary_evidence, boundary as boundary_evidence, command_output};
 use fault::run as run_faults;
 use launch::{ExtensionBehavior, launch as launch_extension};
@@ -100,6 +96,18 @@ fn run_diagnostic(policy: &ContainmentPolicy) -> Result<bool> {
             lifetime::run_parent(mode, policy)?;
             Ok(true)
         }
+        [flag, path, samples, timeout] if flag == OsStr::new("--af-unix-client") => {
+            let samples = samples
+                .to_str()
+                .context("AF_UNIX sample count is not valid Unicode")?
+                .parse::<usize>()?;
+            let timeout = timeout
+                .to_str()
+                .context("AF_UNIX timeout is not valid Unicode")?
+                .parse::<u64>()?;
+            af_unix::run_client(Path::new(path), samples, Duration::from_millis(timeout))?;
+            Ok(true)
+        }
         _ => bail!("unexpected command-line arguments"),
     }
 }
@@ -135,24 +143,15 @@ fn run_evidence(policy: &ContainmentPolicy) -> Result<()> {
         "build all release binaries first: cargo build --release --bins"
     );
     let version = windows_version()?;
-    let binaries = [
-        ("host", std::env::current_exe()?),
-        (
-            "rust_child",
-            executable_dir.join("containment-rust-child.exe"),
-        ),
-        ("lua_jit_child", lua.clone()),
-        ("fault_child", fault.clone()),
-    ]
-    .into_iter()
-    .map(|(role, path)| binary_evidence(role, &path))
-    .collect::<Result<Vec<_>>>()?;
+    let binaries = collect_binary_evidence(&executable_dir, &lua, &fault)?;
 
     let mut runs = Vec::new();
     for (runtime, executable) in [(RuntimeKind::Rust, rust), (RuntimeKind::LuaJit, lua)] {
         runs.push(run_extension(runtime, &executable, &private_file, policy)?);
     }
+    let af_unix = run_af_unix_comparison(&std::env::current_exe()?, policy, &runs)?;
     let faults = run_faults(&fault, &private_file, policy)?;
+    let backpressure = run_backpressure(&fault, &private_file, policy)?;
     let parent_lifetime = run_parent_lifetime(&executable_dir, &private_file, policy)?;
     let restart_recovery = run_restart_recovery(
         &executable_dir.join("containment-rust-child.exe"),
@@ -190,7 +189,9 @@ fn run_evidence(policy: &ContainmentPolicy) -> Result<()> {
         binaries,
         boundary: boundary_evidence(policy),
         runs,
+        af_unix,
         faults,
+        backpressure,
         parent_lifetime,
         restart_recovery,
         scale,
@@ -205,6 +206,25 @@ fn run_evidence(policy: &ContainmentPolicy) -> Result<()> {
     fs::write(results_dir.join("latest.json"), &output)?;
     println!("{}", String::from_utf8(output)?);
     Ok(())
+}
+
+fn collect_binary_evidence(
+    executable_dir: &Path,
+    lua: &Path,
+    fault: &Path,
+) -> Result<Vec<report::BinaryEvidence>> {
+    [
+        ("host", std::env::current_exe()?),
+        (
+            "rust_child",
+            executable_dir.join("containment-rust-child.exe"),
+        ),
+        ("lua_jit_child", lua.to_path_buf()),
+        ("fault_child", fault.to_path_buf()),
+    ]
+    .into_iter()
+    .map(|(role, path)| binary_evidence(role, &path))
+    .collect()
 }
 
 fn run_extension(
@@ -317,77 +337,6 @@ fn create_restricted_job(policy: policy::JobPolicy) -> Result<OwnedHandle> {
         set_job(job.raw(), JobObjectBasicUIRestrictions, &ui)?;
     }
     Ok(job)
-}
-
-fn connect_or_child_exit(
-    pipe: windows_sys::Win32::Foundation::HANDLE,
-    process: windows_sys::Win32::Foundation::HANDLE,
-    error_file: &Path,
-    timeout: Duration,
-) -> Result<()> {
-    let pipe_value = pipe as usize;
-    let connector = std::thread::spawn(move || {
-        let pipe = pipe_value as windows_sys::Win32::Foundation::HANDLE;
-        // SAFETY: the host owns pipe for the thread's lifetime and performs no other I/O until join.
-        if unsafe { ConnectNamedPipe(pipe, null_mut()) } != 0 {
-            return Ok(());
-        }
-        // SAFETY: GetLastError is called immediately after ConnectNamedPipe.
-        if unsafe { GetLastError() } == ERROR_PIPE_CONNECTED {
-            Ok(())
-        } else {
-            Err(std::io::Error::last_os_error())
-        }
-    });
-    let thread = connector.as_raw_handle() as windows_sys::Win32::Foundation::HANDLE;
-    let wait_handles = [thread, process];
-    // SAFETY: both handles remain valid through this bounded wait.
-    let wait = unsafe {
-        WaitForMultipleObjects(
-            u32::try_from(wait_handles.len())?,
-            wait_handles.as_ptr(),
-            0,
-            u32::try_from(timeout.as_millis())?,
-        )
-    };
-    if wait == WAIT_OBJECT_0 {
-        return connector
-            .join()
-            .map_err(|_| anyhow::anyhow!("pipe connector panicked"))?
-            .context("connect named pipe");
-    }
-    // SAFETY: thread is a valid thread handle owned by connector; cancellation only targets its
-    // blocking call. ERROR_NOT_FOUND means the call completed during the wait/cancel race.
-    if unsafe { CancelSynchronousIo(thread) } == 0 {
-        let error = std::io::Error::last_os_error();
-        ensure!(
-            error.raw_os_error() == Some(i32::try_from(ERROR_NOT_FOUND)?),
-            "cancel pipe connector: {error}"
-        );
-    }
-    let connector_result = connector
-        .join()
-        .map_err(|_| anyhow::anyhow!("pipe connector panicked"))?;
-    match connector_result {
-        Ok(()) => return Ok(()),
-        Err(error) if error.raw_os_error() == Some(i32::try_from(ERROR_OPERATION_ABORTED)?) => {}
-        Err(error) => return Err(error).context("pipe connector failed during cancellation"),
-    }
-    if wait == WAIT_OBJECT_0 + 1 {
-        let mut exit_code = 0_u32;
-        // SAFETY: process is a valid process handle and exit_code is writable.
-        unsafe { GetExitCodeProcess(process, &raw mut exit_code) };
-        let detail =
-            fs::read_to_string(error_file).unwrap_or_else(|_| "no child error record".to_owned());
-        bail!("LPAC child exited before pipe authentication (exit code {exit_code:#x}): {detail}");
-    }
-    if wait == WAIT_TIMEOUT {
-        bail!("timed out waiting for LPAC child pipe connection");
-    }
-    bail!(
-        "WaitForMultipleObjects failed: {}",
-        std::io::Error::last_os_error()
-    )
 }
 
 fn set_job<T>(job: windows_sys::Win32::Foundation::HANDLE, class: i32, value: &T) -> Result<()> {
@@ -548,7 +497,7 @@ fn run_shared_host_control(policy: &ContainmentPolicy) -> Result<SharedHostContr
     })
 }
 
-fn percentile(sorted: &[f64], numerator: usize, denominator: usize) -> f64 {
+pub(super) fn percentile(sorted: &[f64], numerator: usize, denominator: usize) -> f64 {
     if sorted.is_empty() {
         return 0.0;
     }

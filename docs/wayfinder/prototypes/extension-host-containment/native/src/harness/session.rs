@@ -166,13 +166,14 @@ impl SessionState {
             let revision = current + 1;
             self.storage.insert(key, (revision, value));
             self.storage_cas_roundtrip = true;
-            channel.send(&HostFrame::StorageStored { request, revision })
+            channel.send(&HostFrame::StorageStored { request, revision })?;
         } else {
             channel.send(&HostFrame::Rejected {
                 request: Some(request),
                 code: "storage_conflict_or_limit".to_owned(),
-            })
+            })?;
         }
+        Ok(())
     }
 
     fn storage_get(&self, channel: &mut PipeChannel, request: u64, key: &str) -> Result<()> {
@@ -181,13 +182,14 @@ impl SessionState {
                 request,
                 revision: *revision,
                 value: value.clone(),
-            })
+            })?;
         } else {
             channel.send(&HostFrame::Rejected {
                 request: Some(request),
                 code: "storage_missing".to_owned(),
-            })
+            })?;
         }
+        Ok(())
     }
 
     fn http_get(&mut self, channel: &mut PipeChannel, request: u64, url: &str) -> Result<()> {
@@ -198,12 +200,15 @@ impl SessionState {
                     request,
                     status,
                     bytes,
-                })
+                })?;
             }
-            Err(error) => channel.send(&HostFrame::Rejected {
-                request: Some(request),
-                code: format!("http_policy_or_transport:{error}"),
-            }),
+            Err(error) => {
+                channel.send(&HostFrame::Rejected {
+                    request: Some(request),
+                    code: format!("http_policy_or_transport:{error}"),
+                })?;
+            }
         }
+        Ok(())
     }
 }

@@ -11,7 +11,7 @@ use anyhow::{Context, Result, bail, ensure};
 use uuid::Uuid;
 use windows_sys::Win32::Foundation::{WAIT_OBJECT_0, WAIT_TIMEOUT};
 use windows_sys::Win32::Security::{SECURITY_ATTRIBUTES, SECURITY_CAPABILITIES};
-use windows_sys::Win32::Storage::FileSystem::PIPE_ACCESS_DUPLEX;
+use windows_sys::Win32::Storage::FileSystem::{FILE_FLAG_OVERLAPPED, PIPE_ACCESS_DUPLEX};
 use windows_sys::Win32::System::JobObjects::{
     AssignProcessToJobObject, IsProcessInJob, TerminateJobObject,
 };
@@ -34,7 +34,7 @@ use crate::protocol::{
 use crate::windows::{OwnedHandle, current_user_sid, process_token_identity, wide};
 
 use super::environment::{EnvironmentBlock, EnvironmentEntry};
-use super::ipc::PipeChannel;
+use super::ipc::{PipeChannel, connect_or_child_exit};
 use super::policy::ContainmentPolicy;
 use super::windows_boundary::{
     AppContainerProfile, AttributeList, SecurityDescriptor, create_junction,
@@ -207,7 +207,7 @@ impl HostPipe {
         let handle = OwnedHandle::new(unsafe {
             CreateNamedPipeW(
                 name_wide.as_ptr(),
-                PIPE_ACCESS_DUPLEX,
+                PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
                 PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT | PIPE_REJECT_REMOTE_CLIENTS,
                 1,
                 pipe.buffer_bytes(),
@@ -271,7 +271,7 @@ impl RestrictedProcess {
         generation: crate::protocol::ExtensionGeneration,
     ) -> Result<AuthenticatedExtension> {
         super::trace("host:wait_connect");
-        super::connect_or_child_exit(
+        connect_or_child_exit(
             self.pipe.handle.raw(),
             self.process.raw(),
             &self.files.error_file,
@@ -286,7 +286,11 @@ impl RestrictedProcess {
         )?;
         // SAFETY: ownership transfers from OwnedHandle to File exactly once.
         let pipe_file = unsafe { File::from_raw_handle(self.pipe.handle.into_raw()) };
-        let mut channel = PipeChannel::new(pipe_file, self.pipe.codec)?;
+        let mut channel = PipeChannel::new(
+            pipe_file,
+            self.pipe.codec,
+            policy.pipe().operation_timeout(),
+        )?;
         let facts = authenticate_hello(
             &mut channel,
             runtime,

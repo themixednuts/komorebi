@@ -8,7 +8,10 @@ use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result, bail, ensure};
 use uuid::Uuid;
-use windows_sys::Win32::Networking::WinSock::{WSACleanup, WSADATA, WSAStartup};
+use windows_sys::Win32::Networking::WinSock::{
+    AF_UNIX, INVALID_SOCKET, SOCK_STREAM, SOCKET_ERROR, WSACleanup, WSADATA, WSAGetLastError,
+    WSAStartup, closesocket, socket,
+};
 
 use crate::child_pipe;
 use crate::protocol::{
@@ -337,12 +340,18 @@ fn network_probes() -> Vec<ProbeOutcome> {
     // SAFETY: data is writable and version 2.2 is the documented Winsock request.
     let status = unsafe { WSAStartup(0x0202, &raw mut data) };
     if status != 0 {
-        return ["direct_loopback", "direct_ipv6", "direct_dns"]
-            .into_iter()
-            .map(|name| probe_denied(name, ExpectedOutcome::Denied, Some(status)))
-            .collect();
+        return [
+            "af_unix_socket_creation",
+            "direct_loopback",
+            "direct_ipv6",
+            "direct_dns",
+        ]
+        .into_iter()
+        .map(|name| probe_denied(name, ExpectedOutcome::Denied, Some(status)))
+        .collect();
     }
     let results = vec![
+        af_unix_socket_probe(),
         tcp_probe("direct_loopback", "127.0.0.1:9"),
         tcp_probe("direct_ipv6", "[::1]:9"),
         dns_probe(),
@@ -350,6 +359,32 @@ fn network_probes() -> Vec<ProbeOutcome> {
     // SAFETY: this balances the successful WSAStartup in this function.
     unsafe { WSACleanup() };
     results
+}
+
+fn af_unix_socket_probe() -> ProbeOutcome {
+    // SAFETY: Winsock is initialized and these are the documented AF_UNIX stream parameters.
+    let socket = unsafe { socket(i32::from(AF_UNIX), SOCK_STREAM, 0) };
+    if socket == INVALID_SOCKET {
+        // SAFETY: the immediately preceding Winsock call failed on this thread.
+        return probe_denied(
+            "af_unix_socket_creation",
+            ExpectedOutcome::Denied,
+            Some(unsafe { WSAGetLastError() }),
+        );
+    }
+    // SAFETY: socket is owned by this function and closed exactly once.
+    if unsafe { closesocket(socket) } == SOCKET_ERROR {
+        // SAFETY: the immediately preceding Winsock call failed on this thread.
+        let error = unsafe { WSAGetLastError() };
+        return ProbeOutcome {
+            name: "af_unix_socket_creation".to_owned(),
+            expected: ExpectedOutcome::Denied,
+            observed: ObservedOutcome::Unavailable {
+                reason: format!("AF_UNIX socket cleanup failed: {error}"),
+            },
+        };
+    }
+    probe_allowed("af_unix_socket_creation", ExpectedOutcome::Denied)
 }
 
 fn dns_probe() -> ProbeOutcome {

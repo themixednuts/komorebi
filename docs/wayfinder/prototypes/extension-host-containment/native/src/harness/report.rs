@@ -14,12 +14,40 @@ pub(super) struct HarnessReport {
     pub(super) binaries: Vec<BinaryEvidence>,
     pub(super) boundary: BoundaryEvidence,
     pub(super) runs: Vec<RunReport>,
+    pub(super) af_unix: AfUnixEvidence,
     pub(super) faults: Vec<FaultEvidence>,
+    pub(super) backpressure: BackpressureEvidence,
     pub(super) parent_lifetime: Vec<ParentLifetimeEvidence>,
     pub(super) restart_recovery: RestartRecoveryEvidence,
     pub(super) scale: Vec<ScaleReport>,
     pub(super) shared_host_control: SharedHostControl,
     pub(super) cleanup: CleanupEvidence,
+}
+
+#[derive(Debug, Serialize)]
+pub(super) struct AfUnixEvidence {
+    pub(super) role: &'static str,
+    pub(super) endpoint_encoding: &'static str,
+    pub(super) samples: usize,
+    pub(super) full_trust_process_echo_p99_us: f64,
+    pub(super) child_exit_code: u32,
+    pub(super) endpoint_cleanup: Verification,
+    pub(super) lpac_socket_creation_denied: Verification,
+    pub(super) kernel_peer_pid: &'static str,
+    pub(super) kernel_peer_token: &'static str,
+}
+
+#[derive(Debug, Serialize)]
+pub(super) struct BackpressureEvidence {
+    pub(super) transport: &'static str,
+    pub(super) payload_bytes: usize,
+    pub(super) attempt_limit: usize,
+    pub(super) completed_writes: usize,
+    pub(super) completed_payload_bytes: usize,
+    pub(super) blocked_write_cancel_ms: f64,
+    pub(super) blocked_write_cancelled: Verification,
+    pub(super) process_tree_terminated: Verification,
+    pub(super) exit_code: u32,
 }
 
 #[derive(Debug, Serialize)]
