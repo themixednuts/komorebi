@@ -1,4 +1,7 @@
 pub mod child;
+mod child_pipe;
+pub mod fault_child;
+pub mod harness;
 pub mod protocol;
 
 #[cfg(windows)]

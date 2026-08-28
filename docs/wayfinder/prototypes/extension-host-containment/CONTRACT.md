@@ -10,11 +10,13 @@ The shared-host control is not a production fallback. It is a measurement baseli
 
 ```rust
 struct ExtensionPackageId(String);
-struct ExtensionGeneration(u64);
+struct ExtensionGeneration(NonZeroU64);
 struct GrantRevision(u64);
 struct AppContainerSid(String);
-struct PipeNonce([u8; 32]);
+struct LaunchNonce([u8; 16]);
 struct ClientProcessId(u32);
+struct NativePath(PathBuf);
+struct NativeEnvironmentBlock(Vec<u16>);
 
 struct ExtensionPrincipal {
     package: ExtensionPackageId,
@@ -26,11 +28,13 @@ struct AuthenticatedExtensionChannel {
     principal: ExtensionPrincipal,
     app_container: AppContainerSid,
     client: ClientProcessId,
-    nonce: PipeNonce,
+    nonce: LaunchNonce,
 }
 ```
 
 `AuthenticatedExtensionChannel` is only constructible after every kernel and protocol check passes. A connected pipe handle is not this type.
+
+`NativePath` and environment values remain `Path`/`OsStr`/`OsString` until they are encoded directly for a wide Win32 API. They never pass through `String`, `Display`, WTF-8 bytes, or a slash-normalizing interchange type. Evidence that must fit JSON carries both optional UTF-8 and the authoritative UTF-16 code units in hexadecimal.
 
 ## Lifecycle
 
@@ -56,6 +60,7 @@ ExtensionRegistry::activate(package_id)
     -> ExtensionChannelFactory::listen(principal)
       -> CreateNamedPipeW(unqualified_host_name, protected_sid_dacl, reject_remote)
     -> WindowsContainment::create_suspended_process(image, environment)
+      -> CreateProcessAsUserW(explicit_application_name, no_reparsed_command_line)
       -> PROC_THREAD_ATTRIBUTE_SECURITY_CAPABILITIES
       -> PROC_THREAD_ATTRIBUTE_ALL_APPLICATION_PACKAGES_POLICY
       -> PROC_THREAD_ATTRIBUTE_MITIGATION_POLICY(win32k_off)
@@ -71,12 +76,12 @@ ExtensionRegistry::activate(package_id)
       -> GetNamedPipeClientProcessId
       -> query client token package SID and LPAC property
       -> IsProcessInJob
-      -> constant_time_nonce_check
+      -> fixed-width nonce check without early exit
       -> generation_check
     -> ExtensionSupervisor::commit_active(AuthenticatedExtensionChannel)
 ```
 
-The manager state thread requests activation and receives a typed outcome. It never waits on pipe I/O or process startup.
+The production manager state thread will request activation and receive a typed outcome; this disposable evidence harness runs the same launch stack synchronously.
 
 ## Broker request call stack
 
@@ -94,6 +99,8 @@ PipeReader::read_bounded_frame(channel)
 
 Package code never receives a native handle, filesystem path, ambient network socket, renderer callback, or manager reference.
 
+Broker filesystem authorization must bind policy and action to the same opened Windows handle. Canonical path strings are suitable evidence and launch inputs, but they are not filesystem identity and must not become a check-then-open production authorization scheme.
+
 ## Boundary ownership
 
 - LPAC owns resource and cross-process security. `lpacAppExperience` is the only compatibility capability; adding another capability requires a new adversarial measurement.
@@ -105,5 +112,6 @@ Package code never receives a native handle, filesystem path, ambient network so
 
 - The child must not statically import User32 when Win32k is disabled. Forbidden UI APIs are probed by explicit runtime loading.
 - The MSVC CRT must be statically linked or packaged beside the child; LPAC cannot depend on ambient `ALL APPLICATION PACKAGES` access.
+- Rust's native `OsStr::encode_wide`/`OsString::from_wide` pair is the path primitive: it round-trips potentially ill-formed UTF-16. UTF-8 path crates and the current `verbatim` crate are not used because they either change the representation or leave UNC/device forms unimplemented.
 - For an unpackaged full-trust server and LPAC client, the working pipe topology is a host-owned unqualified name. `LOCAL\` was rewritten into the AppContainer namespace and was not visible to the host-created endpoint on this machine.
 - `TokenIsLessPrivilegedAppContainer` returned `ERROR_INVALID_PARAMETER` on the target build. Verification falls back to an AppContainer token whose `ALL APPLICATION PACKAGES` membership is absent.

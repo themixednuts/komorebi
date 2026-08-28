@@ -1,8 +1,10 @@
-use std::ffi::c_void;
+use std::ffi::{OsStr, c_void};
 use std::mem::{ManuallyDrop, size_of};
+use std::os::windows::ffi::OsStrExt;
 use std::ptr::null_mut;
 
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result, bail, ensure};
+use windows_sys::Wdk::System::SystemServices::RtlGetVersion;
 use windows_sys::Win32::Foundation::{CloseHandle, FreeLibrary, HANDLE, LocalFree};
 use windows_sys::Win32::Security::Authorization::{ConvertSidToStringSidW, ConvertStringSidToSidW};
 use windows_sys::Win32::Security::{
@@ -17,18 +19,29 @@ use windows_sys::Win32::System::LibraryLoader::{
 use windows_sys::Win32::System::Registry::{
     HKEY_CURRENT_USER, KEY_READ, RegCloseKey, RegOpenKeyExW,
 };
+use windows_sys::Win32::System::SystemInformation::OSVERSIONINFOW;
 use windows_sys::Win32::System::Threading::{
-    GetCurrentProcess, GetCurrentProcessId, OpenProcess, OpenProcessToken,
-    PROCESS_QUERY_INFORMATION, PROCESS_VM_READ,
+    GetCurrentProcess, GetCurrentProcessId, OpenProcess, OpenProcessToken, PROCESS_CREATE_THREAD,
+    PROCESS_DUP_HANDLE, PROCESS_QUERY_INFORMATION, PROCESS_VM_OPERATION, PROCESS_VM_READ,
+    PROCESS_VM_WRITE,
 };
 
-use crate::protocol::{ChildFacts, ExpectedOutcome, ObservedOutcome, ProbeOutcome};
+use crate::protocol::{
+    ChildFacts, ExpectedOutcome, ObservedOutcome, ProbeOutcome, WindowsStringEvidence,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TokenSecurityIdentity {
     pub app_container: bool,
     pub less_privileged_app_container: bool,
     pub package_sid: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct WindowsVersion {
+    pub major: u32,
+    pub minor: u32,
+    pub build: u32,
 }
 
 pub struct OwnedHandle(HANDLE);
@@ -65,8 +78,52 @@ impl Drop for OwnedHandle {
 }
 
 #[must_use]
-pub fn wide(value: &str) -> Vec<u16> {
-    value.encode_utf16().chain(std::iter::once(0)).collect()
+pub fn wide(value: impl AsRef<OsStr>) -> Vec<u16> {
+    value
+        .as_ref()
+        .encode_wide()
+        .chain(std::iter::once(0))
+        .collect()
+}
+
+#[must_use]
+pub fn windows_string_evidence(value: &OsStr) -> WindowsStringEvidence {
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+    let units: Vec<_> = value.encode_wide().collect();
+    let mut utf16_code_units_hex = String::with_capacity(units.len() * 4);
+    for unit in units {
+        for shift in [12, 8, 4, 0] {
+            let nibble = usize::from((unit >> shift) & 0x000f);
+            utf16_code_units_hex.push(char::from(HEX[nibble]));
+        }
+    }
+    WindowsStringEvidence {
+        utf8: value.to_str().map(str::to_owned),
+        utf16_code_units_hex,
+    }
+}
+
+/// Returns the real Windows version from `ntdll`, independent of manifest compatibility shims.
+///
+/// # Errors
+///
+/// Returns an error when `RtlGetVersion` rejects the version structure.
+pub fn windows_version() -> Result<WindowsVersion> {
+    let mut version = OSVERSIONINFOW {
+        dwOSVersionInfoSize: u32::try_from(size_of::<OSVERSIONINFOW>())?,
+        ..Default::default()
+    };
+    // SAFETY: version has the documented size and is writable for the call.
+    let status = unsafe { RtlGetVersion(&raw mut version) };
+    ensure!(
+        status >= 0,
+        "RtlGetVersion failed with NTSTATUS {status:#x}"
+    );
+    Ok(WindowsVersion {
+        major: version.dwMajorVersion,
+        minor: version.dwMinorVersion,
+        build: version.dwBuildNumber,
+    })
 }
 
 #[must_use]
@@ -91,9 +148,10 @@ pub fn current_child_facts(dll_search_hardened: bool) -> Result<ChildFacts> {
     let process = unsafe { GetCurrentProcess() };
     let identity = token_security_identity(process)?;
     let mut environment_keys: Vec<_> = std::env::vars_os()
-        .filter_map(|(key, _)| key.into_string().ok())
+        .map(|(key, _)| windows_string_evidence(&key))
         .collect();
-    environment_keys.sort_unstable();
+    environment_keys
+        .sort_unstable_by(|left, right| left.utf16_code_units_hex.cmp(&right.utf16_code_units_hex));
     Ok(ChildFacts {
         // SAFETY: GetCurrentProcessId takes no pointers and cannot fail.
         pid: unsafe { GetCurrentProcessId() },
@@ -342,18 +400,44 @@ pub fn registry_probe() -> ProbeOutcome {
 
 #[must_use]
 pub fn parent_process_probe(parent_pid: u32) -> ProbeOutcome {
+    process_access_probe(
+        "parent_process_vm_read",
+        parent_pid,
+        PROCESS_QUERY_INFORMATION | PROCESS_VM_READ,
+    )
+}
+
+#[must_use]
+pub fn parent_process_injection_probe(parent_pid: u32) -> ProbeOutcome {
+    process_access_probe(
+        "parent_process_injection_rights",
+        parent_pid,
+        PROCESS_CREATE_THREAD | PROCESS_VM_OPERATION | PROCESS_VM_WRITE,
+    )
+}
+
+#[must_use]
+pub fn parent_process_duplicate_handle_probe(parent_pid: u32) -> ProbeOutcome {
+    process_access_probe(
+        "parent_process_duplicate_handle",
+        parent_pid,
+        PROCESS_DUP_HANDLE,
+    )
+}
+
+fn process_access_probe(name: &str, parent_pid: u32, access: u32) -> ProbeOutcome {
     // SAFETY: OpenProcess validates the PID and returns either a handle or null.
-    let handle = unsafe { OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, 0, parent_pid) };
+    let handle = unsafe { OpenProcess(access, 0, parent_pid) };
     if handle.is_null() {
         probe_denied(
-            "parent_process_vm_read",
+            name,
             ExpectedOutcome::Denied,
             std::io::Error::last_os_error().raw_os_error(),
         )
     } else {
         // SAFETY: successful OpenProcess returned an owned handle.
         unsafe { CloseHandle(handle) };
-        probe_allowed("parent_process_vm_read", ExpectedOutcome::Denied)
+        probe_allowed(name, ExpectedOutcome::Denied)
     }
 }
 
@@ -403,6 +487,62 @@ pub fn clipboard_probe() -> ProbeOutcome {
             expected: ExpectedOutcome::Denied,
             observed: ObservedOutcome::Unavailable {
                 reason: "user32 clipboard exports unavailable".to_owned(),
+            },
+        }
+    };
+    // SAFETY: module is an owned LoadLibraryExW reference.
+    unsafe { FreeLibrary(module) };
+    outcome
+}
+
+#[must_use]
+pub fn other_window_message_probe() -> ProbeOutcome {
+    type GetShellWindowFn = unsafe extern "system" fn() -> *mut c_void;
+    type PostMessageWFn = unsafe extern "system" fn(*mut c_void, u32, usize, isize) -> i32;
+
+    let user32 = wide("user32.dll");
+    // SAFETY: filename is NUL-terminated and the search is constrained to System32.
+    let module =
+        unsafe { LoadLibraryExW(user32.as_ptr(), null_mut(), LOAD_LIBRARY_SEARCH_SYSTEM32) };
+    if module.is_null() {
+        return probe_denied(
+            "other_window_message",
+            ExpectedOutcome::Denied,
+            std::io::Error::last_os_error().raw_os_error(),
+        );
+    }
+    // SAFETY: module is valid and names are static NUL-terminated ASCII.
+    let (get_shell_window, post_message) = unsafe {
+        (
+            GetProcAddress(module, c"GetShellWindow".as_ptr().cast()),
+            GetProcAddress(module, c"PostMessageW".as_ptr().cast()),
+        )
+    };
+    let outcome = if let (Some(get_shell_window), Some(post_message)) =
+        (get_shell_window, post_message)
+    {
+        // SAFETY: GetProcAddress returned the documented exports with these exact signatures.
+        let get_shell_window: GetShellWindowFn = unsafe { std::mem::transmute(get_shell_window) };
+        // SAFETY: GetProcAddress returned the documented exports with these exact signatures.
+        let post_message: PostMessageWFn = unsafe { std::mem::transmute(post_message) };
+        // SAFETY: this call takes no arguments and returns a borrowed HWND.
+        let shell = unsafe { get_shell_window() };
+        // SAFETY: WM_NULL carries no pointer payload; the borrowed HWND is used only for this call.
+        if shell.is_null() || unsafe { post_message(shell, 0, 0, 0) } == 0 {
+            probe_denied(
+                "other_window_message",
+                ExpectedOutcome::Denied,
+                std::io::Error::last_os_error().raw_os_error(),
+            )
+        } else {
+            probe_allowed("other_window_message", ExpectedOutcome::Denied)
+        }
+    } else {
+        ProbeOutcome {
+            name: "other_window_message".to_owned(),
+            expected: ExpectedOutcome::Denied,
+            observed: ObservedOutcome::Unavailable {
+                reason: "user32 window-message exports unavailable".to_owned(),
             },
         }
     };

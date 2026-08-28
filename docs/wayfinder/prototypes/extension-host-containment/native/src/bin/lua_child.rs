@@ -21,12 +21,14 @@ fn run() -> Result<()> {
 
 fn main() {
     std::panic::set_hook(Box::new(|info| {
-        if let Ok(path) = std::env::var("KOMOREBI_PROTOTYPE_ERROR_FILE") {
+        if let Some(path) = std::env::var_os("KOMOREBI_PROTOTYPE_ERROR_FILE") {
+            // The child has no console; this trace is secondary to its process exit code.
             let _ = std::fs::write(path, format!("panic: {info}"));
         }
     }));
     if let Err(error) = run() {
-        if let Ok(path) = std::env::var("KOMOREBI_PROTOTYPE_ERROR_FILE") {
+        if let Some(path) = std::env::var_os("KOMOREBI_PROTOTYPE_ERROR_FILE") {
+            // The child has no console; this trace is secondary to its process exit code.
             let _ = std::fs::write(path, format!("{error:#}"));
         }
         std::process::exit(1);

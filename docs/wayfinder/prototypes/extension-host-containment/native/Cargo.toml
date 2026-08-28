@@ -13,8 +13,9 @@ mlua = { version = "0.11.4", features = ["luajit", "vendored", "serialize"] }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.145"
 sha2 = "0.10.9"
-uuid = { version = "1.18.1", features = ["v4"] }
+uuid = { version = "1.18.1", features = ["serde", "v4"] }
 windows-sys = { version = "0.61.2", features = [
+  "Wdk_System_SystemServices",
   "Win32_Foundation",
   "Win32_Globalization",
   "Win32_Networking_WinSock",
@@ -27,6 +28,7 @@ windows-sys = { version = "0.61.2", features = [
   "Win32_System_Diagnostics_Debug",
   "Win32_System_Environment",
   "Win32_System_IO",
+  "Win32_System_Ioctl",
   "Win32_System_JobObjects",
   "Win32_System_LibraryLoader",
   "Win32_System_Memory",
@@ -57,6 +59,10 @@ path = "src/bin/lua_child.rs"
 [[bin]]
 name = "containment-minimal-child"
 path = "src/bin/minimal_child.rs"
+
+[[bin]]
+name = "containment-fault-child"
+path = "src/bin/fault_child.rs"
 
 [lints.rust]
 unsafe_op_in_unsafe_fn = "deny"

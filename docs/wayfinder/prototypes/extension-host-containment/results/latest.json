@@ -1,56 +1,280 @@
 {
-  "generated_at_unix_ms": 1787891901049,
-  "platform": "Windows x86_64",
+  "generated_at_unix_ms": 1787896304411,
+  "platform": {
+    "windows_major": 10,
+    "windows_minor": 0,
+    "windows_build": 26200,
+    "architecture": "x86_64"
+  },
+  "toolchain": {
+    "rustc_verbose_version": "rustc 1.97.1 (8bab26f4f 2026-07-14)\nbinary: rustc\ncommit-hash: 8bab26f4f68e0e26f0bb7960be334d5b520ea452\ncommit-date: 2026-07-14\nhost: x86_64-pc-windows-msvc\nrelease: 1.97.1\nLLVM version: 22.1.6",
+    "cargo_version": "cargo 1.97.1 (c980f4866 2026-06-30)",
+    "cargo_dependency_tree": "wayfinder-extension-containment-prototype v0.0.0 (E:\\Projects\\komorebi-prototype-extension-containment\\docs\\wayfinder\\prototypes\\extension-host-containment\\native)\nanyhow v1.0.104\nmlua v0.11.6\nbstr v1.13.1\nmemchr v2.8.3\nserde_core v1.0.229\neither v1.18.0\nerased-serde v0.4.10\nserde_core v1.0.229\ntypeid v1.0.3\nlibc v0.2.189\nmlua-sys v0.10.0\nlibc v0.2.189\nnum-traits v0.2.19\nparking_lot v0.12.5\nlock_api v0.4.14\nscopeguard v1.2.0\nparking_lot_core v0.9.12\ncfg-if v1.0.4\nsmallvec v1.15.2\nwindows-link v0.2.1\nrustc-hash v2.1.3\nrustversion v1.0.23 (proc-macro)\nserde v1.0.229\nserde_core v1.0.229\nserde_derive v1.0.229 (proc-macro)\nproc-macro2 v1.0.107\nunicode-ident v1.0.24\nquote v1.0.47\nproc-macro2 v1.0.107 (*)\nsyn v3.0.4\nproc-macro2 v1.0.107 (*)\nquote v1.0.47 (*)\nunicode-ident v1.0.24\nserde-value v0.7.0\nordered-float v2.10.1\nnum-traits v0.2.19\nserde v1.0.229 (*)\nserde v1.0.229 (*)\nserde_json v1.0.151\nitoa v1.0.18\nmemchr v2.8.3\nserde_core v1.0.229\nzmij v1.0.23\nsha2 v0.10.9\ncfg-if v1.0.4\ncpufeatures v0.2.17\ndigest v0.10.7\nblock-buffer v0.10.4\ngeneric-array v0.14.7\ntypenum v1.20.1\ncrypto-common v0.1.7\ngeneric-array v0.14.7 (*)\ntypenum v1.20.1\nuuid v1.26.0\ngetrandom v0.4.3\ncfg-if v1.0.4\nserde_core v1.0.229\nwindows-sys v0.61.2\nwindows-link v0.2.1"
+  },
+  "invocation": {
+    "working_directory": {
+      "utf8": "E:\\Projects\\komorebi-prototype-extension-containment\\docs\\wayfinder\\prototypes\\extension-host-containment",
+      "utf16_code_units_hex": "0045003a005c00500072006f006a0065006300740073005c006b006f006d006f0072006500620069002d00700072006f0074006f0074007900700065002d0065007800740065006e00730069006f006e002d0063006f006e007400610069006e006d0065006e0074005c0064006f00630073005c00770061007900660069006e006400650072005c00700072006f0074006f00740079007000650073005c0065007800740065006e00730069006f006e002d0068006f00730074002d0063006f006e007400610069006e006d0065006e0074"
+    },
+    "command": ".\\native\\run.ps1",
+    "rustflags": "-C target-feature=+crt-static"
+  },
+  "binaries": [
+    {
+      "role": "host",
+      "path": {
+        "utf8": "E:\\Projects\\komorebi-prototype-extension-containment\\docs\\wayfinder\\prototypes\\extension-host-containment\\native\\target\\release\\containment-host.exe",
+        "utf16_code_units_hex": "0045003a005c00500072006f006a0065006300740073005c006b006f006d006f0072006500620069002d00700072006f0074006f0074007900700065002d0065007800740065006e00730069006f006e002d0063006f006e007400610069006e006d0065006e0074005c0064006f00630073005c00770061007900660069006e006400650072005c00700072006f0074006f00740079007000650073005c0065007800740065006e00730069006f006e002d0068006f00730074002d0063006f006e007400610069006e006d0065006e0074005c006e00610074006900760065005c007400610072006700650074005c00720065006c0065006100730065005c0063006f006e007400610069006e006d0065006e0074002d0068006f00730074002e006500780065"
+      },
+      "bytes": 2026496,
+      "sha256": "5c43f957a0f3e27488d7afb2b6264f6a38dfae221cfa99fcc0f56998512d943d",
+      "pe_imports": [
+        "advapi32.dll",
+        "api-ms-win-core-synch-l1-2-0.dll",
+        "api-ms-win-security-base-l1-2-2.dll",
+        "bcryptprimitives.dll",
+        "combase.dll",
+        "kernel32.dll",
+        "ntdll.dll",
+        "userenv.dll",
+        "ws2_32.dll"
+      ]
+    },
+    {
+      "role": "rust_child",
+      "path": {
+        "utf8": "E:\\Projects\\komorebi-prototype-extension-containment\\docs\\wayfinder\\prototypes\\extension-host-containment\\native\\target\\release\\containment-rust-child.exe",
+        "utf16_code_units_hex": "0045003a005c00500072006f006a0065006300740073005c006b006f006d006f0072006500620069002d00700072006f0074006f0074007900700065002d0065007800740065006e00730069006f006e002d0063006f006e007400610069006e006d0065006e0074005c0064006f00630073005c00770061007900660069006e006400650072005c00700072006f0074006f00740079007000650073005c0065007800740065006e00730069006f006e002d0068006f00730074002d0063006f006e007400610069006e006d0065006e0074005c006e00610074006900760065005c007400610072006700650074005c00720065006c0065006100730065005c0063006f006e007400610069006e006d0065006e0074002d0072007500730074002d006300680069006c0064002e006500780065"
+      },
+      "bytes": 1460224,
+      "sha256": "1adbb8f55643e389cf8a4516001c3a915aed1802621e8bd26b26a58e136e5e24",
+      "pe_imports": [
+        "advapi32.dll",
+        "api-ms-win-core-synch-l1-2-0.dll",
+        "kernel32.dll",
+        "ntdll.dll",
+        "ws2_32.dll"
+      ]
+    },
+    {
+      "role": "lua_jit_child",
+      "path": {
+        "utf8": "E:\\Projects\\komorebi-prototype-extension-containment\\docs\\wayfinder\\prototypes\\extension-host-containment\\native\\target\\release\\containment-lua-child.exe",
+        "utf16_code_units_hex": "0045003a005c00500072006f006a0065006300740073005c006b006f006d006f0072006500620069002d00700072006f0074006f0074007900700065002d0065007800740065006e00730069006f006e002d0063006f006e007400610069006e006d0065006e0074005c0064006f00630073005c00770061007900660069006e006400650072005c00700072006f0074006f00740079007000650073005c0065007800740065006e00730069006f006e002d0068006f00730074002d0063006f006e007400610069006e006d0065006e0074005c006e00610074006900760065005c007400610072006700650074005c00720065006c0065006100730065005c0063006f006e007400610069006e006d0065006e0074002d006c00750061002d006300680069006c0064002e006500780065"
+      },
+      "bytes": 1624064,
+      "sha256": "e4a9adc34c011478d9cc32ca89b41ca1bfd0ead3a175f4c7153e5585c0dbfc17",
+      "pe_imports": [
+        "advapi32.dll",
+        "api-ms-win-core-synch-l1-2-0.dll",
+        "kernel32.dll",
+        "ntdll.dll",
+        "ws2_32.dll"
+      ]
+    },
+    {
+      "role": "fault_child",
+      "path": {
+        "utf8": "E:\\Projects\\komorebi-prototype-extension-containment\\docs\\wayfinder\\prototypes\\extension-host-containment\\native\\target\\release\\containment-fault-child.exe",
+        "utf16_code_units_hex": "0045003a005c00500072006f006a0065006300740073005c006b006f006d006f0072006500620069002d00700072006f0074006f0074007900700065002d0065007800740065006e00730069006f006e002d0063006f006e007400610069006e006d0065006e0074005c0064006f00630073005c00770061007900660069006e006400650072005c00700072006f0074006f00740079007000650073005c0065007800740065006e00730069006f006e002d0068006f00730074002d0063006f006e007400610069006e006d0065006e0074005c006e00610074006900760065005c007400610072006700650074005c00720065006c0065006100730065005c0063006f006e007400610069006e006d0065006e0074002d006600610075006c0074002d006300680069006c0064002e006500780065"
+      },
+      "bytes": 1488384,
+      "sha256": "7a54adb239fd0c3a2680a7307d1ac4cf83519524f472e8222a47762af341a905",
+      "pe_imports": [
+        "advapi32.dll",
+        "api-ms-win-core-synch-l1-2-0.dll",
+        "kernel32.dll",
+        "ntdll.dll"
+      ]
+    }
+  ],
   "boundary": {
-    "security_identity": "unique LPAC AppContainer SID with lpacAppExperience only; no registry, COM, clipboard, or network capability",
-    "resource_lifetime": "no-breakaway Job Object: active-process=1, kill-on-close, 256 MiB, 20% CPU, UI restrictions",
-    "ipc": "host-owned unqualified named pipe; protected SID DACL; remote clients rejected; PID and nonce authenticated",
+    "security_identity": "LPAC AppContainer identity with only configured compatibility capabilities",
+    "compatibility_capabilities": [
+      "lpacAppExperience"
+    ],
+    "all_application_packages_policy": 1,
+    "process_mitigation_policy": [
+      268435456,
+      0
+    ],
+    "child_process_policy": 1,
+    "resource_lifetime": "configured no-breakaway Job Object limits",
+    "job_active_process_limit": 1,
+    "job_memory_limit_bytes": 268435456,
+    "job_cpu_hard_cap_basis_points": 2000,
+    "ipc": "host-owned named pipe with exact principal DACL and kernel peer verification",
+    "pipe_flags": 8,
+    "pipe_buffer_bytes": 65536,
+    "maximum_frame_bytes": 65536,
     "dll_search": "application directory, System32, and explicit user directories only",
-    "experimental_api_used": false
+    "experimental_api_used": false,
+    "inherit_handles": false,
+    "create_no_window": true
   },
   "runs": [
     {
       "runtime": "rust",
-      "profile_name": "komorebi.wayfinder.rust.2ae4be5c5f044bf3b6088122cb7386ef",
-      "expected_pid": 41000,
-      "pipe_reported_pid": 41000,
-      "startup_ms": 91.674,
-      "private_commit_bytes": 868352,
-      "in_expected_job": true,
+      "profile_name": "komorebi.wayfinder.rust.965e58ee9e5a4fa6a28667f2188a4ced",
+      "expected_pid": 37176,
+      "pipe_reported_pid": 37176,
+      "pipe_acl_sddl": "D:P(A;;GA;;;SY)(A;;GA;;;S-1-5-21-2525241315-2396688162-3854125996-1001)(A;;GRGW;;;S-1-15-2-2710887933-2421415117-212209690-2899653767-3731793243-62814272-752905280)",
+      "foreign_profile_sid": "S-1-15-2-2526794385-3059672227-846391279-715462920-1715651788-4192402392-3693376714",
+      "reparse_link_created": "passed",
+      "startup_ms": 1138.2311,
+      "private_commit_bytes": 880640,
+      "in_expected_job": "passed",
       "facts": {
-        "pid": 41000,
+        "pid": 37176,
         "app_container": true,
         "less_privileged_app_container": true,
-        "package_sid": "S-1-15-2-206973733-2537555035-2128256876-3993036665-3599773564-1698216953-3427474142",
+        "package_sid": "S-1-15-2-2710887933-2421415117-212209690-2899653767-3731793243-62814272-752905280",
         "dll_search_hardened": true,
         "environment_keys": [
-          "APPDATA",
-          "COMMONPROGRAMFILES",
-          "COMSPEC",
-          "HOMEDRIVE",
-          "HOMEPATH",
-          "KOMOREBI_PROTOTYPE_DENIED_FILE",
-          "KOMOREBI_PROTOTYPE_ERROR_FILE",
-          "KOMOREBI_PROTOTYPE_NONCE",
-          "KOMOREBI_PROTOTYPE_PACKAGE_FILE",
-          "KOMOREBI_PROTOTYPE_PARENT_PID",
-          "KOMOREBI_PROTOTYPE_PIPE",
-          "LOCALAPPDATA",
-          "NUMBER_OF_PROCESSORS",
-          "OS",
-          "PATH",
-          "PATHEXT",
-          "PROCESSOR_ARCHITECTURE",
-          "PROGRAMDATA",
-          "PROGRAMFILES",
-          "PROGRAMFILES(X86)",
-          "SYSTEMROOT",
-          "TEMP",
-          "TMP",
-          "USERDOMAIN",
-          "USERNAME",
-          "USERPROFILE",
-          "WINDIR"
+          {
+            "utf8": "APPDATA",
+            "utf16_code_units_hex": "0041005000500044004100540041"
+          },
+          {
+            "utf8": "COMMONPROGRAMFILES",
+            "utf16_code_units_hex": "0043004f004d004d004f004e00500052004f004700520041004d00460049004c00450053"
+          },
+          {
+            "utf8": "COMSPEC",
+            "utf16_code_units_hex": "0043004f004d0053005000450043"
+          },
+          {
+            "utf8": "HOMEDRIVE",
+            "utf16_code_units_hex": "0048004f004d004500440052004900560045"
+          },
+          {
+            "utf8": "HOMEPATH",
+            "utf16_code_units_hex": "0048004f004d00450050004100540048"
+          },
+          {
+            "utf8": "KOMOREBI_PROTOTYPE_ALLOCATION_CHUNK_BYTES",
+            "utf16_code_units_hex": "004b004f004d004f0052004500420049005f00500052004f0054004f0054005900500045005f0041004c004c004f0043004100540049004f004e005f004300480055004e004b005f00420059005400450053"
+          },
+          {
+            "utf8": "KOMOREBI_PROTOTYPE_DENIED_FILE",
+            "utf16_code_units_hex": "004b004f004d004f0052004500420049005f00500052004f0054004f0054005900500045005f00440045004e004900450044005f00460049004c0045"
+          },
+          {
+            "utf8": "KOMOREBI_PROTOTYPE_DENIED_VERBATIM_FILE",
+            "utf16_code_units_hex": "004b004f004d004f0052004500420049005f00500052004f0054004f0054005900500045005f00440045004e004900450044005f0056004500520042004100540049004d005f00460049004c0045"
+          },
+          {
+            "utf8": "KOMOREBI_PROTOTYPE_ECHO_SAMPLES",
+            "utf16_code_units_hex": "004b004f004d004f0052004500420049005f00500052004f0054004f0054005900500045005f004500430048004f005f00530041004d0050004c00450053"
+          },
+          {
+            "utf8": "KOMOREBI_PROTOTYPE_ERROR_FILE",
+            "utf16_code_units_hex": "004b004f004d004f0052004500420049005f00500052004f0054004f0054005900500045005f004500520052004f0052005f00460049004c0045"
+          },
+          {
+            "utf8": "KOMOREBI_PROTOTYPE_FAULT_SCENARIO",
+            "utf16_code_units_hex": "004b004f004d004f0052004500420049005f00500052004f0054004f0054005900500045005f004600410055004c0054005f005300430045004e004100520049004f"
+          },
+          {
+            "utf8": "KOMOREBI_PROTOTYPE_FOREIGN_FILE",
+            "utf16_code_units_hex": "004b004f004d004f0052004500420049005f00500052004f0054004f0054005900500045005f0046004f0052004500490047004e005f00460049004c0045"
+          },
+          {
+            "utf8": "KOMOREBI_PROTOTYPE_FRAME_LIMIT",
+            "utf16_code_units_hex": "004b004f004d004f0052004500420049005f00500052004f0054004f0054005900500045005f004600520041004d0045005f004c0049004d00490054"
+          },
+          {
+            "utf8": "KOMOREBI_PROTOTYPE_NONCE",
+            "utf16_code_units_hex": "004b004f004d004f0052004500420049005f00500052004f0054004f0054005900500045005f004e004f004e00430045"
+          },
+          {
+            "utf8": "KOMOREBI_PROTOTYPE_PACKAGE_FILE",
+            "utf16_code_units_hex": "004b004f004d004f0052004500420049005f00500052004f0054004f0054005900500045005f005000410043004b004100470045005f00460049004c0045"
+          },
+          {
+            "utf8": "KOMOREBI_PROTOTYPE_PARENT_PID",
+            "utf16_code_units_hex": "004b004f004d004f0052004500420049005f00500052004f0054004f0054005900500045005f0050004100520045004e0054005f005000490044"
+          },
+          {
+            "utf8": "KOMOREBI_PROTOTYPE_PIPE",
+            "utf16_code_units_hex": "004b004f004d004f0052004500420049005f00500052004f0054004f0054005900500045005f0050004900500045"
+          },
+          {
+            "utf8": "KOMOREBI_PROTOTYPE_PIPE_TIMEOUT_MS",
+            "utf16_code_units_hex": "004b004f004d004f0052004500420049005f00500052004f0054004f0054005900500045005f0050004900500045005f00540049004d0045004f00550054005f004d0053"
+          },
+          {
+            "utf8": "KOMOREBI_PROTOTYPE_REPARSE_FILE",
+            "utf16_code_units_hex": "004b004f004d004f0052004500420049005f00500052004f0054004f0054005900500045005f0052004500500041005200530045005f00460049004c0045"
+          },
+          {
+            "utf8": "KOMOREBI_PROTOTYPE_TRACE",
+            "utf16_code_units_hex": "004b004f004d004f0052004500420049005f00500052004f0054004f0054005900500045005f00540052004100430045"
+          },
+          {
+            "utf8": "LOCALAPPDATA",
+            "utf16_code_units_hex": "004c004f00430041004c0041005000500044004100540041"
+          },
+          {
+            "utf8": "NUMBER_OF_PROCESSORS",
+            "utf16_code_units_hex": "004e0055004d004200450052005f004f0046005f00500052004f0043004500530053004f00520053"
+          },
+          {
+            "utf8": "OS",
+            "utf16_code_units_hex": "004f0053"
+          },
+          {
+            "utf8": "PATH",
+            "utf16_code_units_hex": "0050004100540048"
+          },
+          {
+            "utf8": "PATHEXT",
+            "utf16_code_units_hex": "0050004100540048004500580054"
+          },
+          {
+            "utf8": "PROCESSOR_ARCHITECTURE",
+            "utf16_code_units_hex": "00500052004f0043004500530053004f0052005f004100520043004800490054004500430054005500520045"
+          },
+          {
+            "utf8": "PROGRAMDATA",
+            "utf16_code_units_hex": "00500052004f004700520041004d0044004100540041"
+          },
+          {
+            "utf8": "PROGRAMFILES",
+            "utf16_code_units_hex": "00500052004f004700520041004d00460049004c00450053"
+          },
+          {
+            "utf8": "PROGRAMFILES(X86)",
+            "utf16_code_units_hex": "00500052004f004700520041004d00460049004c0045005300280058003800360029"
+          },
+          {
+            "utf8": "SYSTEMROOT",
+            "utf16_code_units_hex": "00530059005300540045004d0052004f004f0054"
+          },
+          {
+            "utf8": "TEMP",
+            "utf16_code_units_hex": "00540045004d0050"
+          },
+          {
+            "utf8": "TMP",
+            "utf16_code_units_hex": "0054004d0050"
+          },
+          {
+            "utf8": "USERDOMAIN",
+            "utf16_code_units_hex": "00550053004500520044004f004d00410049004e"
+          },
+          {
+            "utf8": "USERNAME",
+            "utf16_code_units_hex": "0055005300450052004e0041004d0045"
+          },
+          {
+            "utf8": "USERPROFILE",
+            "utf16_code_units_hex": "005500530045005200500052004f00460049004c0045"
+          },
+          {
+            "utf8": "WINDIR",
+            "utf16_code_units_hex": "00570049004e004400490052"
+          }
         ]
       },
       "probes": [
@@ -68,6 +292,14 @@
           "observed": {
             "result": "denied",
             "os_error": 1114
+          }
+        },
+        {
+          "name": "cross_extension_private_file",
+          "expected": "denied",
+          "observed": {
+            "result": "denied",
+            "os_error": 5
           }
         },
         {
@@ -103,6 +335,29 @@
           }
         },
         {
+          "name": "extended_device_path",
+          "expected": "denied",
+          "observed": {
+            "result": "unavailable",
+            "reason": "The system cannot find the path specified. (os error 3)"
+          }
+        },
+        {
+          "name": "extended_dos_private_file",
+          "expected": "denied",
+          "observed": {
+            "result": "denied",
+            "os_error": 5
+          }
+        },
+        {
+          "name": "extended_dos_public_file",
+          "expected": "allowed",
+          "observed": {
+            "result": "allowed"
+          }
+        },
+        {
           "name": "host_private_file",
           "expected": "denied",
           "observed": {
@@ -111,10 +366,34 @@
           }
         },
         {
-          "name": "package_read",
+          "name": "other_window_message",
+          "expected": "denied",
+          "observed": {
+            "result": "denied",
+            "os_error": 8
+          }
+        },
+        {
+          "name": "package_wtf16_read",
           "expected": "allowed",
           "observed": {
             "result": "allowed"
+          }
+        },
+        {
+          "name": "parent_process_duplicate_handle",
+          "expected": "denied",
+          "observed": {
+            "result": "denied",
+            "os_error": 5
+          }
+        },
+        {
+          "name": "parent_process_injection_rights",
+          "expected": "denied",
+          "observed": {
+            "result": "denied",
+            "os_error": 5
           }
         },
         {
@@ -127,6 +406,14 @@
         },
         {
           "name": "registry_hkcu",
+          "expected": "denied",
+          "observed": {
+            "result": "denied",
+            "os_error": 5
+          }
+        },
+        {
+          "name": "reparse_escape",
           "expected": "denied",
           "observed": {
             "result": "denied",
@@ -159,123 +446,245 @@
         }
       ],
       "echo_rtt_us": [
-        69.7,
-        21.1,
-        14.6,
-        13.2,
-        21.1,
-        23.5,
-        28.799999999999997,
+        108.9,
+        40.2,
+        32.3,
         34.9,
-        29.7,
-        23.1,
-        15.1,
-        16.6,
-        20.4,
-        15.7,
-        13.8,
-        13.8,
-        22.799999999999997,
-        19.0,
-        15.7,
-        16.5,
-        22.2,
-        17.5,
-        19.4,
-        19.3,
-        19.6,
-        15.6,
-        13.1,
-        12.8,
-        12.7,
-        12.6,
-        12.6,
-        13.0
+        32.5,
+        32.7,
+        29.0,
+        30.0,
+        25.5,
+        27.4,
+        27.0,
+        21.6,
+        31.5,
+        30.0,
+        34.5,
+        39.400000000000006,
+        28.9,
+        27.4,
+        38.7,
+        32.5,
+        25.6,
+        28.4,
+        31.6,
+        31.0,
+        23.7,
+        30.4,
+        27.0,
+        27.5,
+        27.9,
+        31.8,
+        28.3,
+        28.5
       ],
       "broker_service_us": [
-        1.3,
-        6.7,
-        3.1,
-        2.3,
-        2.2,
-        2.5,
-        2.5,
-        6.2,
-        7.8,
         5.0,
-        2.9000000000000004,
-        3.5,
-        2.5,
+        6.3,
+        6.6000000000000005,
+        9.9,
+        5.800000000000001,
+        6.3,
+        5.800000000000001,
+        8.9,
+        6.3999999999999995,
+        5.5,
+        4.6,
+        4.199999999999999,
+        5.1000000000000005,
+        3.7,
+        3.7,
+        6.8,
         5.2,
-        2.7,
-        2.4,
-        2.5,
+        4.0,
+        3.3000000000000003,
+        6.3999999999999995,
+        5.9,
+        4.1,
+        5.4,
+        5.0,
+        7.1,
+        2.8,
+        6.0,
+        4.1,
+        3.3000000000000003,
+        4.4,
+        6.3999999999999995,
+        5.6,
+        6.1,
         4.7,
-        2.9000000000000004,
-        2.5,
-        2.6,
-        4.5,
-        2.5,
-        2.4,
-        2.3,
-        4.8999999999999995,
-        3.0,
-        2.2,
-        2.2,
-        2.2,
-        2.3,
-        2.2,
-        2.2,
-        6.9,
-        3.8,
-        18550.600000000002
+        5.5,
+        62411.8,
+        0.09999999999999999
       ],
-      "storage_cas_roundtrip": true,
+      "storage_cas_roundtrip": "passed",
       "brokered_http_status": 200,
-      "exit_observed": true
+      "stale_generation_rejected": "passed",
+      "exit_observed": "passed"
     },
     {
       "runtime": "lua_jit",
-      "profile_name": "komorebi.wayfinder.lua.4ff50edf0cd24240b930b04795e9c3e4",
-      "expected_pid": 4348,
-      "pipe_reported_pid": 4348,
-      "startup_ms": 785.7009,
-      "private_commit_bytes": 954368,
-      "in_expected_job": true,
+      "profile_name": "komorebi.wayfinder.lua.f39670a0d78b43fb856ef79230e4b29d",
+      "expected_pid": 14712,
+      "pipe_reported_pid": 14712,
+      "pipe_acl_sddl": "D:P(A;;GA;;;SY)(A;;GA;;;S-1-5-21-2525241315-2396688162-3854125996-1001)(A;;GRGW;;;S-1-15-2-3745923982-4173428161-3085607670-44278844-901371731-246412646-384620540)",
+      "foreign_profile_sid": "S-1-15-2-67206899-2610211034-3988045212-4211405663-3044762806-2858283097-1854122817",
+      "reparse_link_created": "passed",
+      "startup_ms": 1294.988,
+      "private_commit_bytes": 962560,
+      "in_expected_job": "passed",
       "facts": {
-        "pid": 4348,
+        "pid": 14712,
         "app_container": true,
         "less_privileged_app_container": true,
-        "package_sid": "S-1-15-2-3838498666-3240341944-1750750555-2770603160-3112955904-3828864087-3479059223",
+        "package_sid": "S-1-15-2-3745923982-4173428161-3085607670-44278844-901371731-246412646-384620540",
         "dll_search_hardened": true,
         "environment_keys": [
-          "APPDATA",
-          "COMMONPROGRAMFILES",
-          "COMSPEC",
-          "HOMEDRIVE",
-          "HOMEPATH",
-          "KOMOREBI_PROTOTYPE_DENIED_FILE",
-          "KOMOREBI_PROTOTYPE_ERROR_FILE",
-          "KOMOREBI_PROTOTYPE_NONCE",
-          "KOMOREBI_PROTOTYPE_PACKAGE_FILE",
-          "KOMOREBI_PROTOTYPE_PARENT_PID",
-          "KOMOREBI_PROTOTYPE_PIPE",
-          "LOCALAPPDATA",
-          "NUMBER_OF_PROCESSORS",
-          "OS",
-          "PATH",
-          "PATHEXT",
-          "PROCESSOR_ARCHITECTURE",
-          "PROGRAMDATA",
-          "PROGRAMFILES",
-          "PROGRAMFILES(X86)",
-          "SYSTEMROOT",
-          "TEMP",
-          "TMP",
-          "USERDOMAIN",
-          "USERNAME",
-          "USERPROFILE",
-          "WINDIR"
+          {
+            "utf8": "APPDATA",
+            "utf16_code_units_hex": "0041005000500044004100540041"
+          },
+          {
+            "utf8": "COMMONPROGRAMFILES",
+            "utf16_code_units_hex": "0043004f004d004d004f004e00500052004f004700520041004d00460049004c00450053"
+          },
+          {
+            "utf8": "COMSPEC",
+            "utf16_code_units_hex": "0043004f004d0053005000450043"
+          },
+          {
+            "utf8": "HOMEDRIVE",
+            "utf16_code_units_hex": "0048004f004d004500440052004900560045"
+          },
+          {
+            "utf8": "HOMEPATH",
+            "utf16_code_units_hex": "0048004f004d00450050004100540048"
+          },
+          {
+            "utf8": "KOMOREBI_PROTOTYPE_ALLOCATION_CHUNK_BYTES",
+            "utf16_code_units_hex": "004b004f004d004f0052004500420049005f00500052004f0054004f0054005900500045005f0041004c004c004f0043004100540049004f004e005f004300480055004e004b005f00420059005400450053"
+          },
+          {
+            "utf8": "KOMOREBI_PROTOTYPE_DENIED_FILE",
+            "utf16_code_units_hex": "004b004f004d004f0052004500420049005f00500052004f0054004f0054005900500045005f00440045004e004900450044005f00460049004c0045"
+          },
+          {
+            "utf8": "KOMOREBI_PROTOTYPE_DENIED_VERBATIM_FILE",
+            "utf16_code_units_hex": "004b004f004d004f0052004500420049005f00500052004f0054004f0054005900500045005f00440045004e004900450044005f0056004500520042004100540049004d005f00460049004c0045"
+          },
+          {
+            "utf8": "KOMOREBI_PROTOTYPE_ECHO_SAMPLES",
+            "utf16_code_units_hex": "004b004f004d004f0052004500420049005f00500052004f0054004f0054005900500045005f004500430048004f005f00530041004d0050004c00450053"
+          },
+          {
+            "utf8": "KOMOREBI_PROTOTYPE_ERROR_FILE",
+            "utf16_code_units_hex": "004b004f004d004f0052004500420049005f00500052004f0054004f0054005900500045005f004500520052004f0052005f00460049004c0045"
+          },
+          {
+            "utf8": "KOMOREBI_PROTOTYPE_FAULT_SCENARIO",
+            "utf16_code_units_hex": "004b004f004d004f0052004500420049005f00500052004f0054004f0054005900500045005f004600410055004c0054005f005300430045004e004100520049004f"
+          },
+          {
+            "utf8": "KOMOREBI_PROTOTYPE_FOREIGN_FILE",
+            "utf16_code_units_hex": "004b004f004d004f0052004500420049005f00500052004f0054004f0054005900500045005f0046004f0052004500490047004e005f00460049004c0045"
+          },
+          {
+            "utf8": "KOMOREBI_PROTOTYPE_FRAME_LIMIT",
+            "utf16_code_units_hex": "004b004f004d004f0052004500420049005f00500052004f0054004f0054005900500045005f004600520041004d0045005f004c0049004d00490054"
+          },
+          {
+            "utf8": "KOMOREBI_PROTOTYPE_NONCE",
+            "utf16_code_units_hex": "004b004f004d004f0052004500420049005f00500052004f0054004f0054005900500045005f004e004f004e00430045"
+          },
+          {
+            "utf8": "KOMOREBI_PROTOTYPE_PACKAGE_FILE",
+            "utf16_code_units_hex": "004b004f004d004f0052004500420049005f00500052004f0054004f0054005900500045005f005000410043004b004100470045005f00460049004c0045"
+          },
+          {
+            "utf8": "KOMOREBI_PROTOTYPE_PARENT_PID",
+            "utf16_code_units_hex": "004b004f004d004f0052004500420049005f00500052004f0054004f0054005900500045005f0050004100520045004e0054005f005000490044"
+          },
+          {
+            "utf8": "KOMOREBI_PROTOTYPE_PIPE",
+            "utf16_code_units_hex": "004b004f004d004f0052004500420049005f00500052004f0054004f0054005900500045005f0050004900500045"
+          },
+          {
+            "utf8": "KOMOREBI_PROTOTYPE_PIPE_TIMEOUT_MS",
+            "utf16_code_units_hex": "004b004f004d004f0052004500420049005f00500052004f0054004f0054005900500045005f0050004900500045005f00540049004d0045004f00550054005f004d0053"
+          },
+          {
+            "utf8": "KOMOREBI_PROTOTYPE_REPARSE_FILE",
+            "utf16_code_units_hex": "004b004f004d004f0052004500420049005f00500052004f0054004f0054005900500045005f0052004500500041005200530045005f00460049004c0045"
+          },
+          {
+            "utf8": "KOMOREBI_PROTOTYPE_TRACE",
+            "utf16_code_units_hex": "004b004f004d004f0052004500420049005f00500052004f0054004f0054005900500045005f00540052004100430045"
+          },
+          {
+            "utf8": "LOCALAPPDATA",
+            "utf16_code_units_hex": "004c004f00430041004c0041005000500044004100540041"
+          },
+          {
+            "utf8": "NUMBER_OF_PROCESSORS",
+            "utf16_code_units_hex": "004e0055004d004200450052005f004f0046005f00500052004f0043004500530053004f00520053"
+          },
+          {
+            "utf8": "OS",
+            "utf16_code_units_hex": "004f0053"
+          },
+          {
+            "utf8": "PATH",
+            "utf16_code_units_hex": "0050004100540048"
+          },
+          {
+            "utf8": "PATHEXT",
+            "utf16_code_units_hex": "0050004100540048004500580054"
+          },
+          {
+            "utf8": "PROCESSOR_ARCHITECTURE",
+            "utf16_code_units_hex": "00500052004f0043004500530053004f0052005f004100520043004800490054004500430054005500520045"
+          },
+          {
+            "utf8": "PROGRAMDATA",
+            "utf16_code_units_hex": "00500052004f004700520041004d0044004100540041"
+          },
+          {
+            "utf8": "PROGRAMFILES",
+            "utf16_code_units_hex": "00500052004f004700520041004d00460049004c00450053"
+          },
+          {
+            "utf8": "PROGRAMFILES(X86)",
+            "utf16_code_units_hex": "00500052004f004700520041004d00460049004c0045005300280058003800360029"
+          },
+          {
+            "utf8": "SYSTEMROOT",
+            "utf16_code_units_hex": "00530059005300540045004d0052004f004f0054"
+          },
+          {
+            "utf8": "TEMP",
+            "utf16_code_units_hex": "00540045004d0050"
+          },
+          {
+            "utf8": "TMP",
+            "utf16_code_units_hex": "0054004d0050"
+          },
+          {
+            "utf8": "USERDOMAIN",
+            "utf16_code_units_hex": "00550053004500520044004f004d00410049004e"
+          },
+          {
+            "utf8": "USERNAME",
+            "utf16_code_units_hex": "0055005300450052004e0041004d0045"
+          },
+          {
+            "utf8": "USERPROFILE",
+            "utf16_code_units_hex": "005500530045005200500052004f00460049004c0045"
+          },
+          {
+            "utf8": "WINDIR",
+            "utf16_code_units_hex": "00570049004e004400490052"
+          }
         ]
       },
       "probes": [
@@ -293,6 +702,14 @@
           "observed": {
             "result": "denied",
             "os_error": 1114
+          }
+        },
+        {
+          "name": "cross_extension_private_file",
+          "expected": "denied",
+          "observed": {
+            "result": "denied",
+            "os_error": 5
           }
         },
         {
@@ -328,6 +745,29 @@
           }
         },
         {
+          "name": "extended_device_path",
+          "expected": "denied",
+          "observed": {
+            "result": "unavailable",
+            "reason": "The system cannot find the path specified. (os error 3)"
+          }
+        },
+        {
+          "name": "extended_dos_private_file",
+          "expected": "denied",
+          "observed": {
+            "result": "denied",
+            "os_error": 5
+          }
+        },
+        {
+          "name": "extended_dos_public_file",
+          "expected": "allowed",
+          "observed": {
+            "result": "allowed"
+          }
+        },
+        {
           "name": "host_private_file",
           "expected": "denied",
           "observed": {
@@ -336,10 +776,34 @@
           }
         },
         {
-          "name": "package_read",
+          "name": "other_window_message",
+          "expected": "denied",
+          "observed": {
+            "result": "denied",
+            "os_error": 8
+          }
+        },
+        {
+          "name": "package_wtf16_read",
           "expected": "allowed",
           "observed": {
             "result": "allowed"
+          }
+        },
+        {
+          "name": "parent_process_duplicate_handle",
+          "expected": "denied",
+          "observed": {
+            "result": "denied",
+            "os_error": 5
+          }
+        },
+        {
+          "name": "parent_process_injection_rights",
+          "expected": "denied",
+          "observed": {
+            "result": "denied",
+            "os_error": 5
           }
         },
         {
@@ -352,6 +816,14 @@
         },
         {
           "name": "registry_hkcu",
+          "expected": "denied",
+          "observed": {
+            "result": "denied",
+            "os_error": 5
+          }
+        },
+        {
+          "name": "reparse_escape",
           "expected": "denied",
           "observed": {
             "result": "denied",
@@ -384,118 +856,185 @@
         }
       ],
       "echo_rtt_us": [
-        68.2,
-        38.6,
-        40.2,
-        28.7,
-        23.1,
-        30.2,
-        16.2,
-        17.099999999999998,
-        24.6,
-        29.3,
-        33.2,
-        27.6,
-        20.299999999999997,
-        28.799999999999997,
-        20.6,
-        19.8,
-        22.9,
-        37.1,
-        22.1,
-        13.5,
-        28.7,
-        30.800000000000004,
-        27.2,
-        29.7,
-        27.0,
+        63.4,
         22.5,
-        27.9,
-        25.1,
-        30.4,
-        34.0,
-        44.5,
-        25.9
+        16.0,
+        15.1,
+        14.6,
+        14.8,
+        14.6,
+        14.6,
+        14.6,
+        14.6,
+        14.8,
+        14.6,
+        14.5,
+        14.5,
+        14.5,
+        14.6,
+        14.5,
+        19.1,
+        18.6,
+        15.3,
+        14.9,
+        14.8,
+        14.4,
+        14.3,
+        14.2,
+        14.5,
+        14.3,
+        14.2,
+        14.2,
+        14.2,
+        14.2,
+        14.1
       ],
       "broker_service_us": [
-        0.19999999999999998,
-        5.800000000000001,
-        5.800000000000001,
-        7.6,
-        4.5,
-        2.9000000000000004,
-        6.0,
-        2.5,
-        2.6,
-        5.4,
-        6.8,
-        6.1,
-        4.6,
+        0.09999999999999999,
+        5.3,
         3.1,
-        6.8,
-        4.199999999999999,
-        5.1000000000000005,
-        4.7,
-        7.5,
-        3.8,
-        2.6,
-        5.0,
-        3.5999999999999996,
-        6.2,
-        5.0,
-        5.5,
-        2.7,
-        6.1,
-        3.1999999999999997,
-        3.4,
-        5.800000000000001,
-        6.3,
-        3.9,
-        6.3999999999999995,
-        5.800000000000001,
-        12955.9
+        2.4,
+        2.3,
+        2.3,
+        2.2,
+        2.0999999999999996,
+        2.3,
+        2.3,
+        2.2,
+        2.2,
+        2.2,
+        2.2,
+        2.0999999999999996,
+        2.2,
+        2.0999999999999996,
+        2.2,
+        2.0,
+        1.7999999999999998,
+        2.2,
+        2.0999999999999996,
+        2.0999999999999996,
+        2.2,
+        2.0999999999999996,
+        2.2,
+        2.0999999999999996,
+        2.0999999999999996,
+        2.0999999999999996,
+        2.0999999999999996,
+        2.0999999999999996,
+        2.3,
+        2.2,
+        3.0,
+        2.8,
+        21569.3,
+        0.19999999999999998
       ],
-      "storage_cas_roundtrip": true,
+      "storage_cas_roundtrip": "passed",
       "brokered_http_status": 200,
-      "exit_observed": true
+      "stale_generation_rejected": "passed",
+      "exit_observed": "passed"
+    }
+  ],
+  "faults": [
+    {
+      "scenario": "lua_jit_native_crash",
+      "ipc_observation": "disconnected",
+      "termination_mode": "natural",
+      "process_tree_terminated": "passed",
+      "trigger_to_observation_ms": 1458.7653999999998,
+      "termination_to_exit_ms": null,
+      "exit_code": 3221226505
+    },
+    {
+      "scenario": "cpu_loop",
+      "ipc_observation": "deadline",
+      "termination_mode": "forced_job",
+      "process_tree_terminated": "passed",
+      "trigger_to_observation_ms": 5003.273700000001,
+      "termination_to_exit_ms": 0.9284,
+      "exit_code": 57005
+    },
+    {
+      "scenario": "allocation_pressure",
+      "ipc_observation": "disconnected",
+      "termination_mode": "natural",
+      "process_tree_terminated": "passed",
+      "trigger_to_observation_ms": 1463.7236,
+      "termination_to_exit_ms": null,
+      "exit_code": 3221226505
+    },
+    {
+      "scenario": "deadlock",
+      "ipc_observation": "deadline",
+      "termination_mode": "forced_job",
+      "process_tree_terminated": "passed",
+      "trigger_to_observation_ms": 5000.3864,
+      "termination_to_exit_ms": 2.0602,
+      "exit_code": 57005
+    },
+    {
+      "scenario": "indefinite_wait",
+      "ipc_observation": "deadline",
+      "termination_mode": "forced_job",
+      "process_tree_terminated": "passed",
+      "trigger_to_observation_ms": 4995.9726,
+      "termination_to_exit_ms": 1.13,
+      "exit_code": 57005
+    },
+    {
+      "scenario": "pipe_stall",
+      "ipc_observation": "deadline",
+      "termination_mode": "forced_job",
+      "process_tree_terminated": "passed",
+      "trigger_to_observation_ms": 5008.494500000001,
+      "termination_to_exit_ms": 1.0427,
+      "exit_code": 57005
+    },
+    {
+      "scenario": "disconnect",
+      "ipc_observation": "disconnected",
+      "termination_mode": "natural",
+      "process_tree_terminated": "passed",
+      "trigger_to_observation_ms": 0.0337,
+      "termination_to_exit_ms": null,
+      "exit_code": 0
     }
   ],
   "scale": [
     {
       "process_count": 1,
-      "cohort_wall_ms": 127.7169,
-      "authenticated_ready_p50_ms": 83.0585,
-      "authenticated_ready_p99_ms": 83.0585,
-      "aggregate_private_commit_bytes": 872448,
-      "echo_rtt_p99_us": 62.4,
+      "cohort_wall_ms": 1107.8142,
+      "authenticated_ready_p50_ms": 1059.0866,
+      "authenticated_ready_p99_ms": 1059.0866,
+      "aggregate_private_commit_bytes": 888832,
+      "echo_rtt_p99_us": 62.8,
       "forbidden_probes_allowed": 0,
       "all_exited": true
     },
     {
       "process_count": 4,
-      "cohort_wall_ms": 140.30020000000002,
-      "authenticated_ready_p50_ms": 74.06269999999999,
-      "authenticated_ready_p99_ms": 80.9512,
-      "aggregate_private_commit_bytes": 3477504,
-      "echo_rtt_p99_us": 58.0,
+      "cohort_wall_ms": 734.1424,
+      "authenticated_ready_p50_ms": 633.4892,
+      "authenticated_ready_p99_ms": 658.2604,
+      "aggregate_private_commit_bytes": 3526656,
+      "echo_rtt_p99_us": 60.0,
       "forbidden_probes_allowed": 0,
       "all_exited": true
     },
     {
       "process_count": 16,
-      "cohort_wall_ms": 287.4119,
-      "authenticated_ready_p50_ms": 123.2779,
-      "authenticated_ready_p99_ms": 139.4895,
-      "aggregate_private_commit_bytes": 13942784,
-      "echo_rtt_p99_us": 154.4,
+      "cohort_wall_ms": 411.58230000000003,
+      "authenticated_ready_p50_ms": 216.1134,
+      "authenticated_ready_p99_ms": 246.3937,
+      "aggregate_private_commit_bytes": 14110720,
+      "echo_rtt_p99_us": 84.6,
       "forbidden_probes_allowed": 0,
       "all_exited": true
     }
   ],
   "shared_host_control": {
     "lua_contexts": 16,
-    "cohort_startup_ms": 1.0352000000000001,
-    "incremental_private_commit_bytes": 409600,
+    "cohort_startup_ms": 1.1784000000000001,
+    "incremental_private_commit_bytes": 106496,
     "in_process_noop_p99_us": 0.09999999999999999,
     "blast_radius_extensions": 16,
     "isolation_boundary": "none: one native crash or memory corruption terminates every context"

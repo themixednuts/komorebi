@@ -1,11 +1,8 @@
 #![windows_subsystem = "windows"]
 
-use wayfinder_extension_containment_prototype::child;
-use wayfinder_extension_containment_prototype::protocol::RuntimeKind;
-
 fn main() {
     std::panic::set_hook(Box::new(|info| write_error(&format!("panic: {info}"))));
-    if let Err(error) = child::run(RuntimeKind::Rust) {
+    if let Err(error) = wayfinder_extension_containment_prototype::fault_child::run() {
         write_error(&format!("{error:#}"));
         std::process::exit(1);
     }

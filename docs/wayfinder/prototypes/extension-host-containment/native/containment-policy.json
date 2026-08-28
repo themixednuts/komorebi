@@ -1,0 +1,43 @@
+{
+  "profile_prefix": "komorebi.wayfinder",
+  "compatibility_capabilities": ["lpacAppExperience"],
+  "job": {
+    "active_process_limit": 1,
+    "memory_limit_bytes": 268435456,
+    "cpu_hard_cap_basis_points": 2000,
+    "kill_on_close": true,
+    "ui_restrictions": true
+  },
+  "pipe": {
+    "buffer_bytes": 65536,
+    "maximum_frame_bytes": 65536,
+    "connect_timeout_ms": 15000,
+    "operation_timeout_ms": 5000
+  },
+  "process": {
+    "disable_win32k": true,
+    "restrict_child_processes": true,
+    "opt_out_all_application_packages": true
+  },
+  "workload": {
+    "generation": 2,
+    "echo_samples": 32,
+    "cohort_sizes": [1, 4, 16],
+    "shared_host_contexts": 16,
+    "shared_host_noop_samples": 32,
+    "storage_value_limit_bytes": 262144
+  },
+  "faults": {
+    "scenarios": [
+      "lua_jit_native_crash",
+      "cpu_loop",
+      "allocation_pressure",
+      "deadlock",
+      "indefinite_wait",
+      "pipe_stall",
+      "disconnect"
+    ],
+    "allocation_chunk_bytes": 1048576,
+    "termination_exit_code": 57005
+  }
+}
