@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Disposable foreground touchpad gesture prototype</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0a0c12;
+      --panel: #121722;
+      --panel-2: #1a2130;
+      --line: #303a4d;
+      --text: #eef3ff;
+      --muted: #9da9be;
+      --accent: #75e2bf;
+      --violet: #9685ff;
+      --warning: #f7c96c;
+      --danger: #ff7890;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      background: radial-gradient(circle at 15% 5%, #2d255b66, transparent 33%), var(--bg);
+      font: 14px/1.45 "Segoe UI Variable", "Segoe UI", sans-serif;
+    }
+    button { font: inherit; }
+    .page { width: min(1180px, calc(100% - 32px)); margin: 0 auto; padding: 30px 0 60px; }
+    header { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 22px; }
+    h1 { margin: 0 0 6px; font-size: 24px; }
+    p { margin: 0; color: var(--muted); }
+    .tag { margin-left: auto; border: 1px solid #806a2f; border-radius: 999px; padding: 6px 10px; color: var(--warning); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+    .question { margin-bottom: 18px; border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; background: #10151f; }
+    .question strong { display: block; margin-bottom: 4px; }
+    .grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(310px, .65fr); gap: 18px; }
+    .panel { border: 1px solid var(--line); border-radius: 14px; background: var(--panel); overflow: hidden; }
+    .panel > h2, .section-title { margin: 0; padding: 13px 16px; border-bottom: 1px solid var(--line); font-size: 13px; }
+    .overview { padding: 18px; }
+    .monitor-label { display: flex; justify-content: space-between; margin-bottom: 10px; color: var(--muted); font-size: 12px; }
+    .workspace-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 9px; }
+    .workspace {
+      position: relative;
+      height: 150px;
+      overflow: hidden;
+      border: 1px solid #39445b;
+      border-radius: 10px;
+      padding: 10px;
+      color: #adb8ca;
+      background: linear-gradient(145deg, #1b2333, #10151f);
+      transition: transform 120ms linear, border-color 120ms linear, opacity 120ms linear;
+    }
+    .workspace.active { border-color: var(--violet); box-shadow: 0 0 0 1px var(--violet); }
+    .workspace.candidate { border-color: var(--accent); box-shadow: 0 0 0 2px #75e2bf44; transform: translateY(-5px); }
+    .reduced .workspace { transition: none; transform: none; }
+    .workspace strong { display: block; color: white; margin-bottom: 9px; }
+    .mini { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; height: 83px; }
+    .mini span { border-radius: 5px; background: #64708a33; }
+    .progress-track { position: relative; height: 9px; margin: 18px 2px 6px; border-radius: 999px; background: #252d3e; overflow: hidden; }
+    .progress-fill { position: absolute; left: 50%; width: 0; height: 100%; background: var(--accent); transition: width 80ms linear, left 80ms linear; }
+    .reduced .progress-track { display: none; }
+    .edge { margin-top: 10px; min-height: 20px; color: var(--warning); font-size: 12px; }
+    .state { padding: 14px 16px; }
+    dl { display: grid; gap: 9px; margin: 0; }
+    dl div { display: grid; grid-template-columns: 104px 1fr; gap: 8px; }
+    dt { color: var(--muted); }
+    dd { margin: 0; overflow-wrap: anywhere; }
+    .status { margin-top: 14px; border-left: 3px solid var(--accent); padding: 9px 10px; color: #dffbf2; background: #14231f; }
+    .status.rejected { border-color: var(--danger); color: #ffe1e7; background: #2e171e; }
+    .controls { margin-top: 18px; }
+    .button-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; padding: 14px; }
+    button { border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px; color: var(--text); background: var(--panel-2); cursor: pointer; }
+    button:hover { border-color: var(--violet); background: #252d41; }
+    button.primary { border-color: #4e9f88; background: #173d34; }
+    button.cancel { border-color: #81404d; background: #381b23; }
+    .walkthroughs { margin-top: 18px; }
+    .tabs { display: flex; gap: 3px; padding: 8px; border-bottom: 1px solid var(--line); overflow-x: auto; }
+    .tabs button { white-space: nowrap; border-color: transparent; background: transparent; }
+    .tabs button.active { color: white; background: #342d64; }
+    .scenario { padding: 16px; }
+    .scenario h3 { margin: 0 0 5px; font-size: 15px; }
+    .steps { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-top: 14px; }
+    .steps span { color: #69758a; }
+    .steps button.done { border-color: #3e725f; color: #7fddbd; background: #152821; }
+    .event-log { display: grid; gap: 6px; max-height: 200px; overflow: auto; padding: 14px 16px; }
+    .event { border-left: 2px solid #56627a; padding: 6px 8px; color: #aab5c8; background: #171d29; font: 11px/1.4 ui-monospace, monospace; }
+    .event:first-child { border-color: var(--accent); color: #e4fff6; }
+    @media (max-width: 880px) {
+      .grid { grid-template-columns: 1fr; }
+      .button-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <div>
+        <h1>Foreground touchpad navigation</h1>
+        <p>Drive a pure gesture session through the cases that decide whether a workspace changes.</p>
+      </div>
+      <span class="tag">Disposable prototype</span>
+    </header>
+
+    <section class="question">
+      <strong>Question being tested</strong>
+      Can one two-finger horizontal gesture, received only while our overview is foreground, provide useful continuous workspace preview without becoming a second global gesture owner? The model must yield vertical motion, bind to one monitor, cancel cleanly, snap predictably, and offer a reduced-motion presentation of the same decision.
+    </section>
+
+    <div class="grid">
+      <section class="panel">
+        <h2>Foreground overview preview</h2>
+        <div id="overview" class="overview">
+          <div class="monitor-label"><span id="monitor-name">Monitor 1</span><span>four local workspaces · no wrap</span></div>
+          <div id="workspace-strip" class="workspace-strip"></div>
+          <div class="progress-track"><div id="progress-fill" class="progress-fill"></div></div>
+          <div id="edge" class="edge"></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Full gesture state</h2>
+        <div class="state">
+          <dl>
+            <div><dt>Phase</dt><dd id="phase"></dd></div>
+            <div><dt>Monitor</dt><dd id="monitor"></dd></div>
+            <div><dt>Workspace</dt><dd id="workspace"></dd></div>
+            <div><dt>Axis</dt><dd id="axis"></dd></div>
+            <div><dt>Progress</dt><dd id="progress"></dd></div>
+            <div><dt>Velocity</dt><dd id="velocity"></dd></div>
+            <div><dt>Candidate</dt><dd id="candidate"></dd></div>
+            <div><dt>Motion</dt><dd id="motion"></dd></div>
+          </dl>
+          <div id="status" class="status" aria-live="polite"></div>
+        </div>
+        <h2>Recent facts</h2>
+        <div id="event-log" class="event-log"></div>
+      </section>
+    </div>
+
+    <section class="panel controls">
+      <h2>Free play</h2>
+      <div class="button-grid">
+        <button class="primary" data-action="begin">Begin two-finger contact</button>
+        <button data-action="sample-left">Move left 18%</button>
+        <button data-action="sample-right">Move right 18%</button>
+        <button data-action="sample-vertical">Move vertically</button>
+        <button data-action="release-slow">Release slowly</button>
+        <button data-action="release-fast">Flick and release</button>
+        <button class="cancel" data-action="cancel">Windows cancels stream</button>
+        <button class="cancel" data-action="focus-lost">Overview loses focus</button>
+        <button data-action="toggle-motion">Toggle reduced motion</button>
+        <button data-action="switch-monitor">Open overview on other monitor</button>
+        <button data-action="reset">Reset</button>
+      </div>
+    </section>
+
+    <section class="panel walkthroughs">
+      <h2>Guided walkthroughs</h2>
+      <nav id="tabs" class="tabs" aria-label="Gesture scenarios"></nav>
+      <div class="scenario">
+        <h3 id="scenario-title"></h3>
+        <p id="scenario-copy"></p>
+        <div id="steps" class="steps"></div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // Pure gesture-session module. It has no DOM, timer, or Windows API dependency.
+    const GestureModel = (() => {
+      const idle = (reducedMotion = false, monitor = 1) => ({
+        phase: "idle",
+        monitor,
+        workspace: monitor === 1 ? 2 : 1,
+        workspaceCount: 4,
+        axis: "unresolved",
+        progress: 0,
+        velocity: 0,
+        candidate: null,
+        reducedMotion,
+        status: "Ready for a foreground gesture.",
+        events: ["overview foreground on monitor " + monitor]
+      });
+
+      const append = (state, event) => ({ ...state, events: [...state.events, event].slice(-12) });
+
+      const targetFor = (state, progress) => {
+        const delta = progress < 0 ? 1 : -1;
+        const target = state.workspace + delta;
+        return target >= 1 && target <= state.workspaceCount ? target : null;
+      };
+
+      const cancel = (state, reason) => append({
+        ...state,
+        phase: "cancelled",
+        axis: "unresolved",
+        progress: 0,
+        velocity: 0,
+        candidate: null,
+        status: reason + " Preview returned to the committed workspace."
+      }, "gesture cancelled: " + reason.toLowerCase());
+
+      const reduce = (state, action) => {
+        switch (action.type) {
+          case "reset":
+            return idle(state.reducedMotion, state.monitor);
+          case "toggle-motion":
+            return append({
+              ...state,
+              reducedMotion: !state.reducedMotion,
+              status: !state.reducedMotion
+                ? "Reduced motion shows threshold selection without sliding cards."
+                : "Continuous card preview restored."
+            }, !state.reducedMotion ? "reduced motion enabled" : "reduced motion disabled");
+          case "switch-monitor":
+            if (state.phase === "tracking") return cancel(state, "Monitor ownership changed.");
+            return idle(state.reducedMotion, state.monitor === 1 ? 2 : 1);
+          case "begin":
+            if (state.phase === "tracking") return state;
+            return append({
+              ...state,
+              phase: "tracking",
+              axis: "unresolved",
+              progress: 0,
+              velocity: 0,
+              candidate: null,
+              status: "Contact accepted. The first frames establish a baseline; no workspace owns the gesture yet."
+            }, "two-finger contact began");
+          case "sample": {
+            if (state.phase !== "tracking") return append(state, "sample ignored outside active contact");
+            if (state.axis === "vertical") return state;
+            const horizontal = Math.abs(action.dx);
+            const vertical = Math.abs(action.dy);
+            if (state.axis === "unresolved" && vertical > horizontal * 1.25) {
+              return append({
+                ...state,
+                phase: "yielded",
+                axis: "vertical",
+                progress: 0,
+                velocity: 0,
+                candidate: null,
+                status: "Vertical intent won direction lock. The overview yields to normal scrolling."
+              }, "vertical motion yielded to overview scroll");
+            }
+            if (state.axis === "unresolved" && horizontal <= vertical * 1.25) {
+              return { ...state, status: "Direction is still ambiguous; preview remains at rest." };
+            }
+            const progress = Math.max(-1, Math.min(1, state.progress + action.dx));
+            const candidate = Math.abs(progress) >= 0.35 ? targetFor(state, progress) : null;
+            const atEdge = Math.abs(progress) >= 0.35 && candidate === null;
+            return append({
+              ...state,
+              axis: "horizontal",
+              progress,
+              velocity: action.velocity || 0,
+              candidate,
+              status: atEdge
+                ? "The monitor-local workspace edge resists. This gesture never wraps or changes monitor."
+                : candidate
+                  ? "Release will select workspace " + candidate + "."
+                  : "Horizontal preview is active but remains below the commit threshold."
+            }, "horizontal sample " + Math.round(progress * 100) + "%");
+          }
+          case "release": {
+            if (state.phase === "yielded") {
+              return append({ ...idle(state.reducedMotion, state.monitor), workspace: state.workspace }, "vertical scroll completed without manager action");
+            }
+            if (state.phase !== "tracking") return append(state, "release ignored outside active contact");
+            const flickTarget = Math.abs(action.velocity) >= 0.8 && Math.abs(state.progress) >= 0.12
+              ? targetFor(state, state.progress || -Math.sign(action.velocity))
+              : null;
+            const target = state.candidate ?? flickTarget;
+            if (!target) return cancel(state, "Release did not meet displacement or flick intent.");
+            return append({
+              ...state,
+              phase: "committed",
+              workspace: target,
+              axis: "unresolved",
+              progress: 0,
+              velocity: action.velocity,
+              candidate: null,
+              status: "Workspace " + target + " committed on monitor " + state.monitor + "."
+            }, "workspace " + target + " committed");
+          }
+          case "cancel":
+            return state.phase === "tracking" ? cancel(state, action.reason) : append(state, "cancellation ignored without active contact");
+          default:
+            return state;
+        }
+      };
+
+      return { idle, reduce };
+    })();
+  </script>
+
+  <script>
+    let state = GestureModel.idle();
+    let scenarioIndex = 0;
+    let stepIndex = 0;
+
+    const scenarios = [
+      {
+        title: "Deliberate workspace change",
+        copy: "A horizontal pan crosses the displacement threshold, then commits exactly one workspace on release.",
+        steps: ["begin", "sample-left", "sample-left", "release-slow"]
+      },
+      {
+        title: "Short gesture snaps back",
+        copy: "Motion starts a preview but never states enough intent. Release cancels without a manager action.",
+        steps: ["begin", "sample-left", "release-slow"]
+      },
+      {
+        title: "Small fast flick",
+        copy: "A minimum displacement plus measured release velocity may commit. Velocity alone cannot change a workspace.",
+        steps: ["begin", "sample-left", "release-fast"]
+      },
+      {
+        title: "Vertical motion stays scroll",
+        copy: "Direction lock yields vertical movement to the overview. The workspace manager never receives a command.",
+        steps: ["begin", "sample-vertical", "release-slow"]
+      },
+      {
+        title: "Focus loss cancels",
+        copy: "A foreground-only stream becomes invalid the instant the overview loses focus.",
+        steps: ["begin", "sample-left", "focus-lost"]
+      },
+      {
+        title: "Reduced motion keeps intent",
+        copy: "The same reducer chooses the same workspace. Presentation changes from continuous translation to a static candidate highlight.",
+        steps: ["toggle-motion", "begin", "sample-left", "sample-left", "release-slow"]
+      }
+    ];
+
+    const actionFor = key => ({
+      begin: { type: "begin" },
+      "sample-left": { type: "sample", dx: -0.18, dy: 0, velocity: -0.25 },
+      "sample-right": { type: "sample", dx: 0.18, dy: 0, velocity: 0.25 },
+      "sample-vertical": { type: "sample", dx: 0.02, dy: 0.22, velocity: 0.2 },
+      "release-slow": { type: "release", velocity: 0.2 },
+      "release-fast": { type: "release", velocity: 0.95 },
+      cancel: { type: "cancel", reason: "Windows cancelled the pointer stream." },
+      "focus-lost": { type: "cancel", reason: "The overview lost foreground ownership." },
+      "toggle-motion": { type: "toggle-motion" },
+      "switch-monitor": { type: "switch-monitor" },
+      reset: { type: "reset" }
+    })[key];
+
+    function dispatch(key) {
+      state = GestureModel.reduce(state, actionFor(key));
+      render();
+    }
+
+    function render() {
+      document.querySelector("#overview").classList.toggle("reduced", state.reducedMotion);
+      document.querySelector("#monitor-name").textContent = "Monitor " + state.monitor;
+      document.querySelector("#workspace-strip").innerHTML = Array.from({ length: state.workspaceCount }, (_, index) => {
+        const number = index + 1;
+        const classes = ["workspace", number === state.workspace ? "active" : "", number === state.candidate ? "candidate" : ""].join(" ");
+        return `<article class="${classes}"><strong>${number === state.workspace ? "Current · " : ""}Workspace ${number}</strong><div class="mini"><span></span><span></span><span></span><span></span></div></article>`;
+      }).join("");
+      const fill = document.querySelector("#progress-fill");
+      const amount = Math.abs(state.progress) * 50;
+      fill.style.width = amount + "%";
+      fill.style.left = state.progress < 0 ? (50 - amount) + "%" : "50%";
+      document.querySelector("#edge").textContent = state.axis === "horizontal" && Math.abs(state.progress) >= .35 && state.candidate === null ? "Workspace edge. No wrap and no monitor transfer." : "";
+      document.querySelector("#phase").textContent = state.phase;
+      document.querySelector("#monitor").textContent = "Monitor " + state.monitor + " (bound at contact start)";
+      document.querySelector("#workspace").textContent = String(state.workspace);
+      document.querySelector("#axis").textContent = state.axis;
+      document.querySelector("#progress").textContent = Math.round(state.progress * 100) + "%";
+      document.querySelector("#velocity").textContent = state.velocity.toFixed(2) + " normalized/s";
+      document.querySelector("#candidate").textContent = state.candidate ? "Workspace " + state.candidate : "None";
+      document.querySelector("#motion").textContent = state.reducedMotion ? "Reduced" : "Continuous preview";
+      const status = document.querySelector("#status");
+      status.textContent = state.status;
+      status.classList.toggle("rejected", state.phase === "cancelled");
+      document.querySelector("#event-log").innerHTML = state.events.slice().reverse().map(event => `<div class="event">${event}</div>`).join("");
+      renderScenario();
+    }
+
+    function renderScenario() {
+      const scenario = scenarios[scenarioIndex];
+      document.querySelector("#scenario-title").textContent = scenario.title;
+      document.querySelector("#scenario-copy").textContent = scenario.copy;
+      document.querySelector("#tabs").innerHTML = scenarios.map((item, index) => `<button type="button" class="${index === scenarioIndex ? "active" : ""}" data-scenario="${index}">${index + 1}. ${item.title}</button>`).join("");
+      document.querySelector("#steps").innerHTML = scenario.steps.map((key, index) => `<button type="button" class="${index < stepIndex ? "done" : ""}" data-step="${index}" ${index > stepIndex ? "disabled" : ""}>${index + 1}. ${document.querySelector(`[data-action="${key}"]`)?.textContent || key}</button>${index < scenario.steps.length - 1 ? "<span>→</span>" : ""}`).join("");
+    }
+
+    document.addEventListener("click", event => {
+      const action = event.target.closest("[data-action]");
+      if (action) dispatch(action.dataset.action);
+      const tab = event.target.closest("[data-scenario]");
+      if (tab) {
+        scenarioIndex = Number(tab.dataset.scenario);
+        stepIndex = 0;
+        state = GestureModel.idle(state.reducedMotion, state.monitor);
+        render();
+      }
+      const step = event.target.closest("[data-step]");
+      if (step && Number(step.dataset.step) === stepIndex) {
+        dispatch(scenarios[scenarioIndex].steps[stepIndex]);
+        stepIndex += 1;
+        renderScenario();
+      }
+    });
+
+    render();
+  </script>
+</body>
+</html>
