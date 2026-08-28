@@ -312,6 +312,10 @@ _Avoid_: screenshot, loading frame
 The end of a motion presentation, when its temporary visuals are gone and any remaining mismatch with manager intent is an explicit reconciliation or degradation concern.
 _Avoid_: animation finished, native success
 
+**Motion capability profile**:
+A generation-bound measurement of one display topology, refresh mode, presentation backend, and preview mix that determines whether a motion sequence may be presented. An unknown, stale, or over-budget profile selects immediate native settlement; it never guesses from a fixed window-count constant.
+_Avoid_: animation quality, hardcoded live-preview limit
+
 **Effect plan**:
 The ordered native work derived from a transition, with each effect classified by its required, convergent, or best-effort behavior.
 _Avoid_: transaction, side-effect call

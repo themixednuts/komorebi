@@ -1,0 +1,6 @@
+# Superseded exploratory runs. The v3 matrices are the retained evidence.
+/measurements-all-live.json
+/measurements-budgeted-240.json
+/measurements-smoke.json
+/measurements-v1-*.json
+/measurements-v2-*.json
