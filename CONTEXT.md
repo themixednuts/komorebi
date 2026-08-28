@@ -184,6 +184,10 @@ _Avoid_: shortcuts window, general-purpose launcher
 A renderer-specific presentation of a renderer-neutral shell snapshot. It may translate raw UI input and publish pixels and accessibility state, but it cannot own catalog identity, palette-session truth, manager intent, or native effects.
 _Avoid_: UI state owner, toolkit domain model
 
+**Surface renderer assignment**:
+The one toolkit projection allowed to present and accept input for a manager-owned shell feature in an active installation. A staged candidate may be compared with it, but cannot register Windows effects or become a second live presenter.
+_Avoid_: dual renderer, fallback renderer
+
 **Command palette**:
 The first-party searchable shell window that combines command-catalog actions with separately typed application, file, file-content, and explicit web search sources. Search results do not become manager commands.
 _Avoid_: shortcuts window, PowerToys adapter
