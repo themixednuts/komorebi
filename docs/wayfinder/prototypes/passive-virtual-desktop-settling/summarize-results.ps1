@@ -77,6 +77,9 @@ function Get-ApiOutcomes {
 $pollingFiles = Get-ChildItem -LiteralPath $ResultsDirectory -Filter '*restart-*.json' |
     Where-Object Name -Match '^(pre|post)-restart-(16|100|500)ms\.json$' |
     Sort-Object Name
+if ($pollingFiles.Count -ne 6) {
+    throw "expected six pre/post polling captures, found $($pollingFiles.Count)"
+}
 
 $runs = foreach ($file in $pollingFiles) {
     $run = Get-Content -LiteralPath $file.FullName -Raw | ConvertFrom-Json
@@ -118,6 +121,23 @@ $nativeSummary = [pscustomobject]@{
         $_.window_alias -eq 'w02' -and $_.kind -in @('object_cloaked', 'object_uncloaked')
     }).Count
     process_cpu_ms = [long]$native.user_cpu_ms + [long]$native.kernel_cpu_ms
+}
+
+$incompleteRuns = @($runs | Where-Object { $_.completed -ne 10 -or $_.timed_out })
+if ($incompleteRuns.Count -ne 0) {
+    throw "one or more polling captures did not complete ten transitions"
+}
+if ($nativeSummary.desktop_window_name_events -ne $nativeSummary.normal_window_cloak_events) {
+    throw "desktop-window and normal-window wake counts diverged"
+}
+if ($nativeSummary.desktop_window_name_events -eq 0) {
+    throw "native capture contains no desktop-window wake"
+}
+if ($nativeSummary.system_desktop_switch_events -ne 0) {
+    throw "EVENT_SYSTEM_DESKTOPSWITCH unexpectedly fired during Task View switching"
+}
+if ($nativeSummary.pinned_window_cloak_events -ne 0) {
+    throw "pinned probe unexpectedly emitted a cloak transition"
 }
 
 $summary = [pscustomobject]@{
