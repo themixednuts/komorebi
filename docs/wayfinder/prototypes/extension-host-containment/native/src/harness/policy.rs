@@ -40,6 +40,7 @@ pub(super) struct WorkloadPolicy {
     generation: ExtensionGeneration,
     echo_samples: NonZeroUsize,
     cohort_sizes: Box<[NonZeroUsize]>,
+    launch_distribution_repetitions: NonZeroUsize,
     shared_host_contexts: NonZeroUsize,
     shared_host_noop_samples: NonZeroUsize,
     storage_value_limit_bytes: NonZeroUsize,
@@ -95,6 +96,7 @@ struct RawWorkloadPolicy {
     generation: u64,
     echo_samples: usize,
     cohort_sizes: Vec<usize>,
+    launch_distribution_repetitions: usize,
     shared_host_contexts: usize,
     shared_host_noop_samples: usize,
     storage_value_limit_bytes: usize,
@@ -180,6 +182,10 @@ impl TryFrom<RawContainmentPolicy> for ContainmentPolicy {
             "backpressure_payload_bytes must leave room for protocol framing"
         );
         ensure!(
+            raw.workload.launch_distribution_repetitions >= 2,
+            "launch_distribution_repetitions must include a first observation and a repeat"
+        );
+        ensure!(
             raw.job.cpu_hard_cap_basis_points <= 10_000,
             "cpu_hard_cap_basis_points cannot exceed 10000"
         );
@@ -215,30 +221,7 @@ impl TryFrom<RawContainmentPolicy> for ContainmentPolicy {
                 )?,
             },
             process: raw.process,
-            workload: WorkloadPolicy {
-                generation: ExtensionGeneration::new(raw.workload.generation)?,
-                echo_samples: NonZeroUsize::new(raw.workload.echo_samples)
-                    .context("echo_samples must be nonzero")?,
-                cohort_sizes: nonzero_sizes(raw.workload.cohort_sizes, "cohort_sizes")?,
-                shared_host_contexts: NonZeroUsize::new(raw.workload.shared_host_contexts)
-                    .context("shared_host_contexts must be nonzero")?,
-                shared_host_noop_samples: NonZeroUsize::new(raw.workload.shared_host_noop_samples)
-                    .context("shared_host_noop_samples must be nonzero")?,
-                storage_value_limit_bytes: NonZeroUsize::new(
-                    raw.workload.storage_value_limit_bytes,
-                )
-                .context("storage_value_limit_bytes must be nonzero")?,
-                responsiveness_samples: NonZeroUsize::new(raw.workload.responsiveness_samples)
-                    .context("responsiveness_samples must be nonzero")?,
-                backpressure_payload_bytes: NonZeroUsize::new(
-                    raw.workload.backpressure_payload_bytes,
-                )
-                .context("backpressure_payload_bytes must be nonzero")?,
-                backpressure_attempt_limit: NonZeroUsize::new(
-                    raw.workload.backpressure_attempt_limit,
-                )
-                .context("backpressure_attempt_limit must be nonzero")?,
-            },
+            workload: raw.workload.try_into()?,
             faults: FaultPolicy {
                 scenarios: nonempty_unique_scenarios(raw.faults.scenarios)?,
                 allocation_chunk_bytes: NonZeroUsize::new(raw.faults.allocation_chunk_bytes)
@@ -246,6 +229,33 @@ impl TryFrom<RawContainmentPolicy> for ContainmentPolicy {
                 termination_exit_code: NonZeroU32::new(raw.faults.termination_exit_code)
                     .context("termination_exit_code must be nonzero")?,
             },
+        })
+    }
+}
+
+impl TryFrom<RawWorkloadPolicy> for WorkloadPolicy {
+    type Error = anyhow::Error;
+
+    fn try_from(raw: RawWorkloadPolicy) -> Result<Self> {
+        Ok(Self {
+            generation: ExtensionGeneration::new(raw.generation)?,
+            echo_samples: NonZeroUsize::new(raw.echo_samples)
+                .context("echo_samples must be nonzero")?,
+            cohort_sizes: nonzero_sizes(raw.cohort_sizes, "cohort_sizes")?,
+            launch_distribution_repetitions: NonZeroUsize::new(raw.launch_distribution_repetitions)
+                .context("launch_distribution_repetitions must be nonzero")?,
+            shared_host_contexts: NonZeroUsize::new(raw.shared_host_contexts)
+                .context("shared_host_contexts must be nonzero")?,
+            shared_host_noop_samples: NonZeroUsize::new(raw.shared_host_noop_samples)
+                .context("shared_host_noop_samples must be nonzero")?,
+            storage_value_limit_bytes: NonZeroUsize::new(raw.storage_value_limit_bytes)
+                .context("storage_value_limit_bytes must be nonzero")?,
+            responsiveness_samples: NonZeroUsize::new(raw.responsiveness_samples)
+                .context("responsiveness_samples must be nonzero")?,
+            backpressure_payload_bytes: NonZeroUsize::new(raw.backpressure_payload_bytes)
+                .context("backpressure_payload_bytes must be nonzero")?,
+            backpressure_attempt_limit: NonZeroUsize::new(raw.backpressure_attempt_limit)
+                .context("backpressure_attempt_limit must be nonzero")?,
         })
     }
 }
@@ -315,6 +325,10 @@ impl WorkloadPolicy {
 
     pub(super) fn cohort_sizes(&self) -> impl Iterator<Item = usize> + '_ {
         self.cohort_sizes.iter().map(|size| size.get())
+    }
+
+    pub(super) const fn launch_distribution_repetitions(&self) -> usize {
+        self.launch_distribution_repetitions.get()
     }
 
     pub(super) const fn shared_host_contexts(&self) -> usize {
@@ -400,7 +414,7 @@ mod tests {
                 "job":{"active_process_limit":1,"memory_limit_bytes":1024,"cpu_hard_cap_basis_points":2000,"kill_on_close":true,"ui_restrictions":true},
                 "pipe":{"buffer_bytes":65536,"maximum_frame_bytes":65536,"connect_timeout_ms":1000,"operation_timeout_ms":1000},
                 "process":{"disable_win32k":true,"restrict_child_processes":true,"opt_out_all_application_packages":true},
-                "workload":{"generation":2,"echo_samples":32,"cohort_sizes":[1,4,16],"shared_host_contexts":16,"shared_host_noop_samples":32,"storage_value_limit_bytes":262144,"responsiveness_samples":64,"backpressure_payload_bytes":49152,"backpressure_attempt_limit":4},
+                "workload":{"generation":2,"echo_samples":32,"cohort_sizes":[1,4,16],"launch_distribution_repetitions":5,"shared_host_contexts":16,"shared_host_noop_samples":32,"storage_value_limit_bytes":262144,"responsiveness_samples":64,"backpressure_payload_bytes":49152,"backpressure_attempt_limit":4},
                 "faults":{"scenarios":["cpu_loop","allocation_pressure","deadlock","indefinite_wait","pipe_stall","disconnect","lua_jit_native_crash"],"allocation_chunk_bytes":1048576,"termination_exit_code":57005}
             }"#,
         )

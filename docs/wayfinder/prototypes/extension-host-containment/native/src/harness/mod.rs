@@ -7,12 +7,12 @@ use std::path::{Path, PathBuf};
 use std::ptr::null;
 use std::time::{Duration, Instant};
 
-use crate::protocol::{ExpectedOutcome, ObservedOutcome, RuntimeKind};
+use crate::protocol::RuntimeKind;
 use crate::windows::{OwnedHandle, windows_version};
 use anyhow::{Context, Result, bail, ensure};
 use mlua::{ChunkMode, Lua, LuaOptions, StdLib};
 use uuid::Uuid;
-use windows_sys::Win32::Foundation::WAIT_OBJECT_0;
+use windows_sys::Win32::Foundation::{WAIT_OBJECT_0, WAIT_TIMEOUT};
 use windows_sys::Win32::System::JobObjects::{
     CreateJobObjectW, JOB_OBJECT_CPU_RATE_CONTROL_ENABLE, JOB_OBJECT_CPU_RATE_CONTROL_HARD_CAP,
     JOB_OBJECT_LIMIT_ACTIVE_PROCESS, JOB_OBJECT_LIMIT_JOB_MEMORY,
@@ -31,6 +31,7 @@ use windows_sys::Win32::System::Threading::{GetExitCodeProcess, WaitForSingleObj
 
 mod af_unix;
 mod backpressure;
+mod distribution;
 mod environment;
 mod evidence;
 mod fault;
@@ -47,6 +48,7 @@ mod windows_boundary;
 use crate::protocol::ParentExitMode;
 use af_unix::run_comparison as run_af_unix_comparison;
 use backpressure::run as run_backpressure;
+use distribution::run as run_launch_distribution;
 use evidence::{binary as binary_evidence, boundary as boundary_evidence, command_output};
 use fault::run as run_faults;
 use launch::{ExtensionBehavior, launch as launch_extension};
@@ -54,7 +56,7 @@ use lifetime::run_suite as run_parent_lifetime;
 use policy::ContainmentPolicy;
 use recovery::run as run_restart_recovery;
 use report::{
-    CleanupEvidence, HarnessReport, InvocationEvidence, PlatformEvidence, RunReport, ScaleReport,
+    CleanupEvidence, HarnessReport, InvocationEvidence, PlatformEvidence, RunReport,
     SharedHostControl, ToolchainEvidence, Verification, WindowsPathEvidence,
 };
 use responsiveness::run as run_host_responsiveness;
@@ -161,7 +163,7 @@ fn run_evidence(policy: &ContainmentPolicy) -> Result<()> {
         &private_file,
         policy,
     )?;
-    let scale = run_scale_cohorts(
+    let (scale, launch_distribution) = run_launch_distribution(
         &executable_dir.join("containment-rust-child.exe"),
         &private_file,
         policy,
@@ -199,6 +201,7 @@ fn run_evidence(policy: &ContainmentPolicy) -> Result<()> {
         parent_lifetime,
         restart_recovery,
         scale,
+        launch_distribution,
         shared_host_control,
         cleanup: CleanupEvidence {
             profiles_deleted: profile_cleanup_succeeded(),
@@ -256,12 +259,18 @@ fn run_extension(
     )?;
     let pipe_policy = policy.pipe();
     // SAFETY: process handle is valid and timeout is bounded.
-    let exit_observed = unsafe {
+    let wait = unsafe {
         WaitForSingleObject(
             extension.process.raw(),
             u32::try_from(pipe_policy.operation_timeout().as_millis())?,
         )
-    } == WAIT_OBJECT_0;
+    };
+    ensure!(
+        wait == WAIT_OBJECT_0 || wait == WAIT_TIMEOUT,
+        "wait for completed extension failed: {}",
+        std::io::Error::last_os_error()
+    );
+    let exit_observed = wait == WAIT_OBJECT_0;
     Ok(RunReport {
         runtime,
         profile_name: extension.profile_name.clone(),
@@ -399,59 +408,6 @@ fn broker_http(url: &str) -> Result<(u16, usize)> {
     Ok((status, response.len()))
 }
 
-fn run_scale_cohorts(
-    executable: &Path,
-    private_file: &Path,
-    policy: &ContainmentPolicy,
-) -> Result<Vec<ScaleReport>> {
-    let mut reports = Vec::new();
-    for process_count in policy.workload().cohort_sizes() {
-        let cohort_started = Instant::now();
-        let mut workers = Vec::with_capacity(process_count);
-        for _ in 0..process_count {
-            let executable = executable.to_path_buf();
-            let private_file = private_file.to_path_buf();
-            let policy = policy.clone();
-            workers.push(std::thread::spawn(move || {
-                run_extension(RuntimeKind::Rust, &executable, &private_file, &policy)
-            }));
-        }
-        let mut runs = Vec::with_capacity(process_count);
-        for worker in workers {
-            runs.push(
-                worker
-                    .join()
-                    .map_err(|_| anyhow::anyhow!("scale worker panicked"))??,
-            );
-        }
-        let mut ready: Vec<_> = runs.iter().map(|run| run.startup_ms).collect();
-        let mut rtt: Vec<_> = runs
-            .iter()
-            .flat_map(|run| run.echo_rtt_us.iter().copied())
-            .collect();
-        ready.sort_by(f64::total_cmp);
-        rtt.sort_by(f64::total_cmp);
-        reports.push(ScaleReport {
-            process_count,
-            cohort_wall_ms: cohort_started.elapsed().as_secs_f64() * 1_000.0,
-            authenticated_ready_p50_ms: percentile(&ready, 50, 100),
-            authenticated_ready_p99_ms: percentile(&ready, 99, 100),
-            aggregate_private_commit_bytes: runs.iter().map(|run| run.private_commit_bytes).sum(),
-            echo_rtt_p99_us: percentile(&rtt, 99, 100),
-            forbidden_probes_allowed: runs
-                .iter()
-                .flat_map(|run| &run.probes)
-                .filter(|probe| {
-                    matches!(probe.expected, ExpectedOutcome::Denied)
-                        && matches!(probe.observed, ObservedOutcome::Allowed)
-                })
-                .count(),
-            all_exited: runs.iter().all(|run| run.exit_observed.passed()),
-        });
-    }
-    Ok(reports)
-}
-
 fn run_shared_host_control(policy: &ContainmentPolicy) -> Result<SharedHostControl> {
     // SAFETY: GetCurrentProcess returns a valid pseudo-handle for the current process.
     let process = unsafe { windows_sys::Win32::System::Threading::GetCurrentProcess() };
@@ -502,11 +458,20 @@ fn run_shared_host_control(policy: &ContainmentPolicy) -> Result<SharedHostContr
 }
 
 pub(super) fn percentile(sorted: &[f64], numerator: usize, denominator: usize) -> f64 {
-    if sorted.is_empty() {
-        return 0.0;
+    percentile_index(sorted.len(), numerator, denominator)
+        .and_then(|index| sorted.get(index).copied())
+        .unwrap_or(0.0)
+}
+
+pub(super) fn percentile_index(
+    length: usize,
+    numerator: usize,
+    denominator: usize,
+) -> Option<usize> {
+    if length == 0 || denominator == 0 || numerator > denominator {
+        return None;
     }
-    debug_assert!(denominator > 0 && numerator <= denominator);
-    let scaled = (sorted.len() - 1).saturating_mul(numerator);
-    let index = scaled.saturating_add(denominator - 1) / denominator;
-    sorted[index.min(sorted.len() - 1)]
+    let scaled = (length - 1).checked_mul(numerator)?;
+    let rounded = scaled.checked_add(denominator - 1)?;
+    Some((rounded / denominator).min(length - 1))
 }

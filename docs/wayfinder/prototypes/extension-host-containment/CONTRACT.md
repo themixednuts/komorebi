@@ -149,6 +149,22 @@ ResponsivenessProbe::run(cpu_loop)
 
 The extension-supervision lane owns child IPC deadlines and Job termination. The main manager-state owner never waits on an extension pipe. A zero-capacity request channel applies structural backpressure, and every spawned lane is joined on success and failure.
 
+## Launch-distribution call stack
+
+```text
+LaunchDistribution::measure(policy.repetitions, policy.cohort_sizes)
+  -> for each process count
+    -> ScaleCohort::launch_named_workers()
+      -> ExtensionSupervisor::start() per worker
+      -> join every worker, retaining every failure
+    -> ScaleCohort::measure(wall, ready, commit, echo, containment, exit)
+    -> FirstObservedCohort (descriptive only; not OS-cold)
+    -> WarmCohortSamples (immediate resident-cache repeats)
+  -> checked percentile summaries and exact raw samples
+```
+
+Every sample receives a fresh AppContainer profile and process. The harness does not claim an OS-cold launch: Windows file and image cache state is global, and this unattended process has neither a reboot boundary nor a safe process-local cache reset. A future cold-launch claim requires a boot-orchestrated run; clearing unrelated system cache is outside this prototype's authority.
+
 Windows AF_UNIX remains a measured transport comparison, not a candidate security boundary. This probe restricts its byte `sun_path` to ASCII and rejects any endpoint that cannot be represented exactly, while the public socket surface supplies no named-pipe-equivalent client PID/token binding. The LPAC token also denied Winsock initialization on the target machine.
 
 ## Broker request call stack

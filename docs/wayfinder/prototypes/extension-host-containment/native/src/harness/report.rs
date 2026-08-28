@@ -21,6 +21,7 @@ pub(super) struct HarnessReport {
     pub(super) parent_lifetime: Vec<ParentLifetimeEvidence>,
     pub(super) restart_recovery: RestartRecoveryEvidence,
     pub(super) scale: Vec<ScaleReport>,
+    pub(super) launch_distribution: LaunchDistributionEvidence,
     pub(super) shared_host_control: SharedHostControl,
     pub(super) cleanup: CleanupEvidence,
 }
@@ -233,7 +234,7 @@ pub(super) struct CleanupEvidence {
     pub(super) pipe_handles_closed: bool,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub(super) struct ScaleReport {
     pub(super) process_count: usize,
     pub(super) cohort_wall_ms: f64,
@@ -241,6 +242,30 @@ pub(super) struct ScaleReport {
     pub(super) authenticated_ready_p99_ms: f64,
     pub(super) aggregate_private_commit_bytes: usize,
     pub(super) echo_rtt_p99_us: f64,
+    pub(super) forbidden_probes_allowed: usize,
+    pub(super) all_exited: bool,
+}
+
+#[derive(Debug, Serialize)]
+pub(super) struct LaunchDistributionEvidence {
+    pub(super) repetitions_per_cohort: usize,
+    pub(super) profile_condition: &'static str,
+    pub(super) os_cache_condition: &'static str,
+    pub(super) cold_launch_status: &'static str,
+    pub(super) warm_launch_status: &'static str,
+    pub(super) cohorts: Vec<LaunchCohortDistribution>,
+}
+
+#[derive(Debug, Serialize)]
+pub(super) struct LaunchCohortDistribution {
+    pub(super) process_count: usize,
+    pub(super) first_observed: ScaleReport,
+    pub(super) warm_samples: Vec<ScaleReport>,
+    pub(super) warm_cohort_wall_p50_ms: f64,
+    pub(super) warm_cohort_wall_p99_ms: f64,
+    pub(super) warm_authenticated_ready_p99_of_samples_ms: f64,
+    pub(super) warm_echo_p99_of_samples_us: f64,
+    pub(super) warm_aggregate_private_commit_p99_bytes: usize,
     pub(super) forbidden_probes_allowed: usize,
     pub(super) all_exited: bool,
 }
