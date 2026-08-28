@@ -1,0 +1,55 @@
+[package]
+name = "wayfinder-popup-coordination-prototype"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[workspace]
+resolver = "3"
+
+[dependencies]
+anyhow = "1.0"
+crossbeam-queue = "0.3"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+sha2 = "0.11"
+thiserror = "2.0"
+tokio = { version = "1.47", features = ["fs", "io-std", "io-util", "macros", "process", "rt-multi-thread", "sync", "time"] }
+windows = { version = "0.62.2", features = [
+  "Wdk_System_SystemServices",
+  "Win32_Foundation",
+  "Win32_Security",
+  "Win32_Graphics_Dwm",
+  "Win32_Graphics_Gdi",
+  "Win32_System_Com",
+  "Win32_System_JobObjects",
+  "Win32_System_LibraryLoader",
+  "Win32_System_Performance",
+  "Win32_System_SystemInformation",
+  "Win32_System_ProcessStatus",
+  "Win32_System_Threading",
+  "Win32_System_Variant",
+  "Win32_UI_Accessibility",
+  "Win32_UI_HiDpi",
+  "Win32_UI_Input_KeyboardAndMouse",
+  "Win32_UI_WindowsAndMessaging",
+] }
+
+[dev-dependencies]
+proptest = "1.9"
+
+[lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+unused_must_use = "deny"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+dbg_macro = "deny"
+todo = "deny"
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+undocumented_unsafe_blocks = "deny"
+missing_errors_doc = "allow"
+must_use_candidate = "allow"

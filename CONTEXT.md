@@ -224,6 +224,14 @@ _Avoid_: modal flag, blocked window
 A manager request that preserves a foreign window's size, ownership, styles, and activation behavior while recovering or applying an explicitly configured position.
 _Avoid_: popup management, window takeover
 
+**Observation gap**:
+A known interval in which one or more native event hints may be missing, delayed beyond their budget, or discarded by a bounded queue. The manager responds with a full census and never reconstructs authoritative state from guessed events.
+_Avoid_: dropped event replay, event repair
+
+**Automation probe generation**:
+One replaceable, deadline-bounded UI Automation request whose result is accepted only while its target window incarnation and generation remain current. Timeout, denial, provider failure, and late completion remain unavailable evidence.
+_Avoid_: UIA retry, automation thread
+
 **Scratchpad**:
 A named manager-owned collection of application windows that can be presented above an ordinary workspace on one monitor or held hidden without changing that workspace.
 _Avoid_: special workspace, hidden workspace
