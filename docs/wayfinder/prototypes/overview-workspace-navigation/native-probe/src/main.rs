@@ -1,30 +1,40 @@
+use std::cell::Cell;
 use std::cmp::Ordering;
 use std::ffi::c_void;
 use std::mem::zeroed;
 use std::ptr::{null, null_mut};
 use std::time::{Duration, Instant};
 
-use windows_sys::Win32::Foundation::{HINSTANCE, HWND, LPARAM, LRESULT, RECT, WPARAM};
+use windows_sys::Win32::Foundation::{
+    HINSTANCE, HWND, LPARAM, LRESULT, RECT, WAIT_FAILED, WAIT_TIMEOUT, WPARAM,
+};
 use windows_sys::Win32::Graphics::Dwm::{
     DWM_THUMBNAIL_PROPERTIES, DWM_TNP_OPACITY, DWM_TNP_RECTDESTINATION,
     DWM_TNP_SOURCECLIENTAREAONLY, DWM_TNP_VISIBLE, DwmFlush, DwmRegisterThumbnail,
     DwmUnregisterThumbnail, DwmUpdateThumbnailProperties,
 };
-use windows_sys::Win32::Graphics::Gdi::{CreateSolidBrush, HBRUSH};
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows_sys::Win32::System::Threading::GetCurrentProcessId;
+use windows_sys::Win32::UI::Accessibility::{HWINEVENTHOOK, SetWinEventHook, UnhookWinEvent};
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     CS_HREDRAW, CS_VREDRAW, CW_USEDEFAULT, CreateWindowExW, DefWindowProcW, DestroyWindow,
-    DispatchMessageW, EnumWindows, GWL_EXSTYLE, GWL_STYLE, GetForegroundWindow, GetWindowLongW,
-    GetWindowTextLengthW, GetWindowThreadProcessId, IDC_ARROW, IsWindowVisible, LoadCursorW, MSG,
-    PM_REMOVE, PeekMessageW, PostQuitMessage, RegisterClassW, SW_SHOW, SetForegroundWindow,
-    ShowWindow, TranslateMessage, WM_DESTROY, WNDCLASSW, WS_EX_APPWINDOW,
+    DispatchMessageW, EVENT_SYSTEM_FOREGROUND, EnumWindows, GWL_EXSTYLE, GWL_STYLE,
+    GetForegroundWindow, GetWindowLongW, GetWindowTextLengthW, GetWindowThreadProcessId, IDC_ARROW,
+    IsWindowVisible, LoadCursorW, MSG, MWMO_INPUTAVAILABLE, MsgWaitForMultipleObjectsEx, PM_REMOVE,
+    PeekMessageW, QS_ALLINPUT, RegisterClassW, SW_SHOW, SetForegroundWindow, ShowWindow,
+    TranslateMessage, UnregisterClassW, WINEVENT_OUTOFCONTEXT, WNDCLASSW, WS_EX_APPWINDOW,
     WS_EX_NOREDIRECTIONBITMAP, WS_EX_TOOLWINDOW, WS_OVERLAPPEDWINDOW, WS_VISIBLE,
 };
 
 const WIDTH: i32 = 1600;
 const HEIGHT: i32 = 900;
 const SAMPLES: usize = 120;
+
+thread_local! {
+    // WINEVENT_OUTOFCONTEXT callbacks are delivered on the installing thread.
+    static EXPECTED_FOREGROUND: Cell<HWND> = const { Cell::new(null_mut()) };
+    static OBSERVED_FOREGROUND: Cell<HWND> = const { Cell::new(null_mut()) };
+}
 
 #[derive(Clone, Copy)]
 struct Source(HWND);
@@ -35,6 +45,36 @@ impl Drop for Thumbnail {
     fn drop(&mut self) {
         // SAFETY: this wrapper exclusively owns a successful DWM registration.
         unsafe { DwmUnregisterThumbnail(self.0) };
+    }
+}
+
+struct Window(HWND);
+
+impl Drop for Window {
+    fn drop(&mut self) {
+        // SAFETY: this wrapper exclusively owns a successful CreateWindowExW result.
+        unsafe { DestroyWindow(self.0) };
+    }
+}
+
+struct WindowClass {
+    name: Vec<u16>,
+    instance: HINSTANCE,
+}
+
+impl Drop for WindowClass {
+    fn drop(&mut self) {
+        // SAFETY: name and instance identify the class registered by this wrapper.
+        unsafe { UnregisterClassW(self.name.as_ptr(), self.instance) };
+    }
+}
+
+struct ForegroundHook(HWINEVENTHOOK);
+
+impl Drop for ForegroundHook {
+    fn drop(&mut self) {
+        // SAFETY: this wrapper exclusively owns a successful SetWinEventHook result.
+        unsafe { UnhookWinEvent(self.0) };
     }
 }
 
@@ -59,14 +99,23 @@ unsafe extern "system" fn window_proc(
     wparam: WPARAM,
     lparam: LPARAM,
 ) -> LRESULT {
-    if message == WM_DESTROY {
-        // SAFETY: posting a quit message has no additional preconditions.
-        unsafe { PostQuitMessage(0) };
-        return 0;
-    }
-
     // SAFETY: unhandled messages are forwarded with the exact values supplied by Windows.
     unsafe { DefWindowProcW(window, message, wparam, lparam) }
+}
+
+unsafe extern "system" fn foreground_changed(
+    _hook: HWINEVENTHOOK,
+    event: u32,
+    window: HWND,
+    _object: i32,
+    _child: i32,
+    _event_thread: u32,
+    _event_time: u32,
+) {
+    let expected = EXPECTED_FOREGROUND.get();
+    if event == EVENT_SYSTEM_FOREGROUND && window == expected {
+        OBSERVED_FOREGROUND.set(window);
+    }
 }
 
 unsafe extern "system" fn collect_window(window: HWND, state: LPARAM) -> i32 {
@@ -109,13 +158,10 @@ fn sources() -> Vec<Source> {
     sources
 }
 
-fn create_destination() -> Result<HWND, String> {
+fn register_window_class() -> Result<WindowClass, String> {
     let class_name = wide("WayfinderOverviewNativeProbe");
-    let title = wide("Wayfinder overview native probe");
     // SAFETY: null requests the module handle of the current process.
     let instance = unsafe { GetModuleHandleW(null()) } as HINSTANCE;
-    // SAFETY: RGB values form a valid owned solid brush for process lifetime.
-    let brush = unsafe { CreateSolidBrush(0x00110e0c) } as HBRUSH;
     // SAFETY: null requests the system arrow cursor resource.
     let cursor = unsafe { LoadCursorW(null_mut(), IDC_ARROW) };
     // SAFETY: WNDCLASSW permits zero initialization before required fields are assigned.
@@ -126,7 +172,6 @@ fn create_destination() -> Result<HWND, String> {
         hInstance: instance,
         lpszClassName: class_name.as_ptr(),
         hCursor: cursor,
-        hbrBackground: brush,
         ..empty_class
     };
     // SAFETY: class points to process-lifetime strings and a valid window procedure.
@@ -134,11 +179,19 @@ fn create_destination() -> Result<HWND, String> {
         return Err("RegisterClassW failed".into());
     }
 
+    Ok(WindowClass {
+        name: class_name,
+        instance,
+    })
+}
+
+fn create_destination(class: &WindowClass) -> Result<Window, String> {
+    let title = wide("Wayfinder overview native probe");
     // SAFETY: every pointer is null or points to a live zero-terminated UTF-16 string.
     let window = unsafe {
         CreateWindowExW(
             WS_EX_APPWINDOW | WS_EX_NOREDIRECTIONBITMAP,
-            class_name.as_ptr(),
+            class.name.as_ptr(),
             title.as_ptr(),
             WS_OVERLAPPEDWINDOW,
             CW_USEDEFAULT,
@@ -147,15 +200,85 @@ fn create_destination() -> Result<HWND, String> {
             HEIGHT,
             null_mut(),
             null_mut(),
-            instance,
+            class.instance,
             null_mut::<c_void>(),
         )
     };
     if window.is_null() {
         Err("CreateWindowExW failed".into())
     } else {
-        Ok(window)
+        Ok(Window(window))
     }
+}
+
+fn install_foreground_hook() -> Result<ForegroundHook, String> {
+    // SAFETY: callback is process-lifetime code; out-of-context delivery needs no injected DLL.
+    let hook = unsafe {
+        SetWinEventHook(
+            EVENT_SYSTEM_FOREGROUND,
+            EVENT_SYSTEM_FOREGROUND,
+            null_mut(),
+            Some(foreground_changed),
+            0,
+            0,
+            WINEVENT_OUTOFCONTEXT,
+        )
+    };
+    if hook.is_null() {
+        Err("SetWinEventHook(EVENT_SYSTEM_FOREGROUND) failed".into())
+    } else {
+        Ok(ForegroundHook(hook))
+    }
+}
+
+fn dispatch_ready_messages() {
+    // This drains only after Windows reports queued input; it is event dispatch, not polling.
+    // SAFETY: message storage is initialized and valid for the duration of each call.
+    unsafe {
+        let mut message: MSG = zeroed();
+        while PeekMessageW(&mut message, null_mut(), 0, 0, PM_REMOVE) != 0 {
+            TranslateMessage(&message);
+            DispatchMessageW(&message);
+        }
+    }
+}
+
+fn wait_for_foreground_event(expected: HWND, timeout: Duration) -> Result<bool, String> {
+    let deadline = Instant::now() + timeout;
+    loop {
+        if OBSERVED_FOREGROUND.get() == expected {
+            return Ok(true);
+        }
+
+        let remaining = deadline.saturating_duration_since(Instant::now());
+        if remaining.is_zero() {
+            return Ok(false);
+        }
+        let timeout_ms = remaining.as_millis().clamp(1, u32::MAX as u128) as u32;
+        // SAFETY: zero handles and a null handle array ask Windows to wait for queued input.
+        let result = unsafe {
+            MsgWaitForMultipleObjectsEx(0, null(), timeout_ms, QS_ALLINPUT, MWMO_INPUTAVAILABLE)
+        };
+        if result == WAIT_TIMEOUT {
+            return Ok(false);
+        }
+        if result == WAIT_FAILED {
+            return Err("MsgWaitForMultipleObjectsEx failed".into());
+        }
+        dispatch_ready_messages();
+    }
+}
+
+fn activate_and_observe(window: HWND, timeout: Duration) -> Result<(bool, bool), String> {
+    OBSERVED_FOREGROUND.set(null_mut());
+    EXPECTED_FOREGROUND.set(window);
+    // SAFETY: window is a currently live top-level window.
+    let accepted = unsafe { SetForegroundWindow(window) != 0 };
+    // No foreground event is required when the requested window was already foreground.
+    // SAFETY: GetForegroundWindow has no preconditions.
+    let already_foreground = unsafe { GetForegroundWindow() == window };
+    let observed = already_foreground || wait_for_foreground_event(window, timeout)?;
+    Ok((accepted, observed))
 }
 
 fn percentile(samples: &[f64], ratio: f64) -> f64 {
@@ -259,57 +382,28 @@ fn register_workload(
     })
 }
 
-fn pump_for(duration: Duration) {
-    let started = Instant::now();
-    while started.elapsed() < duration {
-        // SAFETY: message storage is initialized and valid for the duration of each call.
-        unsafe {
-            let mut message: MSG = zeroed();
-            while PeekMessageW(&mut message, null_mut(), 0, 0, PM_REMOVE) != 0 {
-                TranslateMessage(&message);
-                DispatchMessageW(&message);
-            }
-        }
-        std::thread::yield_now();
-    }
-}
-
 fn main() -> Result<(), String> {
     let sources = sources();
     if sources.is_empty() {
         return Err("no eligible visible source windows".into());
     }
-    let destination = create_destination()?;
+    let class = register_window_class()?;
+    let destination = create_destination(&class)?;
+    let _foreground_hook = install_foreground_hook()?;
     // SAFETY: destination is a valid caller-owned top-level window.
     unsafe {
-        ShowWindow(destination, SW_SHOW);
+        ShowWindow(destination.0, SW_SHOW);
     }
-    pump_for(Duration::from_millis(40));
 
-    let twenty = register_workload(destination, &sources, 20)?;
-    let fifty = register_workload(destination, &sources, 50)?;
+    let twenty = register_workload(destination.0, &sources, 20)?;
+    let fifty = register_workload(destination.0, &sources, 50)?;
 
     // The production path is initiated by the hotkey and owns foreground input while the overview is open.
-    // SAFETY: both handles are valid top-level windows at this point.
-    let overview_foreground = unsafe { SetForegroundWindow(destination) != 0 };
-    pump_for(Duration::from_millis(20));
+    let (_, overview_foreground) = activate_and_observe(destination.0, Duration::from_millis(100))?;
     let activation_started = Instant::now();
-    // SAFETY: the source came from EnumWindows and is still validated by SetForegroundWindow.
-    let activation_call = unsafe { SetForegroundWindow(sources[0].0) != 0 };
-    let activated = loop {
-        // SAFETY: GetForegroundWindow has no preconditions.
-        if unsafe { GetForegroundWindow() == sources[0].0 } {
-            break true;
-        }
-        if activation_started.elapsed() >= Duration::from_millis(100) {
-            break false;
-        }
-        pump_for(Duration::from_millis(1));
-    };
+    let (activation_call, activated) =
+        activate_and_observe(sources[0].0, Duration::from_millis(100))?;
     let activation_ms = activation_started.elapsed().as_secs_f64() * 1000.0;
-
-    // SAFETY: destination is a live caller-owned top-level window.
-    unsafe { DestroyWindow(destination) };
 
     println!(
         concat!(

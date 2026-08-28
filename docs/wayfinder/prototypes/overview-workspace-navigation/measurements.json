@@ -1,16 +1,16 @@
 {
   "machine": {
-    "windows_build": "26200.9168",
+    "windows_build": "26200",
     "display": "5120x1440@239Hz",
-    "eligible_source_windows": 12
+    "eligible_source_windows_observed": [12, 13]
   },
-  "method": "Five warmed release runs. Each workload registered and positioned all slots, called DwmFlush, then performed 120 full-slot property-update samples. Activation started while the overview destination owned foreground input.",
+  "method": "One discarded warm-up followed by five release runs. Each workload registered and positioned all slots, called DwmFlush, then performed 120 full-slot property-update samples. Activation started while the overview destination owned foreground input and settlement was delivered by EVENT_SYSTEM_FOREGROUND through an event-driven Win32 message wait.",
   "runs": [
-    { "activation_ms": 3.084, "twenty": { "register_ms": 4.335, "registration_flush_ms": 10.833, "update_p95_ms": 4.692 }, "fifty": { "register_ms": 8.616, "registration_flush_ms": 11.021, "update_p95_ms": 9.275 } },
-    { "activation_ms": 3.045, "twenty": { "register_ms": 3.874, "registration_flush_ms": 8.882, "update_p95_ms": 4.912 }, "fifty": { "register_ms": 8.959, "registration_flush_ms": 11.777, "update_p95_ms": 9.997 } },
-    { "activation_ms": 2.703, "twenty": { "register_ms": 4.456, "registration_flush_ms": 11.941, "update_p95_ms": 8.170 }, "fifty": { "register_ms": 10.172, "registration_flush_ms": 20.170, "update_p95_ms": 9.346 } },
-    { "activation_ms": 2.606, "twenty": { "register_ms": 3.681, "registration_flush_ms": 9.846, "update_p95_ms": 4.511 }, "fifty": { "register_ms": 9.266, "registration_flush_ms": 11.350, "update_p95_ms": 9.329 } },
-    { "activation_ms": 3.102, "twenty": { "register_ms": 3.925, "registration_flush_ms": 6.930, "update_p95_ms": 4.567 }, "fifty": { "register_ms": 9.603, "registration_flush_ms": 19.469, "update_p95_ms": 9.521 } }
+    { "activation_ms": 3.247, "twenty": { "register_ms": 6.734, "registration_flush_ms": 11.317, "update_p95_ms": 7.253 }, "fifty": { "register_ms": 8.307, "registration_flush_ms": 13.684, "update_p95_ms": 9.182 } },
+    { "activation_ms": 3.762, "twenty": { "register_ms": 5.851, "registration_flush_ms": 9.175, "update_p95_ms": 7.564 }, "fifty": { "register_ms": 8.907, "registration_flush_ms": 19.518, "update_p95_ms": 9.834 } },
+    { "activation_ms": 2.830, "twenty": { "register_ms": 3.837, "registration_flush_ms": 6.695, "update_p95_ms": 7.676 }, "fifty": { "register_ms": 8.844, "registration_flush_ms": 12.055, "update_p95_ms": 9.283 } },
+    { "activation_ms": 2.882, "twenty": { "register_ms": 4.158, "registration_flush_ms": 7.495, "update_p95_ms": 8.170 }, "fifty": { "register_ms": 8.813, "registration_flush_ms": 12.152, "update_p95_ms": 9.475 } },
+    { "activation_ms": 3.145, "twenty": { "register_ms": 3.711, "registration_flush_ms": 6.199, "update_p95_ms": 8.338 }, "fifty": { "register_ms": 9.216, "registration_flush_ms": 13.707, "update_p95_ms": 9.498 } }
   ],
   "activation_successes": 5,
   "activation_attempts": 5

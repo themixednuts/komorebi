@@ -84,6 +84,22 @@ _Avoid_: user data, installation content
 Behavior implemented through documented Windows contracts so that Windows and other applications recognize it correctly.
 _Avoid_: native-looking, skin
 
+**Windows path value**:
+An operational filesystem identity carried as `Path`/`PathBuf` or `OsStr`/`OsString` without a Unicode string round trip. It preserves drive-relative, UNC, verbatim, device-namespace, and ill-formed UTF-16/WTF-8 forms until the exact wide Windows boundary; any display string is one-way and non-authoritative.
+_Avoid_: normalized path string, slash-rewritten path, lossy path
+
+**Native window text**:
+The original sequence of UTF-16 code units observed from a Windows text API. A renderer may derive display text with replacement glyphs, but that view cannot become window identity or be written back as the original value.
+_Avoid_: UTF-8 window title, window identity
+
+**Windows path value**:
+An operational filesystem identity carried as `Path`/`PathBuf` or `OsStr`/`OsString` without a Unicode string round trip. It preserves drive-relative, UNC, verbatim, device-namespace, and ill-formed UTF-16/WTF-8 forms until the exact wide Windows boundary; any display string is one-way and non-authoritative.
+_Avoid_: normalized path string, slash-rewritten path, lossy path
+
+**Native window text**:
+The original sequence of UTF-16 code units observed from a Windows text API. A renderer may derive display text with replacement glyphs, but that view cannot become window identity or be written back as the original value.
+_Avoid_: UTF-8 window title, window identity
+
 **Command catalog**:
 The single searchable set of window-management actions exposed through first-party controls and external launchers.
 _Avoid_: shortcuts list, duplicate command menus
@@ -211,6 +227,38 @@ _Avoid_: last notification, socket offset
 **Control surface**:
 The first-party interface for finding, understanding, and invoking entries from the command catalog.
 _Avoid_: shortcuts window, general-purpose launcher
+
+**Spatial overview**:
+The manager-owned, monitor-shaped map of workspaces, containers, stacks, scratchpads, and windows used for semantic navigation and placement. It does not reproduce or control Windows Task View's virtual-desktop lifecycle.
+_Avoid_: Task View replacement, window gallery
+
+**Overview session**:
+One generation-fenced interactive presentation of a complete spatial overview across per-monitor owned hosts. It owns transient selection and preview leases but not manager topology.
+_Avoid_: overview window, desktop mode
+
+**Overview selection**:
+The stable semantic workspace, container, window, or scratchpad identity selected in an overview session. Screen coordinates and row positions may discover it but cannot identify it across a revision.
+_Avoid_: selected card index, cursor rectangle
+
+**Overview preview slot**:
+A generation-bound visual position that contains either an owned placeholder or a live native preview lease. Its pixels never carry identity, hit testing, or manager authority.
+_Avoid_: thumbnail window, captured window
+
+**Spatial overview**:
+The manager-owned, monitor-shaped map of workspaces, containers, stacks, scratchpads, and windows used for semantic navigation and placement. It does not reproduce or control Windows Task View's virtual-desktop lifecycle.
+_Avoid_: Task View replacement, window gallery
+
+**Overview session**:
+One generation-fenced interactive presentation of a complete spatial overview across per-monitor owned hosts. It owns transient selection and preview leases but not manager topology.
+_Avoid_: overview window, desktop mode
+
+**Overview selection**:
+The stable semantic workspace, container, window, or scratchpad identity selected in an overview session. Screen coordinates and row positions may discover it but cannot identify it across a revision.
+_Avoid_: selected card index, cursor rectangle
+
+**Overview preview slot**:
+A generation-bound visual position that contains either an owned placeholder or a live native preview lease. Its pixels never carry identity, hit testing, or manager authority.
+_Avoid_: thumbnail window, captured window
 
 **Toolkit projection**:
 A renderer-specific presentation of a renderer-neutral shell snapshot. It may translate raw UI input and publish pixels and accessibility state, but it cannot own catalog identity, palette-session truth, manager intent, or native effects.
