@@ -188,6 +188,22 @@ _Avoid_: shortcuts window, PowerToys adapter
 A typed source of command-palette results with its own query, privacy, ranking, and activation rules.
 _Avoid_: command type, untyped result list
 
+**Palette session**:
+One opening of the command palette, bound to the manager context captured before the palette takes focus and to a monotonic sequence of query generations.
+_Avoid_: palette process, search window
+
+**Search result**:
+A source-owned candidate identified by its stable item identity and the palette, query, and source generations that produced it. It is not an action.
+_Avoid_: result row, command
+
+**Result activation**:
+One identified attempt to act on an exact selected search result after its identity, source generation, availability, authority, and captured context are revalidated.
+_Avoid_: Enter key, result callback
+
+**Search index**:
+A generation-stamped local view of permitted file names and file content whose building, refreshing, stale, and unavailable states remain explicit.
+_Avoid_: file cache, search database
+
 **Configuration profile**:
 A durable owner-authored declaration of manager policy, bindings, shell choices, and automations compiled as one revision from one selected source plus explicit manager-owned edits. Live window state and generated recovery data are not part of it.
 _Avoid_: static configuration, active installation
