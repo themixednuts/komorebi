@@ -391,3 +391,23 @@ _Avoid_: timestamp, retry count
 **Privileged broker**:
 A narrow high-integrity helper for specific native window operations that Windows denies to the medium-integrity manager. It does not own input, configuration, scripting, UI, or network access.
 _Avoid_: elevated manager, privileged input service
+
+**Quick control**:
+A manager-owned interaction for one exact supported Windows setting or action whose effective value remains a platform observation.
+_Avoid_: system setting, generic toggle
+
+**Control route**:
+The documented native adapter, identity, admission rule, effect, and event source for one kind of quick control.
+_Avoid_: settings service, control backend
+
+**Feedback route**:
+Authority to present manager feedback for one exact manager-originated control route after its effect and platform observation are correlated and duplicate Windows feedback has been ruled out for the supported environment.
+_Avoid_: global OSD, notification callback
+
+**Hardware feedback path**:
+The Windows-owned path from a physical control through effective system state and system feedback. Its observations may refresh an open manager surface but do not summon duplicate manager feedback.
+_Avoid_: manager hotkey, external command
+
+**Native text**:
+Windows-origin code units preserved without Unicode repair or lossy conversion for identity, comparison, persistence, and native effects. A separate display rendering cannot become an operational value.
+_Avoid_: path string, Unicode-clean name
