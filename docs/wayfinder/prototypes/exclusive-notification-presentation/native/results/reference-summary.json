@@ -1,0 +1,26 @@
+{
+  "machine": {
+    "platform": "windows_11_x64",
+    "build": 26200
+  },
+  "method": {
+    "normal_trials": 6,
+    "producer_suppressed_trials": 6,
+    "deadline_millis": 10000,
+    "wake": "user_notification_listener_notification_changed"
+  },
+  "normal_added_millis": [9.15, 9.195, 9.323, 9.851, 10.305, 11.694],
+  "normal_removed_millis": [19.484, 21.097, 21.169, 21.933, 22.049, 112.022],
+  "producer_suppressed_added_millis": [7.073, 7.246, 7.788, 7.94, 8.489, 9.514],
+  "producer_suppressed_removed_millis": [18.648, 18.698, 19.024, 20.052, 21.006, 21.231],
+  "all_content_and_app_identity_exact": true,
+  "all_exact_dismissals_observed_removed": true,
+  "exclusive_presentation_blockers": [
+    "no_pre_display_veto",
+    "no_listener_action_invocation",
+    "focus_mutation_is_limited_access",
+    "no_permission_revocation_event"
+  ],
+  "exclusive_presentation": "fail",
+  "selected_mode": "windows_presenter_with_consented_private_history"
+}

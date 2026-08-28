@@ -80,6 +80,18 @@ _Avoid_: shell replacement, product defaults
 The single component allowed to display notification popups in the active profile. Notification observation and history do not grant a second component permission to display the same notification.
 _Avoid_: notification mirror, dual notifications
 
+**Notification observation**:
+A consent-gated Windows report that a current notification was added or removed, plus the content Windows permits the listener to read. It is evidence for private history after Windows accepted the notification, not a pre-display interception or action-routing grant.
+_Avoid_: intercepted notification, popup request
+
+**Private notification history**:
+An explicitly opened, accessible manager view of permitted notification observations while Windows remains the notification presenter. It is memory-only by default and becomes unavailable rather than empty when listener permission cannot be proved.
+_Avoid_: notification center replacement, mirrored popup
+
+**Notification handle**:
+A notification-role generation and Windows notification ID that identifies one currently observed history item for revalidated dismissal. It carries no original-action authority and becomes stale when its role generation changes.
+_Avoid_: toast ID, notification action
+
 **Doctor**:
 A read-only assessment of the active installation, its references, and promotion health.
 _Avoid_: repair command, automatic fix
@@ -151,6 +163,10 @@ _Avoid_: position retry loop, work-area polling
 **Native path**:
 A lossless Windows path value carried as `Path`/`PathBuf` or `OsStr`/`OsString`, including UNC and verbatim prefixes and potentially ill-formed UTF-16. Display conversion is never fed back into filesystem or process operations.
 _Avoid_: UTF-8 path string, normalized display path
+
+**Path resolution**:
+One operation-specific conversion from a native path name to an opened Windows handle or a typed unavailable outcome. Authority and containment follow the opened object identity, not a prior string comparison, canonical spelling, or normalization pass.
+_Avoid_: safe path string, canonical-path authorization
 
 **Container**:
 One ordered layout position in a workspace that holds one or more application windows. A multi-window container exposes one active member at a time without becoming a new workspace.
