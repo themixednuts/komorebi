@@ -9,7 +9,6 @@ use crate::protocol::RuntimeKind;
 use crate::windows::{OwnedHandle, windows_version};
 use anyhow::{Context, Result, bail, ensure};
 use mlua::{ChunkMode, Lua, LuaOptions, StdLib};
-use uuid::Uuid;
 use windows_sys::Win32::Foundation::{WAIT_OBJECT_0, WAIT_TIMEOUT};
 use windows_sys::Win32::System::JobObjects::{
     CreateJobObjectW, JOB_OBJECT_CPU_RATE_CONTROL_ENABLE, JOB_OBJECT_CPU_RATE_CONTROL_HARD_CAP,
@@ -29,14 +28,17 @@ use windows_sys::Win32::System::Threading::{GetExitCodeProcess, WaitForSingleObj
 
 mod af_unix;
 mod backpressure;
+mod cleanup;
 mod distribution;
 mod environment;
 mod evidence;
 mod fault;
 mod http;
 mod ipc;
+mod job_context;
 mod launch;
 mod lifetime;
+mod nested_job;
 mod policy;
 mod recovery;
 mod report;
@@ -52,8 +54,10 @@ use distribution::run as run_launch_distribution;
 use evidence::{binary as binary_evidence, boundary as boundary_evidence, command_output};
 use fault::run as run_faults;
 use http::run_evidence as run_http_evidence;
+use job_context::JobUiMode;
 use launch::{ExtensionBehavior, launch as launch_extension};
 use lifetime::run_suite as run_parent_lifetime;
+use nested_job::run_suite as run_nested_job_contexts;
 use policy::ContainmentPolicy;
 use recovery::run as run_restart_recovery;
 use report::{
@@ -114,6 +118,10 @@ fn run_diagnostic(policy: &ContainmentPolicy) -> Result<bool> {
             af_unix::run_client(Path::new(path), samples, Duration::from_millis(timeout))?;
             Ok(true)
         }
+        [flag, executable, private_file] if flag == OsStr::new("--nested-job-parent") => {
+            nested_job::run_parent(Path::new(executable), Path::new(private_file), policy)?;
+            Ok(true)
+        }
         _ => bail!("unexpected command-line arguments"),
     }
 }
@@ -134,8 +142,8 @@ fn run_evidence(policy: &ContainmentPolicy) -> Result<()> {
         .to_path_buf();
     let results_dir = prototype_root.join("results");
     fs::create_dir_all(&results_dir)?;
-    let private_file = results_dir.join(format!("host-private-{}.txt", Uuid::new_v4()));
-    fs::write(&private_file, b"must not be readable from LPAC")?;
+    let stale_private_files_removed = cleanup::remove_orphan_private_files(&results_dir)?;
+    let private_file = cleanup::create_private_file(&results_dir)?;
 
     let rust = if std::env::var_os("WAYFINDER_DIAGNOSTIC_MINIMAL").is_some() {
         executable_dir.join("containment-minimal-child.exe")
@@ -153,6 +161,8 @@ fn run_evidence(policy: &ContainmentPolicy) -> Result<()> {
     let http = run_http_evidence(policy)?;
 
     let runs = run_detailed_extensions(&rust, &lua, &private_file, policy)?;
+    let nested_jobs =
+        run_nested_job_contexts(&std::env::current_exe()?, &rust, &private_file, policy)?;
     let af_unix = run_af_unix_comparison(&std::env::current_exe()?, policy, &runs)?;
     let faults = run_faults(&fault, &private_file, policy)?;
     let host_responsiveness = run_host_responsiveness(&fault, &private_file, policy)?;
@@ -196,6 +206,7 @@ fn run_evidence(policy: &ContainmentPolicy) -> Result<()> {
         boundary: boundary_evidence(policy),
         http,
         runs,
+        nested_jobs,
         af_unix,
         faults,
         host_responsiveness,
@@ -209,6 +220,7 @@ fn run_evidence(policy: &ContainmentPolicy) -> Result<()> {
         cleanup: CleanupEvidence {
             profiles_deleted: profile_cleanup_succeeded(),
             private_file_deleted: !private_file.exists(),
+            stale_private_files_removed,
             pipe_handles_closed: true,
         },
     };
@@ -306,6 +318,7 @@ fn run_extension(
         startup_ms: extension.startup_ms,
         private_commit_bytes: extension.private_commit_bytes,
         in_expected_job: Verification::from(extension.in_expected_job),
+        host_job_mode: extension.host_job_mode,
         facts: extension.facts.clone(),
         probes: session.probes,
         echo_rtt_us: session.echo_rtt_us,
@@ -339,7 +352,7 @@ fn child_error_detail(
     format!("{status}\n{trace}")
 }
 
-fn create_restricted_job(policy: policy::JobPolicy) -> Result<OwnedHandle> {
+fn create_restricted_job(policy: policy::JobPolicy, ui_mode: JobUiMode) -> Result<OwnedHandle> {
     // SAFETY: null attributes/name create a private job object.
     let job = OwnedHandle::new(unsafe { CreateJobObjectW(null(), null()) })?;
     let mut limits = JOBOBJECT_EXTENDED_LIMIT_INFORMATION::default();
@@ -360,7 +373,7 @@ fn create_restricted_job(policy: policy::JobPolicy) -> Result<OwnedHandle> {
     // SAFETY: CpuRate is the active union field for hard-cap mode.
     cpu.Anonymous.CpuRate = policy.cpu_hard_cap_basis_points();
     set_job(job.raw(), JobObjectCpuRateControlInformation, &cpu)?;
-    if policy.ui_restrictions() {
+    if policy.ui_restrictions() && ui_mode == JobUiMode::Enforced {
         let ui = JOBOBJECT_BASIC_UI_RESTRICTIONS {
             UIRestrictionsClass: JOB_OBJECT_UILIMIT_DESKTOP
                 | JOB_OBJECT_UILIMIT_DISPLAYSETTINGS

@@ -5,6 +5,9 @@ use serde::Serialize;
 use crate::protocol::{ChildFacts, FaultScenario, ParentExitMode, ProbeOutcome, RuntimeKind};
 use crate::windows::windows_string_evidence;
 
+use super::job_context::HostJobMode;
+use super::nested_job::NestedJobEvidence;
+
 #[derive(Debug, Serialize)]
 pub(super) struct HarnessReport {
     pub(super) generated_at_unix_ms: u64,
@@ -15,6 +18,7 @@ pub(super) struct HarnessReport {
     pub(super) boundary: BoundaryEvidence,
     pub(super) http: HttpEvidence,
     pub(super) runs: Vec<RunReport>,
+    pub(super) nested_jobs: NestedJobEvidence,
     pub(super) af_unix: AfUnixEvidence,
     pub(super) faults: Vec<FaultEvidence>,
     pub(super) host_responsiveness: HostResponsivenessEvidence,
@@ -242,6 +246,7 @@ pub(super) struct RunReport {
     pub(super) startup_ms: f64,
     pub(super) private_commit_bytes: usize,
     pub(super) in_expected_job: Verification,
+    pub(super) host_job_mode: HostJobMode,
     pub(super) facts: ChildFacts,
     pub(super) probes: Vec<ProbeOutcome>,
     pub(super) echo_rtt_us: Vec<f64>,
@@ -275,6 +280,7 @@ impl Verification {
 pub(super) struct CleanupEvidence {
     pub(super) profiles_deleted: bool,
     pub(super) private_file_deleted: bool,
+    pub(super) stale_private_files_removed: usize,
     pub(super) pipe_handles_closed: bool,
 }
 

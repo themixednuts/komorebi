@@ -34,6 +34,7 @@
     "echo_samples": 32,
     "cohort_sizes": [1, 4, 16],
     "launch_distribution_repetitions": 5,
+    "nested_job_context_timeout_ms": 30000,
     "shared_host_contexts": 16,
     "shared_host_noop_samples": 32,
     "storage_key_limit_bytes": 128,

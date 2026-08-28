@@ -47,6 +47,7 @@ pub(super) struct WorkloadPolicy {
     echo_samples: NonZeroUsize,
     cohort_sizes: Box<[NonZeroUsize]>,
     launch_distribution_repetitions: NonZeroUsize,
+    nested_job_context_timeout: Duration,
     shared_host_contexts: NonZeroUsize,
     shared_host_noop_samples: NonZeroUsize,
     storage_key_limit_bytes: NonZeroUsize,
@@ -107,6 +108,7 @@ struct RawWorkloadPolicy {
     echo_samples: usize,
     cohort_sizes: Vec<usize>,
     launch_distribution_repetitions: usize,
+    nested_job_context_timeout_ms: u32,
     shared_host_contexts: usize,
     shared_host_noop_samples: usize,
     storage_key_limit_bytes: usize,
@@ -266,6 +268,10 @@ impl TryFrom<RawWorkloadPolicy> for WorkloadPolicy {
             cohort_sizes: nonzero_sizes(raw.cohort_sizes, "cohort_sizes")?,
             launch_distribution_repetitions: NonZeroUsize::new(raw.launch_distribution_repetitions)
                 .context("launch_distribution_repetitions must be nonzero")?,
+            nested_job_context_timeout: nonzero_duration(
+                raw.nested_job_context_timeout_ms,
+                "nested_job_context_timeout_ms",
+            )?,
             shared_host_contexts: NonZeroUsize::new(raw.shared_host_contexts)
                 .context("shared_host_contexts must be nonzero")?,
             shared_host_noop_samples: NonZeroUsize::new(raw.shared_host_noop_samples)
@@ -357,6 +363,10 @@ impl WorkloadPolicy {
 
     pub(super) const fn launch_distribution_repetitions(&self) -> usize {
         self.launch_distribution_repetitions.get()
+    }
+
+    pub(super) const fn nested_job_context_timeout(&self) -> Duration {
+        self.nested_job_context_timeout
     }
 
     pub(super) const fn shared_host_contexts(&self) -> usize {

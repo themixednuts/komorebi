@@ -15,3 +15,23 @@ fn win32_strings_preserve_wtf16_and_reject_interior_nul() {
     let truncated_by_raw_win32 = OsString::from_wide(&[u16::from(b'x'), 0, u16::from(b'y')]);
     assert!(wide(&truncated_by_raw_win32).is_err());
 }
+
+#[test]
+fn verbatim_paths_preserve_prefix_and_ill_formed_code_units() {
+    let units = [
+        u16::from(b'\\'),
+        u16::from(b'\\'),
+        u16::from(b'?'),
+        u16::from(b'\\'),
+        u16::from(b'C'),
+        u16::from(b':'),
+        u16::from(b'\\'),
+        0xD800,
+    ];
+    let path = OsString::from_wide(&units);
+    let encoded = wide(&path).expect("verbatim WTF-16 path is valid Windows path data");
+    assert_eq!(
+        encoded.as_slice_with_nul(),
+        [units.as_slice(), &[0]].concat()
+    );
+}

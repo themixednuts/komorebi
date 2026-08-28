@@ -36,6 +36,7 @@ use crate::windows::{OwnedHandle, current_user_sid, process_token_identity, wide
 
 use super::environment::{EnvironmentBlock, EnvironmentEntry};
 use super::ipc::{PipeChannel, connect_or_child_exit};
+use super::job_context::{HostJobMode, LaunchJobContext};
 use super::policy::ContainmentPolicy;
 use super::windows_boundary::{
     AppContainerProfile, AttributeList, SecurityDescriptor, create_junction,
@@ -56,6 +57,7 @@ pub(super) struct AuthenticatedExtension {
     pub(super) startup_ms: f64,
     pub(super) private_commit_bytes: usize,
     pub(super) in_expected_job: bool,
+    pub(super) host_job_mode: HostJobMode,
     pub(super) facts: ChildFacts,
     pub(super) error_file: PathBuf,
     _profile: AppContainerProfile,
@@ -119,6 +121,7 @@ struct RestrictedProcess {
     process: OwnedHandle,
     process_id: u32,
     in_expected_job: bool,
+    host_job_mode: HostJobMode,
     nonce: Uuid,
     launch_started: Instant,
 }
@@ -131,9 +134,11 @@ pub(super) fn launch(
     behavior: ExtensionBehavior,
     generation: crate::protocol::ExtensionGeneration,
 ) -> Result<AuthenticatedExtension> {
+    let job_context = LaunchJobContext::detect()?;
     let files = ExtensionFiles::stage(runtime, executable, policy)?;
     let pipe = HostPipe::create(&files.profile, policy)?;
-    let process = RestrictedProcess::spawn(files, pipe, private_file, policy, behavior)?;
+    let process =
+        RestrictedProcess::spawn(files, pipe, private_file, policy, behavior, job_context)?;
     process.authenticate(runtime, policy, generation)
 }
 
@@ -233,12 +238,20 @@ impl RestrictedProcess {
         private_file: &Path,
         policy: &ContainmentPolicy,
         behavior: ExtensionBehavior,
+        job_context: LaunchJobContext,
     ) -> Result<Self> {
-        let job = create_restricted_job(policy.job())?;
+        let job = create_restricted_job(policy.job(), job_context.ui_mode())?;
         let nonce = Uuid::new_v4();
         let launch_started = Instant::now();
-        let process_info =
-            create_suspended_process(&files, &pipe.name, &nonce, private_file, policy, behavior)?;
+        let process_info = create_suspended_process(
+            &files,
+            &pipe.name,
+            &nonce,
+            private_file,
+            policy,
+            behavior,
+            job_context.process_creation_flags(),
+        )?;
         let process = OwnedHandle::new(process_info.hProcess)?;
         let thread = OwnedHandle::new(process_info.hThread)?;
         // SAFETY: process is suspended and both handles are valid.
@@ -260,6 +273,7 @@ impl RestrictedProcess {
             process,
             process_id: process_info.dwProcessId,
             in_expected_job: in_job != 0,
+            host_job_mode: job_context.mode(),
             nonce,
             launch_started,
         })
@@ -313,6 +327,7 @@ impl RestrictedProcess {
             startup_ms: self.launch_started.elapsed().as_secs_f64() * 1_000.0,
             private_commit_bytes,
             in_expected_job: self.in_expected_job,
+            host_job_mode: self.host_job_mode,
             process_id: self.process_id,
             pipe_pid,
             pipe_acl_sddl: self.pipe.acl_sddl,
@@ -331,6 +346,7 @@ fn create_suspended_process(
     private_file: &Path,
     policy: &ContainmentPolicy,
     behavior: ExtensionBehavior,
+    additional_creation_flags: u32,
 ) -> Result<PROCESS_INFORMATION> {
     let capabilities = SECURITY_CAPABILITIES {
         AppContainerSid: files.profile.sid,
@@ -368,7 +384,8 @@ fn create_suspended_process(
             CREATE_SUSPENDED
                 | CREATE_NO_WINDOW
                 | EXTENDED_STARTUPINFO_PRESENT
-                | CREATE_UNICODE_ENVIRONMENT,
+                | CREATE_UNICODE_ENVIRONMENT
+                | additional_creation_flags,
             environment.as_ptr().cast(),
             current_directory.as_ptr(),
             &raw const startup.StartupInfo,

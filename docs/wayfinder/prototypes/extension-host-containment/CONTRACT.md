@@ -2,7 +2,9 @@
 
 ## Decision
 
-Use one headless Rust process per active extension principal. Embed one text-only LuaJIT state through `mlua`. Create the process suspended inside a unique LPAC identity, assign it to its no-breakaway Job Object, then resume it. Extension code cannot run before both boundaries exist.
+Use one headless Rust process per active extension principal. Embed one text-only LuaJIT state through `mlua`. Classify the containment host's immediate Job before child creation. Create the extension suspended inside a unique LPAC identity, assign it to its inner Job Object, then resume it. Extension code cannot run before both boundaries exist.
+
+Use a standalone inner Job when the host is not job-bound or when the outer Job permits explicit or silent breakaway. Use a nested inner Job, without an additional Job UI restriction, when the outer Job denies breakaway but has no UI restriction. Reject activation before child creation when the outer Job both denies breakaway and sets a UI restriction because Windows cannot form the required inner Job in that context.
 
 The shared-host control is not a production fallback. It is a measurement baseline whose blast radius is every loaded extension.
 
@@ -43,7 +45,7 @@ struct AuthenticatedExtensionChannel {
 
 `AuthenticatedExtensionChannel` is only constructible after every kernel and protocol check passes. A connected pipe handle is not this type.
 
-`NativePath` and environment values remain `Path`/`OsStr`/`OsString` until `widestring::U16CString` encodes them directly for a wide Win32 API. That boundary preserves ill-formed UTF-16, appends the required terminal NUL, and rejects interior NUL instead of truncating. Paths never pass through `String`, `Display`, WTF-8 bytes, or a slash-normalizing interchange type. Evidence that must fit JSON carries both optional UTF-8 and the authoritative UTF-16 code units in hexadecimal.
+`NativePath` and environment values remain `Path`/`OsStr`/`OsString` until `widestring::U16CString` encodes them directly for a wide Win32 API. On Windows, Rust keeps `OsStr` in an opaque representation compatible with lossless WTF-8/WTF-16 round trips. Code must use `encode_wide`/`from_wide`, not inspect that representation. The Win32 boundary preserves unpaired surrogates, appends the required terminal NUL, and rejects interior NUL instead of truncating. Paths never pass through `String`, `Display`, lossy conversion, or a slash-normalizing interchange type. Evidence that must fit JSON carries both optional UTF-8 and the authoritative UTF-16 code units in hexadecimal.
 
 Storage principals and keys are not paths. The authenticated channel supplies the principal; an extension supplies only a bounded portable logical key, expected revision, and bounded value.
 
@@ -67,6 +69,11 @@ The current recovery policy issues one typed `RestartPermit`. The supervisor mus
 ```text
 ExtensionRegistry::activate(package_id)
   -> ExtensionSupervisor::start(principal)
+    -> LaunchJobContext::detect()
+      -> IsProcessInJob(current_process)
+      -> QueryInformationJobObject(immediate_job_limits)
+      -> Standalone | ExplicitBreakaway | SilentBreakaway | Nested
+      -> UiRestrictionsWithoutBreakaway before child creation
     -> WindowsContainment::create_profile(principal)
       -> CreateAppContainerProfile(unique_name, lpacAppExperience)
     -> PackageStager::stage_immutable_image(profile, package)
@@ -74,6 +81,7 @@ ExtensionRegistry::activate(package_id)
       -> CreateNamedPipeW(unqualified_host_name, protected_sid_dacl, reject_remote)
     -> WindowsContainment::create_suspended_process(image, environment)
       -> CreateProcessAsUserW(explicit_application_name, no_reparsed_command_line)
+      -> CREATE_BREAKAWAY_FROM_JOB only for ExplicitBreakaway
       -> PROC_THREAD_ATTRIBUTE_SECURITY_CAPABILITIES
       -> PROC_THREAD_ATTRIBUTE_ALL_APPLICATION_PACKAGES_POLICY
       -> PROC_THREAD_ATTRIBUTE_MITIGATION_POLICY(win32k_off)
@@ -83,7 +91,7 @@ ExtensionRegistry::activate(package_id)
       -> kill_on_close
       -> job_memory_limit
       -> cpu_hard_cap
-      -> ui_restrictions
+      -> ui_restrictions for standalone/breakaway; omitted for compatible nesting
     -> WindowsContainment::resume(process)
     -> ExtensionAuthenticator::accept(pipe, expected)
       -> GetNamedPipeClientProcessId
@@ -117,6 +125,23 @@ ExtensionSupervisor::recover(failed_generation)
 ```
 
 The production manager state thread will request activation and receive a typed outcome; this disposable evidence harness runs the same launch stack synchronously.
+
+## Nested-Job context call stack
+
+```text
+NestedJobSuite::run(context)
+  -> CreateJobObjectW(outer_limits, optional_ui_restriction)
+  -> spawn exact containment-host image with native Path arguments
+  -> AssignProcessToJobObject(helper, outer_job)
+  -> write one start signal after assignment
+  -> LaunchJobContext::detect()
+  -> ExtensionSupervisor::start(launch_scale)
+  -> authenticated LPAC session | typed JobContextRejection
+  -> WaitForSingleObject(helper_process, configured_deadline)
+  -> decode bounded HelperOutcome
+```
+
+The helper blocks once before classification so assignment cannot race child creation. Completion uses the native waitable process handle. There is no status poll or settling loop.
 
 ## Native transport call stack
 
@@ -249,7 +274,9 @@ ExtensionRegistry::uninstall(principal, Retain | Delete)
   -> Delete removes only the validated principal subtree
 ```
 
-No `exists`/metadata precheck authorizes a later storage mutation. The stage uses create-new semantics, and first-install promotion refuses to replace a racing destination. The prototype root is manager-owned and inaccessible to the LPAC principal; production should retain that ACL boundary and use handle-relative operations if a higher-privilege broker must resist a hostile same-user process.
+No `exists`/metadata precheck authorizes a later storage mutation. The stage uses create-new semantics, and first-install promotion refuses to replace a racing destination. The prototype root is manager-owned and inaccessible to the LPAC principal; production should retain that ACL boundary and use handle-relative operations if a higher-privilege broker must resist a hostile same-user process. This follows the defensive filesystem rules in [Bugs Rust Won't Catch](https://corrode.dev/blog/bugs-rust-wont-catch/): do not trust a path across two system calls, preserve native path data, reject invalid boundary input, and propagate meaningful failures.
+
+Harness-private probes follow the same creation rule. Startup recovery enumerates only the manager-owned results directory and removes direct files whose names match the complete generated `host-private-<uuid>.txt` grammar. It does not recurse or follow an arbitrary caller path. Probe creation uses `OpenOptions::create_new(true)` rather than an existence check followed by truncating creation.
 
 Broker filesystem authorization must bind policy and action to the same opened Windows handle. Canonical path strings are suitable evidence and launch inputs, but they are not filesystem identity and must not become a check-then-open production authorization scheme.
 
@@ -264,6 +291,6 @@ Broker filesystem authorization must bind policy and action to the same opened W
 
 - The child must not statically import User32 when Win32k is disabled. Forbidden UI APIs are probed by explicit runtime loading.
 - The MSVC CRT must be statically linked or packaged beside the child; LPAC cannot depend on ambient `ALL APPLICATION PACKAGES` access.
-- `Path`/`OsStr`/`OsString` plus `widestring::U16CString` form the path-to-Win32 primitive: they round-trip potentially ill-formed UTF-16 and reject interior NUL. UTF-8 path crates are not used. `dunce` simplifies `\\?\` paths for legacy consumers and therefore has the wrong semantics for an authoritative boundary; verbatim, UNC, device, and normal forms remain intact.
+- `Path`/`OsStr`/`OsString` plus `widestring::U16CString` form the path-to-Win32 primitive: they round-trip potentially ill-formed UTF-16 and reject interior NUL. UTF-8 path crates are not used. `dunce` simplifies `\\?\` paths for legacy consumers and therefore has the wrong semantics for an authoritative boundary; verbatim, UNC, device, and normal forms remain intact. `normpath` is suitable only when a non-authoritative caller needs a normalized display or intake spelling. `wtf_string` may become useful if profiling finds repeated `OsStr` to wide re-encoding on a hot Win32 path; this prototype crosses each such boundary once, so adding it now would add a second string type without a measured benefit.
 - For an unpackaged full-trust server and LPAC client, the working pipe topology is a host-owned unqualified name. `LOCAL\` was rewritten into the AppContainer namespace and was not visible to the host-created endpoint on this machine.
 - `TokenIsLessPrivilegedAppContainer` returned `ERROR_INVALID_PARAMETER` on the target build. Verification falls back to an AppContainer token whose `ALL APPLICATION PACKAGES` membership is absent.
