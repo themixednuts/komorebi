@@ -56,6 +56,22 @@ _Avoid_: crash loop, factory reset
 The accessible AppBar, palette, overview, notification history or proved presenter, quick controls, and optional OSD surfaces owned by the Windows manager while Explorer remains available for recovery.
 _Avoid_: DWM replacement, Explorer replacement
 
+**Shell role host**:
+One independently supervised process that owns the windows, accessible presentation, and native resources for exactly one AppBar, interactive, notification, or OSD role. Role hosts share contracts and code but not authoritative state or a crash boundary.
+_Avoid_: UI process, renderer service
+
+**Accessible presentation**:
+The paired visual, keyboard, and assistive-technology account of one shell snapshot, with the same stable semantic identities, selection, focus, values, and actions in every projection.
+_Avoid_: accessibility overlay, UIA mirror
+
+**Shell readiness**:
+The evidence that one authenticated role generation has acquired its exact native resources and published a complete first visual and accessible frame.
+_Avoid_: process alive, window shown
+
+**Focus return target**:
+The stable foreign-window identity captured before a manager-owned interactive surface takes focus and revalidated before one focus-return attempt.
+_Avoid_: previous HWND, focus fallback
+
 **Personal shell profile**:
 The selection of manager-owned features, consent-gated modes, and Explorer recovery routes enabled for the active installation. It keeps Explorer available unless a separate disposable shell-replacement experiment explicitly removes it.
 _Avoid_: shell replacement, product defaults
