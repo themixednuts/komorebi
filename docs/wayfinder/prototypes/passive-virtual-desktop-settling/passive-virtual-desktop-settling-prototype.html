@@ -17,29 +17,53 @@
   </style>
 </head>
 <body><main>
-  <div class="kicker">Disposable Wayfinder probe · public Windows APIs only</div>
+  <div class="kicker">Disposable Wayfinder probe · event-first · public Windows APIs only</div>
   <h1>When has a user-driven Windows desktop switch actually settled?</h1>
-  <p>This prototype models the manager’s passive observer. It never enumerates, orders, creates, or switches Windows desktops. Feed it public per-window cohort samples and inspect when effects become safe.</p>
+  <p>This prototype models the measured manager design: a documented WinEvent wakes a bounded public-API verification burst, three equal cohort samples settle it, and sampling stops. It never enumerates, orders, creates, or switches Windows desktops.</p>
 
   <section class="grid">
     <div class="panel">
       <h2>Free-play state machine</h2>
-      <div class="buttons" id="intervals"><button data-ms="16">16 ms</button><button class="active" data-ms="100">100 ms</button><button data-ms="500">500 ms</button></div>
+      <div class="buttons" id="intervals"><button class="active" data-ms="16">16 ms burst · selected</button><button data-ms="100">100 ms</button><button data-ms="500">500 ms</button></div>
       <div class="state">
         <div class="metric"><span>Observer state</span><strong id="state">Establishing</strong></div>
         <div class="metric"><span>Equal samples</span><strong id="samples">0 / 3</strong></div>
         <div class="metric"><span>Epoch</span><strong id="epoch">1</strong></div>
         <div class="metric"><span>Earliest settlement</span><strong id="latency">—</strong></div>
       </div>
-      <div class="buttons" id="events"><button class="event same" data-event="same">Same cohort sample</button><button class="event change" data-event="change">Changed cohort sample</button><button class="event bad" data-event="bad">Unavailable sample</button><button data-event="restart">Explorer restarted</button><button data-event="reset">Reset</button></div>
-      <div class="status" id="status"><strong>No effects are allowed.</strong><br>Three equal samples are required to establish the first stable cohort.</div>
+      <div class="buttons" id="events"><button data-event="wake">Native desktop wake</button><button class="event same" data-event="same">Same cohort sample</button><button class="event change" data-event="change">Changed cohort sample</button><button class="event bad" data-event="bad">Unavailable sample</button><button data-event="restart">Explorer restarted</button><button data-event="reset">Reset</button></div>
+      <div class="status stable" id="status"><strong>Dormant: zero desktop queries.</strong><br>A settled baseline is held until a qualified WinEvent wakes a bounded burst.</div>
     </div>
     <aside class="panel">
       <h2>Guided walkthroughs</h2>
-      <div class="buttons"><button data-walk="settle">Clean switch</button><button data-walk="bounce">Transient bounce</button><button data-walk="failure">Unavailable API</button><button data-walk="restart">Explorer restart</button></div>
+      <div class="buttons"><button data-walk="settle">Clean switch</button><button data-walk="bounce">Duplicate wake + bounce</button><button data-walk="failure">Unavailable API</button><button data-walk="restart">Explorer restart</button></div>
       <ol id="walk"><li>Choose a walkthrough or feed samples manually.</li></ol>
       <p class="note">Candidate evidence never hides, reveals, or moves a window. Unavailable evidence preserves the prior settled state.</p>
     </aside>
+
+    <div class="panel wide">
+      <h2>Measured switches · 10 transitions per cell</h2>
+      <table><thead><tr><th>Phase</th><th>Interval</th><th>P50 settle</th><th>P95 settle</th><th>Max</th><th>Queries/s while armed</th><th>CPU while armed</th></tr></thead><tbody>
+        <tr><td>Before Explorer restart</td><td>16 ms</td><td>79 ms</td><td>123.6 ms</td><td>125 ms</td><td>3,930.0</td><td>4.52%</td></tr>
+        <tr><td>Before Explorer restart</td><td>100 ms</td><td>341 ms</td><td>395.8 ms</td><td>403 ms</td><td>638.2</td><td>0.72%</td></tr>
+        <tr><td>Before Explorer restart</td><td>500 ms</td><td>1,351 ms</td><td>1,515.1 ms</td><td>1,516 ms</td><td>127.9</td><td>0.10%</td></tr>
+        <tr><td>After Explorer restart</td><td>16 ms</td><td>110.5 ms</td><td>121.6 ms</td><td>122 ms</td><td>3,932.4</td><td>4.84%</td></tr>
+        <tr><td>After Explorer restart</td><td>100 ms</td><td>277 ms</td><td>332.2 ms</td><td>338 ms</td><td>638.2</td><td>0.97%</td></tr>
+        <tr><td>After Explorer restart</td><td>500 ms</td><td>1,273.5 ms</td><td>1,527.9 ms</td><td>1,577 ms</td><td>127.9</td><td>0.29%</td></tr>
+      </tbody></table>
+      <p class="note">All 60 transitions completed. The 16 ms rate is selected only for a short event-triggered burst; it is disarmed at settlement.</p>
+    </div>
+
+    <div class="panel wide">
+      <h2>Native signal capture · 7 Task View switches</h2>
+      <table><thead><tr><th>Signal</th><th>Events</th><th>Role</th></tr></thead><tbody>
+        <tr><td>Desktop HWND · <code>EVENT_OBJECT_NAMECHANGE</code></td><td>7</td><td>Primary wake · exactly one per switch</td></tr>
+        <tr><td>Normal probe cloak/uncloak</td><td>7</td><td>Corroborating managed-window wake</td></tr>
+        <tr><td>Pinned probe cloak/uncloak</td><td>0</td><td>Correctly remained surfaced</td></tr>
+        <tr><td><code>EVENT_SYSTEM_DESKTOPSWITCH</code></td><td>0</td><td>Win32 input desktop, not Task View</td></tr>
+      </tbody></table>
+      <p class="note">The callback filters and posts a typed event. It never runs COM or visibility logic reentrantly.</p>
+    </div>
 
     <div class="panel wide">
       <h2>Measured idle cost · 32 HWND cohort · before Explorer restart</h2>
@@ -48,26 +72,27 @@
         <tr><td>100 ms</td><td>100</td><td>6,400</td><td>638.3/s</td><td>0.61%</td></tr>
         <tr><td>500 ms</td><td>20</td><td>1,280</td><td>127.9/s</td><td>0.77%*</td></tr>
       </tbody></table>
-      <p class="note">*Short-run scheduling noise dominates the 500 ms CPU sample. Switch traces select the final interval; this table already rules out continuous 16 ms polling for a passive observer.</p>
+      <p class="note">*Short-run scheduling noise dominates the 500 ms CPU sample. Native wake-up removes this idle cost entirely; continuous 16 ms polling is explicitly rejected.</p>
     </div>
 
     <div class="panel wide">
       <h2>Selected ownership boundary</h2>
-      <p><code>PublicVirtualDesktopPort</code> classifies HRESULTs and produces cohort snapshots. <code>DesktopSettler</code> is a pure temporal state machine. <code>DesktopVisibilityPlanner</code> receives only settled transitions or explicit unavailability. Explorer restart advances the observation epoch and invalidates every candidate.</p>
+      <p><code>WindowsDesktopWakeAdapter</code> owns the WinEvent hook and callback filtering. <code>PublicVirtualDesktopPort</code> classifies HRESULTs and produces cohort snapshots. <code>DesktopSettler</code> is pure temporal logic. <code>DesktopVisibilityPlanner</code> receives only committed generations or explicit unavailability. Explorer restart advances the observation epoch and invalidates every candidate.</p>
     </div>
   </section>
 
   <script>
-    const $=s=>document.querySelector(s); let model={ms:100,state:'Establishing',samples:0,epoch:1,stable:false};
-    function render(message){ $('#state').textContent=model.state; $('#samples').textContent=`${model.samples} / 3`; $('#epoch').textContent=model.epoch; $('#latency').textContent=model.state==='Candidate'||model.state==='Establishing'?`${model.samples*model.ms} ms`:'—'; const el=$('#status'); el.className='status '+model.state.toLowerCase(); el.innerHTML=message; }
-    function same(){ model.samples++; if(model.samples>=3){model.state='Stable';model.stable=true;model.samples=3;render('<strong>Settled evidence may produce effects.</strong><br>The current cohort is the new stable baseline.');}else render(`<strong>No effects are allowed.</strong><br>${3-model.samples} equal sample(s) still required.`);}
-    function change(){model.state='Candidate';model.samples=1;render('<strong>No effects are allowed.</strong><br>A changed cohort started a candidate generation; two matching samples remain.');}
-    function bad(){model.state='Unavailable';model.samples=0;render(`<strong>Preserve ${model.stable?'the prior stable state':'no assumed state'}.</strong><br>Suppress hide/show effects and expose degraded observation diagnostics.`);}
-    function restart(){model.epoch++;model.state='Establishing';model.samples=0;model.stable=false;render('<strong>No effects are allowed.</strong><br>Explorer lifetime changed; recreate COM and establish a fresh three-sample baseline.');}
-    function reset(){model={ms:model.ms,state:'Establishing',samples:0,epoch:1,stable:false};render('<strong>No effects are allowed.</strong><br>Three equal samples are required to establish the first stable cohort.');}
+    const $=s=>document.querySelector(s); let model={ms:16,state:'Dormant',samples:3,epoch:1,stable:true,armed:false};
+    function render(message){ $('#state').textContent=model.state; $('#samples').textContent=`${model.samples} / 3`; $('#epoch').textContent=model.epoch; $('#latency').textContent=model.armed?`${model.samples*model.ms} ms`:'0 queries'; const el=$('#status'); el.className='status '+(model.state==='Dormant'?'stable':model.state.toLowerCase()); el.innerHTML=message; }
+    function wake(){if(!model.armed){model.state='Settling';model.samples=0;model.armed=true;}render('<strong>No effects are allowed.</strong><br>A qualified native event armed the bounded verification burst.');}
+    function same(){if(!model.armed)return render('<strong>Dormant: zero desktop queries.</strong><br>A sample is not scheduled without a wake.');model.samples++;if(model.samples>=3){model.state='Dormant';model.stable=true;model.armed=false;model.samples=3;render('<strong>Generation committed; sampling disarmed.</strong><br>Settled effects may run once, then the observer returns to zero queries.');}else render(`<strong>No effects are allowed.</strong><br>${3-model.samples} equal sample(s) still required.`);}
+    function change(){if(!model.armed)wake();model.state='Settling';model.samples=1;render('<strong>No effects are allowed.</strong><br>A different signature replaced the candidate; two matching samples remain.');}
+    function bad(){model.state='Unavailable';model.samples=0;model.armed=false;render(`<strong>Preserve ${model.stable?'the prior stable state':'no assumed state'}.</strong><br>Suppress hide/show effects and expose degraded observation diagnostics.`);}
+    function restart(){model.epoch++;model.state='Establishing';model.samples=0;model.stable=false;model.armed=true;render('<strong>No effects are allowed.</strong><br>Explorer lifetime changed; recreate COM and establish a fresh three-sample baseline.');}
+    function reset(){model={ms:model.ms,state:'Dormant',samples:3,epoch:1,stable:true,armed:false};render('<strong>Dormant: zero desktop queries.</strong><br>A settled baseline is held until a qualified WinEvent wakes a bounded burst.');}
     $('#intervals').onclick=e=>{if(!e.target.dataset.ms)return;model.ms=+e.target.dataset.ms;document.querySelectorAll('#intervals button').forEach(b=>b.classList.toggle('active',b===e.target));render($('#status').innerHTML)};
-    $('#events').onclick=e=>{({same,change,bad,restart,reset}[e.target.dataset.event]||(()=>{}))()};
-    const walks={settle:[same,same,same,change,same,same],bounce:[same,same,same,change,change,same,same],failure:[same,same,same,bad,same,same,same],restart:[same,same,same,restart,same,same,same]};
-    document.querySelector('aside .buttons').onclick=e=>{const name=e.target.dataset.walk;if(!name)return;reset();const labels={settle:['Establish baseline','Observe changed cohort','Require three equal changed samples','Permit settled effects'],bounce:['Establish baseline','Discard a one-sample candidate','Restart the count on a different signature','Permit effects only after equality'],failure:['Establish baseline','Receive explicit unavailability','Preserve prior effects','Recover through a fresh stable cohort'],restart:['Establish baseline','Advance observation epoch','Discard stale evidence','Re-establish before effects']};$('#walk').innerHTML=labels[name].map(x=>`<li>${x}</li>`).join('');walks[name].forEach((fn,i)=>setTimeout(fn,220*(i+1)));};
+    $('#events').onclick=e=>{({wake,same,change,bad,restart,reset}[e.target.dataset.event]||(()=>{}))()};
+    const walks={settle:[wake,change,same,same],bounce:[wake,wake,change,change,same,same],failure:[wake,bad,wake,same,same,same],restart:[restart,same,same,same]};
+    document.querySelector('aside .buttons').onclick=e=>{const name=e.target.dataset.walk;if(!name)return;reset();const labels={settle:['Receive one native wake','Observe the changed cohort','Require three equal snapshots','Commit once and disarm'],bounce:['Coalesce duplicate wakes','Replace a transient signature','Restart equality on the latest candidate','Commit once and disarm'],failure:['Wake a bounded burst','Receive explicit unavailability','Preserve prior effects','Recover through a fresh stable cohort'],restart:['Advance the shell epoch','Discard stale evidence','Recreate the public COM adapter','Re-establish before effects']};$('#walk').innerHTML=labels[name].map(x=>`<li>${x}</li>`).join('');walks[name].forEach((fn,i)=>setTimeout(fn,260*(i+1)));};
   </script>
 </main></body></html>

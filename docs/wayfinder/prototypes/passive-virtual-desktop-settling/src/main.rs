@@ -4,6 +4,7 @@ use std::fs::File;
 use std::io::BufWriter;
 use std::mem::{size_of, zeroed};
 use std::path::PathBuf;
+use std::sync::{Mutex, OnceLock};
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -21,14 +22,18 @@ use windows::Win32::System::Threading::{
     GetCurrentProcess, GetCurrentProcessId, GetProcessTimes, OpenProcess, OpenProcessToken,
     PROCESS_NAME_FORMAT, PROCESS_QUERY_LIMITED_INFORMATION, QueryFullProcessImageNameW,
 };
+use windows::Win32::UI::Accessibility::{HWINEVENTHOOK, SetWinEventHook, UnhookWinEvent};
 use windows::Win32::UI::Input::KeyboardAndMouse::{GetLastInputInfo, LASTINPUTINFO};
 use windows::Win32::UI::Shell::{IVirtualDesktopManager, VirtualDesktopManager};
 use windows::Win32::UI::WindowsAndMessaging::{
-    CW_USEDEFAULT, CreateWindowExW, DefWindowProcW, DispatchMessageW, EnumWindows, GetClassNameW,
-    GetForegroundWindow, GetMessageW, GetWindowTextLengthW, GetWindowTextW,
-    GetWindowThreadProcessId, IsIconic, IsWindow, IsWindowVisible, MSG, PostQuitMessage,
-    RegisterClassW, SW_SHOW, SW_SHOWMINIMIZED, ShowWindow, TranslateMessage, WINDOW_EX_STYLE,
-    WM_DESTROY, WNDCLASSW, WS_EX_TOOLWINDOW, WS_OVERLAPPEDWINDOW,
+    CW_USEDEFAULT, CreateWindowExW, DefWindowProcW, DispatchMessageW, EVENT_OBJECT_CLOAKED,
+    EVENT_OBJECT_NAMECHANGE, EVENT_OBJECT_UNCLOAKED, EVENT_SYSTEM_DESKTOPSWITCH,
+    EVENT_SYSTEM_FOREGROUND, EnumWindows, GetClassNameW, GetDesktopWindow, GetForegroundWindow,
+    GetMessageW, GetWindowTextLengthW, GetWindowTextW, GetWindowThreadProcessId, IsIconic,
+    IsWindow, IsWindowVisible, MSG, PM_REMOVE, PeekMessageW, PostQuitMessage, RegisterClassW,
+    SW_SHOW, SW_SHOWMINIMIZED, ShowWindow, TranslateMessage, WINDOW_EX_STYLE,
+    WINEVENT_OUTOFCONTEXT, WINEVENT_SKIPOWNPROCESS, WM_DESTROY, WNDCLASSW, WS_EX_TOOLWINDOW,
+    WS_OVERLAPPEDWINDOW,
 };
 use windows::core::{BOOL, Error as WindowsError, HSTRING, PCWSTR, PWSTR, w};
 
@@ -55,6 +60,12 @@ enum Command {
         output: PathBuf,
         #[arg(long, default_value_t = 600)]
         timeout_seconds: u64,
+    },
+    Events {
+        #[arg(long, default_value_t = 30)]
+        duration_seconds: u64,
+        #[arg(long)]
+        output: PathBuf,
     },
 }
 
@@ -164,6 +175,42 @@ struct ProcessTimes {
     user_100ns: u64,
 }
 
+#[derive(Debug, Clone)]
+struct RawNativeEvent {
+    observed_tick_ms: u64,
+    event: u32,
+    hwnd: isize,
+    object_id: i32,
+    child_id: i32,
+    event_thread_id: u32,
+    event_tick_ms: u32,
+}
+
+#[derive(Debug, Serialize)]
+struct NativeEvent {
+    elapsed_ms: u64,
+    kind: &'static str,
+    hwnd: isize,
+    window_alias: Option<String>,
+    object_id: i32,
+    child_id: i32,
+    event_thread_id: u32,
+    event_tick_ms: u32,
+}
+
+#[derive(Debug, Serialize)]
+struct NativeEventRun {
+    prototype: &'static str,
+    duration_ms: u64,
+    tracked_windows: Vec<WindowDescriptor>,
+    event_counts: BTreeMap<&'static str, usize>,
+    events: Vec<NativeEvent>,
+    user_cpu_ms: u64,
+    kernel_cpu_ms: u64,
+}
+
+static NATIVE_EVENTS: OnceLock<Mutex<Vec<RawNativeEvent>>> = OnceLock::new();
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     match Cli::parse().command {
         Command::Target => run_target()?,
@@ -180,9 +227,161 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             output,
             Duration::from_secs(timeout_seconds),
         )?,
+        Command::Events {
+            duration_seconds,
+            output,
+        } => run_native_event_probe(Duration::from_secs(duration_seconds), output)?,
     }
 
     Ok(())
+}
+
+fn run_native_event_probe(
+    duration: Duration,
+    output: PathBuf,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let windows = enumerate_tracked_windows()?;
+    if windows.iter().filter(|window| is_probe(window)).count() < 28 {
+        return Err("target process is missing one or more probe windows".into());
+    }
+
+    let capture = NATIVE_EVENTS.get_or_init(|| Mutex::new(Vec::new()));
+    capture
+        .lock()
+        .map_err(|_| "native event capture lock was poisoned")?
+        .clear();
+
+    let hooks = [
+        native_event_hook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND)?,
+        native_event_hook(EVENT_SYSTEM_DESKTOPSWITCH, EVENT_SYSTEM_DESKTOPSWITCH)?,
+        native_event_hook(EVENT_OBJECT_NAMECHANGE, EVENT_OBJECT_NAMECHANGE)?,
+        native_event_hook(EVENT_OBJECT_CLOAKED, EVENT_OBJECT_UNCLOAKED)?,
+    ];
+    let started = Instant::now();
+    let started_tick_ms = unsafe { GetTickCount64() };
+    let process_times_before = process_times()?;
+    println!("EVENT_READY duration_ms={}", duration.as_millis());
+
+    while started.elapsed() < duration {
+        let mut message = MSG::default();
+        while unsafe { PeekMessageW(&mut message, None, 0, 0, PM_REMOVE) }.as_bool() {
+            unsafe {
+                let _ = TranslateMessage(&message);
+                DispatchMessageW(&message);
+            }
+        }
+        thread::sleep(Duration::from_millis(1));
+    }
+
+    for hook in hooks {
+        unsafe {
+            let _ = UnhookWinEvent(hook);
+        }
+    }
+
+    let process_times_after = process_times()?;
+    let raw_events = capture
+        .lock()
+        .map_err(|_| "native event capture lock was poisoned")?
+        .clone();
+    let events = raw_events
+        .into_iter()
+        .map(|event| NativeEvent {
+            elapsed_ms: event.observed_tick_ms.saturating_sub(started_tick_ms),
+            kind: native_event_name(event.event),
+            hwnd: event.hwnd,
+            window_alias: if event.hwnd == unsafe { GetDesktopWindow() }.0 as isize {
+                Some("desktop_window".to_string())
+            } else {
+                windows
+                    .iter()
+                    .find(|window| window.hwnd == event.hwnd)
+                    .map(|window| window.alias.clone())
+            },
+            object_id: event.object_id,
+            child_id: event.child_id,
+            event_thread_id: event.event_thread_id,
+            event_tick_ms: event.event_tick_ms,
+        })
+        .collect::<Vec<_>>();
+    let event_counts = events.iter().fold(BTreeMap::new(), |mut counts, event| {
+        *counts.entry(event.kind).or_default() += 1;
+        counts
+    });
+    let result = NativeEventRun {
+        prototype: "passive_virtual_desktop_native_events",
+        duration_ms: u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX),
+        tracked_windows: windows.iter().map(WindowDescriptor::from).collect(),
+        event_counts,
+        events,
+        user_cpu_ms: process_times_after
+            .user_100ns
+            .saturating_sub(process_times_before.user_100ns)
+            / 10_000,
+        kernel_cpu_ms: process_times_after
+            .kernel_100ns
+            .saturating_sub(process_times_before.kernel_100ns)
+            / 10_000,
+    };
+    serde_json::to_writer_pretty(BufWriter::new(File::create(output)?), &result)?;
+    println!("EVENT_COMPLETE counts={:?}", result.event_counts);
+    Ok(())
+}
+
+fn native_event_hook(event_min: u32, event_max: u32) -> windows::core::Result<HWINEVENTHOOK> {
+    let hook = unsafe {
+        SetWinEventHook(
+            event_min,
+            event_max,
+            None,
+            Some(capture_native_event),
+            0,
+            0,
+            WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS,
+        )
+    };
+    if hook.0.is_null() {
+        Err(WindowsError::from_thread())
+    } else {
+        Ok(hook)
+    }
+}
+
+unsafe extern "system" fn capture_native_event(
+    _hook: HWINEVENTHOOK,
+    event: u32,
+    hwnd: HWND,
+    object_id: i32,
+    child_id: i32,
+    event_thread_id: u32,
+    event_tick_ms: u32,
+) {
+    let Some(capture) = NATIVE_EVENTS.get() else {
+        return;
+    };
+    let Ok(mut events) = capture.lock() else {
+        return;
+    };
+    events.push(RawNativeEvent {
+        observed_tick_ms: unsafe { GetTickCount64() },
+        event,
+        hwnd: hwnd.0 as isize,
+        object_id,
+        child_id,
+        event_thread_id,
+        event_tick_ms,
+    });
+}
+
+fn native_event_name(event: u32) -> &'static str {
+    match event {
+        EVENT_SYSTEM_FOREGROUND => "system_foreground",
+        EVENT_SYSTEM_DESKTOPSWITCH => "system_desktop_switch",
+        EVENT_OBJECT_NAMECHANGE => "object_name_changed",
+        EVENT_OBJECT_CLOAKED => "object_cloaked",
+        EVENT_OBJECT_UNCLOAKED => "object_uncloaked",
+        _ => "unexpected",
+    }
 }
 
 fn run_target() -> windows::core::Result<()> {

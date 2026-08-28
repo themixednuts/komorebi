@@ -1,0 +1,2962 @@
+{
+  "prototype": "passive_virtual_desktop_native_events",
+  "duration_ms": 30000,
+  "tracked_windows": [
+    {
+      "alias": "w01",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_normal",
+      "elevated": false
+    },
+    {
+      "alias": "w02",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_pin_candidate",
+      "elevated": false
+    },
+    {
+      "alias": "w03",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w04",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w05",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w06",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w07",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w08",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w09",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w10",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w11",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w12",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w13",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w14",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w15",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w16",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w17",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w18",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w19",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w20",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w21",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w22",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w23",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w24",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w25",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w26",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w27",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w28",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w29",
+      "process_id": 1004,
+      "process_name": "SystemSettings.exe",
+      "class_name": "Windows.UI.Core.CoreWindow",
+      "category": "packaged",
+      "elevated": false
+    },
+    {
+      "alias": "w30",
+      "process_id": 11476,
+      "process_name": "GCC.exe",
+      "class_name": "IME",
+      "category": "elevated",
+      "elevated": true
+    },
+    {
+      "alias": "w31",
+      "process_id": 2120,
+      "process_name": "unavailable",
+      "class_name": "Dwm",
+      "category": "ordinary",
+      "elevated": null
+    },
+    {
+      "alias": "w32",
+      "process_id": 16500,
+      "process_name": "chrome.exe",
+      "class_name": "Chrome_WidgetWin_1",
+      "category": "ordinary",
+      "elevated": false
+    }
+  ],
+  "event_counts": {
+    "object_cloaked": 144,
+    "object_name_changed": 9,
+    "object_uncloaked": 108,
+    "system_foreground": 8
+  },
+  "events": [
+    {
+      "elapsed_ms": 6594,
+      "kind": "object_name_changed",
+      "hwnd": 0,
+      "window_alias": null,
+      "object_id": -9,
+      "child_id": 0,
+      "event_thread_id": 36152,
+      "event_tick_ms": 90946703
+    },
+    {
+      "elapsed_ms": 6625,
+      "kind": "object_name_changed",
+      "hwnd": 0,
+      "window_alias": null,
+      "object_id": -9,
+      "child_id": 0,
+      "event_thread_id": 36152,
+      "event_tick_ms": 90946734
+    },
+    {
+      "elapsed_ms": 19578,
+      "kind": "system_foreground",
+      "hwnd": 1511236,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 23172,
+      "event_tick_ms": 90959687
+    },
+    {
+      "elapsed_ms": 19656,
+      "kind": "object_cloaked",
+      "hwnd": 197982,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 22328,
+      "event_tick_ms": 90959765
+    },
+    {
+      "elapsed_ms": 19656,
+      "kind": "object_cloaked",
+      "hwnd": 66802,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 22328,
+      "event_tick_ms": 90959765
+    },
+    {
+      "elapsed_ms": 19656,
+      "kind": "object_cloaked",
+      "hwnd": 66878,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 22328,
+      "event_tick_ms": 90959765
+    },
+    {
+      "elapsed_ms": 19656,
+      "kind": "object_cloaked",
+      "hwnd": 131816,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 22328,
+      "event_tick_ms": 90959765
+    },
+    {
+      "elapsed_ms": 19656,
+      "kind": "object_cloaked",
+      "hwnd": 67096,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 21832,
+      "event_tick_ms": 90959765
+    },
+    {
+      "elapsed_ms": 19656,
+      "kind": "object_cloaked",
+      "hwnd": 132580,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 21832,
+      "event_tick_ms": 90959765
+    },
+    {
+      "elapsed_ms": 19656,
+      "kind": "object_cloaked",
+      "hwnd": 198034,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 21832,
+      "event_tick_ms": 90959765
+    },
+    {
+      "elapsed_ms": 19656,
+      "kind": "object_cloaked",
+      "hwnd": 132616,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90959765
+    },
+    {
+      "elapsed_ms": 19656,
+      "kind": "object_cloaked",
+      "hwnd": 67302,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90959765
+    },
+    {
+      "elapsed_ms": 19656,
+      "kind": "object_cloaked",
+      "hwnd": 67338,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90959765
+    },
+    {
+      "elapsed_ms": 19656,
+      "kind": "object_cloaked",
+      "hwnd": 67326,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90959765
+    },
+    {
+      "elapsed_ms": 19656,
+      "kind": "object_cloaked",
+      "hwnd": 67314,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90959765
+    },
+    {
+      "elapsed_ms": 19656,
+      "kind": "object_cloaked",
+      "hwnd": 66974,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90959765
+    },
+    {
+      "elapsed_ms": 19656,
+      "kind": "object_cloaked",
+      "hwnd": 23462692,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90959765
+    },
+    {
+      "elapsed_ms": 19656,
+      "kind": "object_cloaked",
+      "hwnd": 67290,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90959765
+    },
+    {
+      "elapsed_ms": 19656,
+      "kind": "object_cloaked",
+      "hwnd": 67280,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90959765
+    },
+    {
+      "elapsed_ms": 19656,
+      "kind": "object_cloaked",
+      "hwnd": 67268,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90959765
+    },
+    {
+      "elapsed_ms": 19656,
+      "kind": "object_cloaked",
+      "hwnd": 67256,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90959765
+    },
+    {
+      "elapsed_ms": 19656,
+      "kind": "object_cloaked",
+      "hwnd": 67244,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90959765
+    },
+    {
+      "elapsed_ms": 19656,
+      "kind": "object_cloaked",
+      "hwnd": 67232,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90959765
+    },
+    {
+      "elapsed_ms": 19656,
+      "kind": "object_cloaked",
+      "hwnd": 67214,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90959765
+    },
+    {
+      "elapsed_ms": 19656,
+      "kind": "object_cloaked",
+      "hwnd": 1115042,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 23180,
+      "event_tick_ms": 90959765
+    },
+    {
+      "elapsed_ms": 19656,
+      "kind": "object_cloaked",
+      "hwnd": 657532,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 23180,
+      "event_tick_ms": 90959765
+    },
+    {
+      "elapsed_ms": 19656,
+      "kind": "object_cloaked",
+      "hwnd": 1443172,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 23180,
+      "event_tick_ms": 90959765
+    },
+    {
+      "elapsed_ms": 19656,
+      "kind": "object_cloaked",
+      "hwnd": 790544,
+      "window_alias": "w01",
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 28456,
+      "event_tick_ms": 90959765
+    },
+    {
+      "elapsed_ms": 19656,
+      "kind": "object_cloaked",
+      "hwnd": 66330,
+      "window_alias": "w32",
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 16504,
+      "event_tick_ms": 90959765
+    },
+    {
+      "elapsed_ms": 19656,
+      "kind": "object_cloaked",
+      "hwnd": 262864,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 16504,
+      "event_tick_ms": 90959765
+    },
+    {
+      "elapsed_ms": 19656,
+      "kind": "object_cloaked",
+      "hwnd": 66364,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 16504,
+      "event_tick_ms": 90959765
+    },
+    {
+      "elapsed_ms": 19656,
+      "kind": "object_cloaked",
+      "hwnd": 35850360,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 16504,
+      "event_tick_ms": 90959765
+    },
+    {
+      "elapsed_ms": 19656,
+      "kind": "object_cloaked",
+      "hwnd": 1313366,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 36152,
+      "event_tick_ms": 90959765
+    },
+    {
+      "elapsed_ms": 19656,
+      "kind": "object_cloaked",
+      "hwnd": 200140,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 36152,
+      "event_tick_ms": 90959765
+    },
+    {
+      "elapsed_ms": 19656,
+      "kind": "object_cloaked",
+      "hwnd": 265902,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 36152,
+      "event_tick_ms": 90959765
+    },
+    {
+      "elapsed_ms": 19656,
+      "kind": "object_cloaked",
+      "hwnd": 590254,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 46332,
+      "event_tick_ms": 90959765
+    },
+    {
+      "elapsed_ms": 19656,
+      "kind": "object_cloaked",
+      "hwnd": 655922,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 46332,
+      "event_tick_ms": 90959765
+    },
+    {
+      "elapsed_ms": 19656,
+      "kind": "object_cloaked",
+      "hwnd": 262568,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 46332,
+      "event_tick_ms": 90959765
+    },
+    {
+      "elapsed_ms": 19656,
+      "kind": "object_cloaked",
+      "hwnd": 1772232,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 46332,
+      "event_tick_ms": 90959765
+    },
+    {
+      "elapsed_ms": 19656,
+      "kind": "system_foreground",
+      "hwnd": 29495308,
+      "window_alias": "w02",
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 28456,
+      "event_tick_ms": 90959765
+    },
+    {
+      "elapsed_ms": 19656,
+      "kind": "object_name_changed",
+      "hwnd": 65548,
+      "window_alias": "desktop_window",
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 1964,
+      "event_tick_ms": 90959765
+    },
+    {
+      "elapsed_ms": 22656,
+      "kind": "system_foreground",
+      "hwnd": 5376306,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 23172,
+      "event_tick_ms": 90962765
+    },
+    {
+      "elapsed_ms": 22719,
+      "kind": "object_uncloaked",
+      "hwnd": 197982,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 22328,
+      "event_tick_ms": 90962828
+    },
+    {
+      "elapsed_ms": 22719,
+      "kind": "object_uncloaked",
+      "hwnd": 66802,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 22328,
+      "event_tick_ms": 90962828
+    },
+    {
+      "elapsed_ms": 22719,
+      "kind": "object_uncloaked",
+      "hwnd": 66878,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 22328,
+      "event_tick_ms": 90962828
+    },
+    {
+      "elapsed_ms": 22719,
+      "kind": "object_uncloaked",
+      "hwnd": 131816,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 22328,
+      "event_tick_ms": 90962828
+    },
+    {
+      "elapsed_ms": 22719,
+      "kind": "object_uncloaked",
+      "hwnd": 67096,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 21832,
+      "event_tick_ms": 90962828
+    },
+    {
+      "elapsed_ms": 22719,
+      "kind": "object_uncloaked",
+      "hwnd": 132580,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 21832,
+      "event_tick_ms": 90962828
+    },
+    {
+      "elapsed_ms": 22719,
+      "kind": "object_uncloaked",
+      "hwnd": 198034,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 21832,
+      "event_tick_ms": 90962828
+    },
+    {
+      "elapsed_ms": 22719,
+      "kind": "object_uncloaked",
+      "hwnd": 132616,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90962828
+    },
+    {
+      "elapsed_ms": 22734,
+      "kind": "object_uncloaked",
+      "hwnd": 67302,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90962828
+    },
+    {
+      "elapsed_ms": 22734,
+      "kind": "object_uncloaked",
+      "hwnd": 67338,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90962828
+    },
+    {
+      "elapsed_ms": 22734,
+      "kind": "object_uncloaked",
+      "hwnd": 67326,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90962828
+    },
+    {
+      "elapsed_ms": 22734,
+      "kind": "object_uncloaked",
+      "hwnd": 67314,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90962828
+    },
+    {
+      "elapsed_ms": 22734,
+      "kind": "object_uncloaked",
+      "hwnd": 66974,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90962828
+    },
+    {
+      "elapsed_ms": 22734,
+      "kind": "object_uncloaked",
+      "hwnd": 23462692,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90962828
+    },
+    {
+      "elapsed_ms": 22734,
+      "kind": "object_uncloaked",
+      "hwnd": 67290,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90962828
+    },
+    {
+      "elapsed_ms": 22734,
+      "kind": "object_uncloaked",
+      "hwnd": 67280,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90962828
+    },
+    {
+      "elapsed_ms": 22734,
+      "kind": "object_uncloaked",
+      "hwnd": 67268,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90962828
+    },
+    {
+      "elapsed_ms": 22734,
+      "kind": "object_uncloaked",
+      "hwnd": 67256,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90962828
+    },
+    {
+      "elapsed_ms": 22734,
+      "kind": "object_uncloaked",
+      "hwnd": 67244,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90962828
+    },
+    {
+      "elapsed_ms": 22734,
+      "kind": "object_uncloaked",
+      "hwnd": 67232,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90962828
+    },
+    {
+      "elapsed_ms": 22734,
+      "kind": "object_uncloaked",
+      "hwnd": 67214,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90962828
+    },
+    {
+      "elapsed_ms": 22734,
+      "kind": "object_uncloaked",
+      "hwnd": 1115042,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 23180,
+      "event_tick_ms": 90962843
+    },
+    {
+      "elapsed_ms": 22734,
+      "kind": "object_uncloaked",
+      "hwnd": 657532,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 23180,
+      "event_tick_ms": 90962843
+    },
+    {
+      "elapsed_ms": 22734,
+      "kind": "object_uncloaked",
+      "hwnd": 1443172,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 23180,
+      "event_tick_ms": 90962843
+    },
+    {
+      "elapsed_ms": 22734,
+      "kind": "object_uncloaked",
+      "hwnd": 790544,
+      "window_alias": "w01",
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 28456,
+      "event_tick_ms": 90962843
+    },
+    {
+      "elapsed_ms": 22734,
+      "kind": "object_uncloaked",
+      "hwnd": 66330,
+      "window_alias": "w32",
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 16504,
+      "event_tick_ms": 90962843
+    },
+    {
+      "elapsed_ms": 22734,
+      "kind": "object_uncloaked",
+      "hwnd": 262864,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 16504,
+      "event_tick_ms": 90962843
+    },
+    {
+      "elapsed_ms": 22734,
+      "kind": "object_uncloaked",
+      "hwnd": 66364,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 16504,
+      "event_tick_ms": 90962843
+    },
+    {
+      "elapsed_ms": 22734,
+      "kind": "object_uncloaked",
+      "hwnd": 35850360,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 16504,
+      "event_tick_ms": 90962843
+    },
+    {
+      "elapsed_ms": 22734,
+      "kind": "object_uncloaked",
+      "hwnd": 1313366,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 36152,
+      "event_tick_ms": 90962843
+    },
+    {
+      "elapsed_ms": 22734,
+      "kind": "object_uncloaked",
+      "hwnd": 200140,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 36152,
+      "event_tick_ms": 90962843
+    },
+    {
+      "elapsed_ms": 22734,
+      "kind": "object_uncloaked",
+      "hwnd": 265902,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 36152,
+      "event_tick_ms": 90962843
+    },
+    {
+      "elapsed_ms": 22734,
+      "kind": "object_uncloaked",
+      "hwnd": 590254,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 46332,
+      "event_tick_ms": 90962843
+    },
+    {
+      "elapsed_ms": 22734,
+      "kind": "object_uncloaked",
+      "hwnd": 655922,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 46332,
+      "event_tick_ms": 90962843
+    },
+    {
+      "elapsed_ms": 22734,
+      "kind": "object_uncloaked",
+      "hwnd": 262568,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 46332,
+      "event_tick_ms": 90962843
+    },
+    {
+      "elapsed_ms": 22734,
+      "kind": "object_uncloaked",
+      "hwnd": 1772232,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 46332,
+      "event_tick_ms": 90962843
+    },
+    {
+      "elapsed_ms": 22734,
+      "kind": "object_name_changed",
+      "hwnd": 65548,
+      "window_alias": "desktop_window",
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 1964,
+      "event_tick_ms": 90962843
+    },
+    {
+      "elapsed_ms": 23344,
+      "kind": "system_foreground",
+      "hwnd": 5441842,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 23172,
+      "event_tick_ms": 90963453
+    },
+    {
+      "elapsed_ms": 23422,
+      "kind": "object_cloaked",
+      "hwnd": 197982,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 22328,
+      "event_tick_ms": 90963531
+    },
+    {
+      "elapsed_ms": 23422,
+      "kind": "object_cloaked",
+      "hwnd": 66802,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 22328,
+      "event_tick_ms": 90963531
+    },
+    {
+      "elapsed_ms": 23422,
+      "kind": "object_cloaked",
+      "hwnd": 66878,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 22328,
+      "event_tick_ms": 90963531
+    },
+    {
+      "elapsed_ms": 23422,
+      "kind": "object_cloaked",
+      "hwnd": 131816,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 22328,
+      "event_tick_ms": 90963531
+    },
+    {
+      "elapsed_ms": 23422,
+      "kind": "object_cloaked",
+      "hwnd": 67096,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 21832,
+      "event_tick_ms": 90963531
+    },
+    {
+      "elapsed_ms": 23422,
+      "kind": "object_cloaked",
+      "hwnd": 132580,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 21832,
+      "event_tick_ms": 90963531
+    },
+    {
+      "elapsed_ms": 23422,
+      "kind": "object_cloaked",
+      "hwnd": 198034,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 21832,
+      "event_tick_ms": 90963531
+    },
+    {
+      "elapsed_ms": 23422,
+      "kind": "object_cloaked",
+      "hwnd": 132616,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90963531
+    },
+    {
+      "elapsed_ms": 23422,
+      "kind": "object_cloaked",
+      "hwnd": 67302,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90963531
+    },
+    {
+      "elapsed_ms": 23422,
+      "kind": "object_cloaked",
+      "hwnd": 67338,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90963531
+    },
+    {
+      "elapsed_ms": 23422,
+      "kind": "object_cloaked",
+      "hwnd": 67326,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90963531
+    },
+    {
+      "elapsed_ms": 23422,
+      "kind": "object_cloaked",
+      "hwnd": 67314,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90963531
+    },
+    {
+      "elapsed_ms": 23422,
+      "kind": "object_cloaked",
+      "hwnd": 66974,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90963531
+    },
+    {
+      "elapsed_ms": 23422,
+      "kind": "object_cloaked",
+      "hwnd": 23462692,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90963531
+    },
+    {
+      "elapsed_ms": 23422,
+      "kind": "object_cloaked",
+      "hwnd": 67290,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90963531
+    },
+    {
+      "elapsed_ms": 23422,
+      "kind": "object_cloaked",
+      "hwnd": 67280,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90963531
+    },
+    {
+      "elapsed_ms": 23422,
+      "kind": "object_cloaked",
+      "hwnd": 67268,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90963531
+    },
+    {
+      "elapsed_ms": 23422,
+      "kind": "object_cloaked",
+      "hwnd": 67256,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90963531
+    },
+    {
+      "elapsed_ms": 23422,
+      "kind": "object_cloaked",
+      "hwnd": 67244,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90963531
+    },
+    {
+      "elapsed_ms": 23422,
+      "kind": "object_cloaked",
+      "hwnd": 67232,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90963531
+    },
+    {
+      "elapsed_ms": 23422,
+      "kind": "object_cloaked",
+      "hwnd": 67214,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90963531
+    },
+    {
+      "elapsed_ms": 23422,
+      "kind": "object_cloaked",
+      "hwnd": 1115042,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 23180,
+      "event_tick_ms": 90963531
+    },
+    {
+      "elapsed_ms": 23422,
+      "kind": "object_cloaked",
+      "hwnd": 657532,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 23180,
+      "event_tick_ms": 90963531
+    },
+    {
+      "elapsed_ms": 23422,
+      "kind": "object_cloaked",
+      "hwnd": 1443172,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 23180,
+      "event_tick_ms": 90963531
+    },
+    {
+      "elapsed_ms": 23422,
+      "kind": "object_cloaked",
+      "hwnd": 790544,
+      "window_alias": "w01",
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 28456,
+      "event_tick_ms": 90963531
+    },
+    {
+      "elapsed_ms": 23422,
+      "kind": "object_cloaked",
+      "hwnd": 66330,
+      "window_alias": "w32",
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 16504,
+      "event_tick_ms": 90963531
+    },
+    {
+      "elapsed_ms": 23422,
+      "kind": "object_cloaked",
+      "hwnd": 262864,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 16504,
+      "event_tick_ms": 90963531
+    },
+    {
+      "elapsed_ms": 23422,
+      "kind": "object_cloaked",
+      "hwnd": 66364,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 16504,
+      "event_tick_ms": 90963531
+    },
+    {
+      "elapsed_ms": 23422,
+      "kind": "object_cloaked",
+      "hwnd": 35850360,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 16504,
+      "event_tick_ms": 90963531
+    },
+    {
+      "elapsed_ms": 23422,
+      "kind": "object_cloaked",
+      "hwnd": 1313366,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 36152,
+      "event_tick_ms": 90963531
+    },
+    {
+      "elapsed_ms": 23422,
+      "kind": "object_cloaked",
+      "hwnd": 200140,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 36152,
+      "event_tick_ms": 90963531
+    },
+    {
+      "elapsed_ms": 23422,
+      "kind": "object_cloaked",
+      "hwnd": 265902,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 36152,
+      "event_tick_ms": 90963531
+    },
+    {
+      "elapsed_ms": 23422,
+      "kind": "object_cloaked",
+      "hwnd": 590254,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 46332,
+      "event_tick_ms": 90963531
+    },
+    {
+      "elapsed_ms": 23422,
+      "kind": "object_cloaked",
+      "hwnd": 655922,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 46332,
+      "event_tick_ms": 90963531
+    },
+    {
+      "elapsed_ms": 23422,
+      "kind": "object_cloaked",
+      "hwnd": 262568,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 46332,
+      "event_tick_ms": 90963531
+    },
+    {
+      "elapsed_ms": 23422,
+      "kind": "object_cloaked",
+      "hwnd": 1772232,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 46332,
+      "event_tick_ms": 90963531
+    },
+    {
+      "elapsed_ms": 23422,
+      "kind": "object_name_changed",
+      "hwnd": 65548,
+      "window_alias": "desktop_window",
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 1964,
+      "event_tick_ms": 90963531
+    },
+    {
+      "elapsed_ms": 24797,
+      "kind": "system_foreground",
+      "hwnd": 18678992,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 23172,
+      "event_tick_ms": 90964906
+    },
+    {
+      "elapsed_ms": 24859,
+      "kind": "object_uncloaked",
+      "hwnd": 197982,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 22328,
+      "event_tick_ms": 90964968
+    },
+    {
+      "elapsed_ms": 24859,
+      "kind": "object_uncloaked",
+      "hwnd": 66802,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 22328,
+      "event_tick_ms": 90964968
+    },
+    {
+      "elapsed_ms": 24859,
+      "kind": "object_uncloaked",
+      "hwnd": 66878,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 22328,
+      "event_tick_ms": 90964968
+    },
+    {
+      "elapsed_ms": 24859,
+      "kind": "object_uncloaked",
+      "hwnd": 131816,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 22328,
+      "event_tick_ms": 90964968
+    },
+    {
+      "elapsed_ms": 24859,
+      "kind": "object_uncloaked",
+      "hwnd": 67096,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 21832,
+      "event_tick_ms": 90964968
+    },
+    {
+      "elapsed_ms": 24859,
+      "kind": "object_uncloaked",
+      "hwnd": 132580,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 21832,
+      "event_tick_ms": 90964968
+    },
+    {
+      "elapsed_ms": 24859,
+      "kind": "object_uncloaked",
+      "hwnd": 198034,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 21832,
+      "event_tick_ms": 90964968
+    },
+    {
+      "elapsed_ms": 24859,
+      "kind": "object_uncloaked",
+      "hwnd": 132616,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90964968
+    },
+    {
+      "elapsed_ms": 24859,
+      "kind": "object_uncloaked",
+      "hwnd": 67302,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90964968
+    },
+    {
+      "elapsed_ms": 24859,
+      "kind": "object_uncloaked",
+      "hwnd": 67338,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90964968
+    },
+    {
+      "elapsed_ms": 24859,
+      "kind": "object_uncloaked",
+      "hwnd": 67326,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90964968
+    },
+    {
+      "elapsed_ms": 24859,
+      "kind": "object_uncloaked",
+      "hwnd": 67314,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90964968
+    },
+    {
+      "elapsed_ms": 24859,
+      "kind": "object_uncloaked",
+      "hwnd": 66974,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90964968
+    },
+    {
+      "elapsed_ms": 24859,
+      "kind": "object_uncloaked",
+      "hwnd": 23462692,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90964968
+    },
+    {
+      "elapsed_ms": 24859,
+      "kind": "object_uncloaked",
+      "hwnd": 67290,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90964968
+    },
+    {
+      "elapsed_ms": 24859,
+      "kind": "object_uncloaked",
+      "hwnd": 67280,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90964968
+    },
+    {
+      "elapsed_ms": 24859,
+      "kind": "object_uncloaked",
+      "hwnd": 67268,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90964968
+    },
+    {
+      "elapsed_ms": 24859,
+      "kind": "object_uncloaked",
+      "hwnd": 67256,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90964968
+    },
+    {
+      "elapsed_ms": 24859,
+      "kind": "object_uncloaked",
+      "hwnd": 67244,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90964968
+    },
+    {
+      "elapsed_ms": 24859,
+      "kind": "object_uncloaked",
+      "hwnd": 67232,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90964968
+    },
+    {
+      "elapsed_ms": 24859,
+      "kind": "object_uncloaked",
+      "hwnd": 67214,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90964968
+    },
+    {
+      "elapsed_ms": 24859,
+      "kind": "object_uncloaked",
+      "hwnd": 1115042,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 23180,
+      "event_tick_ms": 90964968
+    },
+    {
+      "elapsed_ms": 24859,
+      "kind": "object_uncloaked",
+      "hwnd": 657532,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 23180,
+      "event_tick_ms": 90964968
+    },
+    {
+      "elapsed_ms": 24859,
+      "kind": "object_uncloaked",
+      "hwnd": 1443172,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 23180,
+      "event_tick_ms": 90964968
+    },
+    {
+      "elapsed_ms": 24859,
+      "kind": "object_uncloaked",
+      "hwnd": 790544,
+      "window_alias": "w01",
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 28456,
+      "event_tick_ms": 90964968
+    },
+    {
+      "elapsed_ms": 24859,
+      "kind": "object_uncloaked",
+      "hwnd": 66330,
+      "window_alias": "w32",
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 16504,
+      "event_tick_ms": 90964968
+    },
+    {
+      "elapsed_ms": 24859,
+      "kind": "object_uncloaked",
+      "hwnd": 262864,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 16504,
+      "event_tick_ms": 90964968
+    },
+    {
+      "elapsed_ms": 24859,
+      "kind": "object_uncloaked",
+      "hwnd": 66364,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 16504,
+      "event_tick_ms": 90964968
+    },
+    {
+      "elapsed_ms": 24859,
+      "kind": "object_uncloaked",
+      "hwnd": 35850360,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 16504,
+      "event_tick_ms": 90964968
+    },
+    {
+      "elapsed_ms": 24859,
+      "kind": "object_uncloaked",
+      "hwnd": 1313366,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 36152,
+      "event_tick_ms": 90964968
+    },
+    {
+      "elapsed_ms": 24859,
+      "kind": "object_uncloaked",
+      "hwnd": 200140,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 36152,
+      "event_tick_ms": 90964968
+    },
+    {
+      "elapsed_ms": 24859,
+      "kind": "object_uncloaked",
+      "hwnd": 265902,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 36152,
+      "event_tick_ms": 90964968
+    },
+    {
+      "elapsed_ms": 24859,
+      "kind": "object_uncloaked",
+      "hwnd": 590254,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 46332,
+      "event_tick_ms": 90964968
+    },
+    {
+      "elapsed_ms": 24859,
+      "kind": "object_uncloaked",
+      "hwnd": 655922,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 46332,
+      "event_tick_ms": 90964968
+    },
+    {
+      "elapsed_ms": 24859,
+      "kind": "object_uncloaked",
+      "hwnd": 262568,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 46332,
+      "event_tick_ms": 90964968
+    },
+    {
+      "elapsed_ms": 24859,
+      "kind": "object_uncloaked",
+      "hwnd": 1772232,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 46332,
+      "event_tick_ms": 90964968
+    },
+    {
+      "elapsed_ms": 24859,
+      "kind": "object_name_changed",
+      "hwnd": 65548,
+      "window_alias": "desktop_window",
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 1964,
+      "event_tick_ms": 90964968
+    },
+    {
+      "elapsed_ms": 26297,
+      "kind": "system_foreground",
+      "hwnd": 1707844,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 23172,
+      "event_tick_ms": 90966406
+    },
+    {
+      "elapsed_ms": 26375,
+      "kind": "object_cloaked",
+      "hwnd": 197982,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 22328,
+      "event_tick_ms": 90966484
+    },
+    {
+      "elapsed_ms": 26375,
+      "kind": "object_cloaked",
+      "hwnd": 66802,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 22328,
+      "event_tick_ms": 90966484
+    },
+    {
+      "elapsed_ms": 26375,
+      "kind": "object_cloaked",
+      "hwnd": 66878,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 22328,
+      "event_tick_ms": 90966484
+    },
+    {
+      "elapsed_ms": 26375,
+      "kind": "object_cloaked",
+      "hwnd": 131816,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 22328,
+      "event_tick_ms": 90966484
+    },
+    {
+      "elapsed_ms": 26375,
+      "kind": "object_cloaked",
+      "hwnd": 67096,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 21832,
+      "event_tick_ms": 90966484
+    },
+    {
+      "elapsed_ms": 26375,
+      "kind": "object_cloaked",
+      "hwnd": 132580,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 21832,
+      "event_tick_ms": 90966484
+    },
+    {
+      "elapsed_ms": 26375,
+      "kind": "object_cloaked",
+      "hwnd": 198034,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 21832,
+      "event_tick_ms": 90966484
+    },
+    {
+      "elapsed_ms": 26375,
+      "kind": "object_cloaked",
+      "hwnd": 132616,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90966484
+    },
+    {
+      "elapsed_ms": 26375,
+      "kind": "object_cloaked",
+      "hwnd": 67302,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90966484
+    },
+    {
+      "elapsed_ms": 26375,
+      "kind": "object_cloaked",
+      "hwnd": 67338,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90966484
+    },
+    {
+      "elapsed_ms": 26375,
+      "kind": "object_cloaked",
+      "hwnd": 67326,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90966484
+    },
+    {
+      "elapsed_ms": 26375,
+      "kind": "object_cloaked",
+      "hwnd": 67314,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90966484
+    },
+    {
+      "elapsed_ms": 26375,
+      "kind": "object_cloaked",
+      "hwnd": 66974,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90966484
+    },
+    {
+      "elapsed_ms": 26375,
+      "kind": "object_cloaked",
+      "hwnd": 23462692,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90966484
+    },
+    {
+      "elapsed_ms": 26375,
+      "kind": "object_cloaked",
+      "hwnd": 67290,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90966484
+    },
+    {
+      "elapsed_ms": 26375,
+      "kind": "object_cloaked",
+      "hwnd": 67280,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90966484
+    },
+    {
+      "elapsed_ms": 26375,
+      "kind": "object_cloaked",
+      "hwnd": 67268,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90966484
+    },
+    {
+      "elapsed_ms": 26375,
+      "kind": "object_cloaked",
+      "hwnd": 67256,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90966484
+    },
+    {
+      "elapsed_ms": 26375,
+      "kind": "object_cloaked",
+      "hwnd": 67244,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90966484
+    },
+    {
+      "elapsed_ms": 26375,
+      "kind": "object_cloaked",
+      "hwnd": 67232,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90966484
+    },
+    {
+      "elapsed_ms": 26375,
+      "kind": "object_cloaked",
+      "hwnd": 67214,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90966484
+    },
+    {
+      "elapsed_ms": 26375,
+      "kind": "object_cloaked",
+      "hwnd": 1115042,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 23180,
+      "event_tick_ms": 90966484
+    },
+    {
+      "elapsed_ms": 26375,
+      "kind": "object_cloaked",
+      "hwnd": 657532,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 23180,
+      "event_tick_ms": 90966484
+    },
+    {
+      "elapsed_ms": 26375,
+      "kind": "object_cloaked",
+      "hwnd": 1443172,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 23180,
+      "event_tick_ms": 90966484
+    },
+    {
+      "elapsed_ms": 26375,
+      "kind": "object_cloaked",
+      "hwnd": 790544,
+      "window_alias": "w01",
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 28456,
+      "event_tick_ms": 90966484
+    },
+    {
+      "elapsed_ms": 26375,
+      "kind": "object_cloaked",
+      "hwnd": 66330,
+      "window_alias": "w32",
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 16504,
+      "event_tick_ms": 90966484
+    },
+    {
+      "elapsed_ms": 26375,
+      "kind": "object_cloaked",
+      "hwnd": 262864,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 16504,
+      "event_tick_ms": 90966484
+    },
+    {
+      "elapsed_ms": 26375,
+      "kind": "object_cloaked",
+      "hwnd": 66364,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 16504,
+      "event_tick_ms": 90966484
+    },
+    {
+      "elapsed_ms": 26375,
+      "kind": "object_cloaked",
+      "hwnd": 35850360,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 16504,
+      "event_tick_ms": 90966484
+    },
+    {
+      "elapsed_ms": 26375,
+      "kind": "object_cloaked",
+      "hwnd": 1313366,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 36152,
+      "event_tick_ms": 90966484
+    },
+    {
+      "elapsed_ms": 26375,
+      "kind": "object_cloaked",
+      "hwnd": 200140,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 36152,
+      "event_tick_ms": 90966484
+    },
+    {
+      "elapsed_ms": 26375,
+      "kind": "object_cloaked",
+      "hwnd": 265902,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 36152,
+      "event_tick_ms": 90966484
+    },
+    {
+      "elapsed_ms": 26375,
+      "kind": "object_cloaked",
+      "hwnd": 590254,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 46332,
+      "event_tick_ms": 90966484
+    },
+    {
+      "elapsed_ms": 26375,
+      "kind": "object_cloaked",
+      "hwnd": 655922,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 46332,
+      "event_tick_ms": 90966484
+    },
+    {
+      "elapsed_ms": 26375,
+      "kind": "object_cloaked",
+      "hwnd": 262568,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 46332,
+      "event_tick_ms": 90966484
+    },
+    {
+      "elapsed_ms": 26375,
+      "kind": "object_cloaked",
+      "hwnd": 1772232,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 46332,
+      "event_tick_ms": 90966484
+    },
+    {
+      "elapsed_ms": 26375,
+      "kind": "object_name_changed",
+      "hwnd": 65548,
+      "window_alias": "desktop_window",
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 1964,
+      "event_tick_ms": 90966484
+    },
+    {
+      "elapsed_ms": 27953,
+      "kind": "system_foreground",
+      "hwnd": 18810064,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 23172,
+      "event_tick_ms": 90968062
+    },
+    {
+      "elapsed_ms": 28031,
+      "kind": "object_uncloaked",
+      "hwnd": 197982,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 22328,
+      "event_tick_ms": 90968140
+    },
+    {
+      "elapsed_ms": 28031,
+      "kind": "object_uncloaked",
+      "hwnd": 66802,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 22328,
+      "event_tick_ms": 90968140
+    },
+    {
+      "elapsed_ms": 28031,
+      "kind": "object_uncloaked",
+      "hwnd": 66878,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 22328,
+      "event_tick_ms": 90968140
+    },
+    {
+      "elapsed_ms": 28031,
+      "kind": "object_uncloaked",
+      "hwnd": 131816,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 22328,
+      "event_tick_ms": 90968140
+    },
+    {
+      "elapsed_ms": 28031,
+      "kind": "object_uncloaked",
+      "hwnd": 67096,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 21832,
+      "event_tick_ms": 90968140
+    },
+    {
+      "elapsed_ms": 28031,
+      "kind": "object_uncloaked",
+      "hwnd": 132580,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 21832,
+      "event_tick_ms": 90968140
+    },
+    {
+      "elapsed_ms": 28031,
+      "kind": "object_uncloaked",
+      "hwnd": 198034,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 21832,
+      "event_tick_ms": 90968140
+    },
+    {
+      "elapsed_ms": 28031,
+      "kind": "object_uncloaked",
+      "hwnd": 132616,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90968140
+    },
+    {
+      "elapsed_ms": 28031,
+      "kind": "object_uncloaked",
+      "hwnd": 67302,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90968140
+    },
+    {
+      "elapsed_ms": 28031,
+      "kind": "object_uncloaked",
+      "hwnd": 67338,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90968140
+    },
+    {
+      "elapsed_ms": 28031,
+      "kind": "object_uncloaked",
+      "hwnd": 67326,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90968140
+    },
+    {
+      "elapsed_ms": 28031,
+      "kind": "object_uncloaked",
+      "hwnd": 67314,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90968140
+    },
+    {
+      "elapsed_ms": 28031,
+      "kind": "object_uncloaked",
+      "hwnd": 66974,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90968140
+    },
+    {
+      "elapsed_ms": 28031,
+      "kind": "object_uncloaked",
+      "hwnd": 23462692,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90968140
+    },
+    {
+      "elapsed_ms": 28031,
+      "kind": "object_uncloaked",
+      "hwnd": 67290,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90968140
+    },
+    {
+      "elapsed_ms": 28031,
+      "kind": "object_uncloaked",
+      "hwnd": 67280,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90968140
+    },
+    {
+      "elapsed_ms": 28031,
+      "kind": "object_uncloaked",
+      "hwnd": 67268,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90968140
+    },
+    {
+      "elapsed_ms": 28031,
+      "kind": "object_uncloaked",
+      "hwnd": 67256,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90968140
+    },
+    {
+      "elapsed_ms": 28031,
+      "kind": "object_uncloaked",
+      "hwnd": 67244,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90968140
+    },
+    {
+      "elapsed_ms": 28031,
+      "kind": "object_uncloaked",
+      "hwnd": 67232,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90968140
+    },
+    {
+      "elapsed_ms": 28031,
+      "kind": "object_uncloaked",
+      "hwnd": 67214,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90968140
+    },
+    {
+      "elapsed_ms": 28031,
+      "kind": "object_uncloaked",
+      "hwnd": 1115042,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 23180,
+      "event_tick_ms": 90968140
+    },
+    {
+      "elapsed_ms": 28031,
+      "kind": "object_uncloaked",
+      "hwnd": 657532,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 23180,
+      "event_tick_ms": 90968140
+    },
+    {
+      "elapsed_ms": 28031,
+      "kind": "object_uncloaked",
+      "hwnd": 1443172,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 23180,
+      "event_tick_ms": 90968140
+    },
+    {
+      "elapsed_ms": 28031,
+      "kind": "object_uncloaked",
+      "hwnd": 790544,
+      "window_alias": "w01",
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 28456,
+      "event_tick_ms": 90968140
+    },
+    {
+      "elapsed_ms": 28031,
+      "kind": "object_uncloaked",
+      "hwnd": 66330,
+      "window_alias": "w32",
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 16504,
+      "event_tick_ms": 90968140
+    },
+    {
+      "elapsed_ms": 28031,
+      "kind": "object_uncloaked",
+      "hwnd": 262864,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 16504,
+      "event_tick_ms": 90968140
+    },
+    {
+      "elapsed_ms": 28031,
+      "kind": "object_uncloaked",
+      "hwnd": 66364,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 16504,
+      "event_tick_ms": 90968140
+    },
+    {
+      "elapsed_ms": 28031,
+      "kind": "object_uncloaked",
+      "hwnd": 35850360,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 16504,
+      "event_tick_ms": 90968140
+    },
+    {
+      "elapsed_ms": 28031,
+      "kind": "object_uncloaked",
+      "hwnd": 1313366,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 36152,
+      "event_tick_ms": 90968140
+    },
+    {
+      "elapsed_ms": 28031,
+      "kind": "object_uncloaked",
+      "hwnd": 200140,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 36152,
+      "event_tick_ms": 90968140
+    },
+    {
+      "elapsed_ms": 28031,
+      "kind": "object_uncloaked",
+      "hwnd": 265902,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 36152,
+      "event_tick_ms": 90968140
+    },
+    {
+      "elapsed_ms": 28031,
+      "kind": "object_uncloaked",
+      "hwnd": 590254,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 46332,
+      "event_tick_ms": 90968140
+    },
+    {
+      "elapsed_ms": 28031,
+      "kind": "object_uncloaked",
+      "hwnd": 655922,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 46332,
+      "event_tick_ms": 90968140
+    },
+    {
+      "elapsed_ms": 28031,
+      "kind": "object_uncloaked",
+      "hwnd": 262568,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 46332,
+      "event_tick_ms": 90968140
+    },
+    {
+      "elapsed_ms": 28031,
+      "kind": "object_uncloaked",
+      "hwnd": 1772232,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 46332,
+      "event_tick_ms": 90968140
+    },
+    {
+      "elapsed_ms": 28031,
+      "kind": "object_name_changed",
+      "hwnd": 65548,
+      "window_alias": "desktop_window",
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 1964,
+      "event_tick_ms": 90968140
+    },
+    {
+      "elapsed_ms": 29516,
+      "kind": "system_foreground",
+      "hwnd": 1838916,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 23172,
+      "event_tick_ms": 90969625
+    },
+    {
+      "elapsed_ms": 29594,
+      "kind": "object_cloaked",
+      "hwnd": 197982,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 22328,
+      "event_tick_ms": 90969703
+    },
+    {
+      "elapsed_ms": 29594,
+      "kind": "object_cloaked",
+      "hwnd": 66802,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 22328,
+      "event_tick_ms": 90969703
+    },
+    {
+      "elapsed_ms": 29594,
+      "kind": "object_cloaked",
+      "hwnd": 66878,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 22328,
+      "event_tick_ms": 90969703
+    },
+    {
+      "elapsed_ms": 29594,
+      "kind": "object_cloaked",
+      "hwnd": 131816,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 22328,
+      "event_tick_ms": 90969703
+    },
+    {
+      "elapsed_ms": 29594,
+      "kind": "object_cloaked",
+      "hwnd": 67096,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 21832,
+      "event_tick_ms": 90969703
+    },
+    {
+      "elapsed_ms": 29594,
+      "kind": "object_cloaked",
+      "hwnd": 132580,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 21832,
+      "event_tick_ms": 90969703
+    },
+    {
+      "elapsed_ms": 29594,
+      "kind": "object_cloaked",
+      "hwnd": 198034,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 21832,
+      "event_tick_ms": 90969703
+    },
+    {
+      "elapsed_ms": 29594,
+      "kind": "object_cloaked",
+      "hwnd": 132616,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90969703
+    },
+    {
+      "elapsed_ms": 29594,
+      "kind": "object_cloaked",
+      "hwnd": 67302,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90969703
+    },
+    {
+      "elapsed_ms": 29594,
+      "kind": "object_cloaked",
+      "hwnd": 67338,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90969703
+    },
+    {
+      "elapsed_ms": 29594,
+      "kind": "object_cloaked",
+      "hwnd": 67326,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90969703
+    },
+    {
+      "elapsed_ms": 29594,
+      "kind": "object_cloaked",
+      "hwnd": 67314,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90969703
+    },
+    {
+      "elapsed_ms": 29594,
+      "kind": "object_cloaked",
+      "hwnd": 66974,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90969703
+    },
+    {
+      "elapsed_ms": 29594,
+      "kind": "object_cloaked",
+      "hwnd": 23462692,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90969703
+    },
+    {
+      "elapsed_ms": 29594,
+      "kind": "object_cloaked",
+      "hwnd": 67290,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90969703
+    },
+    {
+      "elapsed_ms": 29594,
+      "kind": "object_cloaked",
+      "hwnd": 67280,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90969703
+    },
+    {
+      "elapsed_ms": 29594,
+      "kind": "object_cloaked",
+      "hwnd": 67268,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90969703
+    },
+    {
+      "elapsed_ms": 29594,
+      "kind": "object_cloaked",
+      "hwnd": 67256,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90969703
+    },
+    {
+      "elapsed_ms": 29594,
+      "kind": "object_cloaked",
+      "hwnd": 67244,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90969703
+    },
+    {
+      "elapsed_ms": 29594,
+      "kind": "object_cloaked",
+      "hwnd": 67232,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90969703
+    },
+    {
+      "elapsed_ms": 29594,
+      "kind": "object_cloaked",
+      "hwnd": 67214,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 24972,
+      "event_tick_ms": 90969703
+    },
+    {
+      "elapsed_ms": 29594,
+      "kind": "object_cloaked",
+      "hwnd": 1115042,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 23180,
+      "event_tick_ms": 90969703
+    },
+    {
+      "elapsed_ms": 29594,
+      "kind": "object_cloaked",
+      "hwnd": 657532,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 23180,
+      "event_tick_ms": 90969703
+    },
+    {
+      "elapsed_ms": 29594,
+      "kind": "object_cloaked",
+      "hwnd": 1443172,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 23180,
+      "event_tick_ms": 90969703
+    },
+    {
+      "elapsed_ms": 29594,
+      "kind": "object_cloaked",
+      "hwnd": 790544,
+      "window_alias": "w01",
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 28456,
+      "event_tick_ms": 90969703
+    },
+    {
+      "elapsed_ms": 29594,
+      "kind": "object_cloaked",
+      "hwnd": 66330,
+      "window_alias": "w32",
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 16504,
+      "event_tick_ms": 90969703
+    },
+    {
+      "elapsed_ms": 29594,
+      "kind": "object_cloaked",
+      "hwnd": 262864,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 16504,
+      "event_tick_ms": 90969703
+    },
+    {
+      "elapsed_ms": 29594,
+      "kind": "object_cloaked",
+      "hwnd": 66364,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 16504,
+      "event_tick_ms": 90969703
+    },
+    {
+      "elapsed_ms": 29594,
+      "kind": "object_cloaked",
+      "hwnd": 35850360,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 16504,
+      "event_tick_ms": 90969703
+    },
+    {
+      "elapsed_ms": 29594,
+      "kind": "object_cloaked",
+      "hwnd": 1313366,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 36152,
+      "event_tick_ms": 90969703
+    },
+    {
+      "elapsed_ms": 29594,
+      "kind": "object_cloaked",
+      "hwnd": 200140,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 36152,
+      "event_tick_ms": 90969703
+    },
+    {
+      "elapsed_ms": 29594,
+      "kind": "object_cloaked",
+      "hwnd": 265902,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 36152,
+      "event_tick_ms": 90969703
+    },
+    {
+      "elapsed_ms": 29594,
+      "kind": "object_cloaked",
+      "hwnd": 590254,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 46332,
+      "event_tick_ms": 90969703
+    },
+    {
+      "elapsed_ms": 29594,
+      "kind": "object_cloaked",
+      "hwnd": 655922,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 46332,
+      "event_tick_ms": 90969703
+    },
+    {
+      "elapsed_ms": 29594,
+      "kind": "object_cloaked",
+      "hwnd": 262568,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 46332,
+      "event_tick_ms": 90969703
+    },
+    {
+      "elapsed_ms": 29594,
+      "kind": "object_cloaked",
+      "hwnd": 1772232,
+      "window_alias": null,
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 46332,
+      "event_tick_ms": 90969703
+    },
+    {
+      "elapsed_ms": 29594,
+      "kind": "object_name_changed",
+      "hwnd": 65548,
+      "window_alias": "desktop_window",
+      "object_id": 0,
+      "child_id": 0,
+      "event_thread_id": 1964,
+      "event_tick_ms": 90969703
+    }
+  ],
+  "user_cpu_ms": 46,
+  "kernel_cpu_ms": 203
+}

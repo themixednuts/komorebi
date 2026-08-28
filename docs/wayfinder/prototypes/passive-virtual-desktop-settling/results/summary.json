@@ -1,0 +1,202 @@
+{
+  "generated_from": [
+    "post-restart-100ms.json",
+    "post-restart-16ms.json",
+    "post-restart-500ms.json",
+    "pre-restart-100ms.json",
+    "pre-restart-16ms.json",
+    "pre-restart-500ms.json",
+    "native-events.json"
+  ],
+  "polling_runs": [
+    {
+      "phase": "post-restart-100ms",
+      "interval_ms": 100,
+      "completed": 10,
+      "timed_out": false,
+      "latency_min_ms": 200.0,
+      "latency_p50_ms": 277.0,
+      "latency_p95_ms": 332.2,
+      "latency_max_ms": 338.0,
+      "max_signature_changes": 1.0,
+      "polls": 675,
+      "public_queries": 43200,
+      "elapsed_ms": 67687,
+      "query_rate_per_second": 638.2,
+      "process_cpu_ms": 655,
+      "process_cpu_percent": 0.97,
+      "api": {
+        "counts": {
+          "desktop_id_ok": 2700,
+          "desktop_id_error": 18900,
+          "membership_ok": 21600,
+          "membership_error": 0,
+          "cloak_ok": 21600,
+          "cloak_error": 0
+        },
+        "hresults": {
+          "desktop_id/-2147319765": 18900
+        }
+      }
+    },
+    {
+      "phase": "post-restart-16ms",
+      "interval_ms": 16,
+      "completed": 10,
+      "timed_out": false,
+      "latency_min_ms": 109.0,
+      "latency_p50_ms": 110.5,
+      "latency_p95_ms": 121.6,
+      "latency_max_ms": 122.0,
+      "max_signature_changes": 2.0,
+      "polls": 4622,
+      "public_queries": 295808,
+      "elapsed_ms": 75224,
+      "query_rate_per_second": 3932.4,
+      "process_cpu_ms": 3640,
+      "process_cpu_percent": 4.84,
+      "api": {
+        "counts": {
+          "desktop_id_ok": 18488,
+          "desktop_id_error": 129416,
+          "membership_ok": 147904,
+          "membership_error": 0,
+          "cloak_ok": 147904,
+          "cloak_error": 0
+        },
+        "hresults": {
+          "desktop_id/-2147319765": 129416
+        }
+      }
+    },
+    {
+      "phase": "post-restart-500ms",
+      "interval_ms": 500,
+      "completed": 10,
+      "timed_out": false,
+      "latency_min_ms": 1045.0,
+      "latency_p50_ms": 1273.5,
+      "latency_p95_ms": 1527.9,
+      "latency_max_ms": 1577.0,
+      "max_signature_changes": 2.0,
+      "polls": 75,
+      "public_queries": 4800,
+      "elapsed_ms": 37524,
+      "query_rate_per_second": 127.9,
+      "process_cpu_ms": 108,
+      "process_cpu_percent": 0.29,
+      "api": {
+        "counts": {
+          "desktop_id_ok": 300,
+          "desktop_id_error": 2100,
+          "membership_ok": 2400,
+          "membership_error": 0,
+          "cloak_ok": 2400,
+          "cloak_error": 0
+        },
+        "hresults": {
+          "desktop_id/-2147319765": 2100
+        }
+      }
+    },
+    {
+      "phase": "pre-restart-100ms",
+      "interval_ms": 100,
+      "completed": 10,
+      "timed_out": false,
+      "latency_min_ms": 278.0,
+      "latency_p50_ms": 341.0,
+      "latency_p95_ms": 395.8,
+      "latency_max_ms": 403.0,
+      "max_signature_changes": 1.0,
+      "polls": 214,
+      "public_queries": 13696,
+      "elapsed_ms": 21460,
+      "query_rate_per_second": 638.2,
+      "process_cpu_ms": 155,
+      "process_cpu_percent": 0.72,
+      "api": {
+        "counts": {
+          "desktop_id_ok": 856,
+          "desktop_id_error": 5992,
+          "membership_ok": 6848,
+          "membership_error": 0,
+          "cloak_ok": 6848,
+          "cloak_error": 0
+        },
+        "hresults": {
+          "desktop_id/-2147319765": 5992
+        }
+      }
+    },
+    {
+      "phase": "pre-restart-16ms",
+      "interval_ms": 16,
+      "completed": 10,
+      "timed_out": false,
+      "latency_min_ms": 47.0,
+      "latency_p50_ms": 79.0,
+      "latency_p95_ms": 123.6,
+      "latency_max_ms": 125.0,
+      "max_signature_changes": 2.0,
+      "polls": 2588,
+      "public_queries": 165632,
+      "elapsed_ms": 42146,
+      "query_rate_per_second": 3930.0,
+      "process_cpu_ms": 1905,
+      "process_cpu_percent": 4.52,
+      "api": {
+        "counts": {
+          "desktop_id_ok": 10352,
+          "desktop_id_error": 72464,
+          "membership_ok": 82816,
+          "membership_error": 0,
+          "cloak_ok": 82816,
+          "cloak_error": 0
+        },
+        "hresults": {
+          "desktop_id/-2147319765": 72464
+        }
+      }
+    },
+    {
+      "phase": "pre-restart-500ms",
+      "interval_ms": 500,
+      "completed": 10,
+      "timed_out": false,
+      "latency_min_ms": 1203.0,
+      "latency_p50_ms": 1351.0,
+      "latency_p95_ms": 1515.1,
+      "latency_max_ms": 1516.0,
+      "max_signature_changes": 2.0,
+      "polls": 349,
+      "public_queries": 22336,
+      "elapsed_ms": 174593,
+      "query_rate_per_second": 127.9,
+      "process_cpu_ms": 171,
+      "process_cpu_percent": 0.1,
+      "api": {
+        "counts": {
+          "desktop_id_ok": 1396,
+          "desktop_id_error": 9772,
+          "membership_ok": 11168,
+          "membership_error": 0,
+          "cloak_ok": 11168,
+          "cloak_error": 0
+        },
+        "hresults": {
+          "desktop_id/-2147319765": 9772
+        }
+      }
+    }
+  ],
+  "native_events": {
+    "duration_ms": 30000,
+    "total_events": 269,
+    "desktop_window_name_events": 7,
+    "system_desktop_switch_events": 0,
+    "normal_window_cloak_events": 7,
+    "pinned_window_cloak_events": 0,
+    "process_cpu_ms": 249
+  }
+}

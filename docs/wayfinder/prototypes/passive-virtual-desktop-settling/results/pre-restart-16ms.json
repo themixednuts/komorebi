@@ -1,0 +1,579 @@
+{
+  "prototype": "passive_virtual_desktop_settling",
+  "phase": "pre-restart-16ms",
+  "interval_ms": 16,
+  "requested_transitions": 10,
+  "completed_transitions": 10,
+  "stable_polls": 3,
+  "tracked_windows": [
+    {
+      "alias": "w01",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_normal",
+      "elevated": false
+    },
+    {
+      "alias": "w02",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_pin_candidate",
+      "elevated": false
+    },
+    {
+      "alias": "w03",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w04",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w05",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w06",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w07",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w08",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w09",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w10",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w11",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w12",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w13",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w14",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w15",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w16",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w17",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w18",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w19",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w20",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w21",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w22",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w23",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w24",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w25",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w26",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w27",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w28",
+      "process_id": 41464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w29",
+      "process_id": 1004,
+      "process_name": "SystemSettings.exe",
+      "class_name": "Windows.UI.Core.CoreWindow",
+      "category": "packaged",
+      "elevated": false
+    },
+    {
+      "alias": "w30",
+      "process_id": 11476,
+      "process_name": "GCC.exe",
+      "class_name": "IME",
+      "category": "elevated",
+      "elevated": true
+    },
+    {
+      "alias": "w31",
+      "process_id": 2120,
+      "process_name": "unavailable",
+      "class_name": "Dwm",
+      "category": "ordinary",
+      "elevated": null
+    },
+    {
+      "alias": "w32",
+      "process_id": 16500,
+      "process_name": "chrome.exe",
+      "class_name": "Chrome_WidgetWin_1",
+      "category": "ordinary",
+      "elevated": false
+    }
+  ],
+  "window_aggregates": {
+    "w01": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":false,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"ok\",\"value\":\"d121be78c70840ce8dc886b345eaf4bd\"},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 2428,
+        "{\"exists\":true,\"visible\":true,\"minimized\":false,\"cloaked\":{\"status\":\"ok\",\"value\":true},\"desktop_id\":{\"status\":\"ok\",\"value\":\"d121be78c70840ce8dc886b345eaf4bd\"},\"on_current_desktop\":{\"status\":\"ok\",\"value\":false}}": 158,
+        "{\"exists\":true,\"visible\":true,\"minimized\":false,\"cloaked\":{\"status\":\"ok\",\"value\":true},\"desktop_id\":{\"status\":\"ok\",\"value\":\"d121be78c70840ce8dc886b345eaf4bd\"},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 2
+      }
+    },
+    "w02": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":false,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"ok\",\"value\":\"c2ddea6866f24cf982641bfd00fbbbac\"},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 2588
+      }
+    },
+    "w03": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":true,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 2588
+      }
+    },
+    "w04": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":true,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 2588
+      }
+    },
+    "w05": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":true,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 2588
+      }
+    },
+    "w06": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":true,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 2588
+      }
+    },
+    "w07": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":true,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 2588
+      }
+    },
+    "w08": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":true,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 2588
+      }
+    },
+    "w09": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":true,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 2588
+      }
+    },
+    "w10": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":true,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 2588
+      }
+    },
+    "w11": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":true,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 2588
+      }
+    },
+    "w12": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":true,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 2588
+      }
+    },
+    "w13": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":true,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 2588
+      }
+    },
+    "w14": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":true,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 2588
+      }
+    },
+    "w15": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":true,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 2588
+      }
+    },
+    "w16": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":true,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 2588
+      }
+    },
+    "w17": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":true,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 2588
+      }
+    },
+    "w18": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":true,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 2588
+      }
+    },
+    "w19": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":true,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 2588
+      }
+    },
+    "w20": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":true,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 2588
+      }
+    },
+    "w21": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":true,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 2588
+      }
+    },
+    "w22": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":true,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 2588
+      }
+    },
+    "w23": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":true,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 2588
+      }
+    },
+    "w24": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":true,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 2588
+      }
+    },
+    "w25": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":true,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 2588
+      }
+    },
+    "w26": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":true,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 2588
+      }
+    },
+    "w27": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":true,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 2588
+      }
+    },
+    "w28": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":true,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 2588
+      }
+    },
+    "w29": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":false,\"cloaked\":{\"status\":\"ok\",\"value\":true},\"desktop_id\":{\"status\":\"ok\",\"value\":\"00000000000000000000000000000000\"},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 2588
+      }
+    },
+    "w30": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":false,\"minimized\":false,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 2588
+      }
+    },
+    "w31": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":false,\"minimized\":true,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 2588
+      }
+    },
+    "w32": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":false,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"ok\",\"value\":\"d121be78c70840ce8dc886b345eaf4bd\"},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 2430,
+        "{\"exists\":true,\"visible\":true,\"minimized\":false,\"cloaked\":{\"status\":\"ok\",\"value\":true},\"desktop_id\":{\"status\":\"ok\",\"value\":\"d121be78c70840ce8dc886b345eaf4bd\"},\"on_current_desktop\":{\"status\":\"ok\",\"value\":false}}": 158
+      }
+    }
+  },
+  "transitions": [
+    {
+      "ordinal": 1,
+      "input_to_first_change_ms": 93,
+      "input_to_stable_ms": 122,
+      "first_change_to_stable_ms": 29,
+      "signature_changes_before_stable": 1,
+      "foreground_at_first_change": "w02",
+      "foreground_at_settle": "w02",
+      "probe_on_current_at_settle": 27,
+      "probe_desktop_ids_at_settle": [
+        "c2ddea6866f24cf982641bfd00fbbbac",
+        "d121be78c70840ce8dc886b345eaf4bd"
+      ]
+    },
+    {
+      "ordinal": 2,
+      "input_to_first_change_ms": 16,
+      "input_to_stable_ms": 48,
+      "first_change_to_stable_ms": 32,
+      "signature_changes_before_stable": 1,
+      "foreground_at_first_change": "w02",
+      "foreground_at_settle": "w02",
+      "probe_on_current_at_settle": 28,
+      "probe_desktop_ids_at_settle": [
+        "c2ddea6866f24cf982641bfd00fbbbac",
+        "d121be78c70840ce8dc886b345eaf4bd"
+      ]
+    },
+    {
+      "ordinal": 3,
+      "input_to_first_change_ms": 93,
+      "input_to_stable_ms": 125,
+      "first_change_to_stable_ms": 32,
+      "signature_changes_before_stable": 1,
+      "foreground_at_first_change": "w02",
+      "foreground_at_settle": "w02",
+      "probe_on_current_at_settle": 27,
+      "probe_desktop_ids_at_settle": [
+        "c2ddea6866f24cf982641bfd00fbbbac",
+        "d121be78c70840ce8dc886b345eaf4bd"
+      ]
+    },
+    {
+      "ordinal": 4,
+      "input_to_first_change_ms": 78,
+      "input_to_stable_ms": 110,
+      "first_change_to_stable_ms": 32,
+      "signature_changes_before_stable": 1,
+      "foreground_at_first_change": "w02",
+      "foreground_at_settle": "w02",
+      "probe_on_current_at_settle": 28,
+      "probe_desktop_ids_at_settle": [
+        "c2ddea6866f24cf982641bfd00fbbbac",
+        "d121be78c70840ce8dc886b345eaf4bd"
+      ]
+    },
+    {
+      "ordinal": 5,
+      "input_to_first_change_ms": 15,
+      "input_to_stable_ms": 47,
+      "first_change_to_stable_ms": 32,
+      "signature_changes_before_stable": 1,
+      "foreground_at_first_change": "w02",
+      "foreground_at_settle": "w02",
+      "probe_on_current_at_settle": 27,
+      "probe_desktop_ids_at_settle": [
+        "c2ddea6866f24cf982641bfd00fbbbac",
+        "d121be78c70840ce8dc886b345eaf4bd"
+      ]
+    },
+    {
+      "ordinal": 6,
+      "input_to_first_change_ms": 47,
+      "input_to_stable_ms": 94,
+      "first_change_to_stable_ms": 47,
+      "signature_changes_before_stable": 2,
+      "foreground_at_first_change": "w02",
+      "foreground_at_settle": "w02",
+      "probe_on_current_at_settle": 28,
+      "probe_desktop_ids_at_settle": [
+        "c2ddea6866f24cf982641bfd00fbbbac",
+        "d121be78c70840ce8dc886b345eaf4bd"
+      ]
+    },
+    {
+      "ordinal": 7,
+      "input_to_first_change_ms": 15,
+      "input_to_stable_ms": 47,
+      "first_change_to_stable_ms": 32,
+      "signature_changes_before_stable": 1,
+      "foreground_at_first_change": "w02",
+      "foreground_at_settle": "w02",
+      "probe_on_current_at_settle": 27,
+      "probe_desktop_ids_at_settle": [
+        "c2ddea6866f24cf982641bfd00fbbbac",
+        "d121be78c70840ce8dc886b345eaf4bd"
+      ]
+    },
+    {
+      "ordinal": 8,
+      "input_to_first_change_ms": 78,
+      "input_to_stable_ms": 110,
+      "first_change_to_stable_ms": 32,
+      "signature_changes_before_stable": 1,
+      "foreground_at_first_change": "w02",
+      "foreground_at_settle": "w02",
+      "probe_on_current_at_settle": 28,
+      "probe_desktop_ids_at_settle": [
+        "c2ddea6866f24cf982641bfd00fbbbac",
+        "d121be78c70840ce8dc886b345eaf4bd"
+      ]
+    },
+    {
+      "ordinal": 9,
+      "input_to_first_change_ms": 31,
+      "input_to_stable_ms": 64,
+      "first_change_to_stable_ms": 33,
+      "signature_changes_before_stable": 1,
+      "foreground_at_first_change": "w02",
+      "foreground_at_settle": "w02",
+      "probe_on_current_at_settle": 27,
+      "probe_desktop_ids_at_settle": [
+        "c2ddea6866f24cf982641bfd00fbbbac",
+        "d121be78c70840ce8dc886b345eaf4bd"
+      ]
+    },
+    {
+      "ordinal": 10,
+      "input_to_first_change_ms": 16,
+      "input_to_stable_ms": 62,
+      "first_change_to_stable_ms": 46,
+      "signature_changes_before_stable": 2,
+      "foreground_at_first_change": "w02",
+      "foreground_at_settle": "w02",
+      "probe_on_current_at_settle": 28,
+      "probe_desktop_ids_at_settle": [
+        "c2ddea6866f24cf982641bfd00fbbbac",
+        "d121be78c70840ce8dc886b345eaf4bd"
+      ]
+    }
+  ],
+  "poll_count": 2588,
+  "public_query_count": 165632,
+  "elapsed_ms": 42146,
+  "user_cpu_ms": 1140,
+  "kernel_cpu_ms": 765,
+  "timed_out": false
+}
