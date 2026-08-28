@@ -1,0 +1,522 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "id": "ff691090-3249-4aeb-9e2a-204b55cd8db6",
+  "prevIds": [
+    "00000000-0000-0000-0000-000000000000"
+  ],
+  "ddl": [
+    {
+      "entityType": "tables",
+      "name": "PromotionJournal"
+    },
+    {
+      "entityType": "columns",
+      "table": "PromotionJournal",
+      "name": "sequence",
+      "type": "INTEGER",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "PromotionJournal",
+      "name": "transaction",
+      "type": "TEXT",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "PromotionJournal",
+      "name": "prior_installation",
+      "type": "TEXT",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "PromotionJournal",
+      "name": "candidate_installation",
+      "type": "TEXT",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "PromotionJournal",
+      "name": "fault_profile",
+      "type": "TEXT",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "PromotionJournal",
+      "name": "boundary",
+      "type": "TEXT",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "PromotionJournal",
+      "name": "previous_digest",
+      "type": "TEXT",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "PromotionJournal",
+      "name": "digest",
+      "type": "TEXT",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "pks",
+      "table": "PromotionJournal",
+      "name": "PromotionJournal_pk",
+      "columns": [
+        "sequence"
+      ],
+      "nameExplicit": false
+    },
+    {
+      "entityType": "tables",
+      "name": "InternalConfiguration"
+    },
+    {
+      "entityType": "columns",
+      "table": "InternalConfiguration",
+      "name": "transaction",
+      "type": "TEXT",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "InternalConfiguration",
+      "name": "schema_version",
+      "type": "INTEGER",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "InternalConfiguration",
+      "name": "source_digest",
+      "type": "TEXT",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "pks",
+      "table": "InternalConfiguration",
+      "name": "InternalConfiguration_pk",
+      "columns": [
+        "transaction"
+      ],
+      "nameExplicit": false
+    },
+    {
+      "entityType": "tables",
+      "name": "ConfigurationWorkspaces"
+    },
+    {
+      "entityType": "columns",
+      "table": "ConfigurationWorkspaces",
+      "name": "id",
+      "type": "INTEGER",
+      "notNull": true,
+      "autoincrement": true,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "ConfigurationWorkspaces",
+      "name": "transaction",
+      "type": "TEXT",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "ConfigurationWorkspaces",
+      "name": "position",
+      "type": "INTEGER",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "ConfigurationWorkspaces",
+      "name": "name",
+      "type": "TEXT",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "pks",
+      "table": "ConfigurationWorkspaces",
+      "name": "ConfigurationWorkspaces_pk",
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false
+    },
+    {
+      "entityType": "tables",
+      "name": "ConfigurationBindings"
+    },
+    {
+      "entityType": "columns",
+      "table": "ConfigurationBindings",
+      "name": "id",
+      "type": "INTEGER",
+      "notNull": true,
+      "autoincrement": true,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "ConfigurationBindings",
+      "name": "transaction",
+      "type": "TEXT",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "ConfigurationBindings",
+      "name": "position",
+      "type": "INTEGER",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "ConfigurationBindings",
+      "name": "workspace_position",
+      "type": "INTEGER",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "pks",
+      "table": "ConfigurationBindings",
+      "name": "ConfigurationBindings_pk",
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false
+    },
+    {
+      "entityType": "tables",
+      "name": "CandidateSeals"
+    },
+    {
+      "entityType": "columns",
+      "table": "CandidateSeals",
+      "name": "transaction",
+      "type": "TEXT",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "CandidateSeals",
+      "name": "installation",
+      "type": "TEXT",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "CandidateSeals",
+      "name": "payload_digest",
+      "type": "TEXT",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "CandidateSeals",
+      "name": "configuration_digest",
+      "type": "TEXT",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "pks",
+      "table": "CandidateSeals",
+      "name": "CandidateSeals_pk",
+      "columns": [
+        "transaction"
+      ],
+      "nameExplicit": false
+    },
+    {
+      "entityType": "tables",
+      "name": "WindowRecoverySnapshots"
+    },
+    {
+      "entityType": "columns",
+      "table": "WindowRecoverySnapshots",
+      "name": "transaction",
+      "type": "TEXT",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "WindowRecoverySnapshots",
+      "name": "focused_window",
+      "type": "TEXT",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "WindowRecoverySnapshots",
+      "name": "appearance_digest",
+      "type": "TEXT",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "WindowRecoverySnapshots",
+      "name": "reconciled",
+      "type": "INTEGER",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "pks",
+      "table": "WindowRecoverySnapshots",
+      "name": "WindowRecoverySnapshots_pk",
+      "columns": [
+        "transaction"
+      ],
+      "nameExplicit": false
+    },
+    {
+      "entityType": "tables",
+      "name": "WindowRecoveryPlacements"
+    },
+    {
+      "entityType": "columns",
+      "table": "WindowRecoveryPlacements",
+      "name": "id",
+      "type": "INTEGER",
+      "notNull": true,
+      "autoincrement": true,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "WindowRecoveryPlacements",
+      "name": "transaction",
+      "type": "TEXT",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "WindowRecoveryPlacements",
+      "name": "window_identity",
+      "type": "TEXT",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "WindowRecoveryPlacements",
+      "name": "x",
+      "type": "INTEGER",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "WindowRecoveryPlacements",
+      "name": "y",
+      "type": "INTEGER",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "WindowRecoveryPlacements",
+      "name": "width",
+      "type": "INTEGER",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "WindowRecoveryPlacements",
+      "name": "height",
+      "type": "INTEGER",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "pks",
+      "table": "WindowRecoveryPlacements",
+      "name": "WindowRecoveryPlacements_pk",
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false
+    },
+    {
+      "entityType": "tables",
+      "name": "NativePathFacts"
+    },
+    {
+      "entityType": "columns",
+      "table": "NativePathFacts",
+      "name": "transaction",
+      "type": "TEXT",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "NativePathFacts",
+      "name": "encoding_version",
+      "type": "INTEGER",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "NativePathFacts",
+      "name": "code_units",
+      "type": "BLOB",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "pks",
+      "table": "NativePathFacts",
+      "name": "NativePathFacts_pk",
+      "columns": [
+        "transaction"
+      ],
+      "nameExplicit": false
+    }
+  ],
+  "renames": []
+}

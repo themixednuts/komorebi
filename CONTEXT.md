@@ -52,6 +52,14 @@ _Avoid_: retry loop, downgrade
 The recovery state that removes the manager's Windows-side effects and leaves Explorer usable when neither promotion nor rollback is healthy.
 _Avoid_: crash loop, factory reset
 
+**Durable manager store**:
+The sole manager-owned record of committed intent, revisions, compiled internal configuration, recovery evidence, and observed outcomes. An in-memory projection may accelerate reads but cannot acknowledge or outlive a revision that is absent from this store.
+_Avoid_: state file, backup database, cache database
+
+**Manager snapshot**:
+An immutable in-memory read model of exactly one committed durable-store revision. Publishing a snapshot never creates a second source of truth.
+_Avoid_: live database, mutable cache, current globals
+
 **Manager-owned shell layer**:
 The accessible AppBar, palette, overview, notification history or proved presenter, quick controls, and optional OSD surfaces owned by the Windows manager while Explorer remains available for recovery.
 _Avoid_: DWM replacement, Explorer replacement

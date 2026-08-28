@@ -1,0 +1,397 @@
+{
+  "schema_version": 1,
+  "health_deadline_ms": 15000,
+  "scenario_count": 32,
+  "process_death_boundary_count": 25,
+  "all_passed": true,
+  "scenarios": [
+    {
+      "name": "healthy promotion",
+      "fault": "healthy",
+      "crash_after": null,
+      "expected": "candidate",
+      "observed": "candidate",
+      "elapsed_ms": 98.4705,
+      "recovery_ms": null,
+      "health": {
+        "accepted": true,
+        "reason": null,
+        "elapsed_ms": 15.3956,
+        "deadline_ms": 15000,
+        "appbar_owner_count": 1
+      },
+      "passed": true
+    },
+    {
+      "name": "invalid configuration",
+      "fault": "invalid_configuration",
+      "crash_after": null,
+      "expected": "staging_rejected",
+      "observed": "staging_rejected",
+      "elapsed_ms": 51.9835,
+      "recovery_ms": null,
+      "health": null,
+      "passed": true
+    },
+    {
+      "name": "failed IPC reaches exact health deadline",
+      "fault": "failed_ipc",
+      "crash_after": null,
+      "expected": "prior",
+      "observed": "prior",
+      "elapsed_ms": 15102.3936,
+      "recovery_ms": null,
+      "health": {
+        "accepted": false,
+        "reason": "deadline",
+        "elapsed_ms": 15002.9443,
+        "deadline_ms": 15000,
+        "appbar_owner_count": 0
+      },
+      "passed": true
+    },
+    {
+      "name": "duplicate AppBar owner",
+      "fault": "duplicate_app_bar",
+      "crash_after": null,
+      "expected": "prior",
+      "observed": "prior",
+      "elapsed_ms": 122.738,
+      "recovery_ms": null,
+      "health": {
+        "accepted": false,
+        "reason": "duplicate_app_bar",
+        "elapsed_ms": 16.4964,
+        "deadline_ms": 15000,
+        "appbar_owner_count": 2
+      },
+      "passed": true
+    },
+    {
+      "name": "candidate process crash",
+      "fault": "candidate_crash",
+      "crash_after": null,
+      "expected": "prior",
+      "observed": "prior",
+      "elapsed_ms": 108.2569,
+      "recovery_ms": null,
+      "health": {
+        "accepted": false,
+        "reason": "candidate_exited",
+        "elapsed_ms": 10.1409,
+        "deadline_ms": 15000,
+        "appbar_owner_count": 0
+      },
+      "passed": true
+    },
+    {
+      "name": "rollback failure enters safe stop",
+      "fault": "rollback_failure",
+      "crash_after": null,
+      "expected": "safe_stopped",
+      "observed": "safe_stopped",
+      "elapsed_ms": 122.4282,
+      "recovery_ms": null,
+      "health": {
+        "accepted": false,
+        "reason": "round_trip",
+        "elapsed_ms": 16.6988,
+        "deadline_ms": 15000,
+        "appbar_owner_count": 1
+      },
+      "passed": true
+    },
+    {
+      "name": "unpaired UTF-16 path survives process boundary",
+      "fault": "healthy",
+      "crash_after": null,
+      "expected": "candidate",
+      "observed": "candidate",
+      "elapsed_ms": 104.6809,
+      "recovery_ms": null,
+      "health": {
+        "accepted": true,
+        "reason": null,
+        "elapsed_ms": 14.871,
+        "deadline_ms": 15000,
+        "appbar_owner_count": 1
+      },
+      "passed": true
+    },
+    {
+      "name": "process death after prepared",
+      "fault": "healthy",
+      "crash_after": "prepared",
+      "expected": "prior",
+      "observed": "prior",
+      "elapsed_ms": 81.0561,
+      "recovery_ms": 35.994400000000006,
+      "health": null,
+      "passed": true
+    },
+    {
+      "name": "process death after candidate_sealed",
+      "fault": "healthy",
+      "crash_after": "candidate_sealed",
+      "expected": "prior",
+      "observed": "prior",
+      "elapsed_ms": 87.7577,
+      "recovery_ms": 36.2971,
+      "health": null,
+      "passed": true
+    },
+    {
+      "name": "process death after configuration_migrated",
+      "fault": "healthy",
+      "crash_after": "configuration_migrated",
+      "expected": "prior",
+      "observed": "prior",
+      "elapsed_ms": 93.4171,
+      "recovery_ms": 35.865300000000005,
+      "health": null,
+      "passed": true
+    },
+    {
+      "name": "process death after window_snapshot_captured",
+      "fault": "healthy",
+      "crash_after": "window_snapshot_captured",
+      "expected": "prior",
+      "observed": "prior",
+      "elapsed_ms": 95.10879999999999,
+      "recovery_ms": 37.7314,
+      "health": null,
+      "passed": true
+    },
+    {
+      "name": "process death after input_paused",
+      "fault": "healthy",
+      "crash_after": "input_paused",
+      "expected": "prior",
+      "observed": "prior",
+      "elapsed_ms": 93.9997,
+      "recovery_ms": 33.5894,
+      "health": null,
+      "passed": true
+    },
+    {
+      "name": "process death after owned_shell_stopped",
+      "fault": "healthy",
+      "crash_after": "owned_shell_stopped",
+      "expected": "prior",
+      "observed": "prior",
+      "elapsed_ms": 93.8863,
+      "recovery_ms": 35.2604,
+      "health": null,
+      "passed": true
+    },
+    {
+      "name": "process death after active_pointer_switched",
+      "fault": "healthy",
+      "crash_after": "active_pointer_switched",
+      "expected": "prior",
+      "observed": "prior",
+      "elapsed_ms": 95.528,
+      "recovery_ms": 34.5727,
+      "health": null,
+      "passed": true
+    },
+    {
+      "name": "process death after candidate_started",
+      "fault": "healthy",
+      "crash_after": "candidate_started",
+      "expected": "prior",
+      "observed": "prior",
+      "elapsed_ms": 97.9865,
+      "recovery_ms": 34.861200000000004,
+      "health": null,
+      "passed": true
+    },
+    {
+      "name": "process death after windows_reconciled",
+      "fault": "healthy",
+      "crash_after": "windows_reconciled",
+      "expected": "prior",
+      "observed": "prior",
+      "elapsed_ms": 108.2045,
+      "recovery_ms": 36.835300000000004,
+      "health": null,
+      "passed": true
+    },
+    {
+      "name": "process death after input_and_ui_started",
+      "fault": "healthy",
+      "crash_after": "input_and_ui_started",
+      "expected": "prior",
+      "observed": "prior",
+      "elapsed_ms": 115.2041,
+      "recovery_ms": 36.110299999999995,
+      "health": null,
+      "passed": true
+    },
+    {
+      "name": "process death after health_accepted",
+      "fault": "healthy",
+      "crash_after": "health_accepted",
+      "expected": "prior",
+      "observed": "prior",
+      "elapsed_ms": 126.6332,
+      "recovery_ms": 34.7626,
+      "health": null,
+      "passed": true
+    },
+    {
+      "name": "process death after promotion_committed",
+      "fault": "healthy",
+      "crash_after": "promotion_committed",
+      "expected": "candidate",
+      "observed": "candidate",
+      "elapsed_ms": 107.9783,
+      "recovery_ms": 17.119100000000003,
+      "health": null,
+      "passed": true
+    },
+    {
+      "name": "process death after health_rejected",
+      "fault": "duplicate_app_bar",
+      "crash_after": "health_rejected",
+      "expected": "prior",
+      "observed": "prior",
+      "elapsed_ms": 133.3739,
+      "recovery_ms": 43.886,
+      "health": null,
+      "passed": true
+    },
+    {
+      "name": "process death after rollback_started",
+      "fault": "duplicate_app_bar",
+      "crash_after": "rollback_started",
+      "expected": "prior",
+      "observed": "prior",
+      "elapsed_ms": 130.1127,
+      "recovery_ms": 32.5996,
+      "health": null,
+      "passed": true
+    },
+    {
+      "name": "process death after prior_pointer_restored",
+      "fault": "duplicate_app_bar",
+      "crash_after": "prior_pointer_restored",
+      "expected": "prior",
+      "observed": "prior",
+      "elapsed_ms": 130.1971,
+      "recovery_ms": 36.7696,
+      "health": null,
+      "passed": true
+    },
+    {
+      "name": "process death after prior_started",
+      "fault": "duplicate_app_bar",
+      "crash_after": "prior_started",
+      "expected": "prior",
+      "observed": "prior",
+      "elapsed_ms": 140.3026,
+      "recovery_ms": 35.1859,
+      "health": null,
+      "passed": true
+    },
+    {
+      "name": "process death after rollback_health_accepted",
+      "fault": "duplicate_app_bar",
+      "crash_after": "rollback_health_accepted",
+      "expected": "prior",
+      "observed": "prior",
+      "elapsed_ms": 149.3726,
+      "recovery_ms": 34.612700000000004,
+      "health": null,
+      "passed": true
+    },
+    {
+      "name": "process death after rollback_completed",
+      "fault": "duplicate_app_bar",
+      "crash_after": "rollback_completed",
+      "expected": "prior",
+      "observed": "prior",
+      "elapsed_ms": 122.7954,
+      "recovery_ms": 15.338799999999999,
+      "health": null,
+      "passed": true
+    },
+    {
+      "name": "process death after health_rejected",
+      "fault": "rollback_failure",
+      "crash_after": "health_rejected",
+      "expected": "safe_stopped",
+      "observed": "safe_stopped",
+      "elapsed_ms": 125.6084,
+      "recovery_ms": 37.270900000000005,
+      "health": null,
+      "passed": true
+    },
+    {
+      "name": "process death after rollback_started",
+      "fault": "rollback_failure",
+      "crash_after": "rollback_started",
+      "expected": "safe_stopped",
+      "observed": "safe_stopped",
+      "elapsed_ms": 127.24559999999998,
+      "recovery_ms": 35.2713,
+      "health": null,
+      "passed": true
+    },
+    {
+      "name": "process death after rollback_rejected",
+      "fault": "rollback_failure",
+      "crash_after": "rollback_rejected",
+      "expected": "safe_stopped",
+      "observed": "safe_stopped",
+      "elapsed_ms": 124.0567,
+      "recovery_ms": 31.730300000000003,
+      "health": null,
+      "passed": true
+    },
+    {
+      "name": "process death after safe_stop_started",
+      "fault": "rollback_failure",
+      "crash_after": "safe_stop_started",
+      "expected": "safe_stopped",
+      "observed": "safe_stopped",
+      "elapsed_ms": 119.186,
+      "recovery_ms": 32.1261,
+      "health": null,
+      "passed": true
+    },
+    {
+      "name": "process death after effects_restored",
+      "fault": "rollback_failure",
+      "crash_after": "effects_restored",
+      "expected": "safe_stopped",
+      "observed": "safe_stopped",
+      "elapsed_ms": 132.0975,
+      "recovery_ms": 32.1192,
+      "health": null,
+      "passed": true
+    },
+    {
+      "name": "process death after processes_stopped",
+      "fault": "rollback_failure",
+      "crash_after": "processes_stopped",
+      "expected": "safe_stopped",
+      "observed": "safe_stopped",
+      "elapsed_ms": 140.3723,
+      "recovery_ms": 30.9626,
+      "health": null,
+      "passed": true
+    },
+    {
+      "name": "process death after safe_stop_completed",
+      "fault": "rollback_failure",
+      "crash_after": "safe_stop_completed",
+      "expected": "safe_stopped",
+      "observed": "safe_stopped",
+      "elapsed_ms": 116.0335,
+      "recovery_ms": 14.1449,
+      "health": null,
+      "passed": true
+    }
+  ]
+}
