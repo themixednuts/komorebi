@@ -11,7 +11,7 @@ The prototype selects rollback for every promotion that lacks a durable `Promoti
 - Configuration, candidate seals, recovery placements, native path facts, and the promotion journal are normalized typed tables.
 - Native paths are persisted as versioned little-endian UTF-16 code-unit BLOBs. The code never converts an operational path through UTF-8.
 - JSON is used only for CLI measurement output. It is not manager state or a replay log.
-- SQLite `JSONB` is available through Drizzle's `#[column(JSONB)]` and typed JSON expressions, but this schema has no document-shaped value that benefits from it. Future opaque plugin or effect parameter documents may use versioned JSONB; indexed recovery facts remain columns.
+- Drizzle can store a typed document in SQLite BLOB storage through `#[column(blob)]` and a `DrizzleSQLiteColumn` codec, but this schema has no document-shaped value that benefits from it. Future opaque plugin or effect parameter documents may use that form; indexed recovery facts remain columns.
 
 The target manager should hold one write connection in its state owner and publish an immutable `Arc<ManagerSnapshot>` only after a transaction commits. Readers use the snapshot without touching the database. This is a cache of one durable revision, not an in-memory database with periodic file backup.
 

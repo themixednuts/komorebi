@@ -1,0 +1,167 @@
+{
+  "verdict": "go",
+  "machine": {
+    "operating_system": "Windows NT 10.0.26200",
+    "architecture": "x86_64",
+    "logical_processors": 24,
+    "working_set_bytes": 7139328
+  },
+  "recovery": [
+    {
+      "crash_boundary": "before-reservation",
+      "observed": "not_reserved",
+      "expected": "not_reserved",
+      "passed": true
+    },
+    {
+      "crash_boundary": "after-reservation",
+      "observed": "restarted_before_commit",
+      "expected": "restarted_before_commit",
+      "passed": true
+    },
+    {
+      "crash_boundary": "after-logical-commit",
+      "observed": "reconciling_after_restart",
+      "expected": "reconciling_after_restart",
+      "passed": true
+    },
+    {
+      "crash_boundary": "after-effect-dispatch",
+      "observed": "indeterminate",
+      "expected": "indeterminate",
+      "passed": true
+    },
+    {
+      "crash_boundary": "after-outcome",
+      "observed": "retained_terminal",
+      "expected": "retained_terminal",
+      "passed": true
+    },
+    {
+      "crash_boundary": "same identity with changed digest",
+      "observed": "idempotency_conflict",
+      "expected": "idempotency_conflict",
+      "passed": true
+    },
+    {
+      "crash_boundary": "same identity with changed principal",
+      "observed": "idempotency_conflict",
+      "expected": "idempotency_conflict",
+      "passed": true
+    },
+    {
+      "crash_boundary": "compacted identity",
+      "observed": "invocation_expired",
+      "expected": "invocation_expired",
+      "passed": true
+    }
+  ],
+  "protocol": [
+    {
+      "operation": "warm_authenticated_handshake",
+      "samples": 200,
+      "p50_us": 64.39999999999999,
+      "p95_us": 138.5,
+      "p99_us": 174.3,
+      "max_us": 190.9,
+      "budget_p99_us": 10000.0,
+      "passed": true
+    },
+    {
+      "operation": "cold_authenticated_handshake",
+      "samples": 40,
+      "p50_us": 9867.1,
+      "p95_us": 11230.800000000001,
+      "p99_us": 13771.6,
+      "max_us": 13771.6,
+      "budget_p99_us": 30000.0,
+      "passed": true
+    },
+    {
+      "operation": "warm_noop_round_trip",
+      "samples": 2000,
+      "p50_us": 18.099999999999998,
+      "p95_us": 37.1,
+      "p99_us": 45.5,
+      "max_us": 178.29999999999998,
+      "budget_p99_us": 5000.0,
+      "passed": true
+    },
+    {
+      "operation": "project_and_encode_500_action_offers",
+      "samples": 1000,
+      "p50_us": 21.3,
+      "p95_us": 27.900000000000002,
+      "p99_us": 33.5,
+      "max_us": 39.0,
+      "budget_p99_us": 8000.0,
+      "passed": true
+    },
+    {
+      "operation": "durable_admission",
+      "samples": 300,
+      "p50_us": 1274.9,
+      "p95_us": 1544.9,
+      "p99_us": 2960.7000000000003,
+      "max_us": 5853.2,
+      "budget_p99_us": 16000.0,
+      "passed": true
+    },
+    {
+      "operation": "committed_event_delivery",
+      "samples": 1000,
+      "p50_us": 0.09999999999999999,
+      "p95_us": 0.19999999999999998,
+      "p99_us": 1.0,
+      "max_us": 11.399999999999999,
+      "budget_p99_us": 8000.0,
+      "passed": true
+    },
+    {
+      "operation": "one_mib_resnapshot",
+      "samples": 100,
+      "p50_us": 721.3000000000001,
+      "p95_us": 980.5,
+      "p99_us": 1121.1999999999998,
+      "max_us": 1236.2,
+      "budget_p99_us": 50000.0,
+      "passed": true
+    },
+    {
+      "operation": "manager_nonblocking_publication_enqueue",
+      "samples": 1025,
+      "p50_us": 1.1,
+      "p95_us": 1.5999999999999999,
+      "p99_us": 6.3,
+      "max_us": 161.7,
+      "budget_p99_us": 100.0,
+      "passed": true
+    }
+  ],
+  "subscription": {
+    "atomic_start": "passed",
+    "filtered_delivery_sequences_contiguous": "passed",
+    "restart_requires_resnapshot": "passed",
+    "slow_reader_control_lane_notified": "passed",
+    "data_lane_high_watermark_frames": 1024,
+    "first_party_data_high_watermark_bytes": 4194304,
+    "extension_data_high_watermark_bytes": 1048576,
+    "control_lane_reserved_frames": 64
+  },
+  "storage": {
+    "sqlite_wal_full": "passed",
+    "drizzle_typed_queries": "passed",
+    "generated_migrations": "passed",
+    "typed_document_blob_action_parameters": "passed",
+    "no_raw_sql_in_application": "passed"
+  },
+  "allocations": {
+    "allocations": 25607,
+    "deallocations": 25603,
+    "outstanding_at_observation": 4
+  },
+  "limitations": [
+    "The cold handshake includes a fresh client process but not an OS reboot or cold executable cache.",
+    "The prototype authenticates the client process ID on a local-only pipe; the explicit current-logon-SID DACL remains the already-proven containment adapter from the extension-host prototype."
+  ]
+}

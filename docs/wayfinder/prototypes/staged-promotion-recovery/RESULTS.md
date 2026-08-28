@@ -25,7 +25,7 @@ Recovery after an injected process death took 14.14–43.89 ms in this fixture. 
 - `build.rs` generated one baseline migration from `src/schema.rs`; no migration was authored by hand.
 - `PRAGMA journal_mode=WAL` returns the selected mode. Calling Drizzle's execute path failed on a new database with `ExecuteReturnedResults`; the corrected boundary uses a typed one-row result and rejects any mode other than WAL.
 - The bundled SQLite is 3.51.3, which includes the upstream WAL-reset fix. The production dependency floor must not regress below a fixed SQLite release.
-- Drizzle 0.1.16 supports SQLite typed JSON and JSONB columns plus JSON extraction expressions. JSONB is intentionally absent here: transaction identity, revision order, placement, and recovery predicates require typed columns. It remains appropriate for versioned opaque documents that are normally read as a whole.
+- Drizzle 0.1.16 exposes SQLite JSON/JSONB column markers and extraction expressions, but a later round-trip prototype found its `jsonb()` write path incompatible with the generated rusqlite reader. Versioned opaque documents therefore use a custom `#[column(blob)]` codec; transaction identity, revision order, placement, and recovery predicates remain typed columns.
 - A file-backed database plus immutable in-memory snapshot has one commit point. An in-memory database plus backup was rejected because acknowledged state could disappear between backup intervals and startup would have to choose between two candidate truths.
 
 ## Native text findings

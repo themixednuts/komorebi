@@ -60,6 +60,22 @@ _Avoid_: state file, backup database, cache database
 An immutable in-memory read model of exactly one committed durable-store revision. Publishing a snapshot never creates a second source of truth.
 _Avoid_: live database, mutable cache, current globals
 
+**Durable invocation record**:
+The principal-bound identity, canonical digest, durable phase, manager revision, effect class, and retained outcome for one action invocation. Its relational fields decide retry and recovery; its versioned action parameters may remain one typed BLOB document.
+_Avoid_: request log, exactly-once effect
+
+**Subscription start**:
+One state-owner operation that registers a bounded mailbox and captures an authorized immutable manager snapshot plus event cursor before any later committed event can fan out.
+_Avoid_: subscribe-then-snapshot, listener setup
+
+**Delivery sequence**:
+A contiguous position within one subscription's accepted event stream. It does not equal the global event position because authorization and source filters may skip committed events.
+_Avoid_: event cursor, global revision
+
+**Replay window**:
+The bounded same-epoch set of committed events available for subscription resume. A cursor outside its byte or age limit requires an explicit resnapshot.
+_Avoid_: durable event log, unlimited history
+
 **Manager-owned shell layer**:
 The accessible AppBar, palette, overview, notification history or proved presenter, quick controls, and optional OSD surfaces owned by the Windows manager while Explorer remains available for recovery.
 _Avoid_: DWM replacement, Explorer replacement

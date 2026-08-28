@@ -58,7 +58,7 @@ The real types should refine identity, revision, and validated installation path
 
 SQLite owns promotion boundaries, compiled internal configuration, candidate seals, recovery placements, native path facts, grants, and health outcomes. The filesystem owns immutable installation payloads and the minimal OS startup reference. Windows owns current foreign-window and shell observations. JSON may be emitted for diagnostics, but it is not a state format.
 
-SQLite JSONB is available through Drizzle's `#[column(JSONB)]` and typed expressions. Use it only for a versioned document that is opaque or normally consumed whole, such as bounded plugin/effect parameters. Keep identities, revisions, foreign keys, ordering, lifecycle state, and recovery predicates in typed columns. Never hide a relational state machine in JSONB.
+Drizzle's SQLite custom-column API can store a typed versioned document as `#[column(blob)]` through `DrizzleSQLiteColumn`. Use it only for a document that is opaque or normally consumed whole, such as bounded plugin/effect parameters. Keep identities, revisions, foreign keys, ordering, lifecycle state, and recovery predicates in typed columns. Never hide a relational state machine in a BLOB.
 
 ## Entrypoint-to-effect stacks
 

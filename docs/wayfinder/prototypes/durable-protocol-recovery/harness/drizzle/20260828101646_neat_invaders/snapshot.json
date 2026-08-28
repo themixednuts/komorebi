@@ -1,0 +1,226 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "id": "2f8e91f9-7c02-46fa-bc3d-d513528c9c0c",
+  "prevIds": [
+    "00000000-0000-0000-0000-000000000000"
+  ],
+  "ddl": [
+    {
+      "entityType": "tables",
+      "name": "InvocationLedger"
+    },
+    {
+      "entityType": "columns",
+      "table": "InvocationLedger",
+      "name": "identity",
+      "type": "TEXT",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "InvocationLedger",
+      "name": "principal",
+      "type": "TEXT",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "InvocationLedger",
+      "name": "invocation_id",
+      "type": "INTEGER",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "InvocationLedger",
+      "name": "digest",
+      "type": "BLOB",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "InvocationLedger",
+      "name": "phase",
+      "type": "TEXT",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "InvocationLedger",
+      "name": "manager_revision",
+      "type": "INTEGER",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "InvocationLedger",
+      "name": "effect_kind",
+      "type": "TEXT",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "InvocationLedger",
+      "name": "outcome",
+      "type": "TEXT",
+      "notNull": false,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "InvocationLedger",
+      "name": "parameters",
+      "type": "BLOB",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "pks",
+      "table": "InvocationLedger",
+      "name": "InvocationLedger_pk",
+      "columns": [
+        "identity"
+      ],
+      "nameExplicit": false
+    },
+    {
+      "entityType": "tables",
+      "name": "PrincipalFloors"
+    },
+    {
+      "entityType": "columns",
+      "table": "PrincipalFloors",
+      "name": "principal",
+      "type": "TEXT",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "PrincipalFloors",
+      "name": "minimum_accepted",
+      "type": "INTEGER",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "pks",
+      "table": "PrincipalFloors",
+      "name": "PrincipalFloors_pk",
+      "columns": [
+        "principal"
+      ],
+      "nameExplicit": false
+    },
+    {
+      "entityType": "tables",
+      "name": "CommittedEvents"
+    },
+    {
+      "entityType": "columns",
+      "table": "CommittedEvents",
+      "name": "position",
+      "type": "INTEGER",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "CommittedEvents",
+      "name": "manager_epoch",
+      "type": "BLOB",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "CommittedEvents",
+      "name": "manager_revision",
+      "type": "INTEGER",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "CommittedEvents",
+      "name": "invocation_identity",
+      "type": "TEXT",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "CommittedEvents",
+      "name": "topic",
+      "type": "TEXT",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "pks",
+      "table": "CommittedEvents",
+      "name": "CommittedEvents_pk",
+      "columns": [
+        "position"
+      ],
+      "nameExplicit": false
+    }
+  ],
+  "renames": []
+}
