@@ -1,0 +1,24 @@
+[workspace]
+members = ["core", "egui-surface", "gpui-surface"]
+resolver = "3"
+
+[workspace.package]
+edition = "2024"
+license = "MIT"
+publish = false
+
+[workspace.dependencies]
+anyhow = "1"
+eframe = "0.33"
+gpui = { git = "https://github.com/zed-industries/zed" }
+gpui_platform = { git = "https://github.com/zed-industries/zed", features = ["font-kit"] }
+gpui-component = { git = "https://github.com/longbridge/gpui-component", rev = "6d07863fe7077f85abfa0ec2fcb05f3e17c573b2" }
+gpui-base = { git = "https://github.com/longbridge/gpui-component", rev = "6d07863fe7077f85abfa0ec2fcb05f3e17c573b2" }
+palette-prototype-core = { path = "core" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+windows = { version = "0.62", features = ["Win32_Graphics_Dwm"] }
+
+[profile.release]
+debug = "line-tables-only"
+strip = "symbols"

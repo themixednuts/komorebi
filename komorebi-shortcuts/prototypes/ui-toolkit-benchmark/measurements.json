@@ -1,0 +1,57 @@
+{
+  "captured_at": "2026-08-27",
+  "environment": {
+    "os": "Windows 11 Home build 26200",
+    "display": "5120x1440 single monitor",
+    "gpu": "NVIDIA GeForce RTX 3090",
+    "rust": "1.97.1",
+    "cargo": "1.97.1",
+    "appbar_work_area": {
+      "left": 0,
+      "top": 50,
+      "right": 5120,
+      "bottom": 1440
+    }
+  },
+  "inputs": {
+    "eframe": "0.33.3",
+    "gpui": "797e5dc95c3859f7926681c91398c4d9e993865d",
+    "gpui_component": "6d07863fe7077f85abfa0ec2fcb05f3e17c573b2",
+    "gpui_base": "6d07863fe7077f85abfa0ec2fcb05f3e17c573b2"
+  },
+  "egui": {
+    "clean_release_build_seconds": 35.184,
+    "first_frame_us": [264237, 254585, 239129, 255630, 242344],
+    "first_frame_median_us": 254585,
+    "window_observed_ms": [505, 509, 674, 513, 606],
+    "window_observed_median_ms": 513,
+    "idle_cpu_percent": [0.3081, 0.3407, 0.3416],
+    "idle_cpu_median_percent": 0.3407,
+    "working_set_bytes": [82628608, 82620416, 82685952],
+    "working_set_median_bytes": 82628608,
+    "private_bytes": [66740224, 66699264, 66764800],
+    "private_median_bytes": 66740224,
+    "binary_bytes": 5041664,
+    "clean_target_bytes": 613304931,
+    "unique_dependency_tree_lines": 166,
+    "surface_source_lines": 237
+  },
+  "gpui_components": {
+    "clean_release_build_seconds": 267.875,
+    "first_frame_us": [308377, 306211, 302036, 317267, 331800],
+    "first_frame_median_us": 308377,
+    "window_observed_ms": [555, 535, 507, 522, 561],
+    "window_observed_median_ms": 535,
+    "idle_cpu_percent": [0.1626, 0.0325, 0.0976],
+    "idle_cpu_median_percent": 0.0976,
+    "working_set_bytes": [65150976, 64393216, 64389120],
+    "working_set_median_bytes": 64393216,
+    "private_bytes": [82944000, 82186240, 82178048],
+    "private_median_bytes": 82186240,
+    "binary_bytes": 21720064,
+    "clean_target_bytes": 2233472086,
+    "unique_dependency_tree_lines": 540,
+    "surface_source_lines": 245
+  },
+  "shared_core_source_lines": 322
+}
