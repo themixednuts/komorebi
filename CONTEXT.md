@@ -443,3 +443,15 @@ _Avoid_: manager hotkey, external command
 **Native text**:
 Windows-origin code units preserved without Unicode repair or lossy conversion for identity, comparison, persistence, and native effects. A separate display rendering cannot become an operational value.
 _Avoid_: path string, Unicode-clean name
+
+**File-search worker**:
+The Job-owned first-party process that contains file-index and query work whose dependency cancellation or crash behavior cannot be trusted inside the palette shell. It owns immutable search snapshots but never palette, manager, or activation authority.
+_Avoid_: search service, file manager
+
+**Publication fence**:
+The complete engine, worker, root, snapshot, query, and request identity that must still match before asynchronous search output can become visible or activatable.
+_Avoid_: cancellation flag, latest result
+
+**Root admission**:
+The native-path and file-identity boundary that accepts an explicitly configured search root only after full-drive policy, redirection deduplication, reparse state, cloud-recall state, and lossless dependency representation are resolved.
+_Avoid_: path list, search folder

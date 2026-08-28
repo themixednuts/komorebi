@@ -1,0 +1,705 @@
+{
+  "schema": 1,
+  "environment": {
+    "architecture": "x86_64",
+    "operating_system": "windows",
+    "logical_processors": 24,
+    "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)",
+    "frizbee": "0.13.0+safe_read",
+    "fff_search": "0.10.5",
+    "tokio_runtime_count": 1,
+    "continuous_polling_loops": 0
+  },
+  "catalog": {
+    "item_count": 2048,
+    "score_only": {
+      "samples": 256,
+      "min_ns": 30400,
+      "p50_ns": 46400,
+      "p95_ns": 63000,
+      "p99_ns": 68900,
+      "max_ns": 149700
+    },
+    "visible_highlight": {
+      "samples": 256,
+      "min_ns": 2900,
+      "p50_ns": 3200,
+      "p95_ns": 6500,
+      "p99_ns": 10500,
+      "max_ns": 28700
+    },
+    "exact_first": true,
+    "visible_rows_only": true,
+    "safe_read_enabled": true
+  },
+  "fixture": {
+    "cold_build": {
+      "build_ns": 15715000,
+      "file_count": 5,
+      "directory_count": 2,
+      "path_arena_bytes": 112,
+      "persistent_index_files": 0,
+      "dependency_watcher_enabled": false
+    },
+    "filename_queries": {
+      "samples": 128,
+      "min_ns": 905500,
+      "p50_ns": 1121600,
+      "p95_ns": 1499700,
+      "p99_ns": 1684400,
+      "max_ns": 1850100
+    },
+    "content_queries": {
+      "samples": 64,
+      "min_ns": 137000,
+      "p50_ns": 186800,
+      "p95_ns": 275200,
+      "p99_ns": 827900,
+      "max_ns": 827900
+    },
+    "immediate_content_cancellation_ns": 154100,
+    "immediate_content_cancellation_observed": true,
+    "ignored_path_excluded": true,
+    "immutable_before_replacement": true,
+    "complete_replacement_published": true,
+    "reparse_not_traversed": true,
+    "invalid_wtf16_fixture_created": true,
+    "invalid_wtf16_path_round_tripped": false,
+    "stable_file_identity_available": true,
+    "identity_is_ntfs": true,
+    "watcher": {
+      "native_event": {
+        "Changed": {
+          "bytes": 56
+        }
+      },
+      "overflow_marks_stale": true,
+      "overflow_complete_rebuild": true,
+      "polling_used": false
+    },
+    "persistent_index_files": 0,
+    "corrupt_schema_recovery": "NotApplicableMemoryResidentIndex"
+  },
+  "actual_roots": {
+    "diagnostics": [
+      {
+        "path_tag": "73cbe7415fb71fdc",
+        "kind": "Desktop",
+        "outcome": "Admitted"
+      },
+      {
+        "path_tag": "d3b9cef14adf3b9a",
+        "kind": "Documents",
+        "outcome": "Admitted"
+      },
+      {
+        "path_tag": "adf768e42a457366",
+        "kind": "Downloads",
+        "outcome": "Admitted"
+      },
+      {
+        "path_tag": "b60b8db8e452da82",
+        "kind": "Pictures",
+        "outcome": "Admitted"
+      },
+      {
+        "path_tag": "8e4e5e767eca42fb",
+        "kind": "Music",
+        "outcome": "Admitted"
+      },
+      {
+        "path_tag": "ab7dfb384dceeb6b",
+        "kind": "Videos",
+        "outcome": "Admitted"
+      },
+      {
+        "path_tag": "abd7850d3cf033cb",
+        "kind": "Project",
+        "outcome": "Admitted"
+      }
+    ],
+    "roots": [
+      {
+        "path_tag": "73cbe7415fb71fdc",
+        "kind": "Desktop",
+        "ntfs_identity": true,
+        "stable_identity_available": true,
+        "build": {
+          "build_ns": 6464700,
+          "file_count": 0,
+          "directory_count": 0,
+          "path_arena_bytes": 0,
+          "persistent_index_files": 0,
+          "dependency_watcher_enabled": false
+        },
+        "filename_first": {
+          "elapsed_ns": 3400,
+          "returned": 0,
+          "total_matched": 0,
+          "total_files": 0
+        },
+        "filename_warm": {
+          "samples": 32,
+          "min_ns": 700,
+          "p50_ns": 800,
+          "p95_ns": 800,
+          "p99_ns": 900,
+          "max_ns": 900
+        },
+        "content_first": null,
+        "memory_before": {
+          "working_set_bytes": 17862656,
+          "private_bytes": 7327744,
+          "peak_working_set_bytes": 17862656
+        },
+        "memory_after": {
+          "working_set_bytes": 18038784,
+          "private_bytes": 7692288,
+          "peak_working_set_bytes": 18382848
+        },
+        "process_before": {
+          "read_bytes": 50680,
+          "write_bytes": 27833,
+          "other_bytes": 32750,
+          "kernel_100ns": 2656250,
+          "user_100ns": 2968750
+        },
+        "process_after": {
+          "read_bytes": 51208,
+          "write_bytes": 27833,
+          "other_bytes": 34182,
+          "kernel_100ns": 2656250,
+          "user_100ns": 3281250
+        }
+      },
+      {
+        "path_tag": "d3b9cef14adf3b9a",
+        "kind": "Documents",
+        "ntfs_identity": true,
+        "stable_identity_available": true,
+        "build": {
+          "build_ns": 25256000,
+          "file_count": 5097,
+          "directory_count": 632,
+          "path_arena_bytes": 130832,
+          "persistent_index_files": 0,
+          "dependency_watcher_enabled": false
+        },
+        "filename_first": {
+          "elapsed_ns": 2152000,
+          "returned": 20,
+          "total_matched": 2939,
+          "total_files": 5097
+        },
+        "filename_warm": {
+          "samples": 32,
+          "min_ns": 1338000,
+          "p50_ns": 1558300,
+          "p95_ns": 2028800,
+          "p99_ns": 2418200,
+          "max_ns": 2418200
+        },
+        "content_first": {
+          "elapsed_ns": 2868000,
+          "matches": 26,
+          "files_with_matches": 6,
+          "files_searched": 35,
+          "total_files": 5097,
+          "snippet_bytes": 1597,
+          "abort_observed": false
+        },
+        "memory_before": {
+          "working_set_bytes": 18034688,
+          "private_bytes": 7475200,
+          "peak_working_set_bytes": 18382848
+        },
+        "memory_after": {
+          "working_set_bytes": 23441408,
+          "private_bytes": 14159872,
+          "peak_working_set_bytes": 30793728
+        },
+        "process_before": {
+          "read_bytes": 51208,
+          "write_bytes": 27833,
+          "other_bytes": 34182,
+          "kernel_100ns": 2656250,
+          "user_100ns": 3281250
+        },
+        "process_after": {
+          "read_bytes": 8481328,
+          "write_bytes": 27833,
+          "other_bytes": 736754,
+          "kernel_100ns": 4218750,
+          "user_100ns": 5000000
+        }
+      },
+      {
+        "path_tag": "adf768e42a457366",
+        "kind": "Downloads",
+        "ntfs_identity": true,
+        "stable_identity_available": true,
+        "build": {
+          "build_ns": 97062700,
+          "file_count": 21300,
+          "directory_count": 4431,
+          "path_arena_bytes": 386144,
+          "persistent_index_files": 0,
+          "dependency_watcher_enabled": false
+        },
+        "filename_first": {
+          "elapsed_ns": 2601800,
+          "returned": 20,
+          "total_matched": 18558,
+          "total_files": 21300
+        },
+        "filename_warm": {
+          "samples": 32,
+          "min_ns": 1891500,
+          "p50_ns": 2206400,
+          "p95_ns": 2838100,
+          "p99_ns": 2887500,
+          "max_ns": 2887500
+        },
+        "content_first": null,
+        "memory_before": {
+          "working_set_bytes": 22900736,
+          "private_bytes": 13402112,
+          "peak_working_set_bytes": 30793728
+        },
+        "memory_after": {
+          "working_set_bytes": 30937088,
+          "private_bytes": 23744512,
+          "peak_working_set_bytes": 34193408
+        },
+        "process_before": {
+          "read_bytes": 8481328,
+          "write_bytes": 27833,
+          "other_bytes": 736754,
+          "kernel_100ns": 4218750,
+          "user_100ns": 5000000
+        },
+        "process_after": {
+          "read_bytes": 8481856,
+          "write_bytes": 27833,
+          "other_bytes": 4026666,
+          "kernel_100ns": 8906250,
+          "user_100ns": 12500000
+        }
+      },
+      {
+        "path_tag": "b60b8db8e452da82",
+        "kind": "Pictures",
+        "ntfs_identity": true,
+        "stable_identity_available": true,
+        "build": {
+          "build_ns": 8004300,
+          "file_count": 301,
+          "directory_count": 5,
+          "path_arena_bytes": 6208,
+          "persistent_index_files": 0,
+          "dependency_watcher_enabled": false
+        },
+        "filename_first": {
+          "elapsed_ns": 1169500,
+          "returned": 18,
+          "total_matched": 18,
+          "total_files": 301
+        },
+        "filename_warm": {
+          "samples": 32,
+          "min_ns": 905000,
+          "p50_ns": 1142800,
+          "p95_ns": 1711700,
+          "p99_ns": 1818600,
+          "max_ns": 1818600
+        },
+        "content_first": null,
+        "memory_before": {
+          "working_set_bytes": 25858048,
+          "private_bytes": 16441344,
+          "peak_working_set_bytes": 34193408
+        },
+        "memory_after": {
+          "working_set_bytes": 26112000,
+          "private_bytes": 16445440,
+          "peak_working_set_bytes": 34193408
+        },
+        "process_before": {
+          "read_bytes": 8481856,
+          "write_bytes": 27833,
+          "other_bytes": 4026666,
+          "kernel_100ns": 8906250,
+          "user_100ns": 12500000
+        },
+        "process_after": {
+          "read_bytes": 8482384,
+          "write_bytes": 27833,
+          "other_bytes": 4070808,
+          "kernel_100ns": 9218750,
+          "user_100ns": 13125000
+        }
+      },
+      {
+        "path_tag": "8e4e5e767eca42fb",
+        "kind": "Music",
+        "ntfs_identity": true,
+        "stable_identity_available": true,
+        "build": {
+          "build_ns": 6256400,
+          "file_count": 0,
+          "directory_count": 0,
+          "path_arena_bytes": 0,
+          "persistent_index_files": 0,
+          "dependency_watcher_enabled": false
+        },
+        "filename_first": {
+          "elapsed_ns": 4100,
+          "returned": 0,
+          "total_matched": 0,
+          "total_files": 0
+        },
+        "filename_warm": {
+          "samples": 32,
+          "min_ns": 800,
+          "p50_ns": 800,
+          "p95_ns": 900,
+          "p99_ns": 1000,
+          "max_ns": 1000
+        },
+        "content_first": null,
+        "memory_before": {
+          "working_set_bytes": 25382912,
+          "private_bytes": 15376384,
+          "peak_working_set_bytes": 34193408
+        },
+        "memory_after": {
+          "working_set_bytes": 25579520,
+          "private_bytes": 15826944,
+          "peak_working_set_bytes": 34193408
+        },
+        "process_before": {
+          "read_bytes": 8482384,
+          "write_bytes": 27833,
+          "other_bytes": 4070808,
+          "kernel_100ns": 9218750,
+          "user_100ns": 13125000
+        },
+        "process_after": {
+          "read_bytes": 8482912,
+          "write_bytes": 27833,
+          "other_bytes": 4072208,
+          "kernel_100ns": 9218750,
+          "user_100ns": 13125000
+        }
+      },
+      {
+        "path_tag": "ab7dfb384dceeb6b",
+        "kind": "Videos",
+        "ntfs_identity": true,
+        "stable_identity_available": true,
+        "build": {
+          "build_ns": 6234700,
+          "file_count": 26,
+          "directory_count": 3,
+          "path_arena_bytes": 832,
+          "persistent_index_files": 0,
+          "dependency_watcher_enabled": false
+        },
+        "filename_first": {
+          "elapsed_ns": 1476400,
+          "returned": 0,
+          "total_matched": 0,
+          "total_files": 26
+        },
+        "filename_warm": {
+          "samples": 32,
+          "min_ns": 896500,
+          "p50_ns": 1068400,
+          "p95_ns": 1572200,
+          "p99_ns": 1740300,
+          "max_ns": 1740300
+        },
+        "content_first": null,
+        "memory_before": {
+          "working_set_bytes": 25579520,
+          "private_bytes": 15826944,
+          "peak_working_set_bytes": 34193408
+        },
+        "memory_after": {
+          "working_set_bytes": 25620480,
+          "private_bytes": 15921152,
+          "peak_working_set_bytes": 34193408
+        },
+        "process_before": {
+          "read_bytes": 8482912,
+          "write_bytes": 27833,
+          "other_bytes": 4072208,
+          "kernel_100ns": 9218750,
+          "user_100ns": 13125000
+        },
+        "process_after": {
+          "read_bytes": 8483440,
+          "write_bytes": 27833,
+          "other_bytes": 4077948,
+          "kernel_100ns": 10312500,
+          "user_100ns": 13593750
+        }
+      },
+      {
+        "path_tag": "abd7850d3cf033cb",
+        "kind": "Project",
+        "ntfs_identity": true,
+        "stable_identity_available": true,
+        "build": {
+          "build_ns": 2237321400,
+          "file_count": 634176,
+          "directory_count": 86029,
+          "path_arena_bytes": 11279136,
+          "persistent_index_files": 0,
+          "dependency_watcher_enabled": false
+        },
+        "filename_first": {
+          "elapsed_ns": 46844300,
+          "returned": 20,
+          "total_matched": 548788,
+          "total_files": 634176
+        },
+        "filename_warm": {
+          "samples": 32,
+          "min_ns": 44388700,
+          "p50_ns": 46909100,
+          "p95_ns": 52090400,
+          "p99_ns": 52845800,
+          "max_ns": 52845800
+        },
+        "content_first": {
+          "elapsed_ns": 24498300,
+          "matches": 32,
+          "files_with_matches": 5,
+          "files_searched": 14,
+          "total_files": 634176,
+          "snippet_bytes": 3864,
+          "abort_observed": false
+        },
+        "memory_before": {
+          "working_set_bytes": 25620480,
+          "private_bytes": 15921152,
+          "peak_working_set_bytes": 34193408
+        },
+        "memory_after": {
+          "working_set_bytes": 129060864,
+          "private_bytes": 195764224,
+          "peak_working_set_bytes": 307859456
+        },
+        "process_before": {
+          "read_bytes": 8483440,
+          "write_bytes": 27833,
+          "other_bytes": 4077948,
+          "kernel_100ns": 10312500,
+          "user_100ns": 13593750
+        },
+        "process_after": {
+          "read_bytes": 11461522,
+          "write_bytes": 27833,
+          "other_bytes": 102842606,
+          "kernel_100ns": 173593750,
+          "user_100ns": 167500000
+        }
+      }
+    ],
+    "explicit_full_drive_required": true
+  },
+  "topology": {
+    "root_tag": "abd7850d3cf033cb",
+    "startup": {
+      "startup_ns": 28270700,
+      "process_id_verified": true
+    },
+    "memory_at_ready": {
+      "working_set_bytes": 12267520,
+      "private_bytes": 3067904,
+      "peak_working_set_bytes": 12267520
+    },
+    "build": {
+      "build_ns": 2215998000,
+      "file_count": 634176,
+      "directory_count": 86029,
+      "path_arena_bytes": 11279136,
+      "persistent_index_files": 0,
+      "dependency_watcher_enabled": false
+    },
+    "memory_after_build": {
+      "working_set_bytes": 123518976,
+      "private_bytes": 196390912,
+      "peak_working_set_bytes": 300150784
+    },
+    "round_trip_filename": {
+      "samples": 64,
+      "min_ns": 44292600,
+      "p50_ns": 49871100,
+      "p95_ns": 55845400,
+      "p99_ns": 60525400,
+      "max_ns": 60525400
+    },
+    "worker_filename": {
+      "samples": 64,
+      "min_ns": 44121700,
+      "p50_ns": 49670500,
+      "p95_ns": 55683500,
+      "p99_ns": 60228800,
+      "max_ns": 60228800
+    },
+    "content_round_trip_ns": 24390300,
+    "content_worker": {
+      "elapsed_ns": 24234700,
+      "matches": 32,
+      "files_with_matches": 5,
+      "files_searched": 14,
+      "total_files": 634176,
+      "snippet_bytes": 3864,
+      "abort_observed": false
+    },
+    "content_deadline_missed": false,
+    "counters_after_queries": {
+      "read_bytes": 186856,
+      "write_bytes": 10539,
+      "other_bytes": 98761584,
+      "kernel_100ns": 201875000,
+      "user_100ns": 207968750
+    },
+    "memory_after_queries": {
+      "working_set_bytes": 123895808,
+      "private_bytes": 188145664,
+      "peak_working_set_bytes": 300150784
+    },
+    "normal_cleanup": {
+      "elapsed_ns": 7629000,
+      "exited": true,
+      "success": false
+    },
+    "crash_contained": true,
+    "crash_cleanup": {
+      "elapsed_ns": 2319700,
+      "exited": true,
+      "success": false
+    },
+    "hang_deadline_observed": true,
+    "hang_cleanup": {
+      "elapsed_ns": 2894500,
+      "exited": true,
+      "success": false
+    },
+    "restart": {
+      "startup_ns": 25281300,
+      "process_id_verified": true
+    },
+    "restart_cleanup": {
+      "elapsed_ns": 2279900,
+      "exited": true,
+      "success": false
+    },
+    "orphan_processes": 0
+  },
+  "shell": {
+    "apps": {
+      "first_count": 260,
+      "second_count": 260,
+      "identity_overlap": 260,
+      "packaged_count": 260,
+      "classic_count": 0,
+      "invalid_utf16_display_count": 0,
+      "empty_display_count": 0,
+      "packaged_activation_route_available": true,
+      "stale_token_rejected": true,
+      "refresh_ns": 381791400
+    },
+    "classic": {
+      "duplicate_target_arguments_distinct": true,
+      "shortcut_arguments_round_trip": true,
+      "shell_handoff_ns": [
+        334100,
+        268900,
+        242500,
+        209100,
+        272400,
+        203800,
+        205600,
+        257900,
+        205400,
+        202600,
+        260100,
+        205100,
+        253700,
+        250900,
+        242600,
+        262300,
+        289300,
+        265600,
+        329500,
+        300400,
+        217800,
+        232700,
+        195100,
+        220700
+      ],
+      "probe_signaled_count": 24
+    },
+    "classic_handoff": {
+      "samples": 24,
+      "min_ns": 195100,
+      "p50_ns": 242600,
+      "p95_ns": 329500,
+      "p99_ns": 334100,
+      "max_ns": 334100
+    },
+    "captured_window": {
+      "foreground_was_present": true,
+      "identity_revalidated": true,
+      "foreground_attempts": 1
+    }
+  },
+  "privacy_and_extensions": {
+    "pre_enter_effects": {
+      "dns": 0,
+      "http": 0,
+      "remote_icons": 0,
+      "suggestions": 0,
+      "browser_handoffs": 0
+    },
+    "silent_before_enter": true,
+    "browser_handoff_only_after_enter": true,
+    "route_parser_cases_pass": true,
+    "duplicate_invocation_rejected": true,
+    "bounded_rows": "TooManyRows",
+    "bounded_bytes": "TooManyBytes",
+    "bounded_snippet": "SnippetTooLarge",
+    "cancellation": "Cancelled",
+    "crash": "Crashed",
+    "stale_generation": "Stale",
+    "rapid_replacement_stale_publications": 0,
+    "delayed_output_stale_publications": 0,
+    "repeated_cancellation_stale_publications": 0
+  },
+  "gates": {
+    "warm_catalog_p95_under_8ms": true,
+    "fixture_filename_p95_under_25ms": true,
+    "actual_filename_p95_under_25ms": false,
+    "fixture_content_p95_under_50ms": true,
+    "actual_content_first_batch_under_50ms": true,
+    "worker_round_trip_p99_under_100ms": true,
+    "shell_handoff_under_50ms": true,
+    "zero_stale_publications": true,
+    "no_orphans": true,
+    "root_partition_required": true,
+    "production_budgets_ready": false
+  },
+  "decision": "ContainedLongLivedWorker",
+  "limitations": [
+    "fff-search 0.10.5 stores indexed paths as UTF-8 String values and constructs some paths through lossy conversion; the production adapter must reject roots containing paths that fail the lossless round-trip audit or upstream a native-path representation",
+    "fff-search path and content indexes are memory-resident; corrupt/schema-mismatched persistent index recovery is not applicable, and worker restart performs a complete rebuild",
+    "Packaged application discovery and token refresh are measured without launching an owner-installed packaged application",
+    "Cloud recall attributes are enforced at admission and content-open boundaries; the disposable fixture does not fabricate a cloud-files provider placeholder",
+    "fff-search 0.10.5 does not expose a Windows offline/recall-attribute predicate for each grep candidate; lossless native attribute filtering must be added in the dependency adapter before content indexing ships",
+    "Windows hidden/system attributes on descendants require the same native admission pass; filename conventions alone are not an adequate exclusion boundary"
+  ]
+}
