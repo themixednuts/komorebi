@@ -180,6 +180,10 @@ _Avoid_: last notification, socket offset
 The first-party interface for finding, understanding, and invoking entries from the command catalog.
 _Avoid_: shortcuts window, general-purpose launcher
 
+**Toolkit projection**:
+A renderer-specific presentation of a renderer-neutral shell snapshot. It may translate raw UI input and publish pixels and accessibility state, but it cannot own catalog identity, palette-session truth, manager intent, or native effects.
+_Avoid_: UI state owner, toolkit domain model
+
 **Command palette**:
 The first-party searchable shell window that combines command-catalog actions with separately typed application, file, file-content, and explicit web search sources. Search results do not become manager commands.
 _Avoid_: shortcuts window, PowerToys adapter
