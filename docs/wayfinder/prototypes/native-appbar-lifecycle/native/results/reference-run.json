@@ -1,0 +1,195 @@
+{
+  "schema": 1,
+  "monitor": {
+    "left": 0,
+    "top": 0,
+    "right": 5120,
+    "bottom": 1440
+  },
+  "baseline_work_area": {
+    "left": 0,
+    "top": 0,
+    "right": 5120,
+    "bottom": 1440
+  },
+  "child_pe_subsystem": 2,
+  "cases": [
+    {
+      "name": "gui_subsystem",
+      "passed": true,
+      "evidence": {
+        "pe_subsystem": 2
+      }
+    },
+    {
+      "name": "startup_is_hidden_until_positioned",
+      "passed": true,
+      "evidence": {
+        "rect": {
+          "bottom": 1440,
+          "left": 5107,
+          "right": 5120,
+          "top": 0
+        },
+        "visible_before_position": false
+      }
+    },
+    {
+      "name": "one_registration_per_shell_generation",
+      "passed": true,
+      "evidence": {
+        "shell": {
+          "created_100ns": 134323788161058096,
+          "process_id": 2360
+        }
+      }
+    },
+    {
+      "name": "competing_appbars_negotiate_without_overlap",
+      "passed": true,
+      "evidence": {
+        "contender": {
+          "bottom": 1440,
+          "left": 5090,
+          "right": 5107,
+          "top": 0
+        },
+        "observer": {
+          "bottom": 1440,
+          "left": 5107,
+          "right": 5120,
+          "top": 0
+        },
+        "work_area": {
+          "bottom": 1440,
+          "left": 0,
+          "right": 5090,
+          "top": 0
+        }
+      }
+    },
+    {
+      "name": "graceful_remove_releases_reservation",
+      "passed": true,
+      "evidence": {
+        "observer": {
+          "bottom": 1440,
+          "left": 5107,
+          "right": 5120,
+          "top": 0
+        },
+        "work_area": {
+          "bottom": 1440,
+          "left": 0,
+          "right": 5107,
+          "top": 0
+        }
+      }
+    },
+    {
+      "name": "crash_cleanup_converges_from_shell_notification",
+      "passed": true,
+      "evidence": {
+        "crashed_rect": {
+          "bottom": 1440,
+          "left": 5088,
+          "right": 5107,
+          "top": 0
+        },
+        "observer": {
+          "bottom": 1440,
+          "left": 5107,
+          "right": 5120,
+          "top": 0
+        },
+        "work_area": {
+          "bottom": 1440,
+          "left": 0,
+          "right": 5107,
+          "top": 0
+        }
+      }
+    },
+    {
+      "name": "geometry_change_converges_on_shell_callback",
+      "passed": true,
+      "evidence": {
+        "rect": {
+          "bottom": 1440,
+          "left": 5099,
+          "right": 5120,
+          "top": 0
+        },
+        "work_area": {
+          "bottom": 1440,
+          "left": 0,
+          "right": 5099,
+          "top": 0
+        }
+      }
+    },
+    {
+      "name": "explorer_restart_registers_once_for_new_generation",
+      "passed": true,
+      "evidence": {
+        "previous_shell": {
+          "created_100ns": 134323788161058096,
+          "process_id": 2360
+        },
+        "rect": {
+          "bottom": 1440,
+          "left": 5099,
+          "right": 5120,
+          "top": 0
+        },
+        "replacement_shell": {
+          "created_100ns": 134323789370316217,
+          "process_id": 44456
+        },
+        "work_area": {
+          "bottom": 1440,
+          "left": 0,
+          "right": 5099,
+          "top": 0
+        }
+      }
+    },
+    {
+      "name": "dpi_transition_path_preserves_dip_contract",
+      "passed": true,
+      "evidence": {
+        "dip": 21,
+        "dpi": 144,
+        "physical_rect": {
+          "bottom": 1440,
+          "left": 5088,
+          "right": 5120,
+          "top": 0
+        }
+      }
+    },
+    {
+      "name": "final_cleanup_restores_baseline_edge",
+      "passed": true,
+      "evidence": {
+        "baseline": {
+          "bottom": 1440,
+          "left": 0,
+          "right": 5120,
+          "top": 0
+        },
+        "final": {
+          "bottom": 1440,
+          "left": 7,
+          "right": 5120,
+          "top": 0
+        }
+      }
+    }
+  ],
+  "limitations": [
+    "DPI transition was injected through the real position call stack; this machine did not provide a second physical-DPI monitor for a live cross-monitor drag.",
+    "Crash cleanup proves Explorer released this reservation after process death; forced machine power loss is outside a user-mode prototype.",
+    "The prototype owns reservation lifecycle only. Explorer and DWM continue to own taskbar policy, work-area arbitration, composition, and final recovery semantics."
+  ]
+}

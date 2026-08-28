@@ -1,0 +1,4 @@
+/native/target/
+/native/results/*.json
+!/native/results/.gitkeep
+!/native/results/reference-run.json

@@ -116,9 +116,25 @@ _Avoid_: workspace, manager desktop
 A filtered native notification that tells the manager to re-observe the Windows desktop visibility domain without claiming what changed. The primary Windows 11 wake is the desktop window's accessibility-name change; managed-window cloak changes are corroborating wakes.
 _Avoid_: desktop-changed fact, polling tick
 
-**Desktop settlement burst**:
-A bounded sequence of public per-window observations started by a desktop observation wake and stopped after three equal cohort snapshots. Candidate or unavailable evidence cannot change window visibility.
-_Avoid_: background polling, desktop debounce timer
+**Desktop observation pass**:
+One coalesced public per-window observation pass scheduled for a batch of native desktop wakes. A wake authorizes observation, not a timer, equality-settling loop, or claim that the desktop changed.
+_Avoid_: settlement burst, background polling, desktop debounce timer
+
+**AppBar reservation**:
+The Shell-recognized claim by one manager-owned bar to a negotiated monitor-edge rectangle and corresponding work-area exclusion.
+_Avoid_: work-area offset, bar margin
+
+**Shell generation**:
+One Explorer process lifetime against which an AppBar registration remains valid. Identity combines process ID with process creation time; a new generation requires one fresh registration.
+_Avoid_: TaskbarCreated count, Explorer PID
+
+**AppBar position pass**:
+One Shell-negotiated query, set, and move response to coalesced native invalidations. Explorer may publish the resulting work area in a later `ABN_POSCHANGED`, which authorizes one further pass without polling.
+_Avoid_: position retry loop, work-area polling
+
+**Native path**:
+A lossless Windows path value carried as `Path`/`PathBuf` or `OsStr`/`OsString`, including UNC and verbatim prefixes and potentially ill-formed UTF-16. Display conversion is never fed back into filesystem or process operations.
+_Avoid_: UTF-8 path string, normalized display path
 
 **Container**:
 One ordered layout position in a workspace that holds one or more application windows. A multi-window container exposes one active member at a time without becoming a new workspace.
