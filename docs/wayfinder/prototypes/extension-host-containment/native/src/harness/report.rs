@@ -2,7 +2,7 @@ use std::path::Path;
 
 use serde::Serialize;
 
-use crate::protocol::{ChildFacts, FaultScenario, ProbeOutcome, RuntimeKind};
+use crate::protocol::{ChildFacts, FaultScenario, ParentExitMode, ProbeOutcome, RuntimeKind};
 use crate::windows::windows_string_evidence;
 
 #[derive(Debug, Serialize)]
@@ -15,9 +15,34 @@ pub(super) struct HarnessReport {
     pub(super) boundary: BoundaryEvidence,
     pub(super) runs: Vec<RunReport>,
     pub(super) faults: Vec<FaultEvidence>,
+    pub(super) parent_lifetime: Vec<ParentLifetimeEvidence>,
+    pub(super) restart_recovery: RestartRecoveryEvidence,
     pub(super) scale: Vec<ScaleReport>,
     pub(super) shared_host_control: SharedHostControl,
     pub(super) cleanup: CleanupEvidence,
+}
+
+#[derive(Debug, Serialize)]
+pub(super) struct RestartRecoveryEvidence {
+    pub(super) initial_generation: u64,
+    pub(super) replacement_generation: u64,
+    pub(super) initial_exit_code: u32,
+    pub(super) recovery_ms: f64,
+    pub(super) replacement_authenticated: Verification,
+    pub(super) replacement_session_completed: Verification,
+    pub(super) stale_generation_rejected: Verification,
+    pub(super) second_restart_denied: Verification,
+}
+
+#[derive(Debug, Serialize)]
+pub(super) struct ParentLifetimeEvidence {
+    pub(super) mode: ParentExitMode,
+    pub(super) child_workload: &'static str,
+    pub(super) parent_exit_code: u32,
+    pub(super) child_exit_code: u32,
+    pub(super) child_exit_after_parent_ms: f64,
+    pub(super) process_tree_terminated: Verification,
+    pub(super) profiles_deleted: Verification,
 }
 
 #[derive(Debug, Serialize)]

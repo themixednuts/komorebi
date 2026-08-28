@@ -4,7 +4,7 @@ use std::time::Instant;
 
 use anyhow::{Result, ensure};
 
-use crate::protocol::{FaultScenario, HostFrame, RuntimeKind};
+use crate::protocol::{ChildFrame, FaultScenario, HostFrame, RuntimeKind};
 
 use super::ipc::ReceiveError;
 use super::launch::{ExtensionBehavior, launch};
@@ -35,10 +35,19 @@ fn run_one(
         private_file,
         policy,
         ExtensionBehavior::Fault(scenario),
+        policy.workload().generation(),
     )?;
     extension.channel.send(&HostFrame::RunFault {
         generation: policy.workload().generation(),
     })?;
+    let armed = extension
+        .channel
+        .receive(policy.pipe().operation_timeout())?;
+    ensure!(
+        matches!(armed, ChildFrame::FaultArmed { generation, scenario: armed_scenario }
+            if generation == policy.workload().generation() && armed_scenario == scenario),
+        "fault child did not arm the requested scenario"
+    );
     let started = Instant::now();
     let mut observation = match extension.channel.receive(policy.pipe().operation_timeout()) {
         Err(ReceiveError::Deadline) => FaultIpcObservation::Deadline,

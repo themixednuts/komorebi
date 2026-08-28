@@ -42,14 +42,14 @@ use super::windows_boundary::{
 use super::{WIN32K_DISABLE_ALWAYS_ON, create_restricted_job, private_commit};
 
 pub(super) struct AuthenticatedExtension {
-    _profile: AppContainerProfile,
-    _foreign_profile: AppContainerProfile,
+    pub(super) channel: PipeChannel,
     job: OwnedHandle,
     pub(super) process: OwnedHandle,
     pub(super) process_id: u32,
     pub(super) pipe_pid: u32,
     pub(super) pipe_acl_sddl: String,
     pub(super) profile_name: String,
+    pub(super) foreign_profile_name: String,
     pub(super) foreign_profile_sid: String,
     pub(super) reparse_link_created: bool,
     pub(super) startup_ms: f64,
@@ -57,7 +57,8 @@ pub(super) struct AuthenticatedExtension {
     pub(super) in_expected_job: bool,
     pub(super) facts: ChildFacts,
     pub(super) error_file: PathBuf,
-    pub(super) channel: PipeChannel,
+    _profile: AppContainerProfile,
+    _foreign_profile: AppContainerProfile,
 }
 
 impl AuthenticatedExtension {
@@ -127,11 +128,12 @@ pub(super) fn launch(
     private_file: &Path,
     policy: &ContainmentPolicy,
     behavior: ExtensionBehavior,
+    generation: crate::protocol::ExtensionGeneration,
 ) -> Result<AuthenticatedExtension> {
     let files = ExtensionFiles::stage(runtime, executable, policy)?;
     let pipe = HostPipe::create(&files.profile, policy)?;
     let process = RestrictedProcess::spawn(files, pipe, private_file, policy, behavior)?;
-    process.authenticate(runtime, policy)
+    process.authenticate(runtime, policy, generation)
 }
 
 impl ExtensionFiles {
@@ -266,6 +268,7 @@ impl RestrictedProcess {
         self,
         runtime: RuntimeKind,
         policy: &ContainmentPolicy,
+        generation: crate::protocol::ExtensionGeneration,
     ) -> Result<AuthenticatedExtension> {
         super::trace("host:wait_connect");
         super::connect_or_child_exit(
@@ -291,24 +294,27 @@ impl RestrictedProcess {
             &self.files.profile.sid_string,
             &self.nonce,
             policy,
+            generation,
         )?;
+        let private_commit_bytes = private_commit(self.process.raw())?;
         Ok(AuthenticatedExtension {
+            channel,
+            job: self.job,
+            process: self.process,
             profile_name: self.files.profile.name.clone(),
+            foreign_profile_name: self.files.foreign_profile.name.clone(),
             foreign_profile_sid: self.files.foreign_profile.sid_string.clone(),
             reparse_link_created: self.files.reparse_link_created,
             startup_ms: self.launch_started.elapsed().as_secs_f64() * 1_000.0,
-            private_commit_bytes: private_commit(self.process.raw())?,
+            private_commit_bytes,
             in_expected_job: self.in_expected_job,
             process_id: self.process_id,
             pipe_pid,
             pipe_acl_sddl: self.pipe.acl_sddl,
             facts,
             error_file: self.files.error_file.clone(),
-            channel,
-            process: self.process,
-            job: self.job,
-            _foreign_profile: self.files.foreign_profile,
             _profile: self.files.profile,
+            _foreign_profile: self.files.foreign_profile,
         })
     }
 }
@@ -462,6 +468,7 @@ fn authenticate_hello(
     package_sid: &str,
     nonce: &Uuid,
     policy: &ContainmentPolicy,
+    generation: crate::protocol::ExtensionGeneration,
 ) -> Result<ChildFacts> {
     super::trace("host:wait_hello");
     let first = channel.receive(policy.pipe().operation_timeout())?;
@@ -484,9 +491,7 @@ fn authenticate_hello(
         facts.package_sid == package_sid,
         "child AppContainer SID mismatch"
     );
-    channel.send(&HostFrame::Welcome {
-        generation: policy.workload().generation(),
-    })?;
+    channel.send(&HostFrame::Welcome { generation })?;
     super::trace("host:welcome_sent");
     Ok(facts)
 }

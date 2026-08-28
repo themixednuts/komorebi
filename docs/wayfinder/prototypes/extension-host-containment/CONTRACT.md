@@ -49,6 +49,8 @@ Installed
 
 A generation change closes the old Job and pipe before publishing the replacement principal. Frames from an older generation are rejected; they cannot be retargeted.
 
+The current recovery policy issues one typed `RestartPermit`. The supervisor must consume it before constructing the next nonzero generation. A second claim returns no permit, so a crash loop cannot be represented as another launch request.
+
 ## Activation call stack
 
 ```text
@@ -79,6 +81,28 @@ ExtensionRegistry::activate(package_id)
       -> fixed-width nonce check without early exit
       -> generation_check
     -> ExtensionSupervisor::commit_active(AuthenticatedExtensionChannel)
+```
+
+## Parent lifetime and recovery call stack
+
+```text
+LifetimeObserver::run(mode)
+  -> spawn exact containment-host image with redirected kernel pipes
+  -> LifetimeParent::launch(fault_child, indefinite_kernel_wait)
+  -> FaultChild::arm_and_acknowledge(wait)
+  -> LifetimeObserver::open_process(child_pid)
+  -> LifetimeObserver::acknowledge_parent_exit()
+  -> parent returns normally | parent aborts without destructors
+  -> JobHandle::close_by_process_teardown()
+  -> WaitForSingleObject(observed_child_handle)
+
+ExtensionSupervisor::recover(failed_generation)
+  -> OneRestartBudget::claim() -> RestartPermit
+  -> ExtensionGeneration::next()
+  -> ExtensionSupervisor::start(replacement_principal)
+  -> ExtensionAuthenticator::accept(new_pipe, new_nonce, new_generation)
+  -> GenerationGate::reject(previous_generation)
+  -> OneRestartBudget::claim() -> None
 ```
 
 The production manager state thread will request activation and receive a typed outcome; this disposable evidence harness runs the same launch stack synchronously.

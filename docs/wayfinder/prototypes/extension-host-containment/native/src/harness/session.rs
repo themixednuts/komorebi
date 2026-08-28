@@ -147,6 +147,7 @@ impl SessionState {
                 echo_rtt_us,
             } => return Ok(SessionControl::Finish(echo_rtt_us)),
             ChildFrame::Hello { .. } => bail!("duplicate hello"),
+            ChildFrame::FaultArmed { .. } => bail!("unexpected fault frame in normal session"),
         }
         Ok(SessionControl::Continue)
     }

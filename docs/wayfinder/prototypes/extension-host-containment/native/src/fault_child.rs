@@ -51,6 +51,13 @@ pub fn run() -> Result<()> {
     if requested != generation {
         bail!("host triggered the wrong fault generation");
     }
+    codec.write(
+        &mut pipe,
+        &ChildFrame::FaultArmed {
+            generation,
+            scenario,
+        },
+    )?;
     execute(scenario, allocation_chunk, pipe)
 }
 

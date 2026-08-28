@@ -7,7 +7,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use anyhow::{Context, Result, bail, ensure};
 use uuid::Uuid;
-use windows_sys::Win32::Foundation::{GENERIC_WRITE, LocalFree};
+use windows_sys::Win32::Foundation::{
+    ERROR_FILE_NOT_FOUND, ERROR_NOT_FOUND, GENERIC_WRITE, LocalFree,
+};
 use windows_sys::Win32::Security::Authorization::{
     ConvertStringSecurityDescriptorToSecurityDescriptorW, SDDL_REVISION_1,
 };
@@ -201,10 +203,19 @@ pub(super) fn delete_profile(profile_name: &str, policy: &ContainmentPolicy) -> 
     // SAFETY: profile_name is NUL-terminated and deletion is constrained by the checked prefix.
     let result = unsafe { DeleteAppContainerProfile(profile_name.as_ptr()) };
     ensure!(
-        result >= 0,
+        result >= 0
+            || result == hresult_from_win32(ERROR_FILE_NOT_FOUND)
+            || result == hresult_from_win32(ERROR_NOT_FOUND),
         "DeleteAppContainerProfile failed: HRESULT {result:#x}"
     );
     Ok(())
+}
+
+const fn hresult_from_win32(error: u32) -> i32 {
+    const FACILITY_WIN32: u32 = 7;
+    const SEVERITY_ERROR: u32 = 1;
+
+    ((error & 0xffff) | (FACILITY_WIN32 << 16) | (SEVERITY_ERROR << 31)).cast_signed()
 }
 
 pub(super) fn create_junction(link: &Path, target: &Path) -> Result<()> {

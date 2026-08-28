@@ -42,15 +42,20 @@ mod evidence;
 mod fault;
 mod ipc;
 mod launch;
+mod lifetime;
 mod policy;
+mod recovery;
 mod report;
 mod session;
 mod windows_boundary;
 
+use crate::protocol::ParentExitMode;
 use evidence::{binary as binary_evidence, boundary as boundary_evidence, command_output};
 use fault::run as run_faults;
 use launch::{ExtensionBehavior, launch as launch_extension};
+use lifetime::run_suite as run_parent_lifetime;
 use policy::ContainmentPolicy;
+use recovery::run as run_restart_recovery;
 use report::{
     CleanupEvidence, HarnessReport, InvocationEvidence, PlatformEvidence, RunReport, ScaleReport,
     SharedHostControl, ToolchainEvidence, Verification, WindowsPathEvidence,
@@ -76,21 +81,27 @@ pub fn run() -> Result<()> {
 
 fn run_diagnostic(policy: &ContainmentPolicy) -> Result<bool> {
     let arguments: Vec<_> = std::env::args_os().skip(1).collect();
-    if let [flag, profile_name] = arguments.as_slice() {
-        ensure!(
-            flag == OsStr::new("--delete-profile"),
-            "unknown diagnostic command"
-        );
-        delete_profile(
-            profile_name
+    match arguments.as_slice() {
+        [] => Ok(false),
+        [flag, profile_name] if flag == OsStr::new("--delete-profile") => {
+            delete_profile(
+                profile_name
+                    .to_str()
+                    .context("profile name is not valid Unicode")?,
+                policy,
+            )?;
+            Ok(true)
+        }
+        [flag, mode, _nonce] if flag == OsStr::new("--lifetime-parent") => {
+            let mode = mode
                 .to_str()
-                .context("profile name is not valid Unicode")?,
-            policy,
-        )?;
-        return Ok(true);
+                .context("parent exit mode is not valid Unicode")?
+                .parse::<ParentExitMode>()?;
+            lifetime::run_parent(mode, policy)?;
+            Ok(true)
+        }
+        _ => bail!("unexpected command-line arguments"),
     }
-    ensure!(arguments.is_empty(), "unexpected command-line arguments");
-    Ok(false)
 }
 
 fn run_evidence(policy: &ContainmentPolicy) -> Result<()> {
@@ -142,6 +153,12 @@ fn run_evidence(policy: &ContainmentPolicy) -> Result<()> {
         runs.push(run_extension(runtime, &executable, &private_file, policy)?);
     }
     let faults = run_faults(&fault, &private_file, policy)?;
+    let parent_lifetime = run_parent_lifetime(&executable_dir, &private_file, policy)?;
+    let restart_recovery = run_restart_recovery(
+        &executable_dir.join("containment-rust-child.exe"),
+        &private_file,
+        policy,
+    )?;
     let scale = run_scale_cohorts(
         &executable_dir.join("containment-rust-child.exe"),
         &private_file,
@@ -174,6 +191,8 @@ fn run_evidence(policy: &ContainmentPolicy) -> Result<()> {
         boundary: boundary_evidence(policy),
         runs,
         faults,
+        parent_lifetime,
+        restart_recovery,
         scale,
         shared_host_control,
         cleanup: CleanupEvidence {
@@ -194,14 +213,15 @@ fn run_extension(
     private_file: &Path,
     policy: &ContainmentPolicy,
 ) -> Result<RunReport> {
+    let generation = policy.workload().generation();
     let mut extension = launch_extension(
         runtime,
         executable,
         private_file,
         policy,
         ExtensionBehavior::Normal,
+        generation,
     )?;
-    let generation = policy.workload().generation();
 
     let session = serve_session(
         &mut extension.channel,

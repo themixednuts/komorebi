@@ -1,5 +1,6 @@
 use std::io::{self, Read, Write};
 use std::num::{NonZeroU64, NonZeroUsize};
+use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -60,6 +61,65 @@ impl ExtensionGeneration {
             None => None,
         }
     }
+
+    /// Returns the following extension generation.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the generation is already `u64::MAX`.
+    pub fn next(self) -> io::Result<Self> {
+        self.get()
+            .checked_add(1)
+            .and_then(NonZeroU64::new)
+            .map(Self)
+            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "generation overflow"))
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ParentExitMode {
+    Graceful,
+    Abort,
+}
+
+impl ParentExitMode {
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Graceful => "graceful",
+            Self::Abort => "abort",
+        }
+    }
+}
+
+impl FromStr for ParentExitMode {
+    type Err = io::Error;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match value {
+            "graceful" => Ok(Self::Graceful),
+            "abort" => Ok(Self::Abort),
+            _ => Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "unknown parent exit mode",
+            )),
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum ParentControlFrame {
+    Ready {
+        nonce: Uuid,
+        mode: ParentExitMode,
+        child_pid: u32,
+        profile_names: [String; 2],
+    },
+    Acknowledge {
+        nonce: Uuid,
+    },
 }
 
 impl FrameCodec {
@@ -123,6 +183,10 @@ pub enum ChildFrame {
         generation: ExtensionGeneration,
         probes: Vec<ProbeOutcome>,
     },
+    FaultArmed {
+        generation: ExtensionGeneration,
+        scenario: FaultScenario,
+    },
     Echo {
         generation: ExtensionGeneration,
         sequence: u64,
@@ -157,6 +221,7 @@ impl ChildFrame {
         match self {
             Self::Hello { .. } => None,
             Self::ProbeReport { generation, .. }
+            | Self::FaultArmed { generation, .. }
             | Self::Echo { generation, .. }
             | Self::StoragePut { generation, .. }
             | Self::StorageGet { generation, .. }
@@ -173,6 +238,7 @@ impl ChildFrame {
             | Self::HttpGet { request, .. } => Some(*request),
             Self::Hello { .. }
             | Self::ProbeReport { .. }
+            | Self::FaultArmed { .. }
             | Self::Echo { .. }
             | Self::Goodbye { .. } => None,
         }
@@ -357,5 +423,12 @@ mod tests {
         assert!(ExtensionGeneration::new(0).is_err());
         let current = ExtensionGeneration::new(2).expect("valid current generation");
         assert_eq!(current.previous().map(ExtensionGeneration::get), Some(1));
+        assert_eq!(current.next().expect("generation should advance").get(), 3);
+        assert!(
+            ExtensionGeneration::new(u64::MAX)
+                .expect("maximum generation is nonzero")
+                .next()
+                .is_err()
+        );
     }
 }

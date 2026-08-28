@@ -14,6 +14,8 @@ The result is written to `results/latest.json`. The report records the selected 
 
 The launch and probe stack keeps Windows paths and environment values in native `OsStr`/`OsString` form. The suite includes a real package filename with an unpaired UTF-16 surrogate and records lossless UTF-16 evidence alongside optional UTF-8 display text.
 
+An outer observer also proves Job kill-on-close when the containment host exits normally or aborts without destructors. A typed one-restart budget then admits one fresh generation, verifies reconnection and stale-generation rejection, and refuses a second restart.
+
 The harness uses one narrowly scoped compatibility capability, `lpacAppExperience`. It does not grant registry, COM, clipboard, or network capabilities. The adversarial probes verify that those surfaces remain denied.
 
 This branch is evidence only. None of the code is production extension infrastructure.
