@@ -2,6 +2,8 @@
 
 Status: partial evidence for [Prototype touchpad command integration and foreground gestures](https://github.com/themixednuts/komorebi/issues/14). This does not resolve that ticket. [Attach a Windows Precision Touchpad test device](https://github.com/themixednuts/komorebi/issues/44) now blocks the physical run.
 
+Artifacts: [prototype branch](https://github.com/themixednuts/komorebi/tree/prototype/touchpad-gesture/docs/wayfinder/prototypes/touchpad-gesture), [native Rust probe](https://github.com/themixednuts/komorebi/tree/prototype/touchpad-gesture/docs/wayfinder/prototypes/touchpad-gesture/native-probe), and [gesture-session prototype](https://github.com/themixednuts/komorebi/blob/prototype/touchpad-gesture/docs/wayfinder/prototypes/touchpad-gesture/gesture-session-prototype.html).
+
 ## Current machine result
 
 Measured on 2026-08-27 on Windows 11 Home 25H2, build 26200.9168.
