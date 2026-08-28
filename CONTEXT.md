@@ -108,6 +108,18 @@ _Avoid_: manager pause, input cancellation
 An ordered manager-owned arrangement of application windows on one monitor. Exactly one ordinary workspace is active per monitor, and a scratchpad does not replace it.
 _Avoid_: virtual desktop, desktop
 
+**Windows desktop visibility domain**:
+The external Task View grouping that Windows applies to top-level windows. The manager observes membership and visibility without treating Windows desktop identifiers, names, or ordering as manager workspaces.
+_Avoid_: workspace, manager desktop
+
+**Desktop observation wake**:
+A filtered native notification that tells the manager to re-observe the Windows desktop visibility domain without claiming what changed. The primary Windows 11 wake is the desktop window's accessibility-name change; managed-window cloak changes are corroborating wakes.
+_Avoid_: desktop-changed fact, polling tick
+
+**Desktop settlement burst**:
+A bounded sequence of public per-window observations started by a desktop observation wake and stopped after three equal cohort snapshots. Candidate or unavailable evidence cannot change window visibility.
+_Avoid_: background polling, desktop debounce timer
+
 **Container**:
 One ordered layout position in a workspace that holds one or more application windows. A multi-window container exposes one active member at a time without becoming a new workspace.
 _Avoid_: tile window, tab group
