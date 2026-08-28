@@ -1,5 +1,6 @@
-use std::ffi::c_void;
+use std::ffi::{OsString, c_void};
 use std::mem::size_of;
+use std::os::windows::ffi::OsStringExt;
 
 use windows::UI::Input::TouchpadGesturesController;
 use windows::Win32::System::WinRT::{RO_INIT_MULTITHREADED, RoInitialize, RoUninitialize};
@@ -16,7 +17,7 @@ const RAW_INPUT_ERROR: u32 = u32::MAX;
 
 #[derive(Debug)]
 struct HidDevice {
-    name: String,
+    name: OsString,
     vendor_id: u32,
     product_id: u32,
     usage_page: u16,
@@ -42,7 +43,7 @@ fn main() -> Result<(), String> {
     println!("raw_input_hid_count={}", hid_devices.len());
     for device in &hid_devices {
         println!(
-            "hid usage_page=0x{:04x} usage=0x{:04x} vendor=0x{:04x} product=0x{:04x} touchpad={} name={}",
+            "hid usage_page=0x{:04x} usage=0x{:04x} vendor=0x{:04x} product=0x{:04x} touchpad={} name={:?}",
             device.usage_page,
             device.usage,
             device.vendor_id,
@@ -62,11 +63,10 @@ fn main() -> Result<(), String> {
     for device in &pointer_devices {
         let product = utf16z(&device.productString);
         println!(
-            "pointer type={} contacts={} touchpad={} product={}",
+            "pointer type={} contacts={} touchpad={} product={product:?}",
             device.pointerDeviceType.0,
             device.maxActiveContacts,
             device.pointerDeviceType == POINTER_DEVICE_TYPE_TOUCH_PAD,
-            product,
         );
     }
     println!("pointer_touchpad_count={pointer_touchpads}");
@@ -134,7 +134,7 @@ fn enumerate_hid_devices() -> Result<Vec<HidDevice>, String> {
         .collect()
 }
 
-fn raw_device_name(device: windows::Win32::Foundation::HANDLE) -> Result<String, String> {
+fn raw_device_name(device: windows::Win32::Foundation::HANDLE) -> Result<OsString, String> {
     let mut chars = 0;
     let first = unsafe { GetRawInputDeviceInfoW(Some(device), RIDI_DEVICENAME, None, &mut chars) };
     if first == RAW_INPUT_ERROR {
@@ -180,10 +180,26 @@ fn touchpad_gestures_supported() -> Result<bool, String> {
     supported
 }
 
-fn utf16z(value: &[u16]) -> String {
+fn utf16z(value: &[u16]) -> OsString {
     let end = value
         .iter()
         .position(|code| *code == 0)
         .unwrap_or(value.len());
-    String::from_utf16_lossy(&value[..end])
+    OsString::from_wide(&value[..end])
+}
+
+#[cfg(test)]
+mod tests {
+    use std::os::windows::ffi::OsStrExt;
+
+    use super::utf16z;
+
+    #[test]
+    fn utf16z_preserves_unpaired_surrogates() {
+        let source = [u16::from(b'x'), 0xd800, u16::from(b'y'), 0];
+
+        let value = utf16z(&source);
+
+        assert_eq!(value.encode_wide().collect::<Vec<_>>(), &source[..3]);
+    }
 }
