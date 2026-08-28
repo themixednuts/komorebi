@@ -17,6 +17,9 @@ struct LaunchNonce([u8; 16]);
 struct ClientProcessId(u32);
 struct NativePath(PathBuf);
 struct NativeEnvironmentBlock(Vec<u16>);
+struct StoragePrincipal(ExtensionPackageId);
+struct StorageKey(String);
+struct StorageRevision(NonZeroU64);
 
 struct ExtensionPrincipal {
     package: ExtensionPackageId,
@@ -34,7 +37,9 @@ struct AuthenticatedExtensionChannel {
 
 `AuthenticatedExtensionChannel` is only constructible after every kernel and protocol check passes. A connected pipe handle is not this type.
 
-`NativePath` and environment values remain `Path`/`OsStr`/`OsString` until they are encoded directly for a wide Win32 API. They never pass through `String`, `Display`, WTF-8 bytes, or a slash-normalizing interchange type. Evidence that must fit JSON carries both optional UTF-8 and the authoritative UTF-16 code units in hexadecimal.
+`NativePath` and environment values remain `Path`/`OsStr`/`OsString` until `widestring::U16CString` encodes them directly for a wide Win32 API. That boundary preserves ill-formed UTF-16, appends the required terminal NUL, and rejects interior NUL instead of truncating. Paths never pass through `String`, `Display`, WTF-8 bytes, or a slash-normalizing interchange type. Evidence that must fit JSON carries both optional UTF-8 and the authoritative UTF-16 code units in hexadecimal.
+
+Storage principals and keys are not paths. The authenticated channel supplies the principal; an extension supplies only a bounded portable logical key, expected revision, and bounded value.
 
 ## Lifecycle
 
@@ -183,6 +188,36 @@ PipeReader::read_bounded_frame(channel)
 
 Package code never receives a native handle, filesystem path, ambient network socket, renderer callback, or manager reference.
 
+## Durable storage call stack
+
+```text
+ExtensionBroker::put(authenticated_principal, key, expected_revision, value)
+  -> StorageKey::parse(maximum_key_bytes)
+  -> PrincipalStore::plan_put(current_state, limits)
+    -> exact revision comparison
+    -> checked value-size, entry-count, aggregate-quota, and encoded-snapshot arithmetic
+    -> immutable PutPlan { next_state, next_revision }
+  -> AtomicFiles::stage(create_new)
+    -> write_all(serialized_snapshot)
+    -> sync_all(stage_handle)
+  -> AtomicFiles::promote()
+    -> ReplaceFileW(active, stage, backup, WRITE_THROUGH)
+    -> MoveFileExW(stage, active, WRITE_THROUGH) only for first install
+  -> publish next_state only after promotion succeeds
+
+StorageBroker::open(authenticated_principal)
+  -> remove uniquely suffixed orphan stages
+  -> bounded handle read (calculated maximum encoded snapshot + one sentinel byte)
+  -> decode and validate schema, keys, revisions, value limits, and total quota
+  -> if legacy: stage and atomically promote current schema while retaining backup
+
+ExtensionRegistry::uninstall(principal, Retain | Delete)
+  -> Retain leaves manager-private state untouched
+  -> Delete removes only the validated principal subtree
+```
+
+No `exists`/metadata precheck authorizes a later storage mutation. The stage uses create-new semantics, and first-install promotion refuses to replace a racing destination. The prototype root is manager-owned and inaccessible to the LPAC principal; production should retain that ACL boundary and use handle-relative operations if a higher-privilege broker must resist a hostile same-user process.
+
 Broker filesystem authorization must bind policy and action to the same opened Windows handle. Canonical path strings are suitable evidence and launch inputs, but they are not filesystem identity and must not become a check-then-open production authorization scheme.
 
 ## Boundary ownership
@@ -196,6 +231,6 @@ Broker filesystem authorization must bind policy and action to the same opened W
 
 - The child must not statically import User32 when Win32k is disabled. Forbidden UI APIs are probed by explicit runtime loading.
 - The MSVC CRT must be statically linked or packaged beside the child; LPAC cannot depend on ambient `ALL APPLICATION PACKAGES` access.
-- Rust's native `OsStr::encode_wide`/`OsString::from_wide` pair is the path primitive: it round-trips potentially ill-formed UTF-16. UTF-8 path crates and the current `verbatim` crate are not used because they either change the representation or leave UNC/device forms unimplemented.
+- `Path`/`OsStr`/`OsString` plus `widestring::U16CString` form the path-to-Win32 primitive: they round-trip potentially ill-formed UTF-16 and reject interior NUL. UTF-8 path crates are not used. `dunce` simplifies `\\?\` paths for legacy consumers and therefore has the wrong semantics for an authoritative boundary; verbatim, UNC, device, and normal forms remain intact.
 - For an unpackaged full-trust server and LPAC client, the working pipe topology is a host-owned unqualified name. `LOCAL\` was rewritten into the AppContainer namespace and was not visible to the host-created endpoint on this machine.
 - `TokenIsLessPrivilegedAppContainer` returned `ERROR_INVALID_PARAMETER` on the target build. Verification falls back to an AppContainer token whose `ALL APPLICATION PACKAGES` membership is absent.

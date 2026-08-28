@@ -505,7 +505,7 @@ mod tests {
 
     fn connected_test_pipe() -> (File, OwnedHandle) {
         let name = format!(r"\\.\pipe\komorebi-wayfinder-test-{}", Uuid::new_v4());
-        let name = wide(&name);
+        let name = wide(&name).expect("test pipe name has no interior NUL");
         // SAFETY: name is NUL-terminated and null security creates a private test pipe.
         let server = unsafe {
             CreateNamedPipeW(

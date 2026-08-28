@@ -12,7 +12,7 @@ The runner statically links the MSVC CRT into both children. LPAC deliberately r
 
 The result is written to `results/latest.json`. The report records the selected dedicated-process design and every measured pass, denial, limitation, and unresolved proof obligation directly. There is no interactive decision layer.
 
-The launch and probe stack keeps Windows paths and environment values in native `OsStr`/`OsString` form. The suite includes a real package filename with an unpaired UTF-16 surrogate and records lossless UTF-16 evidence alongside optional UTF-8 display text.
+The launch and probe stack keeps Windows paths and environment values in native `OsStr`/`OsString` form, then uses NUL-checked `widestring::U16CString` values at wide Win32 calls. The suite includes a real package filename with an unpaired UTF-16 surrogate and records lossless UTF-16 evidence alongside optional UTF-8 display text.
 
 An outer observer also proves Job kill-on-close when the containment host exits normally or aborts without destructors. A typed one-restart budget then admits one fresh generation, verifies reconnection and stale-generation rejection, and refuses a second restart.
 
@@ -23,6 +23,8 @@ An event-driven responsiveness probe arms a contained CPU loop on a dedicated ex
 Launch evidence uses five fresh-profile cohorts at each configured process count. Immediate repeats measure resident-cache behavior; the first observation is not mislabeled as an OS-cold launch because the harness cannot establish a reboot or safely reset Windows' global file/image cache from this process.
 
 The suite also measures a full-trust, second-process Windows AF_UNIX echo using a deliberately ASCII endpoint. AF_UNIX is retained only as comparison evidence: the LPAC children cannot initialize Winsock, its narrow `sun_path` cannot represent arbitrary WTF-16 names, and it does not provide the named-pipe peer PID/token checks required by this boundary.
+
+Brokered storage is manager-private and principal-bound. The evidence suite exercises checked compare-and-swap revisions, byte and entry quotas, bounded corrupt-snapshot reads, synced unique staging, atomic Windows replacement, legacy-schema migration and rollback, recovery of a deliberately abandoned stage, uninstall retention, explicit deletion, and cross-principal isolation. The child sees logical keys and values, never a backing path.
 
 The harness uses one narrowly scoped compatibility capability, `lpacAppExperience`. It does not grant registry, COM, clipboard, or network capabilities. The adversarial probes verify that those surfaces remain denied.
 

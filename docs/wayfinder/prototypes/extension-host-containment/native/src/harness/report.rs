@@ -23,7 +23,27 @@ pub(super) struct HarnessReport {
     pub(super) scale: Vec<ScaleReport>,
     pub(super) launch_distribution: LaunchDistributionEvidence,
     pub(super) shared_host_control: SharedHostControl,
+    pub(super) storage: StorageEvidence,
     pub(super) cleanup: CleanupEvidence,
+}
+
+#[derive(Debug, Serialize)]
+pub(super) struct StorageEvidence {
+    pub(super) backend: &'static str,
+    pub(super) schema_before: u32,
+    pub(super) schema_after: u32,
+    pub(super) staged_migration: Verification,
+    pub(super) migration_rollback: Verification,
+    pub(super) cas_conflict_rejected: Verification,
+    pub(super) quota_enforced: Verification,
+    pub(super) entry_limit_enforced: Verification,
+    pub(super) oversized_snapshot_rejected: Verification,
+    pub(super) synced_stage_recovered: Verification,
+    pub(super) orphan_stages_removed: usize,
+    pub(super) uninstall_retained: Verification,
+    pub(super) explicit_deletion: Verification,
+    pub(super) cross_principal_read_denied: Verification,
+    pub(super) backing_path_exposed_to_child: bool,
 }
 
 #[derive(Debug, Serialize)]

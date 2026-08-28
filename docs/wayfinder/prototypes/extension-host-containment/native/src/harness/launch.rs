@@ -194,7 +194,7 @@ fn wtf16_probe_file_name() -> OsString {
 impl HostPipe {
     fn create(profile: &AppContainerProfile, policy: &ContainmentPolicy) -> Result<Self> {
         let name = format!(r"\\.\pipe\komorebi-wayfinder-{}", Uuid::new_v4());
-        let name_wide = wide(&name);
+        let name_wide = wide(&name)?;
         let (descriptor, acl_sddl) =
             SecurityDescriptor::pipe_for(&current_user_sid()?, &profile.sid_string)?;
         let security = SECURITY_ATTRIBUTES {
@@ -351,8 +351,8 @@ fn create_suspended_process(
     startup.StartupInfo.cb = u32::try_from(size_of::<STARTUPINFOEXW>())?;
     startup.lpAttributeList = attributes.raw();
     let environment = child_environment(files, pipe_name, nonce, private_file, policy, behavior)?;
-    let application = wide(files.staged_executable.as_os_str());
-    let current_directory = wide(files.profile.folder.as_os_str());
+    let application = wide(files.staged_executable.as_os_str())?;
+    let current_directory = wide(files.profile.folder.as_os_str())?;
     let mut process_info = PROCESS_INFORMATION::default();
     // SAFETY: pointers reference live NUL-terminated buffers and initialized structures. Supplying
     // the executable separately avoids reparsing a quoted display string as a command line.

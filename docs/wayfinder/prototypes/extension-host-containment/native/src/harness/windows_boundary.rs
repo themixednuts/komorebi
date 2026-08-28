@@ -7,6 +7,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use anyhow::{Context, Result, bail, ensure};
 use uuid::Uuid;
+use widestring::U16CString;
 use windows_sys::Win32::Foundation::{
     ERROR_FILE_NOT_FOUND, ERROR_NOT_FOUND, GENERIC_WRITE, LocalFree,
 };
@@ -45,7 +46,7 @@ static PROFILE_CLEANUP_FAILED: AtomicBool = AtomicBool::new(false);
 
 pub(super) struct AppContainerProfile {
     pub(super) name: String,
-    name_wide: Vec<u16>,
+    name_wide: U16CString,
     pub(super) sid: *mut c_void,
     pub(super) sid_string: String,
     pub(super) folder: PathBuf,
@@ -64,7 +65,7 @@ impl CapabilitySet {
             allocations: Vec::new(),
         };
         for name in names {
-            let name = wide(name);
+            let name = wide(name)?;
             let mut group_sids = null_mut();
             let mut group_count = 0_u32;
             let mut capability_sids = null_mut();
@@ -121,9 +122,9 @@ impl AppContainerProfile {
             RuntimeKind::LuaJit => "lua",
         };
         let name = format!("{}.{runtime_name}.{suffix}", policy.profile_prefix());
-        let name_wide = wide(&name);
-        let display = wide("Komorebi Wayfinder containment probe");
-        let description = wide("Disposable LPAC extension-host prototype");
+        let name_wide = wide(&name)?;
+        let display = wide("Komorebi Wayfinder containment probe")?;
+        let description = wide("Disposable LPAC extension-host prototype")?;
         let mut sid = null_mut();
         // SAFETY: strings are NUL-terminated, capabilities live through the call, and sid is writable.
         let result = unsafe {
@@ -142,7 +143,7 @@ impl AppContainerProfile {
         );
         // SAFETY: CreateAppContainerProfile returned a valid SID allocation.
         let sid_string = unsafe { sid_to_string(sid)? };
-        let sid_wide = wide(&sid_string);
+        let sid_wide = wide(&sid_string)?;
         let mut folder_wide = null_mut();
         // SAFETY: sid_wide is NUL-terminated and folder_wide is writable.
         let result = unsafe { GetAppContainerFolderPath(sid_wide.as_ptr(), &raw mut folder_wide) };
@@ -199,7 +200,7 @@ pub(super) fn delete_profile(profile_name: &str, policy: &ContainmentPolicy) -> 
         profile_name.starts_with(&format!("{}.", policy.profile_prefix())),
         "refusing to delete a non-prototype AppContainer profile"
     );
-    let profile_name = wide(profile_name);
+    let profile_name = wide(profile_name)?;
     // SAFETY: profile_name is NUL-terminated and deletion is constrained by the checked prefix.
     let result = unsafe { DeleteAppContainerProfile(profile_name.as_ptr()) };
     ensure!(
@@ -225,7 +226,7 @@ pub(super) fn create_junction(link: &Path, target: &Path) -> Result<()> {
         .with_context(|| format!("canonicalize junction target {}", target.display()))?;
     let (substitute, print_name) = junction_names(&canonical_target)?;
     let buffer = mount_point_buffer(&substitute, &print_name)?;
-    let link_wide = wide(link.as_os_str());
+    let link_wide = wide(link.as_os_str())?;
     // SAFETY: link_wide is NUL-terminated; the directory exists and all other pointers are null.
     let directory = OwnedHandle::new(unsafe {
         CreateFileW(
@@ -332,7 +333,7 @@ pub(super) struct SecurityDescriptor(pub(super) PSECURITY_DESCRIPTOR);
 impl SecurityDescriptor {
     pub(super) fn pipe_for(user_sid: &str, app_sid: &str) -> Result<(Self, String)> {
         let sddl_text = format!("D:P(A;;GA;;;SY)(A;;GA;;;{user_sid})(A;;GRGW;;;{app_sid})");
-        let sddl = wide(&sddl_text);
+        let sddl = wide(&sddl_text)?;
         let mut descriptor = null_mut();
         // SAFETY: sddl is NUL-terminated and descriptor is writable.
         if unsafe {

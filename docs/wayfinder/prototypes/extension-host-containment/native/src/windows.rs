@@ -4,6 +4,7 @@ use std::os::windows::ffi::OsStrExt;
 use std::ptr::null_mut;
 
 use anyhow::{Context, Result, bail, ensure};
+use widestring::{U16CString, u16cstr};
 use windows_sys::Wdk::System::SystemServices::RtlGetVersion;
 use windows_sys::Win32::Foundation::{CloseHandle, FreeLibrary, HANDLE, LocalFree};
 use windows_sys::Win32::Security::Authorization::{ConvertSidToStringSidW, ConvertStringSidToSidW};
@@ -29,7 +30,6 @@ use windows_sys::Win32::System::Threading::{
 use crate::protocol::{
     ChildFacts, ExpectedOutcome, ObservedOutcome, ProbeOutcome, WindowsStringEvidence,
 };
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TokenSecurityIdentity {
     pub app_container: bool,
@@ -77,13 +77,13 @@ impl Drop for OwnedHandle {
     }
 }
 
-#[must_use]
-pub fn wide(value: impl AsRef<OsStr>) -> Vec<u16> {
-    value
-        .as_ref()
-        .encode_wide()
-        .chain(std::iter::once(0))
-        .collect()
+/// Encodes an OS-native value for a NUL-terminated wide Win32 parameter.
+///
+/// # Errors
+///
+/// Returns an error instead of silently truncating a value containing an interior NUL.
+pub fn wide(value: impl AsRef<OsStr>) -> Result<U16CString> {
+    U16CString::from_os_str(value).context("Windows string contains an interior NUL")
 }
 
 #[must_use]
@@ -253,7 +253,7 @@ fn token_app_container_sid(token: HANDLE) -> Result<Option<String>> {
 }
 
 fn token_has_sid(token: HANDLE, string_sid: &str) -> Result<bool> {
-    let string_sid = wide(string_sid);
+    let string_sid = wide(string_sid)?;
     let mut sid = null_mut();
     // SAFETY: string_sid is NUL-terminated and sid is a writable out pointer.
     if unsafe { ConvertStringSidToSidW(string_sid.as_ptr(), &raw mut sid) } == 0 {
@@ -373,7 +373,7 @@ pub fn current_user_sid() -> Result<String> {
 }
 
 pub fn registry_probe() -> ProbeOutcome {
-    let subkey = wide("Software");
+    let subkey = u16cstr!("Software");
     let mut key = null_mut();
     // SAFETY: subkey is NUL-terminated and key is a valid out pointer.
     let status = unsafe {
@@ -446,7 +446,7 @@ pub fn clipboard_probe() -> ProbeOutcome {
     type OpenClipboardFn = unsafe extern "system" fn(*mut c_void) -> i32;
     type CloseClipboardFn = unsafe extern "system" fn() -> i32;
 
-    let user32 = wide("user32.dll");
+    let user32 = u16cstr!("user32.dll");
     // SAFETY: filename is NUL-terminated and the search is constrained to System32.
     let module =
         unsafe { LoadLibraryExW(user32.as_ptr(), null_mut(), LOAD_LIBRARY_SEARCH_SYSTEM32) };
@@ -500,7 +500,7 @@ pub fn other_window_message_probe() -> ProbeOutcome {
     type GetShellWindowFn = unsafe extern "system" fn() -> *mut c_void;
     type PostMessageWFn = unsafe extern "system" fn(*mut c_void, u32, usize, isize) -> i32;
 
-    let user32 = wide("user32.dll");
+    let user32 = u16cstr!("user32.dll");
     // SAFETY: filename is NUL-terminated and the search is constrained to System32.
     let module =
         unsafe { LoadLibraryExW(user32.as_ptr(), null_mut(), LOAD_LIBRARY_SEARCH_SYSTEM32) };

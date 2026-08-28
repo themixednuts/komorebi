@@ -43,7 +43,10 @@ pub(super) struct WorkloadPolicy {
     launch_distribution_repetitions: NonZeroUsize,
     shared_host_contexts: NonZeroUsize,
     shared_host_noop_samples: NonZeroUsize,
+    storage_key_limit_bytes: NonZeroUsize,
     storage_value_limit_bytes: NonZeroUsize,
+    storage_entry_limit: NonZeroUsize,
+    storage_quota_bytes: NonZeroUsize,
     responsiveness_samples: NonZeroUsize,
     backpressure_payload_bytes: NonZeroUsize,
     backpressure_attempt_limit: NonZeroUsize,
@@ -99,7 +102,10 @@ struct RawWorkloadPolicy {
     launch_distribution_repetitions: usize,
     shared_host_contexts: usize,
     shared_host_noop_samples: usize,
+    storage_key_limit_bytes: usize,
     storage_value_limit_bytes: usize,
+    storage_entry_limit: usize,
+    storage_quota_bytes: usize,
     responsiveness_samples: usize,
     backpressure_payload_bytes: usize,
     backpressure_attempt_limit: usize,
@@ -193,6 +199,10 @@ impl TryFrom<RawContainmentPolicy> for ContainmentPolicy {
             raw.workload.generation > 1,
             "generation must be greater than one so stale rejection can be exercised"
         );
+        ensure!(
+            raw.workload.storage_value_limit_bytes <= raw.workload.storage_quota_bytes,
+            "storage_value_limit_bytes cannot exceed storage_quota_bytes"
+        );
         Ok(Self {
             profile_prefix: prefix.to_owned(),
             compatibility_capabilities: raw.compatibility_capabilities.into_boxed_slice(),
@@ -248,8 +258,14 @@ impl TryFrom<RawWorkloadPolicy> for WorkloadPolicy {
                 .context("shared_host_contexts must be nonzero")?,
             shared_host_noop_samples: NonZeroUsize::new(raw.shared_host_noop_samples)
                 .context("shared_host_noop_samples must be nonzero")?,
+            storage_key_limit_bytes: NonZeroUsize::new(raw.storage_key_limit_bytes)
+                .context("storage_key_limit_bytes must be nonzero")?,
             storage_value_limit_bytes: NonZeroUsize::new(raw.storage_value_limit_bytes)
                 .context("storage_value_limit_bytes must be nonzero")?,
+            storage_entry_limit: NonZeroUsize::new(raw.storage_entry_limit)
+                .context("storage_entry_limit must be nonzero")?,
+            storage_quota_bytes: NonZeroUsize::new(raw.storage_quota_bytes)
+                .context("storage_quota_bytes must be nonzero")?,
             responsiveness_samples: NonZeroUsize::new(raw.responsiveness_samples)
                 .context("responsiveness_samples must be nonzero")?,
             backpressure_payload_bytes: NonZeroUsize::new(raw.backpressure_payload_bytes)
@@ -343,6 +359,18 @@ impl WorkloadPolicy {
         self.storage_value_limit_bytes.get()
     }
 
+    pub(super) const fn storage_key_limit_bytes(&self) -> usize {
+        self.storage_key_limit_bytes.get()
+    }
+
+    pub(super) const fn storage_quota_bytes(&self) -> usize {
+        self.storage_quota_bytes.get()
+    }
+
+    pub(super) const fn storage_entry_limit(&self) -> usize {
+        self.storage_entry_limit.get()
+    }
+
     pub(super) const fn responsiveness_samples(&self) -> usize {
         self.responsiveness_samples.get()
     }
@@ -414,7 +442,7 @@ mod tests {
                 "job":{"active_process_limit":1,"memory_limit_bytes":1024,"cpu_hard_cap_basis_points":2000,"kill_on_close":true,"ui_restrictions":true},
                 "pipe":{"buffer_bytes":65536,"maximum_frame_bytes":65536,"connect_timeout_ms":1000,"operation_timeout_ms":1000},
                 "process":{"disable_win32k":true,"restrict_child_processes":true,"opt_out_all_application_packages":true},
-                "workload":{"generation":2,"echo_samples":32,"cohort_sizes":[1,4,16],"launch_distribution_repetitions":5,"shared_host_contexts":16,"shared_host_noop_samples":32,"storage_value_limit_bytes":262144,"responsiveness_samples":64,"backpressure_payload_bytes":49152,"backpressure_attempt_limit":4},
+                "workload":{"generation":2,"echo_samples":32,"cohort_sizes":[1,4,16],"launch_distribution_repetitions":5,"shared_host_contexts":16,"shared_host_noop_samples":32,"storage_key_limit_bytes":128,"storage_value_limit_bytes":262144,"storage_entry_limit":256,"storage_quota_bytes":393216,"responsiveness_samples":64,"backpressure_payload_bytes":49152,"backpressure_attempt_limit":4},
                 "faults":{"scenarios":["cpu_loop","allocation_pressure","deadlock","indefinite_wait","pipe_stall","disconnect","lua_jit_native_crash"],"allocation_chunk_bytes":1048576,"termination_exit_code":57005}
             }"#,
         )

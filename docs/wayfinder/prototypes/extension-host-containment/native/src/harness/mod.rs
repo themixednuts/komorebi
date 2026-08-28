@@ -43,6 +43,7 @@ mod recovery;
 mod report;
 mod responsiveness;
 mod session;
+mod storage;
 mod windows_boundary;
 
 use crate::protocol::ParentExitMode;
@@ -61,6 +62,7 @@ use report::{
 };
 use responsiveness::run as run_host_responsiveness;
 use session::serve as serve_session;
+use storage::run as run_storage;
 use windows_boundary::{delete_profile, profile_cleanup_succeeded};
 
 pub(super) const WIN32K_DISABLE_ALWAYS_ON: u64 = 0x0000_0000_1000_0000;
@@ -169,6 +171,7 @@ fn run_evidence(policy: &ContainmentPolicy) -> Result<()> {
         policy,
     )?;
     let shared_host_control = run_shared_host_control(policy)?;
+    let storage = run_storage(&results_dir, policy)?;
     fs::remove_file(&private_file)?;
     let report = HarnessReport {
         generated_at_unix_ms: started,
@@ -203,6 +206,7 @@ fn run_evidence(policy: &ContainmentPolicy) -> Result<()> {
         scale,
         launch_distribution,
         shared_host_control,
+        storage,
         cleanup: CleanupEvidence {
             profiles_deleted: profile_cleanup_succeeded(),
             private_file_deleted: !private_file.exists(),
