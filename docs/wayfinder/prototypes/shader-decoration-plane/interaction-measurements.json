@@ -1,0 +1,53 @@
+[
+  {
+    "overlay": "none",
+    "inputs_sent": 2,
+    "target_process_id": 44936,
+    "overlay_process_id": null,
+    "process_at_click_point": 44936,
+    "target_raised": true,
+    "overlay_raised": null,
+    "foreground_set": true,
+    "foreground_is_target": false,
+    "target_received_click": true,
+    "report": {
+      "received": true,
+      "x": 442,
+      "y": 249
+    }
+  },
+  {
+    "overlay": "dcomp-decoration-plane",
+    "inputs_sent": 2,
+    "target_process_id": 42276,
+    "overlay_process_id": 20228,
+    "process_at_click_point": 42276,
+    "target_raised": true,
+    "overlay_raised": true,
+    "foreground_set": true,
+    "foreground_is_target": false,
+    "target_received_click": true,
+    "report": {
+      "received": true,
+      "x": 442,
+      "y": 249
+    }
+  },
+  {
+    "overlay": "gpui-decoration-plane",
+    "inputs_sent": 2,
+    "target_process_id": 43536,
+    "overlay_process_id": 25648,
+    "process_at_click_point": 43536,
+    "target_raised": true,
+    "overlay_raised": true,
+    "foreground_set": true,
+    "foreground_is_target": false,
+    "target_received_click": true,
+    "report": {
+      "received": true,
+      "x": 442,
+      "y": 249
+    }
+  }
+]

@@ -316,6 +316,22 @@ _Avoid_: animation finished, native success
 A generation-bound measurement of one display topology, refresh mode, presentation backend, and preview mix that determines whether a motion sequence may be presented. An unknown, stale, or over-budget profile selects immediate native settlement; it never guesses from a fixed window-count constant.
 _Avoid_: animation quality, hardcoded live-preview limit
 
+**Decoration scene**:
+The single shell-role-owned GPUI composition scene that presents manager-owned borders, particles, focus transitions, and workspace adornments through one GPU resource owner. Lua, the manager, and native adapters may contribute typed plans but never own parallel renderers.
+_Avoid_: shader overlay stack, second compositor
+
+**Effect instance**:
+A declarative, generation-bound request for one closed decoration kind, semantic target, bounded parameter set, lifetime, and resource budget. It contains no renderer callback, native handle, shader bytes, or foreign-window pixels.
+_Avoid_: shader callback, render object
+
+**Effect lease**:
+The opaque principal-bound authority returned for one admitted effect instance. It permits generation-fenced updates and idempotent cancellation, and becomes invalid when its target, principal, or scene generation changes.
+_Avoid_: effect handle, native handle
+
+**Shader asset**:
+A digest-addressed, offline-compiled decoration program with a validated parameter layout and resource limits. Runtime code reads and verifies the exact immutable bytes it submits to the owned GPU scene; Lua may reference only a granted symbolic identity.
+_Avoid_: shader source string, runtime-compiled plugin shader
+
 **Effect plan**:
 The ordered native work derived from a transition, with each effect classified by its required, convergent, or best-effort behavior.
 _Avoid_: transaction, side-effect call

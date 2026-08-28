@@ -1,0 +1,36 @@
+[
+  {
+    "backend": "dcomp-decoration-plane",
+    "exit_code": 0,
+    "cpu_ms": 578.125,
+    "peak_working_set_bytes": null,
+    "peak_virtual_memory_bytes": null,
+    "handle_count_at_exit": null,
+    "report": {
+      "backend": "dedicated-d3d11-directcomposition",
+      "frames": 1920,
+      "elapsed_ms": 8003.939000000001,
+      "mean_frame_ms": 4.170799843668572,
+      "p99_frame_ms": 4.2202,
+      "wake_source": "IDXGISwapChain2 frame-latency wait handle",
+      "input_inert": true
+    }
+  },
+  {
+    "backend": "gpui-decoration-plane",
+    "exit_code": 0,
+    "cpu_ms": 796.875,
+    "peak_working_set_bytes": null,
+    "peak_virtual_memory_bytes": null,
+    "handle_count_at_exit": null,
+    "report": {
+      "backend": "gpui-canvas-existing-scene",
+      "frames": 1921,
+      "elapsed_ms": 8030.777300000001,
+      "mean_frame_ms": 4.169711822916672,
+      "p99_frame_ms": 4.2503,
+      "wake_source": "GPUI request_animation_frame",
+      "input_inert": true
+    }
+  }
+]

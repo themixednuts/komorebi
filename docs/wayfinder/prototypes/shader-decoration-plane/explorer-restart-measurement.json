@@ -1,0 +1,21 @@
+{
+  "old_explorer_process_count": 1,
+  "new_explorer_process_id": 18028,
+  "new_explorer_reached_input_idle": true,
+  "probes": [
+    {
+      "probe": "dcomp-decoration-plane",
+      "process_id": 17728,
+      "ready_before_restart": true,
+      "alive_after_explorer_input_idle": true,
+      "completed_normally": true
+    },
+    {
+      "probe": "gpui-decoration-plane",
+      "process_id": 25296,
+      "ready_before_restart": true,
+      "alive_after_explorer_input_idle": true,
+      "completed_normally": true
+    }
+  ]
+}

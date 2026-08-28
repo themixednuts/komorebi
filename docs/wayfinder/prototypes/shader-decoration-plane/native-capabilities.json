@@ -1,0 +1,72 @@
+{
+  "backend": "dedicated-d3d11-directcomposition",
+  "frames": 1918,
+  "elapsed_ms": 8000.613299999999,
+  "mean_frame_ms": 4.173367814293159,
+  "p99_frame_ms": 4.3053,
+  "wake_source": "IDXGISwapChain2 frame-latency wait handle",
+  "input_inert": true,
+  "shader_assets": [
+    {
+      "route": "hand-hlsl-fxc-dxbc",
+      "bytes": 2432,
+      "sha256": "074ee7df7e1c28697acff6e0ad59cd0a2908056f19882c613a1fa345b3e503c3",
+      "d3d11_accepted": true
+    },
+    {
+      "route": "hand-hlsl-dxc-dxil",
+      "bytes": 4440,
+      "sha256": "8648f85ead0990c181b109dc96d2dccbd7708c0f2ff29a92bbbaca76dcf5e2eb",
+      "d3d11_accepted": false
+    },
+    {
+      "route": "wgsl-naga-hlsl-dxc-dxil",
+      "bytes": 3704,
+      "sha256": "3c2071dd38f557d60d3c6439674d107b280e65188a4cf4e2dea95314c3dc70f7",
+      "d3d11_accepted": false
+    },
+    {
+      "route": "wgsl-naga-hlsl-fxc-dxbc",
+      "bytes": 1584,
+      "sha256": "2a959a6418a71be7f5d315372068690fcda9a6d8792ba68416a030cbd1ff3758",
+      "d3d11_accepted": true
+    }
+  ],
+  "displays": [
+    {
+      "device_name_wtf16": [
+        92,
+        92,
+        46,
+        92,
+        68,
+        73,
+        83,
+        80,
+        76,
+        65,
+        89,
+        49
+      ],
+      "desktop_coordinates": [
+        0,
+        0,
+        5120,
+        1440
+      ],
+      "bits_per_color": 8,
+      "color_space": 0,
+      "min_luminance_nits": 0.01,
+      "max_luminance_nits": 1499.0,
+      "max_full_frame_luminance_nits": 799.0
+    }
+  ],
+  "border_restoration": {
+    "readback_supported": false,
+    "readback_hresult": -2147024809,
+    "mutation_attempted": false,
+    "exact_restoration": null,
+    "decision": "foreign border mutation disabled because the baseline is unreadable"
+  },
+  "rapid_motion": false
+}

@@ -1,0 +1,22 @@
+[
+  {
+    "backend": "dcomp-decoration-plane",
+    "exited_before_sample": false,
+    "cpu_ms_at_4s": 359.375,
+    "working_set_bytes_at_4s": 39698432,
+    "private_memory_bytes_at_4s": 58499072,
+    "handle_count_at_4s": 528,
+    "thread_count_at_4s": 84,
+    "exit_code": 0
+  },
+  {
+    "backend": "gpui-decoration-plane",
+    "exited_before_sample": false,
+    "cpu_ms_at_4s": 593.75,
+    "working_set_bytes_at_4s": 50454528,
+    "private_memory_bytes_at_4s": 74588160,
+    "handle_count_at_4s": 562,
+    "thread_count_at_4s": 66,
+    "exit_code": 0
+  }
+]

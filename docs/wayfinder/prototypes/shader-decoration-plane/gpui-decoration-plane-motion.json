@@ -1,0 +1,10 @@
+{
+  "backend": "gpui-canvas-existing-scene",
+  "frames": 1923,
+  "elapsed_ms": 8035.9929999999995,
+  "mean_frame_ms": 4.167639386056182,
+  "p99_frame_ms": 4.406499999999999,
+  "wake_source": "GPUI request_animation_frame",
+  "input_inert": true,
+  "rapid_motion": true
+}

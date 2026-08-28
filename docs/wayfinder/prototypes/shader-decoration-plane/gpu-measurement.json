@@ -1,0 +1,18 @@
+[
+  {
+    "backend": "dcomp-decoration-plane",
+    "process_id": 25164,
+    "sample_count": 4,
+    "mean_gpu_engine_percent": 0.9294282367951817,
+    "peak_gpu_engine_percent": 1.055496162282045,
+    "note": "Bounded four-second measurement sample; no production polling path."
+  },
+  {
+    "backend": "gpui-decoration-plane",
+    "process_id": 23676,
+    "sample_count": 4,
+    "mean_gpu_engine_percent": 0.8205998754289342,
+    "peak_gpu_engine_percent": 0.9137776838399404,
+    "note": "Bounded four-second measurement sample; no production polling path."
+  }
+]
