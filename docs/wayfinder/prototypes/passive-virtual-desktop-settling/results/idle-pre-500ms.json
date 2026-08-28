@@ -1,0 +1,435 @@
+{
+  "prototype": "passive_virtual_desktop_settling",
+  "phase": "idle_pre_500ms",
+  "interval_ms": 500,
+  "requested_transitions": 1,
+  "completed_transitions": 0,
+  "stable_polls": 3,
+  "tracked_windows": [
+    {
+      "alias": "w01",
+      "process_id": 32464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_normal",
+      "elevated": false
+    },
+    {
+      "alias": "w02",
+      "process_id": 32464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_pin_candidate",
+      "elevated": false
+    },
+    {
+      "alias": "w03",
+      "process_id": 32464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w04",
+      "process_id": 32464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w05",
+      "process_id": 32464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w06",
+      "process_id": 32464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w07",
+      "process_id": 32464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w08",
+      "process_id": 32464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w09",
+      "process_id": 32464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w10",
+      "process_id": 32464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w11",
+      "process_id": 32464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w12",
+      "process_id": 32464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w13",
+      "process_id": 32464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w14",
+      "process_id": 32464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w15",
+      "process_id": 32464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w16",
+      "process_id": 32464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w17",
+      "process_id": 32464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w18",
+      "process_id": 32464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w19",
+      "process_id": 32464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w20",
+      "process_id": 32464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w21",
+      "process_id": 32464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w22",
+      "process_id": 32464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w23",
+      "process_id": 32464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w24",
+      "process_id": 32464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w25",
+      "process_id": 32464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w26",
+      "process_id": 32464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w27",
+      "process_id": 32464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w28",
+      "process_id": 32464,
+      "process_name": "passive-virtual-desktop-settling-prototype.exe",
+      "class_name": "KomorebiPassiveVirtualDesktopProbe",
+      "category": "probe_minimized",
+      "elevated": false
+    },
+    {
+      "alias": "w29",
+      "process_id": 12224,
+      "process_name": "ShellHost.exe",
+      "class_name": "Windows.UI.Core.CoreWindow",
+      "category": "packaged",
+      "elevated": false
+    },
+    {
+      "alias": "w30",
+      "process_id": 11476,
+      "process_name": "GCC.exe",
+      "class_name": "IME",
+      "category": "elevated",
+      "elevated": true
+    },
+    {
+      "alias": "w31",
+      "process_id": 2120,
+      "process_name": "unavailable",
+      "class_name": "Dwm",
+      "category": "ordinary",
+      "elevated": null
+    },
+    {
+      "alias": "w32",
+      "process_id": 16500,
+      "process_name": "chrome.exe",
+      "class_name": "Chrome_WidgetWin_1",
+      "category": "ordinary",
+      "elevated": false
+    }
+  ],
+  "window_aggregates": {
+    "w01": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":false,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"ok\",\"value\":\"d121be78c70840ce8dc886b345eaf4bd\"},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 20
+      }
+    },
+    "w02": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":false,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"ok\",\"value\":\"d121be78c70840ce8dc886b345eaf4bd\"},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 20
+      }
+    },
+    "w03": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":true,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 20
+      }
+    },
+    "w04": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":true,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 20
+      }
+    },
+    "w05": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":true,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 20
+      }
+    },
+    "w06": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":true,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 20
+      }
+    },
+    "w07": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":true,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 20
+      }
+    },
+    "w08": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":true,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 20
+      }
+    },
+    "w09": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":true,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 20
+      }
+    },
+    "w10": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":true,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 20
+      }
+    },
+    "w11": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":true,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 20
+      }
+    },
+    "w12": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":true,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 20
+      }
+    },
+    "w13": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":true,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 20
+      }
+    },
+    "w14": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":true,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 20
+      }
+    },
+    "w15": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":true,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 20
+      }
+    },
+    "w16": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":true,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 20
+      }
+    },
+    "w17": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":true,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 20
+      }
+    },
+    "w18": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":true,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 20
+      }
+    },
+    "w19": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":true,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 20
+      }
+    },
+    "w20": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":true,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 20
+      }
+    },
+    "w21": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":true,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 20
+      }
+    },
+    "w22": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":true,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 20
+      }
+    },
+    "w23": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":true,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 20
+      }
+    },
+    "w24": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":true,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 20
+      }
+    },
+    "w25": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":true,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 20
+      }
+    },
+    "w26": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":true,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 20
+      }
+    },
+    "w27": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":true,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 20
+      }
+    },
+    "w28": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":true,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 20
+      }
+    },
+    "w29": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":false,\"minimized\":false,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 20
+      }
+    },
+    "w30": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":false,\"minimized\":false,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 20
+      }
+    },
+    "w31": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":false,\"minimized\":true,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"error\",\"hresult\":-2147319765},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 20
+      }
+    },
+    "w32": {
+      "outcomes": {
+        "{\"exists\":true,\"visible\":true,\"minimized\":false,\"cloaked\":{\"status\":\"ok\",\"value\":false},\"desktop_id\":{\"status\":\"ok\",\"value\":\"d121be78c70840ce8dc886b345eaf4bd\"},\"on_current_desktop\":{\"status\":\"ok\",\"value\":true}}": 20
+      }
+    }
+  },
+  "transitions": [],
+  "poll_count": 20,
+  "public_query_count": 1280,
+  "elapsed_ms": 10005,
+  "user_cpu_ms": 15,
+  "kernel_cpu_ms": 62,
+  "timed_out": true
+}
