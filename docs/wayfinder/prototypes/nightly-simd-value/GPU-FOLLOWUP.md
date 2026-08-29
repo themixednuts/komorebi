@@ -1,6 +1,6 @@
 # GPU-first effects and fallback follow-up
 
-Tracking ticket: [#49 Prototype GPU-first decoration compute and WARP fallback](https://github.com/themixednuts/komorebi/issues/49).
+Resolved by [Prototype GPU-first decoration compute and WARP fallback](https://github.com/themixednuts/komorebi/issues/49). Measurements live in `docs/wayfinder/prototypes/gpu-first-warp-fallback`.
 
 ## Recommendation
 

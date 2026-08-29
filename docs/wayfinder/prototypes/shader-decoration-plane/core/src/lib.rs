@@ -26,12 +26,22 @@ impl EffectId {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct Generation(NonZeroU64);
 
 impl Generation {
     pub const INITIAL: Self = Self(NonZeroU64::MIN);
+
+    pub fn get(self) -> NonZeroU64 {
+        self.0
+    }
+
+    pub fn checked(value: u64) -> Result<Self, ModelError> {
+        NonZeroU64::new(value)
+            .map(Self)
+            .ok_or(ModelError::ZeroIdentity)
+    }
 
     pub fn next(self) -> Result<Self, ModelError> {
         self.0

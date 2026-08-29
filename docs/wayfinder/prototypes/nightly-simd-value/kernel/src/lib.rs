@@ -108,6 +108,55 @@ impl ParticleBatch {
             .map(|value| f64::from(*value))
             .sum()
     }
+
+    pub fn write_interleaved(&self, out: &mut [InterleavedParticle]) -> Result<(), KernelError> {
+        if out.len() != self.len() {
+            return Err(KernelError::MismatchedLengths);
+        }
+        let components = self
+            .position_x
+            .iter()
+            .zip(&self.position_y)
+            .zip(&self.velocity_x)
+            .zip(&self.velocity_y);
+        for (particle, (((position_x, position_y), velocity_x), velocity_y)) in
+            out.iter_mut().zip(components)
+        {
+            *particle = InterleavedParticle {
+                position: [*position_x, *position_y],
+                velocity: [*velocity_x, *velocity_y],
+            };
+        }
+        Ok(())
+    }
+
+    pub fn from_interleaved(particles: &[InterleavedParticle]) -> Self {
+        Self {
+            position_x: particles
+                .iter()
+                .map(|particle| particle.position[0])
+                .collect(),
+            position_y: particles
+                .iter()
+                .map(|particle| particle.position[1])
+                .collect(),
+            velocity_x: particles
+                .iter()
+                .map(|particle| particle.velocity[0])
+                .collect(),
+            velocity_y: particles
+                .iter()
+                .map(|particle| particle.velocity[1])
+                .collect(),
+        }
+    }
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct InterleavedParticle {
+    pub position: [f32; 2],
+    pub velocity: [f32; 2],
 }
 
 #[derive(Debug, Error, Eq, PartialEq)]
@@ -318,6 +367,23 @@ mod tests {
         assert_eq!(
             ParticleStep::checked(f32::NAN, 1.0, 0.0, 0.0),
             Err(KernelError::InvalidStep)
+        );
+    }
+
+    #[test]
+    fn interleaved_layout_round_trips() {
+        let batch = ParticleBatch::seeded(8, 7);
+        let mut packed = vec![
+            InterleavedParticle {
+                position: [0.0, 0.0],
+                velocity: [0.0, 0.0],
+            };
+            8
+        ];
+        batch.write_interleaved(&mut packed).unwrap();
+        assert_eq!(
+            ParticleBatch::from_interleaved(&packed).checksum(),
+            batch.checksum()
         );
     }
 }

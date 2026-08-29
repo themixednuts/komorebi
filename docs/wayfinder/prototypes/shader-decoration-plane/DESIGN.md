@@ -64,9 +64,9 @@ Animated effects request renderer frames only while an admitted effect's clock i
 
 ## GPU compute and software fallback
 
-Effect compute follows the same single-scene ownership. Hardware D3D11 compute updates bounded particle/effect buffers on GPUI's existing device whenever admitted. If GPU compute is disabled, unsupported, or lost, the stable scalar/autovectorized CPU kernel updates a bounded instance buffer and uploads it to the same scene; it does not read GPU state back or create a CPU renderer. If no hardware scene device is usable, a follow-up spike may initialize that same D3D11 renderer with Windows WARP. Failure or an exceeded measured WARP budget yields a typed no-effect degradation while core window management continues.
+Effect compute follows the same single-scene ownership. Hardware D3D11 compute updates bounded particle/effect buffers on GPUI's existing device whenever admitted. If GPU compute is disabled, unsupported, or lost, the stable scalar/autovectorized CPU kernel updates a bounded instance buffer and uploads it to the same scene; it does not read GPU state back or create a CPU renderer. If no hardware scene device is usable, the same D3D11 renderer opens as WARP and draws after a CPU update. Failure or an exceeded measured budget yields a typed no-effect degradation while core window management continues.
 
-The unproven portions are tracked by [#49](https://github.com/themixednuts/komorebi/issues/49); this document does not claim WARP or GPUI compute support before that evidence exists.
+[Prototype GPU-first decoration compute and WARP fallback](https://github.com/themixednuts/komorebi/issues/49) measured all three live paths under the 240 Hz budget on this machine. Warp cannot own device compute.
 
 Rust-authored shader projects remain behind the closed `DecorationPrimitive` boundary. VectorWare's GPU `core::simd` work is not yet a consumable production toolchain, and `rust-gpu` is early, SPIR-V-oriented, nightly-coupled, and explicitly provides no compatibility guarantee. The first production route therefore remains offline HLSL-to-DXBC inside the pinned GPUI renderer. A future Rust shader compiler may replace asset authorship only after it proves the same accepted bytecode, resource, cancellation, and device-loss contract; it does not change Lua or manager APIs.
 
