@@ -405,7 +405,9 @@ pub enum ApplicationIdentifier {
     Path,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize, Display, EnumString, ValueEnum)]
+#[derive(
+    Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Display, EnumString, ValueEnum,
+)]
 #[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 /// Focus follows mouse implementation
 pub enum FocusFollowsMouseImplementation {
@@ -678,7 +680,17 @@ pub enum PlacementMatchingRules {
 }
 
 #[derive(
-    Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize, Display, EnumString, ValueEnum,
+    Clone,
+    Copy,
+    Debug,
+    Default,
+    Eq,
+    PartialEq,
+    Serialize,
+    Deserialize,
+    Display,
+    EnumString,
+    ValueEnum,
 )]
 #[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 /// Move behaviour when the operation works across a monitor boundary
@@ -706,7 +718,17 @@ pub enum CrossBoundaryBehaviour {
 }
 
 #[derive(
-    Clone, Copy, Debug, Default, Serialize, Deserialize, Display, EnumString, ValueEnum, PartialEq,
+    Clone,
+    Copy,
+    Debug,
+    Default,
+    Eq,
+    PartialEq,
+    Serialize,
+    Deserialize,
+    Display,
+    EnumString,
+    ValueEnum,
 )]
 #[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 /// Behaviour when focusing in a direction while a monocle container is active
@@ -718,7 +740,9 @@ pub enum MonocleFocusBehaviour {
     NoOp,
 }
 
-#[derive(Copy, Clone, Debug, Serialize, Deserialize, Display, EnumString, ValueEnum, PartialEq)]
+#[derive(
+    Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Display, EnumString, ValueEnum,
+)]
 #[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 /// Window hiding behaviour
 pub enum HidingBehaviour {
@@ -732,7 +756,17 @@ pub enum HidingBehaviour {
 }
 
 #[derive(
-    Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize, Display, EnumString, ValueEnum,
+    Clone,
+    Copy,
+    Debug,
+    Default,
+    Eq,
+    PartialEq,
+    Serialize,
+    Deserialize,
+    Display,
+    EnumString,
+    ValueEnum,
 )]
 #[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 /// Operation behaviour for temporarily unmanaged and floating windows

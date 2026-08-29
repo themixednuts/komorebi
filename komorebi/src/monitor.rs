@@ -395,7 +395,9 @@ impl Monitor {
             bail!("cannot move native maximized window to another monitor or workspace");
         }
 
-        let foreground_hwnd = WindowsApi::foreground_window()?;
+        // A focused managed container is still a valid move target when Windows has no
+        // foreground window (for example during shell transitions or headless tests).
+        let foreground_hwnd = WindowsApi::foreground_window().unwrap_or_default();
         let floating_window_index = workspace
             .floating_windows()
             .iter()

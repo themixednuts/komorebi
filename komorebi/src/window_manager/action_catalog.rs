@@ -1,0 +1,690 @@
+use color_eyre::eyre;
+
+use crate::CrossBoundaryBehaviour;
+use crate::HIDING_BEHAVIOUR;
+use crate::action::ActionAdmission;
+use crate::action::ActionGrants;
+use crate::action::ActionRejection;
+use crate::action::ActionSnapshot;
+use crate::action::BuiltinAction;
+use crate::action::InvocationContext;
+use crate::action::InvocationId;
+use crate::action::InvocationOrigin;
+use crate::action::InvokeAction;
+use crate::action::NativeEffect;
+use crate::action::PrincipalId;
+use crate::action::WorkspaceName;
+use crate::action::id::WindowId;
+use crate::border_manager;
+use crate::core::DefaultLayout;
+use crate::core::Layout;
+use crate::core::OperationDirection;
+use crate::core::Sizing;
+use crate::workspace::WorkspaceLayer;
+
+use super::WindowManager;
+
+const LEGACY_SOCKET_PRINCIPAL: PrincipalId = PrincipalId::new(0);
+
+#[derive(Debug, thiserror::Error)]
+pub enum CatalogActionError {
+    #[error("invocation {invocation_id:?} was rejected: {source}")]
+    Rejected {
+        invocation_id: InvocationId,
+        #[source]
+        source: ActionRejection,
+    },
+    #[error("native effects failed for invocation {invocation_id:?}")]
+    NativeEffects {
+        invocation_id: InvocationId,
+        #[source]
+        source: eyre::Report,
+    },
+}
+
+impl CatalogActionError {
+    #[must_use]
+    pub const fn invocation_id(&self) -> InvocationId {
+        match self {
+            Self::Rejected { invocation_id, .. } | Self::NativeEffects { invocation_id, .. } => {
+                *invocation_id
+            }
+        }
+    }
+}
+
+impl WindowManager {
+    pub fn refresh_catalog_observation(&mut self) {
+        let snapshot = self.observe_action_snapshot();
+        self.catalog.replace_observation(snapshot);
+    }
+
+    #[must_use]
+    pub fn observe_action_snapshot(&self) -> ActionSnapshot {
+        let focused_window = self
+            .focused_window()
+            .ok()
+            .map(|window| WindowId::new(window.hwnd as u64));
+        let current_layout = self
+            .focused_workspace()
+            .ok()
+            .and_then(|workspace| match workspace.layout {
+                Layout::Default(layout) => Some(layout),
+                Layout::Custom(_) => None,
+            })
+            .unwrap_or(DefaultLayout::BSP);
+        let focused_window_floating = self
+            .focused_workspace()
+            .ok()
+            .is_some_and(|workspace| workspace.layer == WorkspaceLayer::Floating);
+        ActionSnapshot {
+            revision: self.catalog.snapshot().revision,
+            paused: self.is_paused,
+            focused_window,
+            neighbor_left: self.can_focus_in_direction(OperationDirection::Left),
+            neighbor_right: self.can_focus_in_direction(OperationDirection::Right),
+            neighbor_up: self.can_focus_in_direction(OperationDirection::Up),
+            neighbor_down: self.can_focus_in_direction(OperationDirection::Down),
+            current_layout,
+            focused_window_floating,
+            named_workspaces: self.named_workspaces_for_catalog(),
+            bindings: Vec::new(),
+        }
+    }
+
+    fn named_workspaces_for_catalog(&self) -> Vec<(crate::action::WorkspaceName, usize, usize)> {
+        let mut named = Vec::new();
+        for (monitor_idx, monitor) in self.monitors().iter().enumerate() {
+            for (workspace_idx, workspace) in monitor.workspaces().iter().enumerate() {
+                if let Some(name) = &workspace.name
+                    && let Ok(name) = crate::action::WorkspaceName::parse(name)
+                {
+                    named.push((name, monitor_idx, workspace_idx));
+                }
+            }
+        }
+        named
+    }
+
+    fn can_focus_in_direction(&self, direction: OperationDirection) -> bool {
+        let Ok(workspace) = self.focused_workspace() else {
+            return false;
+        };
+        if workspace.new_idx_for_direction(direction).is_some() {
+            return true;
+        }
+        if matches!(
+            self.cross_boundary_behaviour,
+            CrossBoundaryBehaviour::Workspace
+        ) && matches!(
+            direction,
+            OperationDirection::Left | OperationDirection::Right
+        ) && self
+            .focused_monitor()
+            .is_some_and(|monitor| monitor.workspaces().len() > 1)
+        {
+            return true;
+        }
+        self.monitor_idx_in_direction(direction).is_some()
+    }
+
+    pub fn invoke_catalog_action(
+        &mut self,
+        request: InvokeAction,
+        context: &InvocationContext,
+    ) -> Result<InvocationId, CatalogActionError> {
+        self.refresh_catalog_observation();
+        let invocation_id = request.invocation_id;
+        let admission = self
+            .catalog
+            .admit(request, context, std::time::Instant::now());
+        match admission {
+            ActionAdmission::Rejected(source) => Err(CatalogActionError::Rejected {
+                invocation_id,
+                source,
+            }),
+            ActionAdmission::Committed {
+                logical_result,
+                effects,
+                ..
+            } => match self.apply_catalog_effects(&effects) {
+                Ok(()) => {
+                    self.catalog.settle(invocation_id, logical_result);
+                    Ok(invocation_id)
+                }
+                Err(error) => {
+                    self.catalog.degrade(invocation_id, 1);
+                    Err(CatalogActionError::NativeEffects {
+                        invocation_id,
+                        source: error,
+                    })
+                }
+            },
+        }
+    }
+
+    pub(crate) fn admit_socket_action(
+        &mut self,
+        action: BuiltinAction,
+    ) -> Result<InvocationId, CatalogActionError> {
+        let request = InvokeAction {
+            invocation_id: InvocationId::new(),
+            expected_revision: self.catalog.snapshot().revision,
+            action,
+            confirmation: None,
+        };
+        self.invoke_catalog_action(
+            request,
+            &InvocationContext {
+                principal: LEGACY_SOCKET_PRINCIPAL,
+                origin: InvocationOrigin::Ipc,
+                grants: ActionGrants::all(),
+            },
+        )
+    }
+
+    fn apply_catalog_effects(&mut self, effects: &[NativeEffect]) -> eyre::Result<()> {
+        for effect in effects {
+            match effect.clone() {
+                NativeEffect::FocusNeighbor { direction } => {
+                    let focused_workspace = self.focused_workspace()?;
+                    match focused_workspace.layer {
+                        WorkspaceLayer::Tiling => {
+                            self.focus_container_in_direction(direction)?;
+                        }
+                        WorkspaceLayer::Floating => {
+                            self.focus_floating_window_in_direction(direction)?;
+                        }
+                    }
+                }
+                NativeEffect::MoveNeighbor { direction } => {
+                    let focused_workspace = self.focused_workspace()?;
+                    match focused_workspace.layer {
+                        WorkspaceLayer::Tiling => {
+                            self.move_container_in_direction(direction)?;
+                        }
+                        WorkspaceLayer::Floating => {
+                            self.move_floating_window_in_direction(direction)?;
+                        }
+                    }
+                }
+                NativeEffect::SetLayout { layout } => {
+                    self.change_workspace_layout_default(layout)?;
+                }
+                NativeEffect::SetWindowFloating { .. } => {
+                    self.toggle_float(false)?;
+                }
+                NativeEffect::Resize { axis, delta } => {
+                    let sizing = if delta.get() > 0 {
+                        Sizing::Increase
+                    } else {
+                        Sizing::Decrease
+                    };
+                    self.resize_window_on_axis(axis, sizing, delta.get().unsigned_abs() as i32)?;
+                }
+                NativeEffect::CycleFocus { direction } => {
+                    let focused_workspace = self.focused_workspace()?;
+                    match focused_workspace.layer {
+                        WorkspaceLayer::Tiling => {
+                            self.focus_container_in_cycle_direction(direction)?;
+                        }
+                        WorkspaceLayer::Floating => {
+                            self.focus_floating_window_in_cycle_direction(direction)?;
+                        }
+                    }
+                }
+                NativeEffect::CycleMove { direction } => {
+                    self.move_container_in_cycle_direction(direction)?;
+                }
+                NativeEffect::ToggleMonocle => {
+                    self.toggle_monocle()?;
+                }
+                NativeEffect::ToggleMaximize => {
+                    self.toggle_maximize()?;
+                }
+                NativeEffect::ToggleLock => {
+                    self.toggle_lock()?;
+                }
+                NativeEffect::Stack { direction } => {
+                    self.add_window_to_container(direction)?;
+                }
+                NativeEffect::Unstack => {
+                    self.remove_window_from_container()?;
+                }
+                NativeEffect::StackAll => {
+                    self.stack_all()?;
+                }
+                NativeEffect::UnstackAll => {
+                    self.unstack_all(true)?;
+                }
+                NativeEffect::CycleStack { direction } => {
+                    self.cycle_container_window_in_direction(direction)?;
+                }
+                NativeEffect::CycleStackIndex { direction } => {
+                    self.cycle_container_window_index_in_direction(direction)?;
+                }
+                NativeEffect::FocusStack { index } => {
+                    if let Some(monitor_idx) = self.monitor_idx_from_current_pos() {
+                        self.focus_monitor(monitor_idx)?;
+                    }
+                    self.focus_container_window(index)?;
+                }
+                NativeEffect::FocusWorkspace { index } => {
+                    self.focus_workspace_number(index)?;
+                }
+                NativeEffect::CycleFocusWorkspace { direction } => {
+                    self.cycle_focus_workspace(direction)?;
+                }
+                NativeEffect::CycleFocusEmptyWorkspace { direction } => {
+                    self.cycle_focus_empty_workspace(direction)?;
+                }
+                NativeEffect::FocusLastWorkspace => {
+                    self.focus_last_workspace()?;
+                }
+                NativeEffect::CloseWorkspace => {
+                    self.close_focused_workspace()?;
+                }
+                NativeEffect::FocusMonitor { index } => {
+                    self.focus_monitor_number(index)?;
+                }
+                NativeEffect::CycleFocusMonitor { direction } => {
+                    self.cycle_focus_monitor(direction)?;
+                }
+                NativeEffect::FocusMonitorAtCursor => {
+                    self.focus_monitor_at_cursor()?;
+                }
+                NativeEffect::FocusWorkspaceOnAllMonitors { index } => {
+                    self.focus_workspace_on_all_monitors(index)?;
+                }
+                NativeEffect::FocusMonitorWorkspace { monitor, workspace } => {
+                    self.focus_monitor_workspace(monitor, workspace)?;
+                }
+                NativeEffect::CloseWindow => {
+                    self.close_foreground_window()?;
+                }
+                NativeEffect::MinimizeWindow => {
+                    self.minimize_foreground_window()?;
+                }
+                NativeEffect::ForceFocus => {
+                    self.force_focus_window()?;
+                }
+                NativeEffect::PromoteContainer => {
+                    self.promote_container_to_front()?;
+                }
+                NativeEffect::PromoteContainerSwap => {
+                    self.promote_container_swap()?;
+                }
+                NativeEffect::PromoteFocus => {
+                    self.promote_focus_to_front()?;
+                }
+                NativeEffect::PromoteWindow { direction } => {
+                    self.promote_window_in_direction(direction)?;
+                }
+                NativeEffect::CreateWorkspace => {
+                    self.new_workspace()?;
+                }
+                NativeEffect::ToggleTiling => {
+                    self.toggle_tiling()?;
+                }
+                NativeEffect::CycleLayout { direction } => {
+                    self.cycle_layout(direction)?;
+                }
+                NativeEffect::FlipLayout { axis } => {
+                    self.flip_layout(axis)?;
+                }
+                NativeEffect::ToggleWorkspaceLayer => {
+                    self.toggle_workspace_layer()?;
+                }
+                NativeEffect::MoveContainerToLastWorkspace => {
+                    self.move_container_to_last_workspace(true)?;
+                }
+                NativeEffect::SendContainerToLastWorkspace => {
+                    self.move_container_to_last_workspace(false)?;
+                }
+                NativeEffect::MoveContainerToWorkspace { index } => {
+                    self.move_container_to_workspace(index, true, None)?;
+                }
+                NativeEffect::CycleMoveContainerToWorkspace { direction } => {
+                    self.cycle_move_container_to_workspace(direction, true)?;
+                }
+                NativeEffect::SendContainerToWorkspace { index } => {
+                    self.move_container_to_workspace(index, false, None)?;
+                }
+                NativeEffect::CycleSendContainerToWorkspace { direction } => {
+                    self.cycle_move_container_to_workspace(direction, false)?;
+                }
+                NativeEffect::MoveContainerToMonitor { index } => {
+                    self.transfer_container_to_monitor(index, None, true)?;
+                }
+                NativeEffect::CycleMoveContainerToMonitor { direction } => {
+                    self.cycle_transfer_container_to_monitor(direction, true)?;
+                }
+                NativeEffect::SendContainerToMonitor { index } => {
+                    self.transfer_container_to_monitor(index, None, false)?;
+                }
+                NativeEffect::CycleSendContainerToMonitor { direction } => {
+                    self.cycle_transfer_container_to_monitor(direction, false)?;
+                }
+                NativeEffect::MoveContainerToMonitorWorkspace { monitor, workspace } => {
+                    self.transfer_container_to_monitor(monitor, Some(workspace), true)?;
+                }
+                NativeEffect::SendContainerToMonitorWorkspace { monitor, workspace } => {
+                    self.transfer_container_to_monitor(monitor, Some(workspace), false)?;
+                }
+                NativeEffect::MoveWorkspaceToMonitor { index } => {
+                    self.move_workspace_to_monitor(index)?;
+                }
+                NativeEffect::CycleMoveWorkspaceToMonitor { direction } => {
+                    self.cycle_move_workspace_to_monitor(direction)?;
+                }
+                NativeEffect::SwapWorkspacesToMonitor { index } => {
+                    self.swap_focused_monitor(index)?;
+                }
+                NativeEffect::PreselectDirection { direction } => {
+                    self.apply_preselect_direction(direction)?;
+                }
+                NativeEffect::CancelPreselect => {
+                    self.cancel_focused_preselect()?;
+                }
+                NativeEffect::Retile => {
+                    border_manager::destroy_all_borders()?;
+                    self.retile_all(false)?;
+                }
+                NativeEffect::RetileWithResizeDimensions => {
+                    border_manager::destroy_all_borders()?;
+                    self.retile_all(true)?;
+                }
+                NativeEffect::ManageFocusedWindow => {
+                    self.manage_focused_window()?;
+                }
+                NativeEffect::UnmanageFocusedWindow => {
+                    self.unmanage_focused_window()?;
+                }
+                NativeEffect::AdjustContainerPadding { sizing, adjustment } => {
+                    self.adjust_container_padding(sizing, adjustment)?;
+                }
+                NativeEffect::AdjustWorkspacePadding { sizing, adjustment } => {
+                    self.adjust_workspace_padding(sizing, adjustment)?;
+                }
+                NativeEffect::ToggleMouseFollowsFocus => {
+                    self.toggle_mouse_follows_focus();
+                }
+                NativeEffect::SetMouseFollowsFocus { enabled } => {
+                    self.set_mouse_follows_focus(enabled);
+                }
+                NativeEffect::ToggleWindowContainerBehaviour => {
+                    self.toggle_window_container_behaviour();
+                }
+                NativeEffect::ToggleFloatOverride => {
+                    self.toggle_float_override();
+                }
+                NativeEffect::ToggleWorkspaceWindowContainerBehaviour => {
+                    self.toggle_workspace_window_container_behaviour()?;
+                }
+                NativeEffect::ToggleWorkspaceFloatOverride => {
+                    self.toggle_workspace_float_override()?;
+                }
+                NativeEffect::ToggleCrossMonitorMoveBehaviour => {
+                    self.toggle_cross_monitor_move_behaviour();
+                }
+                NativeEffect::ToggleMonocleFocusBehaviour => {
+                    self.toggle_monocle_focus_behaviour();
+                }
+                NativeEffect::TogglePause => {
+                    self.toggle_pause()?;
+                }
+                NativeEffect::SetFocusedContainerPadding { size } => {
+                    self.set_focused_container_padding(size)?;
+                }
+                NativeEffect::SetFocusedWorkspacePadding { size } => {
+                    self.set_focused_workspace_padding(size)?;
+                }
+                NativeEffect::SetContainerPadding {
+                    monitor,
+                    workspace,
+                    size,
+                } => {
+                    self.set_container_padding(monitor, workspace, size)?;
+                }
+                NativeEffect::SetWorkspacePadding {
+                    monitor,
+                    workspace,
+                    size,
+                } => {
+                    self.set_workspace_padding(monitor, workspace, size)?;
+                }
+                NativeEffect::SetWorkspaceTiling {
+                    monitor,
+                    workspace,
+                    tile,
+                } => {
+                    self.set_workspace_tiling(monitor, workspace, tile)?;
+                }
+                NativeEffect::SetMonitorWorkspaceLayout {
+                    monitor,
+                    workspace,
+                    layout,
+                } => {
+                    self.set_workspace_layout_default(monitor, workspace, layout)?;
+                }
+                NativeEffect::EnsureWorkspaces { monitor, count } => {
+                    self.ensure_workspaces_for_monitor(monitor, count)?;
+                }
+                NativeEffect::ClearWorkspaceLayoutRules { monitor, workspace } => {
+                    self.clear_workspace_layout_rules(monitor, workspace)?;
+                }
+                NativeEffect::SetScrollingColumns { columns } => {
+                    self.set_scrolling_columns(columns)?;
+                }
+                NativeEffect::LockContainer {
+                    monitor,
+                    workspace,
+                    container,
+                } => {
+                    self.set_container_locked(monitor, workspace, container, true)?;
+                }
+                NativeEffect::UnlockContainer {
+                    monitor,
+                    workspace,
+                    container,
+                } => {
+                    self.set_container_locked(monitor, workspace, container, false)?;
+                }
+                NativeEffect::ToggleTitleBars => {
+                    self.toggle_title_bars()?;
+                }
+                NativeEffect::EnforceWorkspaceRules => {
+                    self.already_moved_window_handles.lock().clear();
+                    self.enforce_workspace_rules()?;
+                }
+                NativeEffect::AddSessionFloatRule => {
+                    self.add_session_float_rule()?;
+                }
+                NativeEffect::ClearSessionFloatRules => {
+                    self.clear_session_float_rules();
+                }
+                NativeEffect::ResizeEdge { direction, delta } => {
+                    let sizing = if delta.get() > 0 {
+                        Sizing::Increase
+                    } else {
+                        Sizing::Decrease
+                    };
+                    self.resize_window(direction, sizing, delta.get().unsigned_abs() as i32, true)?;
+                }
+                NativeEffect::SetWindowHidingBehaviour { behaviour } => {
+                    *HIDING_BEHAVIOUR.lock() = behaviour;
+                }
+                NativeEffect::SetCrossMonitorMoveBehaviour { behaviour } => {
+                    self.cross_monitor_move_behaviour = behaviour;
+                }
+                NativeEffect::SetMonocleFocusBehaviour { behaviour } => {
+                    self.monocle_focus_behaviour = behaviour;
+                }
+                NativeEffect::SetUnmanagedWindowOperationBehaviour { behaviour } => {
+                    self.unmanaged_window_operation_behaviour = behaviour;
+                }
+                NativeEffect::SetFocusFollowsMouse {
+                    implementation,
+                    enabled,
+                } => {
+                    self.set_focus_follows_mouse_implementation(implementation, enabled)?;
+                }
+                NativeEffect::ToggleFocusFollowsMouse { implementation } => {
+                    self.toggle_focus_follows_mouse_implementation(implementation)?;
+                }
+                NativeEffect::AddWorkspaceLayoutRule {
+                    monitor,
+                    workspace,
+                    at_container_count,
+                    layout,
+                } => {
+                    self.add_workspace_layout_default_rule(
+                        monitor,
+                        workspace,
+                        at_container_count,
+                        layout,
+                    )?;
+                }
+                NativeEffect::SetLayoutRatios { columns, rows } => {
+                    self.set_layout_ratios(columns.as_deref(), rows.as_deref())?;
+                }
+                NativeEffect::SetCustomLayout { path } => {
+                    self.change_workspace_custom_layout(path)?;
+                }
+                NativeEffect::SetWorkspaceCustomLayout {
+                    monitor,
+                    workspace,
+                    path,
+                } => {
+                    self.set_workspace_layout_custom(monitor, workspace, path)?;
+                }
+                NativeEffect::AddWorkspaceCustomLayoutRule {
+                    monitor,
+                    workspace,
+                    at_container_count,
+                    path,
+                } => {
+                    self.add_workspace_layout_custom_rule(
+                        monitor,
+                        workspace,
+                        at_container_count,
+                        path,
+                    )?;
+                }
+                NativeEffect::EnsureNamedWorkspaces { monitor, names } => {
+                    let names: Vec<String> =
+                        names.into_iter().map(WorkspaceName::into_string).collect();
+                    self.ensure_named_workspaces_for_monitor(monitor, &names)?;
+                }
+                NativeEffect::SetWorkspaceName {
+                    monitor,
+                    workspace,
+                    name,
+                } => {
+                    self.set_workspace_name(monitor, workspace, name.into_string())?;
+                }
+                NativeEffect::EagerFocus { exe } => {
+                    self.eager_focus_exe(&exe)?;
+                }
+                NativeEffect::RemoveTitleBar { identifier, id } => {
+                    self.add_no_titlebar_rule(identifier, id);
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::env::temp_dir;
+
+    use crossbeam_channel::bounded;
+    use uuid::Uuid;
+
+    use super::*;
+    use crate::action::Revision;
+    use crate::action::WorkspaceSelector;
+    use crate::action::invoke::InvocationStatus;
+    use crate::action::outcome::ActionResult;
+    use crate::window_manager_event::WindowManagerEvent;
+
+    fn empty_manager() -> WindowManager {
+        let (_sender, receiver) = bounded::<WindowManagerEvent>(1);
+        let socket = temp_dir().join(format!("komorebi-catalog-test-{}.sock", Uuid::new_v4()));
+        WindowManager::new(receiver, Some(socket)).expect("test manager should bind its socket")
+    }
+
+    #[test]
+    fn successful_native_effect_settles_the_committed_invocation() {
+        let mut manager = empty_manager();
+
+        let invocation_id = manager
+            .admit_socket_action(BuiltinAction::TogglePause)
+            .expect("pause should apply without a monitor");
+
+        assert!(manager.is_paused);
+        assert_eq!(
+            manager.catalog.status(invocation_id),
+            Some(&InvocationStatus::Settled {
+                revision: Revision::new(1),
+                result: ActionResult::PauseToggled { paused: true },
+            })
+        );
+    }
+
+    #[test]
+    fn failed_native_effect_degrades_the_committed_invocation() {
+        let mut manager = empty_manager();
+
+        let error = manager
+            .admit_socket_action(BuiltinAction::SetWorkspaceLayout {
+                workspace: WorkspaceSelector::FocusedAtExecution,
+                layout: DefaultLayout::Columns,
+            })
+            .expect_err("layout application without a monitor should fail");
+        let invocation_id = error.invocation_id();
+
+        assert_eq!(
+            manager.catalog.status(invocation_id),
+            Some(&InvocationStatus::Degraded {
+                revision: Revision::new(1),
+                failures: 1,
+            })
+        );
+    }
+
+    #[test]
+    fn canonical_entrypoint_preserves_caller_identity_on_rejection() {
+        let mut manager = empty_manager();
+        let invocation_id = InvocationId::new();
+        let context = InvocationContext {
+            principal: PrincipalId::new(42),
+            origin: InvocationOrigin::Palette,
+            grants: ActionGrants::all(),
+        };
+
+        let error = manager
+            .invoke_catalog_action(
+                InvokeAction {
+                    invocation_id,
+                    expected_revision: Revision::new(9),
+                    action: BuiltinAction::TogglePause,
+                    confirmation: None,
+                },
+                &context,
+            )
+            .expect_err("a stale caller revision should be rejected");
+
+        assert_eq!(error.invocation_id(), invocation_id);
+        assert!(matches!(
+            error,
+            CatalogActionError::Rejected {
+                source: ActionRejection::StaleRevision { .. },
+                ..
+            }
+        ));
+        assert!(!manager.is_paused);
+        assert_eq!(manager.catalog.snapshot().revision, Revision::new(0));
+    }
+}

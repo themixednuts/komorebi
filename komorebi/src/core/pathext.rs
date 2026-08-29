@@ -166,17 +166,24 @@ mod tests {
 
     #[test]
     fn resolves_env_vars() {
-        // Set a variable for testing
+        const TEST_VAR: &str = "KOMOREBI_PATHEXT_TEST_VALUE";
+
         unsafe {
-            std::env::set_var("VAR", "VALUE");
+            std::env::set_var(TEST_VAR, "VALUE");
         }
 
-        // %VAR% format
-        assert_eq!(resolve("/path/%VAR%/d"), expected("/path/VALUE/d"));
-        // $env:VAR format
-        assert_eq!(resolve("/path/$env:VAR/d"), expected("/path/VALUE/d"));
-        // $VAR format
-        assert_eq!(resolve("/path/$VAR/d"), expected("/path/VALUE/d"));
+        assert_eq!(
+            resolve("/path/%KOMOREBI_PATHEXT_TEST_VALUE%/d"),
+            expected("/path/VALUE/d")
+        );
+        assert_eq!(
+            resolve("/path/$env:KOMOREBI_PATHEXT_TEST_VALUE/d"),
+            expected("/path/VALUE/d")
+        );
+        assert_eq!(
+            resolve("/path/$KOMOREBI_PATHEXT_TEST_VALUE/d"),
+            expected("/path/VALUE/d")
+        );
 
         // non-existent variable
         assert_eq!(resolve("/path/%ASD%/to/d"), expected("/path/%ASD%/to/d"));
@@ -186,13 +193,12 @@ mod tests {
         );
         assert_eq!(resolve("/path/$ASD/to/d"), expected("/path/$ASD/to/d"));
 
-        // Set a $env:USERPROFILE variable for testing
-        unsafe {
-            std::env::set_var("USERPROFILE", "C:\\Users\\user");
-        }
+        let user_profile = std::env::var_os("USERPROFILE").expect("USERPROFILE should be set");
+        assert_eq!(resolve("~"), expected(&user_profile));
+        assert_eq!(resolve("$HOME"), expected(user_profile));
 
-        // ~ and $HOME should be replaced with $Env:USERPROFILE
-        assert_eq!(resolve("~"), expected("C:\\Users\\user"));
-        assert_eq!(resolve("$HOME"), expected("C:\\Users\\user"));
+        unsafe {
+            std::env::remove_var(TEST_VAR);
+        }
     }
 }

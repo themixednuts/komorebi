@@ -900,7 +900,9 @@ impl Arrangement for CustomLayout {
     }
 }
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, Display, EnumString, ValueEnum, PartialEq)]
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize, Display, EnumString, ValueEnum,
+)]
 #[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 /// Axis on which to perform an operation
 pub enum Axis {

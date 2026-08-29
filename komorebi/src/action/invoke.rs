@@ -1,12 +1,7 @@
 use std::collections::HashMap;
 use std::time::Instant;
 
-use crate::core::Axis;
-use crate::core::DefaultLayout;
-use crate::core::OperationDirection;
-
 use super::builtin::BuiltinAction;
-use super::builtin::Pixels;
 use super::confirmation::ConfirmationError;
 use super::confirmation::ConfirmationLedger;
 use super::definition::UndoPolicy;
@@ -17,7 +12,13 @@ use super::offer::ActionAvailability;
 use super::offer::ActionGrants;
 use super::offer::ActionSnapshot;
 use super::offer::Unavailability;
-use super::offer::neighbor_in;
+pub use super::outcome::ActionResult;
+pub use super::outcome::NativeEffect;
+use super::transition::apply_logical;
+use super::transition::bind_named_targets;
+use super::transition::directional_gap;
+use super::transition::effects;
+use super::transition::logical_result;
 use super::undo::UndoLedger;
 use super::undo::UndoRecord;
 
@@ -58,86 +59,7 @@ pub enum ActionRejection {
     Confirmation(ConfirmationError),
 }
 
-#[derive(Clone, Copy, Debug)]
-pub enum ActionResult {
-    Focused { direction: OperationDirection },
-    Moved { direction: OperationDirection },
-    Resized { axis: Axis, delta: Pixels },
-    LayoutSet { layout: DefaultLayout },
-    FloatToggled { floating: bool },
-}
-
-impl PartialEq for ActionResult {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Self::Focused { direction: left }, Self::Focused { direction: right })
-            | (Self::Moved { direction: left }, Self::Moved { direction: right }) => {
-                same_direction(*left, *right)
-            }
-            (
-                Self::Resized {
-                    axis: left_axis,
-                    delta: left_delta,
-                },
-                Self::Resized {
-                    axis: right_axis,
-                    delta: right_delta,
-                },
-            ) => left_axis == right_axis && left_delta == right_delta,
-            (Self::LayoutSet { layout: left }, Self::LayoutSet { layout: right }) => left == right,
-            (Self::FloatToggled { floating: left }, Self::FloatToggled { floating: right }) => {
-                left == right
-            }
-            _ => false,
-        }
-    }
-}
-
-impl Eq for ActionResult {}
-
-#[derive(Clone, Copy, Debug)]
-pub enum NativeEffect {
-    FocusNeighbor { direction: OperationDirection },
-    MoveNeighbor { direction: OperationDirection },
-    Resize { axis: Axis, delta: Pixels },
-    SetLayout { layout: DefaultLayout },
-    SetWindowFloating { floating: bool },
-}
-
-impl PartialEq for NativeEffect {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Self::FocusNeighbor { direction: left }, Self::FocusNeighbor { direction: right })
-            | (Self::MoveNeighbor { direction: left }, Self::MoveNeighbor { direction: right }) => {
-                same_direction(*left, *right)
-            }
-            (
-                Self::Resize {
-                    axis: left_axis,
-                    delta: left_delta,
-                },
-                Self::Resize {
-                    axis: right_axis,
-                    delta: right_delta,
-                },
-            ) => left_axis == right_axis && left_delta == right_delta,
-            (Self::SetLayout { layout: left }, Self::SetLayout { layout: right }) => left == right,
-            (
-                Self::SetWindowFloating { floating: left },
-                Self::SetWindowFloating { floating: right },
-            ) => left == right,
-            _ => false,
-        }
-    }
-}
-
-impl Eq for NativeEffect {}
-
-fn same_direction(left: OperationDirection, right: OperationDirection) -> bool {
-    std::mem::discriminant(&left) == std::mem::discriminant(&right)
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum ActionAdmission {
     Rejected(ActionRejection),
     Committed {
@@ -245,20 +167,20 @@ impl CatalogState {
             );
         }
 
-        if let Some(token) = request.confirmation {
-            if let Err(error) = self.confirmations.consume(
+        if let Some(token) = request.confirmation
+            && let Err(error) = self.confirmations.consume(
                 token,
                 context.principal,
                 &request.action,
                 request.expected_revision,
                 now,
-            ) {
-                return store(
-                    &mut self.invocations,
-                    request.invocation_id,
-                    ActionAdmission::Rejected(ActionRejection::Confirmation(error)),
-                );
-            }
+            )
+        {
+            return store(
+                &mut self.invocations,
+                request.invocation_id,
+                ActionAdmission::Rejected(ActionRejection::Confirmation(error)),
+            );
         }
 
         let availability = super::offer::offers(
@@ -279,7 +201,17 @@ impl CatalogState {
                 ActionAdmission::Rejected(ActionRejection::Unavailable(reason)),
             ),
             Some(ActionAvailability::Available) => {
-                if let Some(reason) = directional_gap(&self.snapshot, &request.action) {
+                let action = match bind_named_targets(&self.snapshot, &request.action) {
+                    Ok(action) => action,
+                    Err(reason) => {
+                        return store(
+                            &mut self.invocations,
+                            request.invocation_id,
+                            ActionAdmission::Rejected(ActionRejection::Unavailable(reason)),
+                        );
+                    }
+                };
+                if let Some(reason) = directional_gap(&self.snapshot, &action) {
                     return store(
                         &mut self.invocations,
                         request.invocation_id,
@@ -288,7 +220,7 @@ impl CatalogState {
                 }
                 let revision = self.snapshot.revision.next();
                 self.snapshot.revision = revision;
-                apply_logical(&mut self.snapshot, &request.action);
+                apply_logical(&mut self.snapshot, &action);
                 let undo = request
                     .action
                     .kind()
@@ -303,9 +235,9 @@ impl CatalogState {
                     .flatten();
                 let committed = ActionAdmission::Committed {
                     revision,
-                    logical_result: logical_result(&request.action, &self.snapshot),
+                    logical_result: logical_result(&action, &self.snapshot),
                     undo,
-                    effects: effects(&request.action, &self.snapshot),
+                    effects: effects(&action, &self.snapshot),
                 };
                 self.statuses.insert(
                     request.invocation_id,
@@ -357,71 +289,11 @@ fn store(
     admission
 }
 
-fn directional_gap(snapshot: &ActionSnapshot, action: &BuiltinAction) -> Option<Unavailability> {
-    match *action {
-        BuiltinAction::FocusWindow { direction } | BuiltinAction::MoveWindow { direction } => {
-            if neighbor_in(snapshot, direction) {
-                None
-            } else {
-                Some(Unavailability::NoWindowInDirection)
-            }
-        }
-        BuiltinAction::ResizeWindow { .. }
-        | BuiltinAction::SetWorkspaceLayout { .. }
-        | BuiltinAction::ToggleWindowFloat { .. } => None,
-    }
-}
-
-fn apply_logical(snapshot: &mut ActionSnapshot, action: &BuiltinAction) {
-    match *action {
-        BuiltinAction::SetWorkspaceLayout { layout, .. } => snapshot.current_layout = layout,
-        BuiltinAction::ToggleWindowFloat { .. } => {
-            snapshot.focused_window_floating = !snapshot.focused_window_floating;
-        }
-        BuiltinAction::FocusWindow { .. }
-        | BuiltinAction::MoveWindow { .. }
-        | BuiltinAction::ResizeWindow { .. } => {}
-    }
-}
-
-fn logical_result(action: &BuiltinAction, snapshot: &ActionSnapshot) -> ActionResult {
-    match *action {
-        BuiltinAction::FocusWindow { direction } => ActionResult::Focused { direction },
-        BuiltinAction::MoveWindow { direction } => ActionResult::Moved { direction },
-        BuiltinAction::ResizeWindow { axis, delta } => ActionResult::Resized { axis, delta },
-        BuiltinAction::SetWorkspaceLayout { layout, .. } => ActionResult::LayoutSet { layout },
-        BuiltinAction::ToggleWindowFloat { .. } => ActionResult::FloatToggled {
-            floating: snapshot.focused_window_floating,
-        },
-    }
-}
-
-fn effects(action: &BuiltinAction, snapshot: &ActionSnapshot) -> Vec<NativeEffect> {
-    match *action {
-        BuiltinAction::FocusWindow { direction } => {
-            vec![NativeEffect::FocusNeighbor { direction }]
-        }
-        BuiltinAction::MoveWindow { direction } => {
-            vec![NativeEffect::MoveNeighbor { direction }]
-        }
-        BuiltinAction::ResizeWindow { axis, delta } => {
-            vec![NativeEffect::Resize { axis, delta }]
-        }
-        BuiltinAction::SetWorkspaceLayout { layout, .. } => {
-            vec![NativeEffect::SetLayout { layout }]
-        }
-        BuiltinAction::ToggleWindowFloat { .. } => {
-            vec![NativeEffect::SetWindowFloating {
-                floating: snapshot.focused_window_floating,
-            }]
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::action::id::WindowId;
+    use crate::core::DefaultLayout;
     use crate::core::OperationDirection;
 
     fn live_state() -> CatalogState {
@@ -435,6 +307,7 @@ mod tests {
             neighbor_down: false,
             current_layout: DefaultLayout::BSP,
             focused_window_floating: false,
+            named_workspaces: Vec::new(),
             bindings: Vec::new(),
         })
     }

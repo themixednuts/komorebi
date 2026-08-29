@@ -37,6 +37,22 @@ pub enum ParameterDomain {
     WorkspaceSelector,
     WindowSelector,
     Layout,
+    Cycle,
+    Index,
+    Sizing,
+    Adjustment,
+    Flag,
+    Size,
+    Count,
+    Columns,
+    Name,
+    Path,
+    Behaviour,
+    Implementation,
+    Exe,
+    Identifier,
+    Ratios,
+    AtCount,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -94,75 +110,376 @@ const WINDOW: &[ParameterDefinition] = &[ParameterDefinition {
     domain: ParameterDomain::WindowSelector,
 }];
 
-pub const FOCUS_WINDOW: ActionDefinition = ActionDefinition {
-    id: ActionId::FOCUS_WINDOW,
-    schema_version: ActionSchemaVersion::V1,
-    kind: BuiltinActionKind::FocusWindow,
-    category: ActionCategory::Window,
-    title: "Focus window",
-    description: "Focus the neighboring window in one direction",
-    keywords: &["focus", "window", "direction"],
-    parameters: DIRECTION,
-    permitted_uses: BOTH_USES,
-    confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
-};
+const CYCLE: &[ParameterDefinition] = &[ParameterDefinition {
+    id: ParameterId::CYCLE,
+    domain: ParameterDomain::Cycle,
+}];
 
-pub const MOVE_WINDOW: ActionDefinition = ActionDefinition {
-    id: ActionId::MOVE_WINDOW,
-    schema_version: ActionSchemaVersion::V1,
-    kind: BuiltinActionKind::MoveWindow,
-    category: ActionCategory::Window,
-    title: "Move window",
-    description: "Move the focused window in one direction",
-    keywords: &["move", "window", "direction"],
-    parameters: DIRECTION,
-    permitted_uses: BOTH_USES,
-    confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
-};
+const INDEX: &[ParameterDefinition] = &[ParameterDefinition {
+    id: ParameterId::INDEX,
+    domain: ParameterDomain::Index,
+}];
 
-pub const RESIZE_WINDOW: ActionDefinition = ActionDefinition {
-    id: ActionId::RESIZE_WINDOW,
-    schema_version: ActionSchemaVersion::V1,
-    kind: BuiltinActionKind::ResizeWindow,
-    category: ActionCategory::Window,
-    title: "Resize window",
-    description: "Resize the focused window along one axis",
-    keywords: &["resize", "window", "axis"],
-    parameters: RESIZE,
-    permitted_uses: BOTH_USES,
-    confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
-};
+const MONITOR_WORKSPACE: &[ParameterDefinition] = &[
+    ParameterDefinition {
+        id: ParameterId::MONITOR,
+        domain: ParameterDomain::Index,
+    },
+    ParameterDefinition {
+        id: ParameterId::INDEX,
+        domain: ParameterDomain::Index,
+    },
+];
 
-pub const SET_WORKSPACE_LAYOUT: ActionDefinition = ActionDefinition {
-    id: ActionId::SET_WORKSPACE_LAYOUT,
-    schema_version: ActionSchemaVersion::V1,
-    kind: BuiltinActionKind::SetWorkspaceLayout,
-    category: ActionCategory::Workspace,
-    title: "Set workspace layout",
-    description: "Set the focused workspace to a built-in layout",
-    keywords: &["layout", "workspace", "bsp", "columns"],
-    parameters: LAYOUT,
-    permitted_uses: BOTH_USES,
-    confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
-};
+const NONE: &[ParameterDefinition] = &[];
 
-pub const TOGGLE_WINDOW_FLOAT: ActionDefinition = ActionDefinition {
-    id: ActionId::TOGGLE_WINDOW_FLOAT,
-    schema_version: ActionSchemaVersion::V1,
-    kind: BuiltinActionKind::ToggleWindowFloat,
-    category: ActionCategory::Window,
-    title: "Toggle window float",
-    description: "Toggle whether the focused window floats",
-    keywords: &["float", "window", "toggle"],
-    parameters: WINDOW,
-    permitted_uses: BOTH_USES,
-    confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
-};
+const AXIS: &[ParameterDefinition] = &[ParameterDefinition {
+    id: ParameterId::AXIS,
+    domain: ParameterDomain::Axis,
+}];
+
+const PADDING: &[ParameterDefinition] = &[
+    ParameterDefinition {
+        id: ParameterId::SIZING,
+        domain: ParameterDomain::Sizing,
+    },
+    ParameterDefinition {
+        id: ParameterId::ADJUSTMENT,
+        domain: ParameterDomain::Adjustment,
+    },
+];
+
+const FLAG: &[ParameterDefinition] = &[ParameterDefinition {
+    id: ParameterId::ENABLED,
+    domain: ParameterDomain::Flag,
+}];
+
+const SIZE: &[ParameterDefinition] = &[ParameterDefinition {
+    id: ParameterId::SIZE,
+    domain: ParameterDomain::Size,
+}];
+
+const COLUMNS: &[ParameterDefinition] = &[ParameterDefinition {
+    id: ParameterId::COLUMNS,
+    domain: ParameterDomain::Columns,
+}];
+
+const MONITOR_COUNT: &[ParameterDefinition] = &[
+    ParameterDefinition {
+        id: ParameterId::MONITOR,
+        domain: ParameterDomain::Index,
+    },
+    ParameterDefinition {
+        id: ParameterId::COUNT,
+        domain: ParameterDomain::Count,
+    },
+];
+
+const MONITOR_WORKSPACE_SIZE: &[ParameterDefinition] = &[
+    ParameterDefinition {
+        id: ParameterId::MONITOR,
+        domain: ParameterDomain::Index,
+    },
+    ParameterDefinition {
+        id: ParameterId::INDEX,
+        domain: ParameterDomain::Index,
+    },
+    ParameterDefinition {
+        id: ParameterId::SIZE,
+        domain: ParameterDomain::Size,
+    },
+];
+
+const MONITOR_WORKSPACE_FLAG: &[ParameterDefinition] = &[
+    ParameterDefinition {
+        id: ParameterId::MONITOR,
+        domain: ParameterDomain::Index,
+    },
+    ParameterDefinition {
+        id: ParameterId::INDEX,
+        domain: ParameterDomain::Index,
+    },
+    ParameterDefinition {
+        id: ParameterId::ENABLED,
+        domain: ParameterDomain::Flag,
+    },
+];
+
+const MONITOR_WORKSPACE_LAYOUT: &[ParameterDefinition] = &[
+    ParameterDefinition {
+        id: ParameterId::MONITOR,
+        domain: ParameterDomain::Index,
+    },
+    ParameterDefinition {
+        id: ParameterId::INDEX,
+        domain: ParameterDomain::Index,
+    },
+    ParameterDefinition {
+        id: ParameterId::LAYOUT,
+        domain: ParameterDomain::Layout,
+    },
+];
+
+const MONITOR_WORKSPACE_CONTAINER: &[ParameterDefinition] = &[
+    ParameterDefinition {
+        id: ParameterId::MONITOR,
+        domain: ParameterDomain::Index,
+    },
+    ParameterDefinition {
+        id: ParameterId::INDEX,
+        domain: ParameterDomain::Index,
+    },
+    ParameterDefinition {
+        id: ParameterId::CONTAINER,
+        domain: ParameterDomain::Index,
+    },
+];
+
+const NAME: &[ParameterDefinition] = &[ParameterDefinition {
+    id: ParameterId::NAME,
+    domain: ParameterDomain::Name,
+}];
+
+const BEHAVIOUR: &[ParameterDefinition] = &[ParameterDefinition {
+    id: ParameterId::BEHAVIOUR,
+    domain: ParameterDomain::Behaviour,
+}];
+
+const IMPLEMENTATION: &[ParameterDefinition] = &[ParameterDefinition {
+    id: ParameterId::IMPLEMENTATION,
+    domain: ParameterDomain::Implementation,
+}];
+
+const IMPLEMENTATION_FLAG: &[ParameterDefinition] = &[
+    ParameterDefinition {
+        id: ParameterId::IMPLEMENTATION,
+        domain: ParameterDomain::Implementation,
+    },
+    ParameterDefinition {
+        id: ParameterId::ENABLED,
+        domain: ParameterDomain::Flag,
+    },
+];
+
+const PATH: &[ParameterDefinition] = &[ParameterDefinition {
+    id: ParameterId::PATH,
+    domain: ParameterDomain::Path,
+}];
+
+const EXE: &[ParameterDefinition] = &[ParameterDefinition {
+    id: ParameterId::EXE,
+    domain: ParameterDomain::Exe,
+}];
+
+const TITLE_BAR: &[ParameterDefinition] = &[
+    ParameterDefinition {
+        id: ParameterId::IDENTIFIER,
+        domain: ParameterDomain::Identifier,
+    },
+    ParameterDefinition {
+        id: ParameterId::EXE,
+        domain: ParameterDomain::Exe,
+    },
+];
+
+const NAME_SIZE: &[ParameterDefinition] = &[
+    ParameterDefinition {
+        id: ParameterId::NAME,
+        domain: ParameterDomain::Name,
+    },
+    ParameterDefinition {
+        id: ParameterId::SIZE,
+        domain: ParameterDomain::Size,
+    },
+];
+
+const NAME_FLAG: &[ParameterDefinition] = &[
+    ParameterDefinition {
+        id: ParameterId::NAME,
+        domain: ParameterDomain::Name,
+    },
+    ParameterDefinition {
+        id: ParameterId::ENABLED,
+        domain: ParameterDomain::Flag,
+    },
+];
+
+const NAME_LAYOUT: &[ParameterDefinition] = &[
+    ParameterDefinition {
+        id: ParameterId::NAME,
+        domain: ParameterDomain::Name,
+    },
+    ParameterDefinition {
+        id: ParameterId::LAYOUT,
+        domain: ParameterDomain::Layout,
+    },
+];
+
+const NAME_PATH: &[ParameterDefinition] = &[
+    ParameterDefinition {
+        id: ParameterId::NAME,
+        domain: ParameterDomain::Name,
+    },
+    ParameterDefinition {
+        id: ParameterId::PATH,
+        domain: ParameterDomain::Path,
+    },
+];
+
+const LAYOUT_RULE: &[ParameterDefinition] = &[
+    ParameterDefinition {
+        id: ParameterId::MONITOR,
+        domain: ParameterDomain::Index,
+    },
+    ParameterDefinition {
+        id: ParameterId::INDEX,
+        domain: ParameterDomain::Index,
+    },
+    ParameterDefinition {
+        id: ParameterId::AT_COUNT,
+        domain: ParameterDomain::AtCount,
+    },
+    ParameterDefinition {
+        id: ParameterId::LAYOUT,
+        domain: ParameterDomain::Layout,
+    },
+];
+
+const CUSTOM_LAYOUT_RULE: &[ParameterDefinition] = &[
+    ParameterDefinition {
+        id: ParameterId::MONITOR,
+        domain: ParameterDomain::Index,
+    },
+    ParameterDefinition {
+        id: ParameterId::INDEX,
+        domain: ParameterDomain::Index,
+    },
+    ParameterDefinition {
+        id: ParameterId::AT_COUNT,
+        domain: ParameterDomain::AtCount,
+    },
+    ParameterDefinition {
+        id: ParameterId::PATH,
+        domain: ParameterDomain::Path,
+    },
+];
+
+const NAME_LAYOUT_RULE: &[ParameterDefinition] = &[
+    ParameterDefinition {
+        id: ParameterId::NAME,
+        domain: ParameterDomain::Name,
+    },
+    ParameterDefinition {
+        id: ParameterId::AT_COUNT,
+        domain: ParameterDomain::AtCount,
+    },
+    ParameterDefinition {
+        id: ParameterId::LAYOUT,
+        domain: ParameterDomain::Layout,
+    },
+];
+
+const NAME_CUSTOM_LAYOUT_RULE: &[ParameterDefinition] = &[
+    ParameterDefinition {
+        id: ParameterId::NAME,
+        domain: ParameterDomain::Name,
+    },
+    ParameterDefinition {
+        id: ParameterId::AT_COUNT,
+        domain: ParameterDomain::AtCount,
+    },
+    ParameterDefinition {
+        id: ParameterId::PATH,
+        domain: ParameterDomain::Path,
+    },
+];
+
+const MONITOR_NAMES: &[ParameterDefinition] = &[
+    ParameterDefinition {
+        id: ParameterId::MONITOR,
+        domain: ParameterDomain::Index,
+    },
+    ParameterDefinition {
+        id: ParameterId::NAME,
+        domain: ParameterDomain::Name,
+    },
+];
+
+const MONITOR_WORKSPACE_NAME: &[ParameterDefinition] = &[
+    ParameterDefinition {
+        id: ParameterId::MONITOR,
+        domain: ParameterDomain::Index,
+    },
+    ParameterDefinition {
+        id: ParameterId::INDEX,
+        domain: ParameterDomain::Index,
+    },
+    ParameterDefinition {
+        id: ParameterId::NAME,
+        domain: ParameterDomain::Name,
+    },
+];
+
+const MONITOR_WORKSPACE_PATH: &[ParameterDefinition] = &[
+    ParameterDefinition {
+        id: ParameterId::MONITOR,
+        domain: ParameterDomain::Index,
+    },
+    ParameterDefinition {
+        id: ParameterId::INDEX,
+        domain: ParameterDomain::Index,
+    },
+    ParameterDefinition {
+        id: ParameterId::PATH,
+        domain: ParameterDomain::Path,
+    },
+];
+
+const RATIOS: &[ParameterDefinition] = &[ParameterDefinition {
+    id: ParameterId::RATIOS,
+    domain: ParameterDomain::Ratios,
+}];
+
+const RESIZE_EDGE: &[ParameterDefinition] = &[
+    ParameterDefinition {
+        id: ParameterId::DIRECTION,
+        domain: ParameterDomain::Direction,
+    },
+    ParameterDefinition {
+        id: ParameterId::DELTA,
+        domain: ParameterDomain::Pixels,
+    },
+];
+
+const fn def(
+    id: ActionId,
+    kind: BuiltinActionKind,
+    category: ActionCategory,
+    title: &'static str,
+    description: &'static str,
+    keywords: &'static [&'static str],
+    parameters: &'static [ParameterDefinition],
+) -> ActionDefinition {
+    ActionDefinition {
+        id,
+        schema_version: ActionSchemaVersion::V1,
+        kind,
+        category,
+        title,
+        description,
+        keywords,
+        parameters,
+        permitted_uses: BOTH_USES,
+        confirmation: ConfirmationPolicy::None,
+        undo: UndoPolicy::PriorManagerIntent,
+    }
+}
+
+mod window;
+mod workspace;
+
+pub use window::*;
+pub use workspace::*;
 
 impl BuiltinActionKind {
     #[must_use]
@@ -173,12 +490,122 @@ impl BuiltinActionKind {
             Self::ResizeWindow => &RESIZE_WINDOW,
             Self::SetWorkspaceLayout => &SET_WORKSPACE_LAYOUT,
             Self::ToggleWindowFloat => &TOGGLE_WINDOW_FLOAT,
+            Self::CycleFocusWindow => &CYCLE_FOCUS_WINDOW,
+            Self::CycleMoveWindow => &CYCLE_MOVE_WINDOW,
+            Self::ToggleWindowMonocle => &TOGGLE_WINDOW_MONOCLE,
+            Self::ToggleWindowMaximize => &TOGGLE_WINDOW_MAXIMIZE,
+            Self::ToggleContainerLock => &TOGGLE_CONTAINER_LOCK,
+            Self::StackWindow => &STACK_WINDOW,
+            Self::UnstackWindow => &UNSTACK_WINDOW,
+            Self::StackAll => &STACK_ALL,
+            Self::UnstackAll => &UNSTACK_ALL,
+            Self::CycleStack => &CYCLE_STACK,
+            Self::CycleStackIndex => &CYCLE_STACK_INDEX,
+            Self::FocusStackWindow => &FOCUS_STACK_WINDOW,
+            Self::FocusWorkspace => &FOCUS_WORKSPACE,
+            Self::CycleFocusWorkspace => &CYCLE_FOCUS_WORKSPACE,
+            Self::CycleFocusEmptyWorkspace => &CYCLE_FOCUS_EMPTY_WORKSPACE,
+            Self::FocusLastWorkspace => &FOCUS_LAST_WORKSPACE,
+            Self::CloseWorkspace => &CLOSE_WORKSPACE,
+            Self::FocusMonitor => &FOCUS_MONITOR,
+            Self::CycleFocusMonitor => &CYCLE_FOCUS_MONITOR,
+            Self::FocusMonitorAtCursor => &FOCUS_MONITOR_AT_CURSOR,
+            Self::FocusWorkspaceOnAllMonitors => &FOCUS_WORKSPACE_ON_ALL_MONITORS,
+            Self::FocusMonitorWorkspace => &FOCUS_MONITOR_WORKSPACE,
+            Self::CloseWindow => &CLOSE_WINDOW,
+            Self::MinimizeWindow => &MINIMIZE_WINDOW,
+            Self::ForceFocus => &FORCE_FOCUS,
+            Self::PromoteContainer => &PROMOTE_CONTAINER,
+            Self::PromoteContainerSwap => &PROMOTE_CONTAINER_SWAP,
+            Self::PromoteFocus => &PROMOTE_FOCUS,
+            Self::PromoteWindow => &PROMOTE_WINDOW,
+            Self::NewWorkspace => &NEW_WORKSPACE,
+            Self::ToggleTiling => &TOGGLE_TILING,
+            Self::CycleLayout => &CYCLE_LAYOUT,
+            Self::FlipLayout => &FLIP_LAYOUT,
+            Self::ToggleWorkspaceLayer => &TOGGLE_WORKSPACE_LAYER,
+            Self::MoveContainerToLastWorkspace => &MOVE_CONTAINER_TO_LAST_WORKSPACE,
+            Self::SendContainerToLastWorkspace => &SEND_CONTAINER_TO_LAST_WORKSPACE,
+            Self::MoveContainerToWorkspace => &MOVE_CONTAINER_TO_WORKSPACE,
+            Self::CycleMoveContainerToWorkspace => &CYCLE_MOVE_CONTAINER_TO_WORKSPACE,
+            Self::SendContainerToWorkspace => &SEND_CONTAINER_TO_WORKSPACE,
+            Self::CycleSendContainerToWorkspace => &CYCLE_SEND_CONTAINER_TO_WORKSPACE,
+            Self::MoveContainerToMonitor => &MOVE_CONTAINER_TO_MONITOR,
+            Self::CycleMoveContainerToMonitor => &CYCLE_MOVE_CONTAINER_TO_MONITOR,
+            Self::SendContainerToMonitor => &SEND_CONTAINER_TO_MONITOR,
+            Self::CycleSendContainerToMonitor => &CYCLE_SEND_CONTAINER_TO_MONITOR,
+            Self::MoveContainerToMonitorWorkspace => &MOVE_CONTAINER_TO_MONITOR_WORKSPACE,
+            Self::SendContainerToMonitorWorkspace => &SEND_CONTAINER_TO_MONITOR_WORKSPACE,
+            Self::MoveWorkspaceToMonitor => &MOVE_WORKSPACE_TO_MONITOR,
+            Self::CycleMoveWorkspaceToMonitor => &CYCLE_MOVE_WORKSPACE_TO_MONITOR,
+            Self::SwapWorkspacesToMonitor => &SWAP_WORKSPACES_TO_MONITOR,
+            Self::PreselectDirection => &PRESELECT_DIRECTION,
+            Self::CancelPreselect => &CANCEL_PRESELECT,
+            Self::Retile => &RETILE,
+            Self::RetileWithResizeDimensions => &RETILE_WITH_RESIZE_DIMENSIONS,
+            Self::ManageFocusedWindow => &MANAGE_FOCUSED_WINDOW,
+            Self::UnmanageFocusedWindow => &UNMANAGE_FOCUSED_WINDOW,
+            Self::AdjustContainerPadding => &ADJUST_CONTAINER_PADDING,
+            Self::AdjustWorkspacePadding => &ADJUST_WORKSPACE_PADDING,
+            Self::ToggleMouseFollowsFocus => &TOGGLE_MOUSE_FOLLOWS_FOCUS,
+            Self::SetMouseFollowsFocus => &SET_MOUSE_FOLLOWS_FOCUS,
+            Self::ToggleWindowContainerBehaviour => &TOGGLE_WINDOW_CONTAINER_BEHAVIOUR,
+            Self::ToggleFloatOverride => &TOGGLE_FLOAT_OVERRIDE,
+            Self::ToggleWorkspaceWindowContainerBehaviour => {
+                &TOGGLE_WORKSPACE_WINDOW_CONTAINER_BEHAVIOUR
+            }
+            Self::ToggleWorkspaceFloatOverride => &TOGGLE_WORKSPACE_FLOAT_OVERRIDE,
+            Self::ToggleCrossMonitorMoveBehaviour => &TOGGLE_CROSS_MONITOR_MOVE_BEHAVIOUR,
+            Self::ToggleMonocleFocusBehaviour => &TOGGLE_MONOCLE_FOCUS_BEHAVIOUR,
+            Self::TogglePause => &TOGGLE_PAUSE,
+            Self::SetFocusedContainerPadding => &SET_FOCUSED_CONTAINER_PADDING,
+            Self::SetFocusedWorkspacePadding => &SET_FOCUSED_WORKSPACE_PADDING,
+            Self::SetContainerPadding => &SET_CONTAINER_PADDING,
+            Self::SetWorkspacePadding => &SET_WORKSPACE_PADDING,
+            Self::SetWorkspaceTiling => &SET_WORKSPACE_TILING,
+            Self::SetMonitorWorkspaceLayout => &SET_MONITOR_WORKSPACE_LAYOUT,
+            Self::EnsureWorkspaces => &ENSURE_WORKSPACES,
+            Self::ClearWorkspaceLayoutRules => &CLEAR_WORKSPACE_LAYOUT_RULES,
+            Self::SetScrollingColumns => &SET_SCROLLING_COLUMNS,
+            Self::LockContainer => &LOCK_CONTAINER,
+            Self::UnlockContainer => &UNLOCK_CONTAINER,
+            Self::ToggleTitleBars => &TOGGLE_TITLE_BARS,
+            Self::EnforceWorkspaceRules => &ENFORCE_WORKSPACE_RULES,
+            Self::AddSessionFloatRule => &ADD_SESSION_FLOAT_RULE,
+            Self::ClearSessionFloatRules => &CLEAR_SESSION_FLOAT_RULES,
+            Self::ResizeWindowEdge => &RESIZE_WINDOW_EDGE,
+            Self::SetWindowHidingBehaviour => &SET_WINDOW_HIDING_BEHAVIOUR,
+            Self::SetCrossMonitorMoveBehaviour => &SET_CROSS_MONITOR_MOVE_BEHAVIOUR,
+            Self::SetMonocleFocusBehaviour => &SET_MONOCLE_FOCUS_BEHAVIOUR,
+            Self::SetUnmanagedWindowOperationBehaviour => &SET_UNMANAGED_WINDOW_OPERATION_BEHAVIOUR,
+            Self::SetFocusFollowsMouse => &SET_FOCUS_FOLLOWS_MOUSE,
+            Self::ToggleFocusFollowsMouse => &TOGGLE_FOCUS_FOLLOWS_MOUSE,
+            Self::AddWorkspaceLayoutRule => &ADD_WORKSPACE_LAYOUT_RULE,
+            Self::FocusNamedWorkspace => &FOCUS_NAMED_WORKSPACE,
+            Self::MoveContainerToNamedWorkspace => &MOVE_CONTAINER_TO_NAMED_WORKSPACE,
+            Self::SendContainerToNamedWorkspace => &SEND_CONTAINER_TO_NAMED_WORKSPACE,
+            Self::SetNamedWorkspaceContainerPadding => &SET_NAMED_WORKSPACE_CONTAINER_PADDING,
+            Self::SetNamedWorkspacePadding => &SET_NAMED_WORKSPACE_PADDING,
+            Self::SetNamedWorkspaceTiling => &SET_NAMED_WORKSPACE_TILING,
+            Self::SetNamedWorkspaceLayout => &SET_NAMED_WORKSPACE_LAYOUT,
+            Self::SetNamedWorkspaceCustomLayout => &SET_NAMED_WORKSPACE_CUSTOM_LAYOUT,
+            Self::AddNamedWorkspaceLayoutRule => &ADD_NAMED_WORKSPACE_LAYOUT_RULE,
+            Self::AddNamedWorkspaceCustomLayoutRule => &ADD_NAMED_WORKSPACE_CUSTOM_LAYOUT_RULE,
+            Self::ClearNamedWorkspaceLayoutRules => &CLEAR_NAMED_WORKSPACE_LAYOUT_RULES,
+            Self::EnsureNamedWorkspaces => &ENSURE_NAMED_WORKSPACES,
+            Self::SetWorkspaceName => &SET_WORKSPACE_NAME,
+            Self::SetLayoutRatios => &SET_LAYOUT_RATIOS,
+            Self::SetCustomLayout => &SET_CUSTOM_LAYOUT,
+            Self::SetWorkspaceCustomLayout => &SET_WORKSPACE_CUSTOM_LAYOUT,
+            Self::AddWorkspaceCustomLayoutRule => &ADD_WORKSPACE_CUSTOM_LAYOUT_RULE,
+            Self::EagerFocus => &EAGER_FOCUS,
+            Self::RemoveTitleBar => &REMOVE_TITLE_BAR,
         }
     }
 }
 
 #[must_use]
-pub fn definitions() -> [&'static ActionDefinition; 5] {
+pub fn definitions() -> [&'static ActionDefinition; 113] {
     BuiltinActionKind::ALL.map(BuiltinActionKind::definition)
 }
 

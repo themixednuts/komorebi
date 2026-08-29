@@ -25,6 +25,7 @@ use uds_windows::UnixStream;
 use crate::animation::ANIMATION_ENABLED_GLOBAL;
 use crate::animation::ANIMATION_ENABLED_PER_ANIMATION;
 use crate::animation::AnimationEngine;
+use crate::core::ApplicationIdentifier;
 use crate::core::Arrangement;
 use crate::core::Axis;
 use crate::core::BorderImplementation;
@@ -33,34 +34,34 @@ use crate::core::CycleDirection;
 use crate::core::DefaultLayout;
 use crate::core::FocusFollowsMouseImplementation;
 use crate::core::Layout;
+use crate::core::LayoutOptions;
 use crate::core::MonocleFocusBehaviour;
 use crate::core::MoveBehaviour;
 use crate::core::OperationBehaviour;
 use crate::core::OperationDirection;
 use crate::core::Rect;
+use crate::core::ScrollingLayoutOptions;
 use crate::core::Sizing;
 use crate::core::WindowContainerBehaviour;
 use crate::core::WindowManagementBehaviour;
+use crate::core::config_generation::IdWithIdentifier;
 use crate::core::config_generation::MatchingRule;
+use crate::core::config_generation::MatchingStrategy;
+use crate::core::validate_ratios;
 
+use crate::CUSTOM_FFM;
 use crate::CrossBoundaryBehaviour;
 use crate::DATA_DIR;
+use crate::FLOATING_APPLICATIONS;
 use crate::HOME_DIR;
 use crate::NO_TITLEBAR;
 use crate::REGEX_IDENTIFIERS;
+use crate::REMOVE_TITLEBARS;
+use crate::SESSION_FLOATING_APPLICATIONS;
 use crate::SUBSCRIBERS;
 use crate::WORKSPACE_MATCHING_RULES;
-use crate::action::ActionAdmission;
-use crate::action::ActionGrants;
 use crate::action::ActionSnapshot;
-use crate::action::BuiltinAction;
 use crate::action::CatalogState;
-use crate::action::InvocationContext;
-use crate::action::InvocationId;
-use crate::action::InvocationOrigin;
-use crate::action::InvokeAction;
-use crate::action::PrincipalId;
-use crate::action::id::WindowId;
 use crate::border_manager;
 use crate::border_manager::BORDER_OFFSET;
 use crate::border_manager::BORDER_WIDTH;
@@ -80,6 +81,11 @@ use crate::windows_api::WindowsApi;
 use crate::winevent_listener;
 use crate::workspace::Workspace;
 use crate::workspace::WorkspaceLayer;
+use crate::workspace::WorkspaceWindowLocation;
+
+mod action_catalog;
+
+pub use action_catalog::CatalogActionError;
 
 #[derive(Debug)]
 pub struct WindowManager {
@@ -185,93 +191,6 @@ impl WindowManager {
             known_hwnds: HashMap::new(),
             catalog: CatalogState::new(ActionSnapshot::empty()),
         })
-    }
-
-    pub fn refresh_catalog_observation(&mut self) {
-        let snapshot = self.observe_action_snapshot();
-        self.catalog.replace_observation(snapshot);
-    }
-
-    #[must_use]
-    pub fn observe_action_snapshot(&self) -> ActionSnapshot {
-        let focused_window = self
-            .focused_window()
-            .ok()
-            .map(|window| WindowId::new(window.hwnd as u64));
-        let current_layout = self
-            .focused_workspace()
-            .ok()
-            .and_then(|workspace| match workspace.layout {
-                Layout::Default(layout) => Some(layout),
-                Layout::Custom(_) => None,
-            })
-            .unwrap_or(DefaultLayout::BSP);
-        let focused_window_floating = self
-            .focused_workspace()
-            .ok()
-            .is_some_and(|workspace| workspace.layer == WorkspaceLayer::Floating);
-        ActionSnapshot {
-            revision: self.catalog.snapshot().revision,
-            paused: self.is_paused,
-            focused_window,
-            neighbor_left: self.can_focus_in_direction(OperationDirection::Left),
-            neighbor_right: self.can_focus_in_direction(OperationDirection::Right),
-            neighbor_up: self.can_focus_in_direction(OperationDirection::Up),
-            neighbor_down: self.can_focus_in_direction(OperationDirection::Down),
-            current_layout,
-            focused_window_floating,
-            bindings: Vec::new(),
-        }
-    }
-
-    fn can_focus_in_direction(&self, direction: OperationDirection) -> bool {
-        let Ok(workspace) = self.focused_workspace() else {
-            return false;
-        };
-        if workspace.new_idx_for_direction(direction).is_some() {
-            return true;
-        }
-        if matches!(
-            self.cross_boundary_behaviour,
-            CrossBoundaryBehaviour::Workspace
-        ) && matches!(
-            direction,
-            OperationDirection::Left | OperationDirection::Right
-        ) && self
-            .focused_monitor()
-            .is_some_and(|monitor| monitor.workspaces().len() > 1)
-        {
-            return true;
-        }
-        self.monitor_idx_in_direction(direction).is_some()
-    }
-
-    pub fn admit_focus_window(&mut self, direction: OperationDirection) -> eyre::Result<()> {
-        self.refresh_catalog_observation();
-        let admission = self.catalog.admit(
-            InvokeAction {
-                invocation_id: InvocationId::new(),
-                expected_revision: self.catalog.snapshot().revision,
-                action: BuiltinAction::FocusWindow { direction },
-                confirmation: None,
-            },
-            &InvocationContext {
-                principal: PrincipalId::new(0),
-                origin: InvocationOrigin::Cli,
-                grants: ActionGrants::all(),
-            },
-            std::time::Instant::now(),
-        );
-        match admission {
-            ActionAdmission::Rejected(reason) => bail!("{reason}"),
-            ActionAdmission::Committed { .. } => {
-                let focused_workspace = self.focused_workspace()?;
-                match focused_workspace.layer {
-                    WorkspaceLayer::Tiling => self.focus_container_in_direction(direction),
-                    WorkspaceLayer::Floating => self.focus_floating_window_in_direction(direction),
-                }
-            }
-        }
     }
 
     #[tracing::instrument(skip(self))]
@@ -1455,6 +1374,318 @@ impl WindowManager {
         Ok(())
     }
 
+    pub fn resize_window_on_axis(
+        &mut self,
+        axis: Axis,
+        sizing: Sizing,
+        delta: i32,
+    ) -> eyre::Result<()> {
+        let workspace = self.focused_workspace_mut()?;
+        let container_len = workspace.containers().len();
+        let no_layout_rules = workspace.layout_rules.is_empty();
+
+        if let Layout::Custom(custom) = &mut workspace.layout {
+            if matches!(axis, Axis::Horizontal) {
+                #[allow(clippy::cast_precision_loss)]
+                let percentage = custom
+                    .primary_width_percentage()
+                    .unwrap_or(100.0 / (custom.len() as f32));
+
+                if no_layout_rules {
+                    match sizing {
+                        Sizing::Increase => {
+                            custom.set_primary_width_percentage(percentage + 5.0);
+                        }
+                        Sizing::Decrease => {
+                            custom.set_primary_width_percentage(percentage - 5.0);
+                        }
+                    }
+                } else {
+                    for rule in &mut workspace.layout_rules {
+                        if container_len >= rule.0
+                            && let Layout::Custom(ref mut custom) = rule.1
+                        {
+                            match sizing {
+                                Sizing::Increase => {
+                                    custom.set_primary_width_percentage(percentage + 5.0);
+                                }
+                                Sizing::Decrease => {
+                                    custom.set_primary_width_percentage(percentage - 5.0);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            match axis {
+                Axis::Horizontal => {
+                    self.resize_window(OperationDirection::Left, sizing, delta, false)?;
+                    self.resize_window(OperationDirection::Right, sizing, delta, false)?;
+                }
+                Axis::Vertical => {
+                    self.resize_window(OperationDirection::Up, sizing, delta, false)?;
+                    self.resize_window(OperationDirection::Down, sizing, delta, false)?;
+                }
+                Axis::HorizontalAndVertical => {
+                    self.resize_window(OperationDirection::Left, sizing, delta, false)?;
+                    self.resize_window(OperationDirection::Right, sizing, delta, false)?;
+                    self.resize_window(OperationDirection::Up, sizing, delta, false)?;
+                    self.resize_window(OperationDirection::Down, sizing, delta, false)?;
+                }
+            }
+        }
+
+        self.update_focused_workspace(false, false)
+    }
+
+    fn focus_cursor_monitor_if_empty(&mut self) -> eyre::Result<()> {
+        if let Some(monitor_idx) = self.monitor_idx_from_current_pos()
+            && monitor_idx != self.focused_monitor_idx()
+            && let Some(monitor) = self.monitors().get(monitor_idx)
+            && let Some(workspace) = monitor.focused_workspace()
+            && workspace.is_empty()
+        {
+            self.focus_monitor(monitor_idx)?;
+        }
+        Ok(())
+    }
+
+    pub fn focus_workspace_number(&mut self, workspace_idx: usize) -> eyre::Result<()> {
+        self.focus_cursor_monitor_if_empty()?;
+
+        if self.focused_workspace_idx().unwrap_or_default() != workspace_idx {
+            self.focus_workspace(workspace_idx)?;
+        }
+        Ok(())
+    }
+
+    pub fn cycle_focus_workspace(&mut self, direction: CycleDirection) -> eyre::Result<()> {
+        self.focus_cursor_monitor_if_empty()?;
+
+        let focused_monitor = self.focused_monitor().ok_or_eyre("there is no monitor")?;
+        let workspace_idx = direction.next_idx(
+            focused_monitor.focused_workspace_idx(),
+            NonZeroUsize::new(focused_monitor.workspaces().len())
+                .ok_or_eyre("there must be at least one workspace")?,
+        );
+
+        self.focus_workspace(workspace_idx)
+    }
+
+    pub fn cycle_focus_empty_workspace(&mut self, direction: CycleDirection) -> eyre::Result<()> {
+        self.focus_cursor_monitor_if_empty()?;
+
+        let focused_monitor = self.focused_monitor().ok_or_eyre("there is no monitor")?;
+        let focused_workspace_idx = focused_monitor.focused_workspace_idx();
+        let workspaces = focused_monitor.workspaces().len();
+        let empty_workspaces: Vec<usize> = focused_monitor
+            .workspaces()
+            .iter()
+            .enumerate()
+            .filter(|(_, workspace)| workspace.is_empty())
+            .map(|(idx, _)| idx)
+            .collect();
+
+        if empty_workspaces.is_empty() {
+            return Ok(());
+        }
+
+        let mut workspace_idx = direction.next_idx(
+            focused_workspace_idx,
+            NonZeroUsize::new(workspaces).ok_or_eyre("there must be at least one workspace")?,
+        );
+
+        while !empty_workspaces.contains(&workspace_idx) {
+            workspace_idx = direction.next_idx(
+                workspace_idx,
+                NonZeroUsize::new(workspaces).ok_or_eyre("there must be at least one workspace")?,
+            );
+        }
+
+        self.focus_workspace(workspace_idx)
+    }
+
+    pub fn focus_last_workspace(&mut self) -> eyre::Result<()> {
+        self.focus_cursor_monitor_if_empty()?;
+
+        let idx = self
+            .focused_monitor()
+            .ok_or_eyre("there is no monitor")?
+            .focused_workspace_idx();
+
+        if let Some(monitor) = self.focused_monitor_mut()
+            && let Some(last_focused_workspace) = monitor.last_focused_workspace
+        {
+            self.focus_workspace(last_focused_workspace)?;
+        }
+
+        self.focused_monitor_mut()
+            .ok_or_eyre("there is no monitor")?
+            .last_focused_workspace = Option::from(idx);
+        Ok(())
+    }
+
+    pub fn close_focused_workspace(&mut self) -> eyre::Result<()> {
+        self.focus_cursor_monitor_if_empty()?;
+
+        let mut can_close = false;
+
+        if let Some(monitor) = self.focused_monitor_mut() {
+            let focused_workspace_idx = monitor.focused_workspace_idx();
+            let next_focused_workspace_idx = focused_workspace_idx.saturating_sub(1);
+
+            if let Some(workspace) = monitor.focused_workspace()
+                && monitor.workspaces().len() > 1
+                && workspace.containers().is_empty()
+                && workspace.floating_windows().is_empty()
+                && workspace.monocle_container.is_none()
+                && workspace.maximized_window.is_none()
+                && workspace.name.is_none()
+            {
+                can_close = true;
+            }
+
+            if can_close
+                && monitor
+                    .workspaces_mut()
+                    .remove(focused_workspace_idx)
+                    .is_some()
+            {
+                self.focus_workspace(next_focused_workspace_idx)?;
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn focus_monitor_number(&mut self, monitor_idx: usize) -> eyre::Result<()> {
+        self.focus_monitor(monitor_idx)?;
+        self.update_focused_workspace(self.mouse_follows_focus, true)
+    }
+
+    pub fn cycle_focus_monitor(&mut self, direction: CycleDirection) -> eyre::Result<()> {
+        let monitor_idx = direction.next_idx(
+            self.focused_monitor_idx(),
+            NonZeroUsize::new(self.monitors().len())
+                .ok_or_eyre("there must be at least one monitor")?,
+        );
+
+        self.focus_monitor(monitor_idx)?;
+        self.update_focused_workspace(self.mouse_follows_focus, true)
+    }
+
+    pub fn focus_monitor_at_cursor(&mut self) -> eyre::Result<()> {
+        if let Some(monitor_idx) = self.monitor_idx_from_current_pos() {
+            self.focus_monitor(monitor_idx)?;
+        }
+        Ok(())
+    }
+
+    pub fn focus_workspace_on_all_monitors(&mut self, workspace_idx: usize) -> eyre::Result<()> {
+        self.focus_cursor_monitor_if_empty()?;
+
+        let focused_monitor_idx = self.focused_monitor_idx();
+
+        for (i, monitor) in self.monitors_mut().iter_mut().enumerate() {
+            if i != focused_monitor_idx {
+                monitor.focus_workspace(workspace_idx)?;
+                monitor.load_focused_workspace(false)?;
+            }
+        }
+
+        self.focus_workspace(workspace_idx)
+    }
+
+    pub fn focus_monitor_workspace(
+        &mut self,
+        monitor_idx: usize,
+        workspace_idx: usize,
+    ) -> eyre::Result<()> {
+        let focused_pair = (
+            self.focused_monitor_idx(),
+            self.focused_workspace_idx().unwrap_or_default(),
+        );
+
+        if focused_pair != (monitor_idx, workspace_idx) {
+            self.focus_monitor(monitor_idx)?;
+            self.focus_workspace(workspace_idx)?;
+        }
+        Ok(())
+    }
+
+    pub fn move_container_to_last_workspace(&mut self, follow: bool) -> eyre::Result<()> {
+        self.focus_cursor_monitor_if_empty()?;
+
+        let idx = self
+            .focused_monitor()
+            .ok_or_eyre("there is no monitor")?
+            .focused_workspace_idx();
+
+        if let Some(monitor) = self.focused_monitor_mut()
+            && let Some(last_focused_workspace) = monitor.last_focused_workspace
+        {
+            self.move_container_to_workspace(last_focused_workspace, follow, None)?;
+        }
+
+        self.focused_monitor_mut()
+            .ok_or_eyre("there is no monitor")?
+            .last_focused_workspace = Option::from(idx);
+        Ok(())
+    }
+
+    pub fn cycle_move_container_to_workspace(
+        &mut self,
+        direction: CycleDirection,
+        follow: bool,
+    ) -> eyre::Result<()> {
+        let focused_monitor = self.focused_monitor().ok_or_eyre("there is no monitor")?;
+        let workspace_idx = direction.next_idx(
+            focused_monitor.focused_workspace_idx(),
+            NonZeroUsize::new(focused_monitor.workspaces().len())
+                .ok_or_eyre("there must be at least one workspace")?,
+        );
+
+        self.move_container_to_workspace(workspace_idx, follow, None)
+    }
+
+    pub fn transfer_container_to_monitor(
+        &mut self,
+        monitor_idx: usize,
+        workspace_idx: Option<usize>,
+        follow: bool,
+    ) -> eyre::Result<()> {
+        let direction = self.direction_from_monitor_idx(monitor_idx);
+        self.move_container_to_monitor(monitor_idx, workspace_idx, follow, direction)
+    }
+
+    pub fn cycle_transfer_container_to_monitor(
+        &mut self,
+        direction: CycleDirection,
+        follow: bool,
+    ) -> eyre::Result<()> {
+        let monitor_idx = direction.next_idx(
+            self.focused_monitor_idx(),
+            NonZeroUsize::new(self.monitors().len())
+                .ok_or_eyre("there must be at least one monitor")?,
+        );
+
+        self.transfer_container_to_monitor(monitor_idx, None, follow)
+    }
+
+    pub fn cycle_move_workspace_to_monitor(
+        &mut self,
+        direction: CycleDirection,
+    ) -> eyre::Result<()> {
+        let monitor_idx = direction.next_idx(
+            self.focused_monitor_idx(),
+            NonZeroUsize::new(self.monitors().len())
+                .ok_or_eyre("there must be at least one monitor")?,
+        );
+
+        self.move_workspace_to_monitor(monitor_idx)
+    }
+
     #[tracing::instrument(skip(self))]
     pub fn stop(&mut self, ignore_restore: bool) -> eyre::Result<()> {
         tracing::info!(
@@ -2209,6 +2440,437 @@ impl WindowManager {
         }
 
         Ok(())
+    }
+
+    pub fn apply_preselect_direction(&mut self, direction: OperationDirection) -> eyre::Result<()> {
+        let focused_workspace = self.focused_workspace()?;
+        let mut update = false;
+
+        if focused_workspace.preselected_container_idx.is_some() {
+            tracing::warn!(
+                "ignoring command as this workspace already has a direction preselect set"
+            );
+        } else if matches!(focused_workspace.layer, WorkspaceLayer::Tiling) {
+            self.preselect_container_in_direction(direction)?;
+            update = true;
+        }
+
+        if update {
+            self.focused_workspace_mut()?.update()?;
+        }
+        Ok(())
+    }
+
+    pub fn cancel_focused_preselect(&mut self) -> eyre::Result<()> {
+        let focused_workspace = self.focused_workspace_mut()?;
+        focused_workspace.cancel_preselect();
+        focused_workspace.update()?;
+        Ok(())
+    }
+
+    pub fn toggle_mouse_follows_focus(&mut self) {
+        self.mouse_follows_focus = !self.mouse_follows_focus;
+    }
+
+    pub fn set_mouse_follows_focus(&mut self, enabled: bool) {
+        self.mouse_follows_focus = enabled;
+    }
+
+    pub fn set_focus_follows_mouse_implementation(
+        &mut self,
+        mut implementation: FocusFollowsMouseImplementation,
+        enable: bool,
+    ) -> eyre::Result<()> {
+        if !CUSTOM_FFM.load(Ordering::SeqCst) {
+            tracing::warn!(
+                "komorebi was not started with the --ffm flag, so the komorebi implementation of focus follows mouse cannot be enabled; defaulting to windows implementation"
+            );
+            implementation = FocusFollowsMouseImplementation::Windows;
+        }
+
+        match implementation {
+            FocusFollowsMouseImplementation::Komorebi => {
+                if WindowsApi::focus_follows_mouse()? {
+                    tracing::warn!(
+                        "the komorebi implementation of focus follows mouse cannot be enabled while the windows implementation is enabled"
+                    );
+                } else if enable {
+                    self.focus_follows_mouse = Option::from(implementation);
+                } else {
+                    self.focus_follows_mouse = None;
+                    self.has_pending_raise_op = false;
+                }
+            }
+            FocusFollowsMouseImplementation::Windows => {
+                if matches!(
+                    self.focus_follows_mouse,
+                    Some(FocusFollowsMouseImplementation::Komorebi)
+                ) {
+                    tracing::warn!(
+                        "the windows implementation of focus follows mouse cannot be enabled while the komorebi implementation is enabled"
+                    );
+                } else if enable {
+                    WindowsApi::enable_focus_follows_mouse()?;
+                    self.focus_follows_mouse =
+                        Option::from(FocusFollowsMouseImplementation::Windows);
+                } else {
+                    WindowsApi::disable_focus_follows_mouse()?;
+                    self.focus_follows_mouse = None;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    pub fn toggle_focus_follows_mouse_implementation(
+        &mut self,
+        mut implementation: FocusFollowsMouseImplementation,
+    ) -> eyre::Result<()> {
+        if !CUSTOM_FFM.load(Ordering::SeqCst) {
+            tracing::warn!(
+                "komorebi was not started with the --ffm flag, so the komorebi implementation of focus follows mouse cannot be toggled; defaulting to windows implementation"
+            );
+            implementation = FocusFollowsMouseImplementation::Windows;
+        }
+
+        match implementation {
+            FocusFollowsMouseImplementation::Komorebi => {
+                if WindowsApi::focus_follows_mouse()? {
+                    tracing::warn!(
+                        "the komorebi implementation of focus follows mouse cannot be toggled while the windows implementation is enabled"
+                    );
+                } else {
+                    match self.focus_follows_mouse {
+                        None => {
+                            self.focus_follows_mouse = Option::from(implementation);
+                            self.has_pending_raise_op = false;
+                        }
+                        Some(FocusFollowsMouseImplementation::Komorebi) => {
+                            self.focus_follows_mouse = None;
+                        }
+                        Some(FocusFollowsMouseImplementation::Windows) => {
+                            tracing::warn!(
+                                "ignoring command that could mix different focus follows mouse implementations"
+                            );
+                        }
+                    }
+                }
+            }
+            FocusFollowsMouseImplementation::Windows => {
+                if matches!(
+                    self.focus_follows_mouse,
+                    Some(FocusFollowsMouseImplementation::Komorebi)
+                ) {
+                    tracing::warn!(
+                        "the windows implementation of focus follows mouse cannot be toggled while the komorebi implementation is enabled"
+                    );
+                } else {
+                    match self.focus_follows_mouse {
+                        None => {
+                            WindowsApi::enable_focus_follows_mouse()?;
+                            self.focus_follows_mouse = Option::from(implementation);
+                        }
+                        Some(FocusFollowsMouseImplementation::Windows) => {
+                            WindowsApi::disable_focus_follows_mouse()?;
+                            self.focus_follows_mouse = None;
+                        }
+                        Some(FocusFollowsMouseImplementation::Komorebi) => {
+                            tracing::warn!(
+                                "ignoring command that could mix different focus follows mouse implementations"
+                            );
+                        }
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    pub fn set_layout_ratios(
+        &mut self,
+        columns: Option<&[f32]>,
+        rows: Option<&[f32]>,
+    ) -> eyre::Result<()> {
+        let focused_workspace = self.focused_workspace_mut()?;
+        let mut options = focused_workspace.layout_options.unwrap_or(LayoutOptions {
+            scrolling: None,
+            grid: None,
+            column_ratios: None,
+            row_ratios: None,
+        });
+        if let Some(cols) = columns {
+            options.column_ratios = Some(validate_ratios(cols));
+        }
+        if let Some(rws) = rows {
+            options.row_ratios = Some(validate_ratios(rws));
+        }
+        focused_workspace.layout_options = Some(options);
+        self.update_focused_workspace(false, false)
+    }
+
+    pub fn add_no_titlebar_rule(&mut self, identifier: ApplicationIdentifier, id: String) {
+        let mut identifiers = NO_TITLEBAR.lock();
+        let mut should_push = true;
+        for existing in &*identifiers {
+            if let MatchingRule::Simple(existing) = existing
+                && existing.id.eq(&id)
+            {
+                should_push = false;
+            }
+        }
+        if should_push {
+            identifiers.push(MatchingRule::Simple(IdWithIdentifier {
+                kind: identifier,
+                id,
+                matching_strategy: Option::from(MatchingStrategy::Legacy),
+            }));
+        }
+    }
+
+    pub fn eager_focus_exe(&mut self, exe: &str) -> eyre::Result<()> {
+        let focused_monitor_idx = self.focused_monitor_idx();
+        let mut window_location = None;
+        let mut monitor_to_focus = None;
+        let mut needs_workspace_loading = false;
+
+        'search: for (monitor_idx, monitor) in self.monitors_mut().iter_mut().enumerate() {
+            for (workspace_idx, workspace) in monitor.workspaces().iter().enumerate() {
+                if let Some(location) = workspace.location_from_exe(exe) {
+                    window_location = Some(location);
+                    if monitor_idx != focused_monitor_idx {
+                        monitor_to_focus = Some(monitor_idx);
+                    }
+                    let focused_ws_idx = monitor.focused_workspace_idx();
+                    if focused_ws_idx != workspace_idx {
+                        monitor.last_focused_workspace = Option::from(focused_ws_idx);
+                        monitor.focus_workspace(workspace_idx)?;
+                        needs_workspace_loading = true;
+                    }
+                    break 'search;
+                }
+            }
+        }
+
+        if let Some(monitor_idx) = monitor_to_focus {
+            self.focus_monitor(monitor_idx)?;
+        }
+
+        if let Some(location) = window_location {
+            match location {
+                WorkspaceWindowLocation::Monocle(window_idx) => {
+                    self.focus_container_window(window_idx)?;
+                }
+                WorkspaceWindowLocation::Maximized => {
+                    if let Some(window) = &mut self.focused_workspace_mut()?.maximized_window {
+                        window.focus(self.mouse_follows_focus)?;
+                    }
+                }
+                WorkspaceWindowLocation::Container(container_idx, window_idx) => {
+                    let focused_container_idx = self.focused_container_idx()?;
+                    if container_idx != focused_container_idx {
+                        self.focused_workspace_mut()?.focus_container(container_idx);
+                    }
+                    self.focus_container_window(window_idx)?;
+                }
+                WorkspaceWindowLocation::Floating(window_idx) => {
+                    if let Some(window) = self
+                        .focused_workspace_mut()?
+                        .floating_windows_mut()
+                        .get_mut(window_idx)
+                    {
+                        window.focus(self.mouse_follows_focus)?;
+                    }
+                }
+            }
+
+            if needs_workspace_loading {
+                let mouse_follows_focus = self.mouse_follows_focus;
+                if let Some(monitor) = self.focused_monitor_mut() {
+                    monitor.load_focused_workspace(mouse_follows_focus)?;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    pub fn toggle_window_container_behaviour(&mut self) {
+        match self.window_management_behaviour.current_behaviour {
+            WindowContainerBehaviour::Create => {
+                self.window_management_behaviour.current_behaviour =
+                    WindowContainerBehaviour::Append;
+            }
+            WindowContainerBehaviour::Append => {
+                self.window_management_behaviour.current_behaviour =
+                    WindowContainerBehaviour::Create;
+            }
+        }
+    }
+
+    pub fn toggle_float_override(&mut self) {
+        self.window_management_behaviour.float_override =
+            !self.window_management_behaviour.float_override;
+    }
+
+    pub fn toggle_workspace_window_container_behaviour(&mut self) -> eyre::Result<()> {
+        let current_global_behaviour = self.window_management_behaviour.current_behaviour;
+        if let Some(behaviour) = &mut self.focused_workspace_mut()?.window_container_behaviour {
+            match behaviour {
+                WindowContainerBehaviour::Create => *behaviour = WindowContainerBehaviour::Append,
+                WindowContainerBehaviour::Append => *behaviour = WindowContainerBehaviour::Create,
+            }
+        } else {
+            self.focused_workspace_mut()?.window_container_behaviour =
+                Some(match current_global_behaviour {
+                    WindowContainerBehaviour::Create => WindowContainerBehaviour::Append,
+                    WindowContainerBehaviour::Append => WindowContainerBehaviour::Create,
+                });
+        }
+        Ok(())
+    }
+
+    pub fn toggle_workspace_float_override(&mut self) -> eyre::Result<()> {
+        let current_global_override = self.window_management_behaviour.float_override;
+        if let Some(float_override) = &mut self.focused_workspace_mut()?.float_override {
+            *float_override = !*float_override;
+        } else {
+            self.focused_workspace_mut()?.float_override = Some(!current_global_override);
+        }
+        Ok(())
+    }
+
+    pub fn toggle_cross_monitor_move_behaviour(&mut self) {
+        match self.cross_monitor_move_behaviour {
+            MoveBehaviour::Swap => {
+                self.cross_monitor_move_behaviour = MoveBehaviour::Insert;
+            }
+            MoveBehaviour::Insert => {
+                self.cross_monitor_move_behaviour = MoveBehaviour::Swap;
+            }
+            _ => {}
+        }
+    }
+
+    pub fn toggle_monocle_focus_behaviour(&mut self) {
+        self.monocle_focus_behaviour = match self.monocle_focus_behaviour {
+            MonocleFocusBehaviour::Cycle => MonocleFocusBehaviour::NoOp,
+            MonocleFocusBehaviour::NoOp => MonocleFocusBehaviour::Cycle,
+        };
+    }
+
+    pub fn toggle_pause(&mut self) -> eyre::Result<()> {
+        if self.is_paused {
+            tracing::info!("resuming");
+        } else {
+            tracing::info!("pausing");
+        }
+
+        self.is_paused = !self.is_paused;
+        self.retile_all(true)
+    }
+
+    pub fn set_focused_container_padding(&mut self, size: i32) -> eyre::Result<()> {
+        let focused_monitor_idx = self.focused_monitor_idx();
+        let focused_workspace_idx = self
+            .focused_monitor()
+            .ok_or_eyre("there is no monitor")?
+            .focused_workspace_idx();
+        self.set_container_padding(focused_monitor_idx, focused_workspace_idx, size)
+    }
+
+    pub fn set_focused_workspace_padding(&mut self, size: i32) -> eyre::Result<()> {
+        let focused_monitor_idx = self.focused_monitor_idx();
+        let focused_workspace_idx = self
+            .focused_monitor()
+            .ok_or_eyre("there is no monitor")?
+            .focused_workspace_idx();
+        self.set_workspace_padding(focused_monitor_idx, focused_workspace_idx, size)
+    }
+
+    pub fn set_scrolling_columns(&mut self, columns: NonZeroUsize) -> eyre::Result<()> {
+        let focused_workspace = self.focused_workspace_mut()?;
+        let options = match focused_workspace.layout_options {
+            Some(mut opts) => {
+                if let Some(scrolling) = &mut opts.scrolling {
+                    scrolling.columns = columns.into();
+                }
+                opts
+            }
+            None => LayoutOptions {
+                scrolling: Some(ScrollingLayoutOptions {
+                    columns: columns.into(),
+                    center_focused_column: Default::default(),
+                }),
+                grid: None,
+                column_ratios: None,
+                row_ratios: None,
+            },
+        };
+
+        focused_workspace.layout_options = Some(options);
+        self.update_focused_workspace(false, false)
+    }
+
+    pub fn set_container_locked(
+        &mut self,
+        monitor_idx: usize,
+        workspace_idx: usize,
+        container_idx: usize,
+        locked: bool,
+    ) -> eyre::Result<()> {
+        let monitor = self
+            .monitors_mut()
+            .get_mut(monitor_idx)
+            .ok_or_eyre("no monitor at the given index")?;
+        let workspace = monitor
+            .workspaces_mut()
+            .get_mut(workspace_idx)
+            .ok_or_eyre("no workspace at the given index")?;
+        if let Some(container) = workspace.containers_mut().get_mut(container_idx) {
+            container.locked = locked;
+        }
+        Ok(())
+    }
+
+    pub fn toggle_title_bars(&mut self) -> eyre::Result<()> {
+        let current = REMOVE_TITLEBARS.load(Ordering::SeqCst);
+        REMOVE_TITLEBARS.store(!current, Ordering::SeqCst);
+        self.update_focused_workspace(false, false)
+    }
+
+    pub fn add_session_float_rule(&mut self) -> eyre::Result<()> {
+        let foreground_window = WindowsApi::foreground_window()?;
+        let window = Window::from(foreground_window);
+        if let (Ok(exe), Ok(title), Ok(class)) = (window.exe(), window.title(), window.class()) {
+            let rule = MatchingRule::Composite(vec![
+                IdWithIdentifier {
+                    kind: ApplicationIdentifier::Exe,
+                    id: exe,
+                    matching_strategy: Option::from(MatchingStrategy::Equals),
+                },
+                IdWithIdentifier {
+                    kind: ApplicationIdentifier::Title,
+                    id: title,
+                    matching_strategy: Option::from(MatchingStrategy::Equals),
+                },
+                IdWithIdentifier {
+                    kind: ApplicationIdentifier::Class,
+                    id: class,
+                    matching_strategy: Option::from(MatchingStrategy::Equals),
+                },
+            ]);
+
+            FLOATING_APPLICATIONS.lock().push(rule.clone());
+            SESSION_FLOATING_APPLICATIONS.lock().push(rule);
+            self.toggle_float(true)?;
+        }
+        Ok(())
+    }
+
+    pub fn clear_session_float_rules(&mut self) {
+        let mut floating_applications = FLOATING_APPLICATIONS.lock();
+        let mut session_floating_applications = SESSION_FLOATING_APPLICATIONS.lock();
+        floating_applications.retain(|r| !session_floating_applications.contains(r));
+        session_floating_applications.clear();
     }
 
     #[tracing::instrument(skip(self))]
@@ -3091,6 +3753,31 @@ impl WindowManager {
         self.update_focused_workspace(self.mouse_follows_focus, true)
     }
 
+    pub fn promote_window_in_direction(
+        &mut self,
+        direction: OperationDirection,
+    ) -> eyre::Result<()> {
+        self.focus_container_in_direction(direction)?;
+        self.promote_container_to_front()
+    }
+
+    pub fn close_foreground_window(&mut self) -> eyre::Result<()> {
+        Window::from(WindowsApi::foreground_window()?).close()
+    }
+
+    pub fn minimize_foreground_window(&mut self) -> eyre::Result<()> {
+        Window::from(WindowsApi::foreground_window()?).minimize();
+        Ok(())
+    }
+
+    pub fn force_focus_window(&mut self) -> eyre::Result<()> {
+        let focused_window = self.focused_window()?;
+        let focused_window_rect = WindowsApi::window_rect(focused_window.hwnd)?;
+        WindowsApi::center_cursor_in_rect(&focused_window_rect)?;
+        WindowsApi::left_click();
+        Ok(())
+    }
+
     #[tracing::instrument(skip(self))]
     pub fn remove_window_from_container(&mut self) -> eyre::Result<()> {
         self.handle_unmanaged_window_behaviour()?;
@@ -3112,6 +3799,100 @@ impl WindowManager {
         let workspace = self.focused_workspace_mut()?;
         workspace.tile = !workspace.tile;
         self.update_focused_workspace(false, false)
+    }
+
+    pub fn toggle_workspace_layer(&mut self) -> eyre::Result<()> {
+        let mouse_follows_focus = self.mouse_follows_focus;
+        let workspace = self.focused_workspace_mut()?;
+
+        let mut to_focus = None;
+        match workspace.layer {
+            WorkspaceLayer::Tiling => {
+                workspace.layer = WorkspaceLayer::Floating;
+
+                let focused_idx = workspace.focused_floating_window_idx();
+                let mut window_idx_pairs = workspace
+                    .floating_windows_mut()
+                    .make_contiguous()
+                    .iter()
+                    .enumerate()
+                    .collect::<Vec<_>>();
+
+                window_idx_pairs.sort_by_key(|(_, w)| {
+                    let rect = WindowsApi::window_rect(w.hwnd).unwrap_or_default();
+                    rect.right * rect.bottom
+                });
+                window_idx_pairs.reverse();
+
+                for (i, window) in window_idx_pairs {
+                    if i == focused_idx {
+                        to_focus = Some(*window);
+                    } else {
+                        window.restore();
+                        window.raise()?;
+                    }
+                }
+
+                if let Some(focused_window) = &to_focus {
+                    focused_window.restore();
+                    focused_window.raise()?;
+                }
+
+                for container in workspace.containers() {
+                    if let Some(window) = container.focused_window() {
+                        window.lower()?;
+                    }
+                }
+
+                if let Some(monocle) = &workspace.monocle_container
+                    && let Some(window) = monocle.focused_window()
+                {
+                    window.lower()?;
+                }
+            }
+            WorkspaceLayer::Floating => {
+                workspace.layer = WorkspaceLayer::Tiling;
+
+                if let Some(monocle) = &workspace.monocle_container {
+                    if let Some(window) = monocle.focused_window() {
+                        to_focus = Some(*window);
+                        window.raise()?;
+                    }
+                    for window in workspace.floating_windows() {
+                        window.hide();
+                    }
+                } else {
+                    let focused_container_idx = workspace.focused_container_idx();
+                    for (i, container) in workspace.containers_mut().iter_mut().enumerate() {
+                        if let Some(window) = container.focused_window() {
+                            if i == focused_container_idx {
+                                to_focus = Some(*window);
+                            }
+                            window.raise()?;
+                        }
+                    }
+
+                    let mut window_idx_pairs = workspace
+                        .floating_windows_mut()
+                        .make_contiguous()
+                        .iter()
+                        .collect::<Vec<_>>();
+
+                    window_idx_pairs.sort_by_key(|w| {
+                        let rect = WindowsApi::window_rect(w.hwnd).unwrap_or_default();
+                        rect.right * rect.bottom
+                    });
+
+                    for window in window_idx_pairs {
+                        window.lower()?;
+                    }
+                }
+            }
+        }
+        if let Some(window) = to_focus {
+            window.focus(mouse_follows_focus)?;
+        }
+        Ok(())
     }
 
     #[tracing::instrument(skip(self))]

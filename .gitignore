@@ -13,3 +13,4 @@ komorebic/applications.json
 result
 /.direnv
 procdump.exe
+/komorebi/komorebi-test-*.sock
