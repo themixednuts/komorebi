@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "source_revision": "834f3c98b34d36067b18b00aa81eaf2107d1bf2c",
+  "toolchain": "nightly-2026-08-27",
+  "target": "x86_64-pc-windows-msvc",
+  "command": "cargo +nightly-2026-08-27 build -p particle-benchmark --release --features portable-simd --locked --target x86_64-pc-windows-msvc -Zbuild-std",
+  "success": true,
+  "cargo_reported_elapsed_seconds": 80,
+  "normal_nightly_binary_bytes": 231936,
+  "build_std_binary_bytes": 252928,
+  "binary_size_change_percent": 9.05,
+  "runtime_benefit_observed": false,
+  "decision": "Do not adopt -Zbuild-std. It adds a distinct unstable build mode and produced a larger binary without an established runtime benefit."
+}

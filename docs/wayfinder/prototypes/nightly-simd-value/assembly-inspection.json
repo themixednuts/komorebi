@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "source_revision": "834f3c98b34d36067b18b00aa81eaf2107d1bf2c",
+  "target_cpu": "znver3",
+  "stable": {
+    "toolchain": "rustc 1.97.1 (8bab26f4f 2026-07-14), LLVM 22.1.6",
+    "source_function": "step_scalar_range",
+    "observed_instructions": ["vbroadcastss", "vmulps", "vaddps", "vmovups"],
+    "widest_vector_register": "ymm",
+    "finding": "The ordinary scalar loop is autovectorized to 256-bit AVX operations."
+  },
+  "nightly_portable_simd": {
+    "toolchain": "rustc 1.100.0-nightly (bff8e12ff 2026-08-26), LLVM 23.1.0",
+    "observed_instructions": ["vbroadcastss", "vmulps", "vaddps", "vmovups"],
+    "widest_vector_register": "ymm",
+    "finding": "Portable SIMD lowers to the same relevant 256-bit instruction class and establishes no unique code-generation advantage for this kernel."
+  },
+  "decision": "Keep the readable scalar loop and let the stable compiler vectorize it."
+}

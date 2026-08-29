@@ -1,0 +1,57 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "id": "f4f2605b-b6cc-4114-af74-8ff842d38c00",
+  "prevIds": [
+    "00000000-0000-0000-0000-000000000000"
+  ],
+  "ddl": [
+    {
+      "entityType": "tables",
+      "name": "ToolchainFacts"
+    },
+    {
+      "entityType": "columns",
+      "table": "ToolchainFacts",
+      "name": "id",
+      "type": "INTEGER",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "ToolchainFacts",
+      "name": "label",
+      "type": "TEXT",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "ToolchainFacts",
+      "name": "native_payload",
+      "type": "BLOB",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "pks",
+      "table": "ToolchainFacts",
+      "name": "ToolchainFacts_pk",
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false
+    }
+  ],
+  "renames": []
+}

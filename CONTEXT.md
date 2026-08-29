@@ -332,6 +332,18 @@ _Avoid_: effect handle, native handle
 A digest-addressed, offline-compiled decoration program with a validated parameter layout and resource limits. Runtime code reads and verifies the exact immutable bytes it submits to the owned GPU scene; Lua may reference only a granted symbolic identity.
 _Avoid_: shader source string, runtime-compiled plugin shader
 
+**Toolchain capability profile**:
+A source-, target-, dependency-, and machine-bound measurement showing which compiler features are correct and materially useful for one workload. It never turns an experimental compiler feature into a project-wide default by reputation alone.
+_Avoid_: preferred compiler, nightly mode
+
+**Effect compute backend**:
+The scene-owner-selected implementation that updates bounded effect data using hardware compute or the stable CPU kernel. It does not own presentation, expose its choice to Lua, or run multiple implementations simultaneously.
+_Avoid_: second renderer, shader engine
+
+**Scene device backend**:
+The D3D11 device implementation used by the one decoration scene: normally hardware and, only after measured admission, Windows WARP. Changing it does not create a second scene or composition tree.
+_Avoid_: CPU renderer, fallback overlay
+
 **Effect plan**:
 The ordered native work derived from a transition, with each effect classified by its required, convergent, or best-effort behavior.
 _Avoid_: transaction, side-effect call

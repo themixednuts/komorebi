@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "source_revision": "834f3c98b34d36067b18b00aa81eaf2107d1bf2c",
+  "machine": {
+    "cpu": "AMD Ryzen 9 5900X 12-Core Processor",
+    "logical_processors": 24,
+    "target_cpu": "znver3",
+    "detected_features": ["avx2", "fma", "sse4.2"]
+  },
+  "workload": {
+    "particles": 2048,
+    "iterations_per_sample": 512,
+    "warmup_samples": 20,
+    "measured_samples": 120,
+    "timed_allocations": 0
+  },
+  "profile_candidates_ns": {
+    "particle_update_20000_frames": 20724600,
+    "geometry_transform_20000_frames": 1457100,
+    "effect_parameter_transform_20000_frames": 1167100
+  },
+  "rounds": [
+    {
+      "round": 1,
+      "order": ["scalar-autovectorized", "avx2", "portable-simd"],
+      "measurements": [
+        {"backend": "scalar-autovectorized", "p50_ns": 206500, "p95_ns": 215200, "p99_ns": 257000, "mean_ns": 208489, "process_cpu_100ns": 312500, "checksum": 6133576.603802638, "timed_allocations": 0},
+        {"backend": "avx2", "p50_ns": 194800, "p95_ns": 202500, "p99_ns": 221100, "mean_ns": 196378, "process_cpu_100ns": 156250, "checksum": 6133576.603802638, "timed_allocations": 0},
+        {"backend": "portable-simd", "p50_ns": 307500, "p95_ns": 580000, "p99_ns": 1773200, "mean_ns": 359597, "process_cpu_100ns": 468750, "checksum": 6133576.603802638, "timed_allocations": 0}
+      ]
+    },
+    {
+      "round": 2,
+      "order": ["avx2", "portable-simd", "scalar-autovectorized"],
+      "measurements": [
+        {"backend": "avx2", "p50_ns": 308800, "p95_ns": 647500, "p99_ns": 1335500, "mean_ns": 365914, "process_cpu_100ns": 312500, "checksum": 6133576.603802638, "timed_allocations": 0},
+        {"backend": "portable-simd", "p50_ns": 299100, "p95_ns": 469300, "p99_ns": 650700, "mean_ns": 313998, "process_cpu_100ns": 468750, "checksum": 6133576.603802638, "timed_allocations": 0},
+        {"backend": "scalar-autovectorized", "p50_ns": 322100, "p95_ns": 415400, "p99_ns": 1280100, "mean_ns": 393256, "process_cpu_100ns": 625000, "checksum": 6133576.603802638, "timed_allocations": 0}
+      ]
+    },
+    {
+      "round": 3,
+      "order": ["portable-simd", "scalar-autovectorized", "avx2"],
+      "measurements": [
+        {"backend": "portable-simd", "p50_ns": 312400, "p95_ns": 1628700, "p99_ns": 2712900, "mean_ns": 460529, "process_cpu_100ns": 312500, "checksum": 6133576.603802638, "timed_allocations": 0},
+        {"backend": "scalar-autovectorized", "p50_ns": 336400, "p95_ns": 403200, "p99_ns": 1059800, "mean_ns": 406337, "process_cpu_100ns": 312500, "checksum": 6133576.603802638, "timed_allocations": 0},
+        {"backend": "avx2", "p50_ns": 298700, "p95_ns": 416100, "p99_ns": 1382800, "mean_ns": 354050, "process_cpu_100ns": 468750, "checksum": 6133576.603802638, "timed_allocations": 0}
+      ]
+    }
+  ],
+  "idle": {
+    "method": "one-shot Thread::park_timeout for 2 seconds",
+    "process_cpu_100ns_by_backend": {
+      "scalar-autovectorized": 0,
+      "avx2": 0,
+      "portable-simd": 0
+    }
+  },
+  "decision": {
+    "production_backend": "scalar-autovectorized",
+    "reason": "Stable scalar source already lowers to AVX2. Explicit AVX2 improved p50 by only 4-11% within rounds and regressed p95 in two rounds; portable SIMD was inconsistent and did not reliably beat scalar.",
+    "adopt_nightly_portable_simd": false,
+    "adopt_explicit_avx2_adapter": false
+  }
+}

@@ -1,0 +1,20 @@
+[package]
+name = "particle-benchmark"
+version = "0.0.0"
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[features]
+portable-simd = ["particle-kernel/portable-simd"]
+
+[dependencies]
+anyhow.workspace = true
+particle-kernel = { path = "../kernel" }
+serde.workspace = true
+serde_json.workspace = true
+windows-sys.workspace = true
+
+[lints]
+workspace = true
+

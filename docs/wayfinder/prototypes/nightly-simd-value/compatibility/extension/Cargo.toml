@@ -1,0 +1,20 @@
+[package]
+name = "toolchain-extension-compatibility"
+version = "0.0.0"
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+mlua.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "toolchain-extension-compatibility"
+path = "src/main.rs"
+
