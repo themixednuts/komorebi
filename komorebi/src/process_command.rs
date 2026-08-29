@@ -34,14 +34,9 @@ use crate::TCP_CONNECTIONS;
 use crate::TRAY_AND_MULTI_WINDOW_IDENTIFIERS;
 use crate::WINDOWS_11;
 use crate::WORKSPACE_MATCHING_RULES;
-use crate::action::BuiltinAction;
-use crate::action::WindowSelector;
-use crate::action::WorkspaceName;
-use crate::action::WorkspaceSelector;
 use crate::adapters::socket_message::SocketMessageClass;
 use crate::adapters::socket_message::adapt_action;
 use crate::adapters::socket_message::classify;
-use crate::adapters::socket_message::to_builtin_action;
 use crate::animation::ANIMATION_DURATION_GLOBAL;
 use crate::animation::ANIMATION_DURATION_PER_ANIMATION;
 use crate::animation::ANIMATION_ENABLED_GLOBAL;
@@ -202,144 +197,120 @@ impl WindowManager {
             self.admit_socket_action(action)?;
         } else {
             match message {
-                SocketMessage::Promote => {
-                    self.admit_socket_action(BuiltinAction::PromoteContainer)?;
-                }
-                SocketMessage::PromoteSwap => {
-                    self.admit_socket_action(BuiltinAction::PromoteContainerSwap)?;
-                }
-                SocketMessage::PromoteFocus => {
-                    self.admit_socket_action(BuiltinAction::PromoteFocus)?;
-                }
-                SocketMessage::PromoteWindow(direction) => {
-                    self.admit_socket_action(BuiltinAction::PromoteWindow { direction })?;
-                }
-                SocketMessage::EagerFocus(ref exe) => {
-                    self.admit_socket_action(BuiltinAction::EagerFocus { exe: exe.clone() })?;
-                }
-                SocketMessage::FocusWindow(direction) => {
-                    self.admit_socket_action(BuiltinAction::FocusWindow { direction })?;
-                }
-                SocketMessage::PreselectDirection(direction) => {
-                    self.admit_socket_action(BuiltinAction::PreselectDirection { direction })?;
-                }
-                SocketMessage::CancelPreselect => {
-                    self.admit_socket_action(BuiltinAction::CancelPreselect)?;
-                }
-                SocketMessage::MoveWindow(direction) => {
-                    self.admit_socket_action(BuiltinAction::MoveWindow { direction })?;
-                }
-                SocketMessage::CycleFocusWindow(direction) => {
-                    self.admit_socket_action(BuiltinAction::CycleFocusWindow { direction })?;
-                }
-                SocketMessage::CycleMoveWindow(direction) => {
-                    self.admit_socket_action(BuiltinAction::CycleMoveWindow { direction })?;
-                }
-                SocketMessage::StackWindow(direction) => {
-                    self.admit_socket_action(BuiltinAction::StackWindow { direction })?;
-                }
-                SocketMessage::UnstackWindow => {
-                    self.admit_socket_action(BuiltinAction::UnstackWindow {
-                        window: WindowSelector::FocusedAtExecution,
-                    })?;
-                }
-                SocketMessage::StackAll => {
-                    self.admit_socket_action(BuiltinAction::StackAll)?;
-                }
-                SocketMessage::UnstackAll => {
-                    self.admit_socket_action(BuiltinAction::UnstackAll)?;
-                }
-                SocketMessage::CycleStack(direction) => {
-                    self.admit_socket_action(BuiltinAction::CycleStack { direction })?;
-                }
-                SocketMessage::CycleStackIndex(direction) => {
-                    self.admit_socket_action(BuiltinAction::CycleStackIndex { direction })?;
-                }
-                SocketMessage::FocusStackWindow(index) => {
-                    self.admit_socket_action(BuiltinAction::FocusStackWindow { index })?;
-                }
-                SocketMessage::ForceFocus => {
-                    self.admit_socket_action(BuiltinAction::ForceFocus {
-                        window: WindowSelector::FocusedAtExecution,
-                    })?;
-                }
-                SocketMessage::Close => {
-                    self.admit_socket_action(BuiltinAction::CloseWindow {
-                        window: WindowSelector::FocusedAtExecution,
-                    })?;
-                }
-                SocketMessage::Minimize => {
-                    self.admit_socket_action(BuiltinAction::MinimizeWindow {
-                        window: WindowSelector::FocusedAtExecution,
-                    })?;
-                }
-                SocketMessage::LockMonitorWorkspaceContainer(
-                    monitor_idx,
-                    workspace_idx,
-                    container_idx,
-                ) => {
-                    self.admit_socket_action(BuiltinAction::LockContainer {
-                        monitor: monitor_idx,
-                        workspace: workspace_idx,
-                        container: container_idx,
-                    })?;
-                }
-                SocketMessage::UnlockMonitorWorkspaceContainer(
-                    monitor_idx,
-                    workspace_idx,
-                    container_idx,
-                ) => {
-                    self.admit_socket_action(BuiltinAction::UnlockContainer {
-                        monitor: monitor_idx,
-                        workspace: workspace_idx,
-                        container: container_idx,
-                    })?;
-                }
-                SocketMessage::ToggleLock => {
-                    self.admit_socket_action(BuiltinAction::ToggleContainerLock {
-                        window: WindowSelector::FocusedAtExecution,
-                    })?;
-                }
-                SocketMessage::ToggleFloat => {
-                    self.admit_socket_action(BuiltinAction::ToggleWindowFloat {
-                        window: WindowSelector::FocusedAtExecution,
-                    })?;
-                }
-                SocketMessage::ToggleMonocle => {
-                    self.admit_socket_action(BuiltinAction::ToggleWindowMonocle {
-                        window: WindowSelector::FocusedAtExecution,
-                    })?;
-                }
-                SocketMessage::ToggleMaximize => {
-                    self.admit_socket_action(BuiltinAction::ToggleWindowMaximize {
-                        window: WindowSelector::FocusedAtExecution,
-                    })?;
-                }
-                SocketMessage::ContainerPadding(monitor_idx, workspace_idx, size) => {
-                    self.admit_socket_action(BuiltinAction::SetContainerPadding {
-                        monitor: monitor_idx,
-                        workspace: workspace_idx,
-                        size,
-                    })?;
-                }
-                SocketMessage::NamedWorkspaceContainerPadding(ref workspace, size) => {
-                    self.admit_socket_action(BuiltinAction::SetNamedWorkspaceContainerPadding {
-                        name: WorkspaceName::parse(workspace.clone())?,
-                        size,
-                    })?;
-                }
-                SocketMessage::WorkspacePadding(monitor_idx, workspace_idx, size) => {
-                    self.admit_socket_action(BuiltinAction::SetWorkspacePadding {
-                        monitor: monitor_idx,
-                        workspace: workspace_idx,
-                        size,
-                    })?;
-                }
-                SocketMessage::NamedWorkspacePadding(ref workspace, size) => {
-                    self.admit_socket_action(BuiltinAction::SetNamedWorkspacePadding {
-                        name: WorkspaceName::parse(workspace.clone())?,
-                        size,
-                    })?;
+                SocketMessage::FocusWindow(..)
+                | SocketMessage::MoveWindow(..)
+                | SocketMessage::PreselectDirection(..)
+                | SocketMessage::CancelPreselect
+                | SocketMessage::CycleFocusWindow(..)
+                | SocketMessage::CycleMoveWindow(..)
+                | SocketMessage::StackWindow(..)
+                | SocketMessage::UnstackWindow
+                | SocketMessage::CycleStack(..)
+                | SocketMessage::CycleStackIndex(..)
+                | SocketMessage::FocusStackWindow(..)
+                | SocketMessage::StackAll
+                | SocketMessage::UnstackAll
+                | SocketMessage::ResizeWindowEdge(..)
+                | SocketMessage::ResizeWindowAxis(..)
+                | SocketMessage::MoveContainerToLastWorkspace
+                | SocketMessage::SendContainerToLastWorkspace
+                | SocketMessage::MoveContainerToMonitorNumber(..)
+                | SocketMessage::CycleMoveContainerToMonitor(..)
+                | SocketMessage::MoveContainerToWorkspaceNumber(..)
+                | SocketMessage::MoveContainerToNamedWorkspace(..)
+                | SocketMessage::CycleMoveContainerToWorkspace(..)
+                | SocketMessage::SendContainerToMonitorNumber(..)
+                | SocketMessage::CycleSendContainerToMonitor(..)
+                | SocketMessage::SendContainerToWorkspaceNumber(..)
+                | SocketMessage::CycleSendContainerToWorkspace(..)
+                | SocketMessage::SendContainerToMonitorWorkspaceNumber(..)
+                | SocketMessage::MoveContainerToMonitorWorkspaceNumber(..)
+                | SocketMessage::SendContainerToNamedWorkspace(..)
+                | SocketMessage::CycleMoveWorkspaceToMonitor(..)
+                | SocketMessage::MoveWorkspaceToMonitorNumber(..)
+                | SocketMessage::SwapWorkspacesToMonitorNumber(..)
+                | SocketMessage::ForceFocus
+                | SocketMessage::Close
+                | SocketMessage::Minimize
+                | SocketMessage::Promote
+                | SocketMessage::PromoteSwap
+                | SocketMessage::PromoteFocus
+                | SocketMessage::PromoteWindow(..)
+                | SocketMessage::EagerFocus(..)
+                | SocketMessage::LockMonitorWorkspaceContainer(..)
+                | SocketMessage::UnlockMonitorWorkspaceContainer(..)
+                | SocketMessage::ToggleLock
+                | SocketMessage::ToggleFloat
+                | SocketMessage::ToggleMonocle
+                | SocketMessage::ToggleMaximize
+                | SocketMessage::ToggleWindowContainerBehaviour
+                | SocketMessage::ToggleFloatOverride
+                | SocketMessage::WindowHidingBehaviour(..)
+                | SocketMessage::ToggleCrossMonitorMoveBehaviour
+                | SocketMessage::CrossMonitorMoveBehaviour(..)
+                | SocketMessage::ToggleMonocleFocusBehaviour
+                | SocketMessage::MonocleFocusBehaviour(..)
+                | SocketMessage::UnmanagedWindowOperationBehaviour(..)
+                | SocketMessage::ManageFocusedWindow
+                | SocketMessage::UnmanageFocusedWindow
+                | SocketMessage::AdjustContainerPadding(..)
+                | SocketMessage::AdjustWorkspacePadding(..)
+                | SocketMessage::ChangeLayout(..)
+                | SocketMessage::CycleLayout(..)
+                | SocketMessage::LayoutRatios(..)
+                | SocketMessage::ScrollingLayoutColumns(..)
+                | SocketMessage::ChangeLayoutCustom(..)
+                | SocketMessage::FlipLayout(..)
+                | SocketMessage::ToggleWorkspaceWindowContainerBehaviour
+                | SocketMessage::ToggleWorkspaceFloatOverride
+                | SocketMessage::EnsureWorkspaces(..)
+                | SocketMessage::EnsureNamedWorkspaces(..)
+                | SocketMessage::NewWorkspace
+                | SocketMessage::ToggleTiling
+                | SocketMessage::TogglePause
+                | SocketMessage::Retile
+                | SocketMessage::RetileWithResizeDimensions
+                | SocketMessage::CycleFocusMonitor(..)
+                | SocketMessage::CycleFocusWorkspace(..)
+                | SocketMessage::CycleFocusEmptyWorkspace(..)
+                | SocketMessage::FocusMonitorNumber(..)
+                | SocketMessage::FocusMonitorAtCursor
+                | SocketMessage::FocusLastWorkspace
+                | SocketMessage::CloseWorkspace
+                | SocketMessage::FocusWorkspaceNumber(..)
+                | SocketMessage::FocusWorkspaceNumbers(..)
+                | SocketMessage::FocusMonitorWorkspaceNumber(..)
+                | SocketMessage::FocusNamedWorkspace(..)
+                | SocketMessage::ContainerPadding(..)
+                | SocketMessage::NamedWorkspaceContainerPadding(..)
+                | SocketMessage::FocusedWorkspaceContainerPadding(..)
+                | SocketMessage::WorkspacePadding(..)
+                | SocketMessage::NamedWorkspacePadding(..)
+                | SocketMessage::FocusedWorkspacePadding(..)
+                | SocketMessage::WorkspaceTiling(..)
+                | SocketMessage::NamedWorkspaceTiling(..)
+                | SocketMessage::WorkspaceName(..)
+                | SocketMessage::WorkspaceLayout(..)
+                | SocketMessage::NamedWorkspaceLayout(..)
+                | SocketMessage::WorkspaceLayoutCustom(..)
+                | SocketMessage::NamedWorkspaceLayoutCustom(..)
+                | SocketMessage::WorkspaceLayoutRule(..)
+                | SocketMessage::NamedWorkspaceLayoutRule(..)
+                | SocketMessage::WorkspaceLayoutCustomRule(..)
+                | SocketMessage::NamedWorkspaceLayoutCustomRule(..)
+                | SocketMessage::ClearWorkspaceLayoutRules(..)
+                | SocketMessage::ClearNamedWorkspaceLayoutRules(..)
+                | SocketMessage::ToggleWorkspaceLayer
+                | SocketMessage::FocusFollowsMouse(..)
+                | SocketMessage::ToggleFocusFollowsMouse(..)
+                | SocketMessage::MouseFollowsFocus(..)
+                | SocketMessage::ToggleMouseFollowsFocus
+                | SocketMessage::RemoveTitleBar(..)
+                | SocketMessage::ToggleTitleBars
+                | SocketMessage::SessionFloatRule
+                | SocketMessage::ClearSessionFloatRules
+                | SocketMessage::EnforceWorkspaceRules => {
+                    unreachable!("action messages are adapted before legacy dispatch")
                 }
                 SocketMessage::InitialWorkspaceRule(
                     identifier,
@@ -443,9 +414,6 @@ impl WindowManager {
                     let mut workspace_rules = WORKSPACE_MATCHING_RULES.lock();
                     workspace_rules.clear();
                 }
-                SocketMessage::EnforceWorkspaceRules => {
-                    self.admit_socket_action(BuiltinAction::EnforceWorkspaceRules)?;
-                }
                 SocketMessage::ManageRule(identifier, ref id) => {
                     let mut manage_identifiers = MANAGE_IDENTIFIERS.lock();
 
@@ -466,9 +434,6 @@ impl WindowManager {
                         }));
                     }
                 }
-                SocketMessage::SessionFloatRule => {
-                    self.admit_socket_action(BuiltinAction::AddSessionFloatRule)?;
-                }
                 SocketMessage::SessionFloatRules => {
                     let session_floating_applications = SESSION_FLOATING_APPLICATIONS.lock();
                     let rules = match serde_json::to_string_pretty(&*session_floating_applications)
@@ -478,9 +443,6 @@ impl WindowManager {
                     };
 
                     reply.write_all(rules.as_bytes())?;
-                }
-                SocketMessage::ClearSessionFloatRules => {
-                    self.admit_socket_action(BuiltinAction::ClearSessionFloatRules)?;
                 }
                 SocketMessage::IgnoreRule(identifier, ref id) => {
                     let mut ignore_identifiers = IGNORE_IDENTIFIERS.lock();
@@ -552,305 +514,6 @@ impl WindowManager {
                         monitor.update_focused_workspace(offset)?;
                     }
                 }
-                SocketMessage::FocusedWorkspaceContainerPadding(adjustment) => {
-                    self.admit_socket_action(BuiltinAction::SetFocusedContainerPadding {
-                        size: adjustment,
-                    })?;
-                }
-                SocketMessage::FocusedWorkspacePadding(adjustment) => {
-                    self.admit_socket_action(BuiltinAction::SetFocusedWorkspacePadding {
-                        size: adjustment,
-                    })?;
-                }
-                SocketMessage::AdjustContainerPadding(sizing, adjustment) => {
-                    self.admit_socket_action(BuiltinAction::AdjustContainerPadding {
-                        sizing,
-                        adjustment,
-                    })?;
-                }
-                SocketMessage::AdjustWorkspacePadding(sizing, adjustment) => {
-                    self.admit_socket_action(BuiltinAction::AdjustWorkspacePadding {
-                        sizing,
-                        adjustment,
-                    })?;
-                }
-                SocketMessage::MoveContainerToLastWorkspace => {
-                    self.admit_socket_action(BuiltinAction::MoveContainerToLastWorkspace)?;
-                }
-                SocketMessage::SendContainerToLastWorkspace => {
-                    self.admit_socket_action(BuiltinAction::SendContainerToLastWorkspace)?;
-                }
-                SocketMessage::MoveContainerToWorkspaceNumber(workspace_idx) => {
-                    self.admit_socket_action(BuiltinAction::MoveContainerToWorkspace {
-                        index: workspace_idx,
-                    })?;
-                }
-                SocketMessage::CycleMoveContainerToWorkspace(direction) => {
-                    self.admit_socket_action(BuiltinAction::CycleMoveContainerToWorkspace {
-                        direction,
-                    })?;
-                }
-                SocketMessage::MoveContainerToMonitorNumber(monitor_idx) => {
-                    self.admit_socket_action(BuiltinAction::MoveContainerToMonitor {
-                        index: monitor_idx,
-                    })?;
-                }
-                SocketMessage::SwapWorkspacesToMonitorNumber(monitor_idx) => {
-                    self.admit_socket_action(BuiltinAction::SwapWorkspacesToMonitor {
-                        index: monitor_idx,
-                    })?;
-                }
-                SocketMessage::CycleMoveContainerToMonitor(direction) => {
-                    self.admit_socket_action(BuiltinAction::CycleMoveContainerToMonitor {
-                        direction,
-                    })?;
-                }
-                SocketMessage::SendContainerToWorkspaceNumber(workspace_idx) => {
-                    self.admit_socket_action(BuiltinAction::SendContainerToWorkspace {
-                        index: workspace_idx,
-                    })?;
-                }
-                SocketMessage::CycleSendContainerToWorkspace(direction) => {
-                    self.admit_socket_action(BuiltinAction::CycleSendContainerToWorkspace {
-                        direction,
-                    })?;
-                }
-                SocketMessage::SendContainerToMonitorNumber(monitor_idx) => {
-                    self.admit_socket_action(BuiltinAction::SendContainerToMonitor {
-                        index: monitor_idx,
-                    })?;
-                }
-                SocketMessage::CycleSendContainerToMonitor(direction) => {
-                    self.admit_socket_action(BuiltinAction::CycleSendContainerToMonitor {
-                        direction,
-                    })?;
-                }
-                SocketMessage::SendContainerToMonitorWorkspaceNumber(
-                    monitor_idx,
-                    workspace_idx,
-                ) => {
-                    self.admit_socket_action(BuiltinAction::SendContainerToMonitorWorkspace {
-                        monitor: monitor_idx,
-                        workspace: workspace_idx,
-                    })?;
-                }
-                SocketMessage::MoveContainerToMonitorWorkspaceNumber(
-                    monitor_idx,
-                    workspace_idx,
-                ) => {
-                    self.admit_socket_action(BuiltinAction::MoveContainerToMonitorWorkspace {
-                        monitor: monitor_idx,
-                        workspace: workspace_idx,
-                    })?;
-                }
-                SocketMessage::SendContainerToNamedWorkspace(ref workspace) => {
-                    self.admit_socket_action(BuiltinAction::SendContainerToNamedWorkspace {
-                        name: WorkspaceName::parse(workspace.clone())?,
-                    })?;
-                }
-                SocketMessage::MoveContainerToNamedWorkspace(ref workspace) => {
-                    self.admit_socket_action(BuiltinAction::MoveContainerToNamedWorkspace {
-                        name: WorkspaceName::parse(workspace.clone())?,
-                    })?;
-                }
-
-                SocketMessage::MoveWorkspaceToMonitorNumber(monitor_idx) => {
-                    self.admit_socket_action(BuiltinAction::MoveWorkspaceToMonitor {
-                        index: monitor_idx,
-                    })?;
-                }
-                SocketMessage::CycleMoveWorkspaceToMonitor(direction) => {
-                    self.admit_socket_action(BuiltinAction::CycleMoveWorkspaceToMonitor {
-                        direction,
-                    })?;
-                }
-                SocketMessage::TogglePause => {
-                    self.admit_socket_action(BuiltinAction::TogglePause)?;
-                }
-                SocketMessage::ToggleTiling => {
-                    self.admit_socket_action(BuiltinAction::ToggleTiling)?;
-                }
-                SocketMessage::CycleFocusMonitor(direction) => {
-                    self.admit_socket_action(BuiltinAction::CycleFocusMonitor { direction })?;
-                }
-                SocketMessage::FocusMonitorNumber(monitor_idx) => {
-                    self.admit_socket_action(BuiltinAction::FocusMonitor { index: monitor_idx })?;
-                }
-                SocketMessage::FocusMonitorAtCursor => {
-                    self.admit_socket_action(BuiltinAction::FocusMonitorAtCursor)?;
-                }
-                SocketMessage::Retile => {
-                    self.admit_socket_action(BuiltinAction::Retile)?;
-                    force_update_borders = true;
-                }
-                SocketMessage::RetileWithResizeDimensions => {
-                    self.admit_socket_action(BuiltinAction::RetileWithResizeDimensions)?;
-                    force_update_borders = true;
-                }
-                SocketMessage::FlipLayout(layout_flip) => {
-                    self.admit_socket_action(BuiltinAction::FlipLayout { axis: layout_flip })?;
-                }
-                SocketMessage::ScrollingLayoutColumns(count) => {
-                    self.admit_socket_action(BuiltinAction::SetScrollingColumns {
-                        columns: count,
-                    })?;
-                }
-                SocketMessage::ChangeLayout(layout) => {
-                    self.admit_socket_action(BuiltinAction::SetWorkspaceLayout {
-                        workspace: WorkspaceSelector::FocusedAtExecution,
-                        layout,
-                    })?;
-                }
-                SocketMessage::CycleLayout(direction) => {
-                    self.admit_socket_action(BuiltinAction::CycleLayout { direction })?;
-                }
-                SocketMessage::LayoutRatios(ref columns, ref rows) => {
-                    self.admit_socket_action(BuiltinAction::SetLayoutRatios {
-                        columns: columns.clone(),
-                        rows: rows.clone(),
-                    })?;
-                }
-                SocketMessage::ChangeLayoutCustom(ref path) => {
-                    self.admit_socket_action(BuiltinAction::SetCustomLayout {
-                        path: path.clone(),
-                    })?;
-                }
-                SocketMessage::WorkspaceLayoutCustom(monitor_idx, workspace_idx, ref path) => {
-                    self.admit_socket_action(BuiltinAction::SetWorkspaceCustomLayout {
-                        monitor: monitor_idx,
-                        workspace: workspace_idx,
-                        path: path.clone(),
-                    })?;
-                }
-                SocketMessage::WorkspaceTiling(monitor_idx, workspace_idx, tile) => {
-                    self.admit_socket_action(BuiltinAction::SetWorkspaceTiling {
-                        monitor: monitor_idx,
-                        workspace: workspace_idx,
-                        tile,
-                    })?;
-                }
-                SocketMessage::WorkspaceLayout(monitor_idx, workspace_idx, layout) => {
-                    self.admit_socket_action(BuiltinAction::SetMonitorWorkspaceLayout {
-                        monitor: monitor_idx,
-                        workspace: workspace_idx,
-                        layout,
-                    })?;
-                }
-                SocketMessage::WorkspaceLayoutRule(
-                    monitor_idx,
-                    workspace_idx,
-                    at_container_count,
-                    layout,
-                ) => {
-                    self.admit_socket_action(BuiltinAction::AddWorkspaceLayoutRule {
-                        monitor: monitor_idx,
-                        workspace: workspace_idx,
-                        at_container_count,
-                        layout,
-                    })?;
-                }
-                SocketMessage::WorkspaceLayoutCustomRule(
-                    monitor_idx,
-                    workspace_idx,
-                    at_container_count,
-                    ref path,
-                ) => {
-                    self.admit_socket_action(BuiltinAction::AddWorkspaceCustomLayoutRule {
-                        monitor: monitor_idx,
-                        workspace: workspace_idx,
-                        at_container_count,
-                        path: path.clone(),
-                    })?;
-                }
-                SocketMessage::ClearWorkspaceLayoutRules(monitor_idx, workspace_idx) => {
-                    self.admit_socket_action(BuiltinAction::ClearWorkspaceLayoutRules {
-                        monitor: monitor_idx,
-                        workspace: workspace_idx,
-                    })?;
-                }
-                SocketMessage::NamedWorkspaceLayoutCustom(ref workspace, ref path) => {
-                    self.admit_socket_action(BuiltinAction::SetNamedWorkspaceCustomLayout {
-                        name: WorkspaceName::parse(workspace.clone())?,
-                        path: path.clone(),
-                    })?;
-                }
-                SocketMessage::NamedWorkspaceTiling(ref workspace, tile) => {
-                    self.admit_socket_action(BuiltinAction::SetNamedWorkspaceTiling {
-                        name: WorkspaceName::parse(workspace.clone())?,
-                        tile,
-                    })?;
-                }
-                SocketMessage::NamedWorkspaceLayout(ref workspace, layout) => {
-                    self.admit_socket_action(BuiltinAction::SetNamedWorkspaceLayout {
-                        name: WorkspaceName::parse(workspace.clone())?,
-                        layout,
-                    })?;
-                }
-                SocketMessage::NamedWorkspaceLayoutRule(
-                    ref workspace,
-                    at_container_count,
-                    layout,
-                ) => {
-                    self.admit_socket_action(BuiltinAction::AddNamedWorkspaceLayoutRule {
-                        name: WorkspaceName::parse(workspace.clone())?,
-                        at_container_count,
-                        layout,
-                    })?;
-                }
-                SocketMessage::NamedWorkspaceLayoutCustomRule(
-                    ref workspace,
-                    at_container_count,
-                    ref path,
-                ) => {
-                    self.admit_socket_action(BuiltinAction::AddNamedWorkspaceCustomLayoutRule {
-                        name: WorkspaceName::parse(workspace.clone())?,
-                        at_container_count,
-                        path: path.clone(),
-                    })?;
-                }
-                SocketMessage::ClearNamedWorkspaceLayoutRules(ref workspace) => {
-                    self.admit_socket_action(BuiltinAction::ClearNamedWorkspaceLayoutRules {
-                        name: WorkspaceName::parse(workspace.clone())?,
-                    })?;
-                }
-                SocketMessage::CycleFocusWorkspace(direction) => {
-                    self.admit_socket_action(BuiltinAction::CycleFocusWorkspace { direction })?;
-                }
-                SocketMessage::CycleFocusEmptyWorkspace(direction) => {
-                    self.admit_socket_action(BuiltinAction::CycleFocusEmptyWorkspace {
-                        direction,
-                    })?;
-                }
-                SocketMessage::CloseWorkspace => {
-                    self.admit_socket_action(BuiltinAction::CloseWorkspace)?;
-                }
-                SocketMessage::FocusLastWorkspace => {
-                    self.admit_socket_action(BuiltinAction::FocusLastWorkspace)?;
-                }
-                SocketMessage::FocusWorkspaceNumber(workspace_idx) => {
-                    self.admit_socket_action(BuiltinAction::FocusWorkspace {
-                        index: workspace_idx,
-                    })?;
-                }
-                SocketMessage::FocusWorkspaceNumbers(workspace_idx) => {
-                    self.admit_socket_action(BuiltinAction::FocusWorkspaceOnAllMonitors {
-                        index: workspace_idx,
-                    })?;
-                }
-                SocketMessage::FocusMonitorWorkspaceNumber(monitor_idx, workspace_idx) => {
-                    self.admit_socket_action(BuiltinAction::FocusMonitorWorkspace {
-                        monitor: monitor_idx,
-                        workspace: workspace_idx,
-                    })?;
-                }
-                SocketMessage::FocusNamedWorkspace(ref name) => {
-                    self.admit_socket_action(BuiltinAction::FocusNamedWorkspace {
-                        name: WorkspaceName::parse(name.clone())?,
-                    })?;
-                }
-                SocketMessage::ToggleWorkspaceLayer => {
-                    self.admit_socket_action(BuiltinAction::ToggleWorkspaceLayer)?;
-                }
                 SocketMessage::Stop => {
                     self.stop(false)?;
                 }
@@ -878,32 +541,6 @@ impl WindowManager {
                 SocketMessage::DisplayIndexPreference(index_preference, ref display) => {
                     let mut display_index_preferences = DISPLAY_INDEX_PREFERENCES.write();
                     display_index_preferences.insert(index_preference, display.clone());
-                }
-                SocketMessage::EnsureWorkspaces(monitor_idx, workspace_count) => {
-                    self.admit_socket_action(BuiltinAction::EnsureWorkspaces {
-                        monitor: monitor_idx,
-                        count: workspace_count,
-                    })?;
-                }
-                SocketMessage::EnsureNamedWorkspaces(monitor_idx, ref names) => {
-                    let names = names
-                        .iter()
-                        .map(|name| WorkspaceName::parse(name.clone()))
-                        .collect::<Result<Vec<_>, _>>()?;
-                    self.admit_socket_action(BuiltinAction::EnsureNamedWorkspaces {
-                        monitor: monitor_idx,
-                        names,
-                    })?;
-                }
-                SocketMessage::NewWorkspace => {
-                    self.admit_socket_action(BuiltinAction::NewWorkspace)?;
-                }
-                SocketMessage::WorkspaceName(monitor_idx, workspace_idx, ref name) => {
-                    self.admit_socket_action(BuiltinAction::SetWorkspaceName {
-                        monitor: monitor_idx,
-                        workspace: workspace_idx,
-                        name: WorkspaceName::parse(name.clone())?,
-                    })?;
                 }
                 SocketMessage::State => {
                     let state = match serde_json::to_string_pretty(&state::State::from(&*self)) {
@@ -1009,33 +646,6 @@ impl WindowManager {
                     };
 
                     reply.write_all(response.as_bytes())?;
-                }
-                SocketMessage::ResizeWindowEdge(direction, sizing) => {
-                    let action = to_builtin_action(
-                        &SocketMessage::ResizeWindowEdge(direction, sizing),
-                        self.resize_delta,
-                    )
-                    .ok_or_eyre("resize delta must be non-zero")?;
-                    self.admit_socket_action(action)?;
-                }
-                SocketMessage::ResizeWindowAxis(axis, sizing) => {
-                    let action = to_builtin_action(
-                        &SocketMessage::ResizeWindowAxis(axis, sizing),
-                        self.resize_delta,
-                    )
-                    .ok_or_eyre("resize delta must be non-zero")?;
-                    self.admit_socket_action(action)?;
-                }
-                SocketMessage::FocusFollowsMouse(implementation, enable) => {
-                    self.admit_socket_action(BuiltinAction::SetFocusFollowsMouse {
-                        implementation,
-                        enabled: enable,
-                    })?;
-                }
-                SocketMessage::ToggleFocusFollowsMouse(implementation) => {
-                    self.admit_socket_action(BuiltinAction::ToggleFocusFollowsMouse {
-                        implementation,
-                    })?;
                 }
                 SocketMessage::ReloadConfiguration => {
                     Self::reload_configuration();
@@ -1204,12 +814,6 @@ if (!(Get-Process komorebi-bar -ErrorAction SilentlyContinue))
                         }));
                     }
                 }
-                SocketMessage::ManageFocusedWindow => {
-                    self.admit_socket_action(BuiltinAction::ManageFocusedWindow)?;
-                }
-                SocketMessage::UnmanageFocusedWindow => {
-                    self.admit_socket_action(BuiltinAction::UnmanageFocusedWindow)?;
-                }
                 SocketMessage::InvisibleBorders(_rect) => {}
                 SocketMessage::WorkAreaOffset(rect) => {
                     self.work_area_offset = Option::from(rect);
@@ -1312,56 +916,8 @@ if (!(Get-Process komorebi-bar -ErrorAction SilentlyContinue))
                 SocketMessage::RemoveSubscriberPipe(ref subscriber) => {
                     SUBSCRIBERS.lock().remove_pipe(subscriber);
                 }
-                SocketMessage::MouseFollowsFocus(enable) => {
-                    self.admit_socket_action(BuiltinAction::SetMouseFollowsFocus {
-                        enabled: enable,
-                    })?;
-                }
-                SocketMessage::ToggleMouseFollowsFocus => {
-                    self.admit_socket_action(BuiltinAction::ToggleMouseFollowsFocus)?;
-                }
                 SocketMessage::ResizeDelta(delta) => {
                     self.resize_delta = delta;
-                }
-                SocketMessage::ToggleWindowContainerBehaviour => {
-                    self.admit_socket_action(BuiltinAction::ToggleWindowContainerBehaviour)?;
-                }
-                SocketMessage::ToggleFloatOverride => {
-                    self.admit_socket_action(BuiltinAction::ToggleFloatOverride)?;
-                }
-                SocketMessage::ToggleWorkspaceWindowContainerBehaviour => {
-                    self.admit_socket_action(
-                        BuiltinAction::ToggleWorkspaceWindowContainerBehaviour,
-                    )?;
-                }
-                SocketMessage::ToggleWorkspaceFloatOverride => {
-                    self.admit_socket_action(BuiltinAction::ToggleWorkspaceFloatOverride)?;
-                }
-                SocketMessage::WindowHidingBehaviour(behaviour) => {
-                    self.admit_socket_action(BuiltinAction::SetWindowHidingBehaviour {
-                        behaviour,
-                    })?;
-                }
-                SocketMessage::ToggleCrossMonitorMoveBehaviour => {
-                    self.admit_socket_action(BuiltinAction::ToggleCrossMonitorMoveBehaviour)?;
-                }
-                SocketMessage::CrossMonitorMoveBehaviour(behaviour) => {
-                    self.admit_socket_action(BuiltinAction::SetCrossMonitorMoveBehaviour {
-                        behaviour,
-                    })?;
-                }
-                SocketMessage::ToggleMonocleFocusBehaviour => {
-                    self.admit_socket_action(BuiltinAction::ToggleMonocleFocusBehaviour)?;
-                }
-                SocketMessage::MonocleFocusBehaviour(behaviour) => {
-                    self.admit_socket_action(BuiltinAction::SetMonocleFocusBehaviour {
-                        behaviour,
-                    })?;
-                }
-                SocketMessage::UnmanagedWindowOperationBehaviour(behaviour) => {
-                    self.admit_socket_action(
-                        BuiltinAction::SetUnmanagedWindowOperationBehaviour { behaviour },
-                    )?;
                 }
                 SocketMessage::Border(enable) => {
                     border_manager::BORDER_ENABLED.store(enable, Ordering::SeqCst);
@@ -1555,15 +1111,6 @@ if (!(Get-Process komorebi-bar -ErrorAction SilentlyContinue))
                     let config = serde_json::to_string_pretty(&StaticConfig::from(&*self))?;
 
                     reply.write_all(config.as_bytes())?;
-                }
-                SocketMessage::RemoveTitleBar(identifier, ref id) => {
-                    self.admit_socket_action(BuiltinAction::RemoveTitleBar {
-                        identifier,
-                        id: id.clone(),
-                    })?;
-                }
-                SocketMessage::ToggleTitleBars => {
-                    self.admit_socket_action(BuiltinAction::ToggleTitleBars)?;
                 }
                 SocketMessage::DebugWindow(hwnd) => {
                     let window = Window::from(hwnd);
