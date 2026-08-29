@@ -1,5 +1,4 @@
 use std::num::NonZeroUsize;
-use std::path::PathBuf;
 
 use crate::core::ApplicationIdentifier;
 use crate::core::Axis;
@@ -15,6 +14,7 @@ use crate::core::Sizing;
 
 use super::builtin::Pixels;
 use super::builtin::WorkspaceName;
+use super::path::WindowsPath;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ActionResult {
@@ -542,18 +542,18 @@ pub enum NativeEffect {
         rows: Option<Vec<f32>>,
     },
     SetCustomLayout {
-        path: PathBuf,
+        path: WindowsPath,
     },
     SetWorkspaceCustomLayout {
         monitor: usize,
         workspace: usize,
-        path: PathBuf,
+        path: WindowsPath,
     },
     AddWorkspaceCustomLayoutRule {
         monitor: usize,
         workspace: usize,
         at_container_count: usize,
-        path: PathBuf,
+        path: WindowsPath,
     },
     EnsureNamedWorkspaces {
         monitor: usize,

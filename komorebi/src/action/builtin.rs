@@ -3,7 +3,6 @@ use serde::Serialize;
 use thiserror::Error;
 
 use std::num::NonZeroUsize;
-use std::path::PathBuf;
 
 use crate::core::ApplicationIdentifier;
 use crate::core::Axis;
@@ -18,6 +17,7 @@ use crate::core::OperationDirection;
 use crate::core::Sizing;
 
 use super::id::ActionId;
+use super::path::WindowsPath;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub enum BuiltinActionKind {
@@ -721,7 +721,7 @@ pub enum BuiltinAction {
     },
     SetNamedWorkspaceCustomLayout {
         name: WorkspaceName,
-        path: PathBuf,
+        path: WindowsPath,
     },
     AddNamedWorkspaceLayoutRule {
         name: WorkspaceName,
@@ -731,7 +731,7 @@ pub enum BuiltinAction {
     AddNamedWorkspaceCustomLayoutRule {
         name: WorkspaceName,
         at_container_count: usize,
-        path: PathBuf,
+        path: WindowsPath,
     },
     ClearNamedWorkspaceLayoutRules {
         name: WorkspaceName,
@@ -750,18 +750,18 @@ pub enum BuiltinAction {
         rows: Option<Vec<f32>>,
     },
     SetCustomLayout {
-        path: PathBuf,
+        path: WindowsPath,
     },
     SetWorkspaceCustomLayout {
         monitor: usize,
         workspace: usize,
-        path: PathBuf,
+        path: WindowsPath,
     },
     AddWorkspaceCustomLayoutRule {
         monitor: usize,
         workspace: usize,
         at_container_count: usize,
-        path: PathBuf,
+        path: WindowsPath,
     },
     EagerFocus {
         exe: String,

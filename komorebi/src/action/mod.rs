@@ -5,6 +5,7 @@ pub mod id;
 pub mod invoke;
 pub mod offer;
 pub mod outcome;
+pub mod path;
 mod transition;
 pub mod undo;
 
@@ -39,3 +40,5 @@ pub use offer::offers;
 pub use outcome::EffectId;
 pub use outcome::NativeEffectFailure;
 pub use outcome::PlannedEffect;
+pub use path::WindowsPath;
+pub use path::WindowsPathError;

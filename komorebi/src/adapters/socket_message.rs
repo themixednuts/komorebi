@@ -1,6 +1,7 @@
 use crate::action::BuiltinAction;
 use crate::action::Pixels;
 use crate::action::WindowSelector;
+use crate::action::WindowsPath;
 use crate::action::WorkspaceName;
 use crate::action::WorkspaceSelector;
 use crate::core::Sizing;
@@ -587,7 +588,7 @@ pub fn to_builtin_action(message: &SocketMessage, resize_delta: i32) -> Option<B
         SocketMessage::NamedWorkspaceLayoutCustom(name, path) => {
             Some(BuiltinAction::SetNamedWorkspaceCustomLayout {
                 name: WorkspaceName::parse(name.clone()).ok()?,
-                path: path.clone(),
+                path: WindowsPath::new(path.clone()).ok()?,
             })
         }
         SocketMessage::NamedWorkspaceLayoutRule(name, at_container_count, layout) => {
@@ -601,7 +602,7 @@ pub fn to_builtin_action(message: &SocketMessage, resize_delta: i32) -> Option<B
             Some(BuiltinAction::AddNamedWorkspaceCustomLayoutRule {
                 name: WorkspaceName::parse(name.clone()).ok()?,
                 at_container_count: *at_container_count,
-                path: path.clone(),
+                path: WindowsPath::new(path.clone()).ok()?,
             })
         }
         SocketMessage::ClearNamedWorkspaceLayoutRules(name) => {
@@ -631,14 +632,14 @@ pub fn to_builtin_action(message: &SocketMessage, resize_delta: i32) -> Option<B
             columns: columns.clone(),
             rows: rows.clone(),
         }),
-        SocketMessage::ChangeLayoutCustom(path) => {
-            Some(BuiltinAction::SetCustomLayout { path: path.clone() })
-        }
+        SocketMessage::ChangeLayoutCustom(path) => Some(BuiltinAction::SetCustomLayout {
+            path: WindowsPath::new(path.clone()).ok()?,
+        }),
         SocketMessage::WorkspaceLayoutCustom(monitor, workspace, path) => {
             Some(BuiltinAction::SetWorkspaceCustomLayout {
                 monitor: *monitor,
                 workspace: *workspace,
-                path: path.clone(),
+                path: WindowsPath::new(path.clone()).ok()?,
             })
         }
         SocketMessage::WorkspaceLayoutCustomRule(monitor, workspace, at_container_count, path) => {
@@ -646,7 +647,7 @@ pub fn to_builtin_action(message: &SocketMessage, resize_delta: i32) -> Option<B
                 monitor: *monitor,
                 workspace: *workspace,
                 at_container_count: *at_container_count,
-                path: path.clone(),
+                path: WindowsPath::new(path.clone()).ok()?,
             })
         }
         SocketMessage::EagerFocus(exe) => Some(BuiltinAction::EagerFocus { exe: exe.clone() }),
@@ -872,6 +873,20 @@ mod tests {
         assert_eq!(adapt_action(&SocketMessage::State, 50), Ok(None));
         assert_eq!(
             adapt_action(&SocketMessage::FocusNamedWorkspace(String::new()), 50),
+            Err(SocketActionAdapterError::InvalidParameters)
+        );
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn adapter_rejects_a_custom_layout_path_with_an_interior_nul() {
+        use std::ffi::OsString;
+        use std::os::windows::ffi::OsStringExt;
+        use std::path::PathBuf;
+
+        let path = PathBuf::from(OsString::from_wide(&[b'C' as u16, 0, b'x' as u16]));
+        assert_eq!(
+            adapt_action(&SocketMessage::ChangeLayoutCustom(path), 50),
             Err(SocketActionAdapterError::InvalidParameters)
         );
     }

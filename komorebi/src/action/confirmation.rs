@@ -114,6 +114,7 @@ fn token_bytes(token: &ConfirmationToken) -> [u8; 16] {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::action::WindowsPath;
     use crate::core::OperationDirection;
     use std::time::Duration;
 
@@ -172,6 +173,36 @@ mod tests {
         assert_eq!(
             ledger.consume(token, principal, &focus_left(), revision, now),
             Err(ConfirmationError::Replay)
+        );
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn confirmation_preserves_wtf16_path_arguments() {
+        use std::ffi::OsString;
+        use std::os::windows::ffi::OsStringExt;
+        use std::path::PathBuf;
+
+        let units = [b'C' as u16, b':' as u16, b'\\' as u16, 0xD800, b'x' as u16];
+        let action = BuiltinAction::SetCustomLayout {
+            path: WindowsPath::new(PathBuf::from(OsString::from_wide(&units))).unwrap(),
+        };
+        let mut ledger = ConfirmationLedger::new();
+        let token = ConfirmationToken::from_bytes([3; 16]);
+        let principal = PrincipalId::new(11);
+        let revision = Revision::new(7);
+        let now = Instant::now();
+        ledger.issue(
+            token,
+            principal,
+            &action,
+            revision,
+            now + Duration::from_secs(30),
+        );
+
+        assert_eq!(
+            ledger.consume(token, principal, &action, revision, now),
+            Ok(())
         );
     }
 }
