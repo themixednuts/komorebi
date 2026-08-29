@@ -16,6 +16,14 @@ pub enum SocketMessageClass {
     InternalOnly,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq, thiserror::Error)]
+pub enum SocketActionAdapterError {
+    #[error("socket message classified as an action has invalid parameters")]
+    InvalidParameters,
+    #[error("socket message classified as {classification:?} produced a built-in action")]
+    ClassificationMismatch { classification: SocketMessageClass },
+}
+
 #[must_use]
 pub fn classify(message: &SocketMessage) -> SocketMessageClass {
     use SocketMessage::*;
@@ -650,6 +658,21 @@ pub fn to_builtin_action(message: &SocketMessage, resize_delta: i32) -> Option<B
     }
 }
 
+pub fn adapt_action(
+    message: &SocketMessage,
+    resize_delta: i32,
+) -> Result<Option<BuiltinAction>, SocketActionAdapterError> {
+    let classification = classify(message);
+    match (classification, to_builtin_action(message, resize_delta)) {
+        (SocketMessageClass::Action, Some(action)) => Ok(Some(action)),
+        (SocketMessageClass::Action, None) => Err(SocketActionAdapterError::InvalidParameters),
+        (classification, Some(_)) => {
+            Err(SocketActionAdapterError::ClassificationMismatch { classification })
+        }
+        (_, None) => Ok(None),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -842,5 +865,14 @@ mod tests {
             admission,
             ActionAdmission::Committed { revision, .. } if revision == Revision::new(2)
         ));
+    }
+
+    #[test]
+    fn adapter_separates_non_actions_from_invalid_actions() {
+        assert_eq!(adapt_action(&SocketMessage::State, 50), Ok(None));
+        assert_eq!(
+            adapt_action(&SocketMessage::FocusNamedWorkspace(String::new()), 50),
+            Err(SocketActionAdapterError::InvalidParameters)
+        );
     }
 }

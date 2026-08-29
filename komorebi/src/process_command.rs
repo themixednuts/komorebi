@@ -38,6 +38,9 @@ use crate::action::BuiltinAction;
 use crate::action::WindowSelector;
 use crate::action::WorkspaceName;
 use crate::action::WorkspaceSelector;
+use crate::adapters::socket_message::SocketMessageClass;
+use crate::adapters::socket_message::adapt_action;
+use crate::adapters::socket_message::classify;
 use crate::adapters::socket_message::to_builtin_action;
 use crate::animation::ANIMATION_DURATION_GLOBAL;
 use crate::animation::ANIMATION_DURATION_PER_ANIMATION;
@@ -195,167 +198,155 @@ impl WindowManager {
         let initial_state = State::from(self.as_ref());
 
         let mut force_update_borders = false;
-        match message {
-            SocketMessage::Promote => {
-                self.admit_socket_action(BuiltinAction::PromoteContainer)?;
-            }
-            SocketMessage::PromoteSwap => {
-                self.admit_socket_action(BuiltinAction::PromoteContainerSwap)?;
-            }
-            SocketMessage::PromoteFocus => {
-                self.admit_socket_action(BuiltinAction::PromoteFocus)?;
-            }
-            SocketMessage::PromoteWindow(direction) => {
-                self.admit_socket_action(BuiltinAction::PromoteWindow { direction })?;
-            }
-            SocketMessage::EagerFocus(ref exe) => {
-                self.admit_socket_action(BuiltinAction::EagerFocus { exe: exe.clone() })?;
-            }
-            SocketMessage::FocusWindow(direction) => {
-                self.admit_socket_action(BuiltinAction::FocusWindow { direction })?;
-            }
-            SocketMessage::PreselectDirection(direction) => {
-                self.admit_socket_action(BuiltinAction::PreselectDirection { direction })?;
-            }
-            SocketMessage::CancelPreselect => {
-                self.admit_socket_action(BuiltinAction::CancelPreselect)?;
-            }
-            SocketMessage::MoveWindow(direction) => {
-                self.admit_socket_action(BuiltinAction::MoveWindow { direction })?;
-            }
-            SocketMessage::CycleFocusWindow(direction) => {
-                self.admit_socket_action(BuiltinAction::CycleFocusWindow { direction })?;
-            }
-            SocketMessage::CycleMoveWindow(direction) => {
-                self.admit_socket_action(BuiltinAction::CycleMoveWindow { direction })?;
-            }
-            SocketMessage::StackWindow(direction) => {
-                self.admit_socket_action(BuiltinAction::StackWindow { direction })?;
-            }
-            SocketMessage::UnstackWindow => {
-                self.admit_socket_action(BuiltinAction::UnstackWindow {
-                    window: WindowSelector::FocusedAtExecution,
-                })?;
-            }
-            SocketMessage::StackAll => {
-                self.admit_socket_action(BuiltinAction::StackAll)?;
-            }
-            SocketMessage::UnstackAll => {
-                self.admit_socket_action(BuiltinAction::UnstackAll)?;
-            }
-            SocketMessage::CycleStack(direction) => {
-                self.admit_socket_action(BuiltinAction::CycleStack { direction })?;
-            }
-            SocketMessage::CycleStackIndex(direction) => {
-                self.admit_socket_action(BuiltinAction::CycleStackIndex { direction })?;
-            }
-            SocketMessage::FocusStackWindow(index) => {
-                self.admit_socket_action(BuiltinAction::FocusStackWindow { index })?;
-            }
-            SocketMessage::ForceFocus => {
-                self.admit_socket_action(BuiltinAction::ForceFocus {
-                    window: WindowSelector::FocusedAtExecution,
-                })?;
-            }
-            SocketMessage::Close => {
-                self.admit_socket_action(BuiltinAction::CloseWindow {
-                    window: WindowSelector::FocusedAtExecution,
-                })?;
-            }
-            SocketMessage::Minimize => {
-                self.admit_socket_action(BuiltinAction::MinimizeWindow {
-                    window: WindowSelector::FocusedAtExecution,
-                })?;
-            }
-            SocketMessage::LockMonitorWorkspaceContainer(
-                monitor_idx,
-                workspace_idx,
-                container_idx,
-            ) => {
-                self.admit_socket_action(BuiltinAction::LockContainer {
-                    monitor: monitor_idx,
-                    workspace: workspace_idx,
-                    container: container_idx,
-                })?;
-            }
-            SocketMessage::UnlockMonitorWorkspaceContainer(
-                monitor_idx,
-                workspace_idx,
-                container_idx,
-            ) => {
-                self.admit_socket_action(BuiltinAction::UnlockContainer {
-                    monitor: monitor_idx,
-                    workspace: workspace_idx,
-                    container: container_idx,
-                })?;
-            }
-            SocketMessage::ToggleLock => {
-                self.admit_socket_action(BuiltinAction::ToggleContainerLock {
-                    window: WindowSelector::FocusedAtExecution,
-                })?;
-            }
-            SocketMessage::ToggleFloat => {
-                self.admit_socket_action(BuiltinAction::ToggleWindowFloat {
-                    window: WindowSelector::FocusedAtExecution,
-                })?;
-            }
-            SocketMessage::ToggleMonocle => {
-                self.admit_socket_action(BuiltinAction::ToggleWindowMonocle {
-                    window: WindowSelector::FocusedAtExecution,
-                })?;
-            }
-            SocketMessage::ToggleMaximize => {
-                self.admit_socket_action(BuiltinAction::ToggleWindowMaximize {
-                    window: WindowSelector::FocusedAtExecution,
-                })?;
-            }
-            SocketMessage::ContainerPadding(monitor_idx, workspace_idx, size) => {
-                self.admit_socket_action(BuiltinAction::SetContainerPadding {
-                    monitor: monitor_idx,
-                    workspace: workspace_idx,
-                    size,
-                })?;
-            }
-            SocketMessage::NamedWorkspaceContainerPadding(ref workspace, size) => {
-                self.admit_socket_action(BuiltinAction::SetNamedWorkspaceContainerPadding {
-                    name: WorkspaceName::parse(workspace.clone())?,
-                    size,
-                })?;
-            }
-            SocketMessage::WorkspacePadding(monitor_idx, workspace_idx, size) => {
-                self.admit_socket_action(BuiltinAction::SetWorkspacePadding {
-                    monitor: monitor_idx,
-                    workspace: workspace_idx,
-                    size,
-                })?;
-            }
-            SocketMessage::NamedWorkspacePadding(ref workspace, size) => {
-                self.admit_socket_action(BuiltinAction::SetNamedWorkspacePadding {
-                    name: WorkspaceName::parse(workspace.clone())?,
-                    size,
-                })?;
-            }
-            SocketMessage::InitialWorkspaceRule(identifier, ref id, monitor_idx, workspace_idx) => {
-                let mut workspace_rules = WORKSPACE_MATCHING_RULES.lock();
-                let workspace_matching_rule = WorkspaceMatchingRule {
-                    monitor_index: monitor_idx,
-                    workspace_index: workspace_idx,
-                    matching_rule: MatchingRule::Simple(IdWithIdentifier {
-                        kind: identifier,
-                        id: id.to_string(),
-                        matching_strategy: Some(MatchingStrategy::Legacy),
-                    }),
-                    initial_only: true,
-                };
-
-                if !workspace_rules.contains(&workspace_matching_rule) {
-                    workspace_rules.push(workspace_matching_rule);
+        if let Some(action) = adapt_action(&message, self.resize_delta)? {
+            self.admit_socket_action(action)?;
+        } else {
+            match message {
+                SocketMessage::Promote => {
+                    self.admit_socket_action(BuiltinAction::PromoteContainer)?;
                 }
-            }
-            SocketMessage::InitialNamedWorkspaceRule(identifier, ref id, ref workspace) => {
-                if let Some((monitor_idx, workspace_idx)) =
-                    self.monitor_workspace_index_by_name(workspace)
-                {
+                SocketMessage::PromoteSwap => {
+                    self.admit_socket_action(BuiltinAction::PromoteContainerSwap)?;
+                }
+                SocketMessage::PromoteFocus => {
+                    self.admit_socket_action(BuiltinAction::PromoteFocus)?;
+                }
+                SocketMessage::PromoteWindow(direction) => {
+                    self.admit_socket_action(BuiltinAction::PromoteWindow { direction })?;
+                }
+                SocketMessage::EagerFocus(ref exe) => {
+                    self.admit_socket_action(BuiltinAction::EagerFocus { exe: exe.clone() })?;
+                }
+                SocketMessage::FocusWindow(direction) => {
+                    self.admit_socket_action(BuiltinAction::FocusWindow { direction })?;
+                }
+                SocketMessage::PreselectDirection(direction) => {
+                    self.admit_socket_action(BuiltinAction::PreselectDirection { direction })?;
+                }
+                SocketMessage::CancelPreselect => {
+                    self.admit_socket_action(BuiltinAction::CancelPreselect)?;
+                }
+                SocketMessage::MoveWindow(direction) => {
+                    self.admit_socket_action(BuiltinAction::MoveWindow { direction })?;
+                }
+                SocketMessage::CycleFocusWindow(direction) => {
+                    self.admit_socket_action(BuiltinAction::CycleFocusWindow { direction })?;
+                }
+                SocketMessage::CycleMoveWindow(direction) => {
+                    self.admit_socket_action(BuiltinAction::CycleMoveWindow { direction })?;
+                }
+                SocketMessage::StackWindow(direction) => {
+                    self.admit_socket_action(BuiltinAction::StackWindow { direction })?;
+                }
+                SocketMessage::UnstackWindow => {
+                    self.admit_socket_action(BuiltinAction::UnstackWindow {
+                        window: WindowSelector::FocusedAtExecution,
+                    })?;
+                }
+                SocketMessage::StackAll => {
+                    self.admit_socket_action(BuiltinAction::StackAll)?;
+                }
+                SocketMessage::UnstackAll => {
+                    self.admit_socket_action(BuiltinAction::UnstackAll)?;
+                }
+                SocketMessage::CycleStack(direction) => {
+                    self.admit_socket_action(BuiltinAction::CycleStack { direction })?;
+                }
+                SocketMessage::CycleStackIndex(direction) => {
+                    self.admit_socket_action(BuiltinAction::CycleStackIndex { direction })?;
+                }
+                SocketMessage::FocusStackWindow(index) => {
+                    self.admit_socket_action(BuiltinAction::FocusStackWindow { index })?;
+                }
+                SocketMessage::ForceFocus => {
+                    self.admit_socket_action(BuiltinAction::ForceFocus {
+                        window: WindowSelector::FocusedAtExecution,
+                    })?;
+                }
+                SocketMessage::Close => {
+                    self.admit_socket_action(BuiltinAction::CloseWindow {
+                        window: WindowSelector::FocusedAtExecution,
+                    })?;
+                }
+                SocketMessage::Minimize => {
+                    self.admit_socket_action(BuiltinAction::MinimizeWindow {
+                        window: WindowSelector::FocusedAtExecution,
+                    })?;
+                }
+                SocketMessage::LockMonitorWorkspaceContainer(
+                    monitor_idx,
+                    workspace_idx,
+                    container_idx,
+                ) => {
+                    self.admit_socket_action(BuiltinAction::LockContainer {
+                        monitor: monitor_idx,
+                        workspace: workspace_idx,
+                        container: container_idx,
+                    })?;
+                }
+                SocketMessage::UnlockMonitorWorkspaceContainer(
+                    monitor_idx,
+                    workspace_idx,
+                    container_idx,
+                ) => {
+                    self.admit_socket_action(BuiltinAction::UnlockContainer {
+                        monitor: monitor_idx,
+                        workspace: workspace_idx,
+                        container: container_idx,
+                    })?;
+                }
+                SocketMessage::ToggleLock => {
+                    self.admit_socket_action(BuiltinAction::ToggleContainerLock {
+                        window: WindowSelector::FocusedAtExecution,
+                    })?;
+                }
+                SocketMessage::ToggleFloat => {
+                    self.admit_socket_action(BuiltinAction::ToggleWindowFloat {
+                        window: WindowSelector::FocusedAtExecution,
+                    })?;
+                }
+                SocketMessage::ToggleMonocle => {
+                    self.admit_socket_action(BuiltinAction::ToggleWindowMonocle {
+                        window: WindowSelector::FocusedAtExecution,
+                    })?;
+                }
+                SocketMessage::ToggleMaximize => {
+                    self.admit_socket_action(BuiltinAction::ToggleWindowMaximize {
+                        window: WindowSelector::FocusedAtExecution,
+                    })?;
+                }
+                SocketMessage::ContainerPadding(monitor_idx, workspace_idx, size) => {
+                    self.admit_socket_action(BuiltinAction::SetContainerPadding {
+                        monitor: monitor_idx,
+                        workspace: workspace_idx,
+                        size,
+                    })?;
+                }
+                SocketMessage::NamedWorkspaceContainerPadding(ref workspace, size) => {
+                    self.admit_socket_action(BuiltinAction::SetNamedWorkspaceContainerPadding {
+                        name: WorkspaceName::parse(workspace.clone())?,
+                        size,
+                    })?;
+                }
+                SocketMessage::WorkspacePadding(monitor_idx, workspace_idx, size) => {
+                    self.admit_socket_action(BuiltinAction::SetWorkspacePadding {
+                        monitor: monitor_idx,
+                        workspace: workspace_idx,
+                        size,
+                    })?;
+                }
+                SocketMessage::NamedWorkspacePadding(ref workspace, size) => {
+                    self.admit_socket_action(BuiltinAction::SetNamedWorkspacePadding {
+                        name: WorkspaceName::parse(workspace.clone())?,
+                        size,
+                    })?;
+                }
+                SocketMessage::InitialWorkspaceRule(
+                    identifier,
+                    ref id,
+                    monitor_idx,
+                    workspace_idx,
+                ) => {
                     let mut workspace_rules = WORKSPACE_MATCHING_RULES.lock();
                     let workspace_matching_rule = WorkspaceMatchingRule {
                         monitor_index: monitor_idx,
@@ -372,28 +363,28 @@ impl WindowManager {
                         workspace_rules.push(workspace_matching_rule);
                     }
                 }
-            }
-            SocketMessage::WorkspaceRule(identifier, ref id, monitor_idx, workspace_idx) => {
-                let mut workspace_rules = WORKSPACE_MATCHING_RULES.lock();
-                let workspace_matching_rule = WorkspaceMatchingRule {
-                    monitor_index: monitor_idx,
-                    workspace_index: workspace_idx,
-                    matching_rule: MatchingRule::Simple(IdWithIdentifier {
-                        kind: identifier,
-                        id: id.to_string(),
-                        matching_strategy: Some(MatchingStrategy::Legacy),
-                    }),
-                    initial_only: false,
-                };
+                SocketMessage::InitialNamedWorkspaceRule(identifier, ref id, ref workspace) => {
+                    if let Some((monitor_idx, workspace_idx)) =
+                        self.monitor_workspace_index_by_name(workspace)
+                    {
+                        let mut workspace_rules = WORKSPACE_MATCHING_RULES.lock();
+                        let workspace_matching_rule = WorkspaceMatchingRule {
+                            monitor_index: monitor_idx,
+                            workspace_index: workspace_idx,
+                            matching_rule: MatchingRule::Simple(IdWithIdentifier {
+                                kind: identifier,
+                                id: id.to_string(),
+                                matching_strategy: Some(MatchingStrategy::Legacy),
+                            }),
+                            initial_only: true,
+                        };
 
-                if !workspace_rules.contains(&workspace_matching_rule) {
-                    workspace_rules.push(workspace_matching_rule);
+                        if !workspace_rules.contains(&workspace_matching_rule) {
+                            workspace_rules.push(workspace_matching_rule);
+                        }
+                    }
                 }
-            }
-            SocketMessage::NamedWorkspaceRule(identifier, ref id, ref workspace) => {
-                if let Some((monitor_idx, workspace_idx)) =
-                    self.monitor_workspace_index_by_name(workspace)
-                {
+                SocketMessage::WorkspaceRule(identifier, ref id, monitor_idx, workspace_idx) => {
                     let mut workspace_rules = WORKSPACE_MATCHING_RULES.lock();
                     let workspace_matching_rule = WorkspaceMatchingRule {
                         monitor_index: monitor_idx,
@@ -410,652 +401,718 @@ impl WindowManager {
                         workspace_rules.push(workspace_matching_rule);
                     }
                 }
-            }
-            SocketMessage::ClearWorkspaceRules(monitor_idx, workspace_idx) => {
-                let mut workspace_rules = WORKSPACE_MATCHING_RULES.lock();
+                SocketMessage::NamedWorkspaceRule(identifier, ref id, ref workspace) => {
+                    if let Some((monitor_idx, workspace_idx)) =
+                        self.monitor_workspace_index_by_name(workspace)
+                    {
+                        let mut workspace_rules = WORKSPACE_MATCHING_RULES.lock();
+                        let workspace_matching_rule = WorkspaceMatchingRule {
+                            monitor_index: monitor_idx,
+                            workspace_index: workspace_idx,
+                            matching_rule: MatchingRule::Simple(IdWithIdentifier {
+                                kind: identifier,
+                                id: id.to_string(),
+                                matching_strategy: Some(MatchingStrategy::Legacy),
+                            }),
+                            initial_only: false,
+                        };
 
-                workspace_rules.retain(|r| {
-                    r.monitor_index != monitor_idx && r.workspace_index != workspace_idx
-                });
-            }
-            SocketMessage::ClearNamedWorkspaceRules(ref workspace) => {
-                if let Some((monitor_idx, workspace_idx)) =
-                    self.monitor_workspace_index_by_name(workspace)
-                {
+                        if !workspace_rules.contains(&workspace_matching_rule) {
+                            workspace_rules.push(workspace_matching_rule);
+                        }
+                    }
+                }
+                SocketMessage::ClearWorkspaceRules(monitor_idx, workspace_idx) => {
                     let mut workspace_rules = WORKSPACE_MATCHING_RULES.lock();
+
                     workspace_rules.retain(|r| {
                         r.monitor_index != monitor_idx && r.workspace_index != workspace_idx
                     });
                 }
-            }
-            SocketMessage::ClearAllWorkspaceRules => {
-                let mut workspace_rules = WORKSPACE_MATCHING_RULES.lock();
-                workspace_rules.clear();
-            }
-            SocketMessage::EnforceWorkspaceRules => {
-                self.admit_socket_action(BuiltinAction::EnforceWorkspaceRules)?;
-            }
-            SocketMessage::ManageRule(identifier, ref id) => {
-                let mut manage_identifiers = MANAGE_IDENTIFIERS.lock();
-
-                let mut should_push = true;
-                for m in &*manage_identifiers {
-                    if let MatchingRule::Simple(m) = m
-                        && m.id.eq(id)
+                SocketMessage::ClearNamedWorkspaceRules(ref workspace) => {
+                    if let Some((monitor_idx, workspace_idx)) =
+                        self.monitor_workspace_index_by_name(workspace)
                     {
-                        should_push = false;
+                        let mut workspace_rules = WORKSPACE_MATCHING_RULES.lock();
+                        workspace_rules.retain(|r| {
+                            r.monitor_index != monitor_idx && r.workspace_index != workspace_idx
+                        });
                     }
                 }
-
-                if should_push {
-                    manage_identifiers.push(MatchingRule::Simple(IdWithIdentifier {
-                        kind: identifier,
-                        id: id.clone(),
-                        matching_strategy: Option::from(MatchingStrategy::Legacy),
-                    }));
+                SocketMessage::ClearAllWorkspaceRules => {
+                    let mut workspace_rules = WORKSPACE_MATCHING_RULES.lock();
+                    workspace_rules.clear();
                 }
-            }
-            SocketMessage::SessionFloatRule => {
-                self.admit_socket_action(BuiltinAction::AddSessionFloatRule)?;
-            }
-            SocketMessage::SessionFloatRules => {
-                let session_floating_applications = SESSION_FLOATING_APPLICATIONS.lock();
-                let rules = match serde_json::to_string_pretty(&*session_floating_applications) {
-                    Ok(rules) => rules,
-                    Err(error) => error.to_string(),
-                };
+                SocketMessage::EnforceWorkspaceRules => {
+                    self.admit_socket_action(BuiltinAction::EnforceWorkspaceRules)?;
+                }
+                SocketMessage::ManageRule(identifier, ref id) => {
+                    let mut manage_identifiers = MANAGE_IDENTIFIERS.lock();
 
-                reply.write_all(rules.as_bytes())?;
-            }
-            SocketMessage::ClearSessionFloatRules => {
-                self.admit_socket_action(BuiltinAction::ClearSessionFloatRules)?;
-            }
-            SocketMessage::IgnoreRule(identifier, ref id) => {
-                let mut ignore_identifiers = IGNORE_IDENTIFIERS.lock();
+                    let mut should_push = true;
+                    for m in &*manage_identifiers {
+                        if let MatchingRule::Simple(m) = m
+                            && m.id.eq(id)
+                        {
+                            should_push = false;
+                        }
+                    }
 
-                let mut should_push = true;
-                for i in &*ignore_identifiers {
-                    if let MatchingRule::Simple(i) = i
-                        && i.id.eq(id)
-                    {
-                        should_push = false;
+                    if should_push {
+                        manage_identifiers.push(MatchingRule::Simple(IdWithIdentifier {
+                            kind: identifier,
+                            id: id.clone(),
+                            matching_strategy: Option::from(MatchingStrategy::Legacy),
+                        }));
                     }
                 }
-
-                if should_push {
-                    ignore_identifiers.push(MatchingRule::Simple(IdWithIdentifier {
-                        kind: identifier,
-                        id: id.clone(),
-                        matching_strategy: Option::from(MatchingStrategy::Legacy),
-                    }));
+                SocketMessage::SessionFloatRule => {
+                    self.admit_socket_action(BuiltinAction::AddSessionFloatRule)?;
                 }
-
-                let offset = self.work_area_offset;
-
-                let mut hwnds_to_purge = vec![];
-                for (i, monitor) in self.monitors().iter().enumerate() {
-                    for container in monitor
-                        .focused_workspace()
-                        .ok_or_eyre("there is no workspace")?
-                        .containers()
+                SocketMessage::SessionFloatRules => {
+                    let session_floating_applications = SESSION_FLOATING_APPLICATIONS.lock();
+                    let rules = match serde_json::to_string_pretty(&*session_floating_applications)
                     {
-                        for window in container.windows() {
-                            match identifier {
-                                ApplicationIdentifier::Path => {
-                                    if window.path()? == *id {
-                                        hwnds_to_purge.push((i, window.hwnd));
+                        Ok(rules) => rules,
+                        Err(error) => error.to_string(),
+                    };
+
+                    reply.write_all(rules.as_bytes())?;
+                }
+                SocketMessage::ClearSessionFloatRules => {
+                    self.admit_socket_action(BuiltinAction::ClearSessionFloatRules)?;
+                }
+                SocketMessage::IgnoreRule(identifier, ref id) => {
+                    let mut ignore_identifiers = IGNORE_IDENTIFIERS.lock();
+
+                    let mut should_push = true;
+                    for i in &*ignore_identifiers {
+                        if let MatchingRule::Simple(i) = i
+                            && i.id.eq(id)
+                        {
+                            should_push = false;
+                        }
+                    }
+
+                    if should_push {
+                        ignore_identifiers.push(MatchingRule::Simple(IdWithIdentifier {
+                            kind: identifier,
+                            id: id.clone(),
+                            matching_strategy: Option::from(MatchingStrategy::Legacy),
+                        }));
+                    }
+
+                    let offset = self.work_area_offset;
+
+                    let mut hwnds_to_purge = vec![];
+                    for (i, monitor) in self.monitors().iter().enumerate() {
+                        for container in monitor
+                            .focused_workspace()
+                            .ok_or_eyre("there is no workspace")?
+                            .containers()
+                        {
+                            for window in container.windows() {
+                                match identifier {
+                                    ApplicationIdentifier::Path => {
+                                        if window.path()? == *id {
+                                            hwnds_to_purge.push((i, window.hwnd));
+                                        }
                                     }
-                                }
-                                ApplicationIdentifier::Exe => {
-                                    if window.exe()? == *id {
-                                        hwnds_to_purge.push((i, window.hwnd));
+                                    ApplicationIdentifier::Exe => {
+                                        if window.exe()? == *id {
+                                            hwnds_to_purge.push((i, window.hwnd));
+                                        }
                                     }
-                                }
-                                ApplicationIdentifier::Class => {
-                                    if window.class()? == *id {
-                                        hwnds_to_purge.push((i, window.hwnd));
+                                    ApplicationIdentifier::Class => {
+                                        if window.class()? == *id {
+                                            hwnds_to_purge.push((i, window.hwnd));
+                                        }
                                     }
-                                }
-                                ApplicationIdentifier::Title => {
-                                    if window.title()? == *id {
-                                        hwnds_to_purge.push((i, window.hwnd));
+                                    ApplicationIdentifier::Title => {
+                                        if window.title()? == *id {
+                                            hwnds_to_purge.push((i, window.hwnd));
+                                        }
                                     }
                                 }
                             }
                         }
                     }
+
+                    for (monitor_idx, hwnd) in hwnds_to_purge {
+                        let monitor = self
+                            .monitors_mut()
+                            .get_mut(monitor_idx)
+                            .ok_or_eyre("there is no monitor")?;
+
+                        monitor
+                            .focused_workspace_mut()
+                            .ok_or_eyre("there is no focused workspace")?
+                            .remove_window(hwnd)?;
+
+                        monitor.update_focused_workspace(offset)?;
+                    }
+                }
+                SocketMessage::FocusedWorkspaceContainerPadding(adjustment) => {
+                    self.admit_socket_action(BuiltinAction::SetFocusedContainerPadding {
+                        size: adjustment,
+                    })?;
+                }
+                SocketMessage::FocusedWorkspacePadding(adjustment) => {
+                    self.admit_socket_action(BuiltinAction::SetFocusedWorkspacePadding {
+                        size: adjustment,
+                    })?;
+                }
+                SocketMessage::AdjustContainerPadding(sizing, adjustment) => {
+                    self.admit_socket_action(BuiltinAction::AdjustContainerPadding {
+                        sizing,
+                        adjustment,
+                    })?;
+                }
+                SocketMessage::AdjustWorkspacePadding(sizing, adjustment) => {
+                    self.admit_socket_action(BuiltinAction::AdjustWorkspacePadding {
+                        sizing,
+                        adjustment,
+                    })?;
+                }
+                SocketMessage::MoveContainerToLastWorkspace => {
+                    self.admit_socket_action(BuiltinAction::MoveContainerToLastWorkspace)?;
+                }
+                SocketMessage::SendContainerToLastWorkspace => {
+                    self.admit_socket_action(BuiltinAction::SendContainerToLastWorkspace)?;
+                }
+                SocketMessage::MoveContainerToWorkspaceNumber(workspace_idx) => {
+                    self.admit_socket_action(BuiltinAction::MoveContainerToWorkspace {
+                        index: workspace_idx,
+                    })?;
+                }
+                SocketMessage::CycleMoveContainerToWorkspace(direction) => {
+                    self.admit_socket_action(BuiltinAction::CycleMoveContainerToWorkspace {
+                        direction,
+                    })?;
+                }
+                SocketMessage::MoveContainerToMonitorNumber(monitor_idx) => {
+                    self.admit_socket_action(BuiltinAction::MoveContainerToMonitor {
+                        index: monitor_idx,
+                    })?;
+                }
+                SocketMessage::SwapWorkspacesToMonitorNumber(monitor_idx) => {
+                    self.admit_socket_action(BuiltinAction::SwapWorkspacesToMonitor {
+                        index: monitor_idx,
+                    })?;
+                }
+                SocketMessage::CycleMoveContainerToMonitor(direction) => {
+                    self.admit_socket_action(BuiltinAction::CycleMoveContainerToMonitor {
+                        direction,
+                    })?;
+                }
+                SocketMessage::SendContainerToWorkspaceNumber(workspace_idx) => {
+                    self.admit_socket_action(BuiltinAction::SendContainerToWorkspace {
+                        index: workspace_idx,
+                    })?;
+                }
+                SocketMessage::CycleSendContainerToWorkspace(direction) => {
+                    self.admit_socket_action(BuiltinAction::CycleSendContainerToWorkspace {
+                        direction,
+                    })?;
+                }
+                SocketMessage::SendContainerToMonitorNumber(monitor_idx) => {
+                    self.admit_socket_action(BuiltinAction::SendContainerToMonitor {
+                        index: monitor_idx,
+                    })?;
+                }
+                SocketMessage::CycleSendContainerToMonitor(direction) => {
+                    self.admit_socket_action(BuiltinAction::CycleSendContainerToMonitor {
+                        direction,
+                    })?;
+                }
+                SocketMessage::SendContainerToMonitorWorkspaceNumber(
+                    monitor_idx,
+                    workspace_idx,
+                ) => {
+                    self.admit_socket_action(BuiltinAction::SendContainerToMonitorWorkspace {
+                        monitor: monitor_idx,
+                        workspace: workspace_idx,
+                    })?;
+                }
+                SocketMessage::MoveContainerToMonitorWorkspaceNumber(
+                    monitor_idx,
+                    workspace_idx,
+                ) => {
+                    self.admit_socket_action(BuiltinAction::MoveContainerToMonitorWorkspace {
+                        monitor: monitor_idx,
+                        workspace: workspace_idx,
+                    })?;
+                }
+                SocketMessage::SendContainerToNamedWorkspace(ref workspace) => {
+                    self.admit_socket_action(BuiltinAction::SendContainerToNamedWorkspace {
+                        name: WorkspaceName::parse(workspace.clone())?,
+                    })?;
+                }
+                SocketMessage::MoveContainerToNamedWorkspace(ref workspace) => {
+                    self.admit_socket_action(BuiltinAction::MoveContainerToNamedWorkspace {
+                        name: WorkspaceName::parse(workspace.clone())?,
+                    })?;
                 }
 
-                for (monitor_idx, hwnd) in hwnds_to_purge {
-                    let monitor = self
-                        .monitors_mut()
-                        .get_mut(monitor_idx)
-                        .ok_or_eyre("there is no monitor")?;
-
-                    monitor
-                        .focused_workspace_mut()
-                        .ok_or_eyre("there is no focused workspace")?
-                        .remove_window(hwnd)?;
-
-                    monitor.update_focused_workspace(offset)?;
+                SocketMessage::MoveWorkspaceToMonitorNumber(monitor_idx) => {
+                    self.admit_socket_action(BuiltinAction::MoveWorkspaceToMonitor {
+                        index: monitor_idx,
+                    })?;
                 }
-            }
-            SocketMessage::FocusedWorkspaceContainerPadding(adjustment) => {
-                self.admit_socket_action(BuiltinAction::SetFocusedContainerPadding {
-                    size: adjustment,
-                })?;
-            }
-            SocketMessage::FocusedWorkspacePadding(adjustment) => {
-                self.admit_socket_action(BuiltinAction::SetFocusedWorkspacePadding {
-                    size: adjustment,
-                })?;
-            }
-            SocketMessage::AdjustContainerPadding(sizing, adjustment) => {
-                self.admit_socket_action(BuiltinAction::AdjustContainerPadding {
-                    sizing,
-                    adjustment,
-                })?;
-            }
-            SocketMessage::AdjustWorkspacePadding(sizing, adjustment) => {
-                self.admit_socket_action(BuiltinAction::AdjustWorkspacePadding {
-                    sizing,
-                    adjustment,
-                })?;
-            }
-            SocketMessage::MoveContainerToLastWorkspace => {
-                self.admit_socket_action(BuiltinAction::MoveContainerToLastWorkspace)?;
-            }
-            SocketMessage::SendContainerToLastWorkspace => {
-                self.admit_socket_action(BuiltinAction::SendContainerToLastWorkspace)?;
-            }
-            SocketMessage::MoveContainerToWorkspaceNumber(workspace_idx) => {
-                self.admit_socket_action(BuiltinAction::MoveContainerToWorkspace {
-                    index: workspace_idx,
-                })?;
-            }
-            SocketMessage::CycleMoveContainerToWorkspace(direction) => {
-                self.admit_socket_action(BuiltinAction::CycleMoveContainerToWorkspace {
-                    direction,
-                })?;
-            }
-            SocketMessage::MoveContainerToMonitorNumber(monitor_idx) => {
-                self.admit_socket_action(BuiltinAction::MoveContainerToMonitor {
-                    index: monitor_idx,
-                })?;
-            }
-            SocketMessage::SwapWorkspacesToMonitorNumber(monitor_idx) => {
-                self.admit_socket_action(BuiltinAction::SwapWorkspacesToMonitor {
-                    index: monitor_idx,
-                })?;
-            }
-            SocketMessage::CycleMoveContainerToMonitor(direction) => {
-                self.admit_socket_action(BuiltinAction::CycleMoveContainerToMonitor { direction })?;
-            }
-            SocketMessage::SendContainerToWorkspaceNumber(workspace_idx) => {
-                self.admit_socket_action(BuiltinAction::SendContainerToWorkspace {
-                    index: workspace_idx,
-                })?;
-            }
-            SocketMessage::CycleSendContainerToWorkspace(direction) => {
-                self.admit_socket_action(BuiltinAction::CycleSendContainerToWorkspace {
-                    direction,
-                })?;
-            }
-            SocketMessage::SendContainerToMonitorNumber(monitor_idx) => {
-                self.admit_socket_action(BuiltinAction::SendContainerToMonitor {
-                    index: monitor_idx,
-                })?;
-            }
-            SocketMessage::CycleSendContainerToMonitor(direction) => {
-                self.admit_socket_action(BuiltinAction::CycleSendContainerToMonitor { direction })?;
-            }
-            SocketMessage::SendContainerToMonitorWorkspaceNumber(monitor_idx, workspace_idx) => {
-                self.admit_socket_action(BuiltinAction::SendContainerToMonitorWorkspace {
-                    monitor: monitor_idx,
-                    workspace: workspace_idx,
-                })?;
-            }
-            SocketMessage::MoveContainerToMonitorWorkspaceNumber(monitor_idx, workspace_idx) => {
-                self.admit_socket_action(BuiltinAction::MoveContainerToMonitorWorkspace {
-                    monitor: monitor_idx,
-                    workspace: workspace_idx,
-                })?;
-            }
-            SocketMessage::SendContainerToNamedWorkspace(ref workspace) => {
-                self.admit_socket_action(BuiltinAction::SendContainerToNamedWorkspace {
-                    name: WorkspaceName::parse(workspace.clone())?,
-                })?;
-            }
-            SocketMessage::MoveContainerToNamedWorkspace(ref workspace) => {
-                self.admit_socket_action(BuiltinAction::MoveContainerToNamedWorkspace {
-                    name: WorkspaceName::parse(workspace.clone())?,
-                })?;
-            }
-
-            SocketMessage::MoveWorkspaceToMonitorNumber(monitor_idx) => {
-                self.admit_socket_action(BuiltinAction::MoveWorkspaceToMonitor {
-                    index: monitor_idx,
-                })?;
-            }
-            SocketMessage::CycleMoveWorkspaceToMonitor(direction) => {
-                self.admit_socket_action(BuiltinAction::CycleMoveWorkspaceToMonitor { direction })?;
-            }
-            SocketMessage::TogglePause => {
-                self.admit_socket_action(BuiltinAction::TogglePause)?;
-            }
-            SocketMessage::ToggleTiling => {
-                self.admit_socket_action(BuiltinAction::ToggleTiling)?;
-            }
-            SocketMessage::CycleFocusMonitor(direction) => {
-                self.admit_socket_action(BuiltinAction::CycleFocusMonitor { direction })?;
-            }
-            SocketMessage::FocusMonitorNumber(monitor_idx) => {
-                self.admit_socket_action(BuiltinAction::FocusMonitor { index: monitor_idx })?;
-            }
-            SocketMessage::FocusMonitorAtCursor => {
-                self.admit_socket_action(BuiltinAction::FocusMonitorAtCursor)?;
-            }
-            SocketMessage::Retile => {
-                self.admit_socket_action(BuiltinAction::Retile)?;
-                force_update_borders = true;
-            }
-            SocketMessage::RetileWithResizeDimensions => {
-                self.admit_socket_action(BuiltinAction::RetileWithResizeDimensions)?;
-                force_update_borders = true;
-            }
-            SocketMessage::FlipLayout(layout_flip) => {
-                self.admit_socket_action(BuiltinAction::FlipLayout { axis: layout_flip })?;
-            }
-            SocketMessage::ScrollingLayoutColumns(count) => {
-                self.admit_socket_action(BuiltinAction::SetScrollingColumns { columns: count })?;
-            }
-            SocketMessage::ChangeLayout(layout) => {
-                self.admit_socket_action(BuiltinAction::SetWorkspaceLayout {
-                    workspace: WorkspaceSelector::FocusedAtExecution,
-                    layout,
-                })?;
-            }
-            SocketMessage::CycleLayout(direction) => {
-                self.admit_socket_action(BuiltinAction::CycleLayout { direction })?;
-            }
-            SocketMessage::LayoutRatios(ref columns, ref rows) => {
-                self.admit_socket_action(BuiltinAction::SetLayoutRatios {
-                    columns: columns.clone(),
-                    rows: rows.clone(),
-                })?;
-            }
-            SocketMessage::ChangeLayoutCustom(ref path) => {
-                self.admit_socket_action(BuiltinAction::SetCustomLayout { path: path.clone() })?;
-            }
-            SocketMessage::WorkspaceLayoutCustom(monitor_idx, workspace_idx, ref path) => {
-                self.admit_socket_action(BuiltinAction::SetWorkspaceCustomLayout {
-                    monitor: monitor_idx,
-                    workspace: workspace_idx,
-                    path: path.clone(),
-                })?;
-            }
-            SocketMessage::WorkspaceTiling(monitor_idx, workspace_idx, tile) => {
-                self.admit_socket_action(BuiltinAction::SetWorkspaceTiling {
-                    monitor: monitor_idx,
-                    workspace: workspace_idx,
-                    tile,
-                })?;
-            }
-            SocketMessage::WorkspaceLayout(monitor_idx, workspace_idx, layout) => {
-                self.admit_socket_action(BuiltinAction::SetMonitorWorkspaceLayout {
-                    monitor: monitor_idx,
-                    workspace: workspace_idx,
-                    layout,
-                })?;
-            }
-            SocketMessage::WorkspaceLayoutRule(
-                monitor_idx,
-                workspace_idx,
-                at_container_count,
-                layout,
-            ) => {
-                self.admit_socket_action(BuiltinAction::AddWorkspaceLayoutRule {
-                    monitor: monitor_idx,
-                    workspace: workspace_idx,
+                SocketMessage::CycleMoveWorkspaceToMonitor(direction) => {
+                    self.admit_socket_action(BuiltinAction::CycleMoveWorkspaceToMonitor {
+                        direction,
+                    })?;
+                }
+                SocketMessage::TogglePause => {
+                    self.admit_socket_action(BuiltinAction::TogglePause)?;
+                }
+                SocketMessage::ToggleTiling => {
+                    self.admit_socket_action(BuiltinAction::ToggleTiling)?;
+                }
+                SocketMessage::CycleFocusMonitor(direction) => {
+                    self.admit_socket_action(BuiltinAction::CycleFocusMonitor { direction })?;
+                }
+                SocketMessage::FocusMonitorNumber(monitor_idx) => {
+                    self.admit_socket_action(BuiltinAction::FocusMonitor { index: monitor_idx })?;
+                }
+                SocketMessage::FocusMonitorAtCursor => {
+                    self.admit_socket_action(BuiltinAction::FocusMonitorAtCursor)?;
+                }
+                SocketMessage::Retile => {
+                    self.admit_socket_action(BuiltinAction::Retile)?;
+                    force_update_borders = true;
+                }
+                SocketMessage::RetileWithResizeDimensions => {
+                    self.admit_socket_action(BuiltinAction::RetileWithResizeDimensions)?;
+                    force_update_borders = true;
+                }
+                SocketMessage::FlipLayout(layout_flip) => {
+                    self.admit_socket_action(BuiltinAction::FlipLayout { axis: layout_flip })?;
+                }
+                SocketMessage::ScrollingLayoutColumns(count) => {
+                    self.admit_socket_action(BuiltinAction::SetScrollingColumns {
+                        columns: count,
+                    })?;
+                }
+                SocketMessage::ChangeLayout(layout) => {
+                    self.admit_socket_action(BuiltinAction::SetWorkspaceLayout {
+                        workspace: WorkspaceSelector::FocusedAtExecution,
+                        layout,
+                    })?;
+                }
+                SocketMessage::CycleLayout(direction) => {
+                    self.admit_socket_action(BuiltinAction::CycleLayout { direction })?;
+                }
+                SocketMessage::LayoutRatios(ref columns, ref rows) => {
+                    self.admit_socket_action(BuiltinAction::SetLayoutRatios {
+                        columns: columns.clone(),
+                        rows: rows.clone(),
+                    })?;
+                }
+                SocketMessage::ChangeLayoutCustom(ref path) => {
+                    self.admit_socket_action(BuiltinAction::SetCustomLayout {
+                        path: path.clone(),
+                    })?;
+                }
+                SocketMessage::WorkspaceLayoutCustom(monitor_idx, workspace_idx, ref path) => {
+                    self.admit_socket_action(BuiltinAction::SetWorkspaceCustomLayout {
+                        monitor: monitor_idx,
+                        workspace: workspace_idx,
+                        path: path.clone(),
+                    })?;
+                }
+                SocketMessage::WorkspaceTiling(monitor_idx, workspace_idx, tile) => {
+                    self.admit_socket_action(BuiltinAction::SetWorkspaceTiling {
+                        monitor: monitor_idx,
+                        workspace: workspace_idx,
+                        tile,
+                    })?;
+                }
+                SocketMessage::WorkspaceLayout(monitor_idx, workspace_idx, layout) => {
+                    self.admit_socket_action(BuiltinAction::SetMonitorWorkspaceLayout {
+                        monitor: monitor_idx,
+                        workspace: workspace_idx,
+                        layout,
+                    })?;
+                }
+                SocketMessage::WorkspaceLayoutRule(
+                    monitor_idx,
+                    workspace_idx,
                     at_container_count,
                     layout,
-                })?;
-            }
-            SocketMessage::WorkspaceLayoutCustomRule(
-                monitor_idx,
-                workspace_idx,
-                at_container_count,
-                ref path,
-            ) => {
-                self.admit_socket_action(BuiltinAction::AddWorkspaceCustomLayoutRule {
-                    monitor: monitor_idx,
-                    workspace: workspace_idx,
+                ) => {
+                    self.admit_socket_action(BuiltinAction::AddWorkspaceLayoutRule {
+                        monitor: monitor_idx,
+                        workspace: workspace_idx,
+                        at_container_count,
+                        layout,
+                    })?;
+                }
+                SocketMessage::WorkspaceLayoutCustomRule(
+                    monitor_idx,
+                    workspace_idx,
                     at_container_count,
-                    path: path.clone(),
-                })?;
-            }
-            SocketMessage::ClearWorkspaceLayoutRules(monitor_idx, workspace_idx) => {
-                self.admit_socket_action(BuiltinAction::ClearWorkspaceLayoutRules {
-                    monitor: monitor_idx,
-                    workspace: workspace_idx,
-                })?;
-            }
-            SocketMessage::NamedWorkspaceLayoutCustom(ref workspace, ref path) => {
-                self.admit_socket_action(BuiltinAction::SetNamedWorkspaceCustomLayout {
-                    name: WorkspaceName::parse(workspace.clone())?,
-                    path: path.clone(),
-                })?;
-            }
-            SocketMessage::NamedWorkspaceTiling(ref workspace, tile) => {
-                self.admit_socket_action(BuiltinAction::SetNamedWorkspaceTiling {
-                    name: WorkspaceName::parse(workspace.clone())?,
-                    tile,
-                })?;
-            }
-            SocketMessage::NamedWorkspaceLayout(ref workspace, layout) => {
-                self.admit_socket_action(BuiltinAction::SetNamedWorkspaceLayout {
-                    name: WorkspaceName::parse(workspace.clone())?,
+                    ref path,
+                ) => {
+                    self.admit_socket_action(BuiltinAction::AddWorkspaceCustomLayoutRule {
+                        monitor: monitor_idx,
+                        workspace: workspace_idx,
+                        at_container_count,
+                        path: path.clone(),
+                    })?;
+                }
+                SocketMessage::ClearWorkspaceLayoutRules(monitor_idx, workspace_idx) => {
+                    self.admit_socket_action(BuiltinAction::ClearWorkspaceLayoutRules {
+                        monitor: monitor_idx,
+                        workspace: workspace_idx,
+                    })?;
+                }
+                SocketMessage::NamedWorkspaceLayoutCustom(ref workspace, ref path) => {
+                    self.admit_socket_action(BuiltinAction::SetNamedWorkspaceCustomLayout {
+                        name: WorkspaceName::parse(workspace.clone())?,
+                        path: path.clone(),
+                    })?;
+                }
+                SocketMessage::NamedWorkspaceTiling(ref workspace, tile) => {
+                    self.admit_socket_action(BuiltinAction::SetNamedWorkspaceTiling {
+                        name: WorkspaceName::parse(workspace.clone())?,
+                        tile,
+                    })?;
+                }
+                SocketMessage::NamedWorkspaceLayout(ref workspace, layout) => {
+                    self.admit_socket_action(BuiltinAction::SetNamedWorkspaceLayout {
+                        name: WorkspaceName::parse(workspace.clone())?,
+                        layout,
+                    })?;
+                }
+                SocketMessage::NamedWorkspaceLayoutRule(
+                    ref workspace,
+                    at_container_count,
                     layout,
-                })?;
-            }
-            SocketMessage::NamedWorkspaceLayoutRule(ref workspace, at_container_count, layout) => {
-                self.admit_socket_action(BuiltinAction::AddNamedWorkspaceLayoutRule {
-                    name: WorkspaceName::parse(workspace.clone())?,
+                ) => {
+                    self.admit_socket_action(BuiltinAction::AddNamedWorkspaceLayoutRule {
+                        name: WorkspaceName::parse(workspace.clone())?,
+                        at_container_count,
+                        layout,
+                    })?;
+                }
+                SocketMessage::NamedWorkspaceLayoutCustomRule(
+                    ref workspace,
                     at_container_count,
-                    layout,
-                })?;
-            }
-            SocketMessage::NamedWorkspaceLayoutCustomRule(
-                ref workspace,
-                at_container_count,
-                ref path,
-            ) => {
-                self.admit_socket_action(BuiltinAction::AddNamedWorkspaceCustomLayoutRule {
-                    name: WorkspaceName::parse(workspace.clone())?,
-                    at_container_count,
-                    path: path.clone(),
-                })?;
-            }
-            SocketMessage::ClearNamedWorkspaceLayoutRules(ref workspace) => {
-                self.admit_socket_action(BuiltinAction::ClearNamedWorkspaceLayoutRules {
-                    name: WorkspaceName::parse(workspace.clone())?,
-                })?;
-            }
-            SocketMessage::CycleFocusWorkspace(direction) => {
-                self.admit_socket_action(BuiltinAction::CycleFocusWorkspace { direction })?;
-            }
-            SocketMessage::CycleFocusEmptyWorkspace(direction) => {
-                self.admit_socket_action(BuiltinAction::CycleFocusEmptyWorkspace { direction })?;
-            }
-            SocketMessage::CloseWorkspace => {
-                self.admit_socket_action(BuiltinAction::CloseWorkspace)?;
-            }
-            SocketMessage::FocusLastWorkspace => {
-                self.admit_socket_action(BuiltinAction::FocusLastWorkspace)?;
-            }
-            SocketMessage::FocusWorkspaceNumber(workspace_idx) => {
-                self.admit_socket_action(BuiltinAction::FocusWorkspace {
-                    index: workspace_idx,
-                })?;
-            }
-            SocketMessage::FocusWorkspaceNumbers(workspace_idx) => {
-                self.admit_socket_action(BuiltinAction::FocusWorkspaceOnAllMonitors {
-                    index: workspace_idx,
-                })?;
-            }
-            SocketMessage::FocusMonitorWorkspaceNumber(monitor_idx, workspace_idx) => {
-                self.admit_socket_action(BuiltinAction::FocusMonitorWorkspace {
-                    monitor: monitor_idx,
-                    workspace: workspace_idx,
-                })?;
-            }
-            SocketMessage::FocusNamedWorkspace(ref name) => {
-                self.admit_socket_action(BuiltinAction::FocusNamedWorkspace {
-                    name: WorkspaceName::parse(name.clone())?,
-                })?;
-            }
-            SocketMessage::ToggleWorkspaceLayer => {
-                self.admit_socket_action(BuiltinAction::ToggleWorkspaceLayer)?;
-            }
-            SocketMessage::Stop => {
-                self.stop(false)?;
-            }
-            SocketMessage::StopIgnoreRestore => {
-                self.stop(true)?;
-            }
-            SocketMessage::MonitorIndexPreference(index_preference, left, top, right, bottom) => {
-                let mut monitor_index_preferences = MONITOR_INDEX_PREFERENCES.lock();
-                monitor_index_preferences.insert(
+                    ref path,
+                ) => {
+                    self.admit_socket_action(BuiltinAction::AddNamedWorkspaceCustomLayoutRule {
+                        name: WorkspaceName::parse(workspace.clone())?,
+                        at_container_count,
+                        path: path.clone(),
+                    })?;
+                }
+                SocketMessage::ClearNamedWorkspaceLayoutRules(ref workspace) => {
+                    self.admit_socket_action(BuiltinAction::ClearNamedWorkspaceLayoutRules {
+                        name: WorkspaceName::parse(workspace.clone())?,
+                    })?;
+                }
+                SocketMessage::CycleFocusWorkspace(direction) => {
+                    self.admit_socket_action(BuiltinAction::CycleFocusWorkspace { direction })?;
+                }
+                SocketMessage::CycleFocusEmptyWorkspace(direction) => {
+                    self.admit_socket_action(BuiltinAction::CycleFocusEmptyWorkspace {
+                        direction,
+                    })?;
+                }
+                SocketMessage::CloseWorkspace => {
+                    self.admit_socket_action(BuiltinAction::CloseWorkspace)?;
+                }
+                SocketMessage::FocusLastWorkspace => {
+                    self.admit_socket_action(BuiltinAction::FocusLastWorkspace)?;
+                }
+                SocketMessage::FocusWorkspaceNumber(workspace_idx) => {
+                    self.admit_socket_action(BuiltinAction::FocusWorkspace {
+                        index: workspace_idx,
+                    })?;
+                }
+                SocketMessage::FocusWorkspaceNumbers(workspace_idx) => {
+                    self.admit_socket_action(BuiltinAction::FocusWorkspaceOnAllMonitors {
+                        index: workspace_idx,
+                    })?;
+                }
+                SocketMessage::FocusMonitorWorkspaceNumber(monitor_idx, workspace_idx) => {
+                    self.admit_socket_action(BuiltinAction::FocusMonitorWorkspace {
+                        monitor: monitor_idx,
+                        workspace: workspace_idx,
+                    })?;
+                }
+                SocketMessage::FocusNamedWorkspace(ref name) => {
+                    self.admit_socket_action(BuiltinAction::FocusNamedWorkspace {
+                        name: WorkspaceName::parse(name.clone())?,
+                    })?;
+                }
+                SocketMessage::ToggleWorkspaceLayer => {
+                    self.admit_socket_action(BuiltinAction::ToggleWorkspaceLayer)?;
+                }
+                SocketMessage::Stop => {
+                    self.stop(false)?;
+                }
+                SocketMessage::StopIgnoreRestore => {
+                    self.stop(true)?;
+                }
+                SocketMessage::MonitorIndexPreference(
                     index_preference,
-                    Rect {
-                        left,
-                        top,
-                        right,
-                        bottom,
-                    },
-                );
-            }
-            SocketMessage::DisplayIndexPreference(index_preference, ref display) => {
-                let mut display_index_preferences = DISPLAY_INDEX_PREFERENCES.write();
-                display_index_preferences.insert(index_preference, display.clone());
-            }
-            SocketMessage::EnsureWorkspaces(monitor_idx, workspace_count) => {
-                self.admit_socket_action(BuiltinAction::EnsureWorkspaces {
-                    monitor: monitor_idx,
-                    count: workspace_count,
-                })?;
-            }
-            SocketMessage::EnsureNamedWorkspaces(monitor_idx, ref names) => {
-                let names = names
-                    .iter()
-                    .map(|name| WorkspaceName::parse(name.clone()))
-                    .collect::<Result<Vec<_>, _>>()?;
-                self.admit_socket_action(BuiltinAction::EnsureNamedWorkspaces {
-                    monitor: monitor_idx,
-                    names,
-                })?;
-            }
-            SocketMessage::NewWorkspace => {
-                self.admit_socket_action(BuiltinAction::NewWorkspace)?;
-            }
-            SocketMessage::WorkspaceName(monitor_idx, workspace_idx, ref name) => {
-                self.admit_socket_action(BuiltinAction::SetWorkspaceName {
-                    monitor: monitor_idx,
-                    workspace: workspace_idx,
-                    name: WorkspaceName::parse(name.clone())?,
-                })?;
-            }
-            SocketMessage::State => {
-                let state = match serde_json::to_string_pretty(&state::State::from(&*self)) {
-                    Ok(state) => state,
-                    Err(error) => error.to_string(),
-                };
-
-                tracing::info!("replying to state");
-
-                reply.write_all(state.as_bytes())?;
-
-                tracing::info!("replying to state done");
-            }
-            SocketMessage::GlobalState => {
-                let state = match serde_json::to_string_pretty(&GlobalState::default()) {
-                    Ok(state) => state,
-                    Err(error) => error.to_string(),
-                };
-
-                tracing::info!("replying to global state");
-
-                reply.write_all(state.as_bytes())?;
-
-                tracing::info!("replying to global state done");
-            }
-            SocketMessage::VisibleWindows => {
-                let mut monitor_visible_windows = HashMap::new();
-
-                for monitor in self.monitors() {
-                    if let Some(ws) = monitor.focused_workspace() {
-                        monitor_visible_windows.insert(
-                            monitor.device_id.clone(),
-                            ws.visible_window_details().clone(),
-                        );
-                    }
+                    left,
+                    top,
+                    right,
+                    bottom,
+                ) => {
+                    let mut monitor_index_preferences = MONITOR_INDEX_PREFERENCES.lock();
+                    monitor_index_preferences.insert(
+                        index_preference,
+                        Rect {
+                            left,
+                            top,
+                            right,
+                            bottom,
+                        },
+                    );
                 }
-
-                let visible_windows_state = serde_json::to_string_pretty(&monitor_visible_windows)
-                    .unwrap_or_else(|error| error.to_string());
-
-                reply.write_all(visible_windows_state.as_bytes())?;
-            }
-            SocketMessage::MonitorInformation => {
-                let mut monitors = vec![];
-                for monitor in self.monitors() {
-                    monitors.push(MonitorInformation::from(monitor));
+                SocketMessage::DisplayIndexPreference(index_preference, ref display) => {
+                    let mut display_index_preferences = DISPLAY_INDEX_PREFERENCES.write();
+                    display_index_preferences.insert(index_preference, display.clone());
                 }
+                SocketMessage::EnsureWorkspaces(monitor_idx, workspace_count) => {
+                    self.admit_socket_action(BuiltinAction::EnsureWorkspaces {
+                        monitor: monitor_idx,
+                        count: workspace_count,
+                    })?;
+                }
+                SocketMessage::EnsureNamedWorkspaces(monitor_idx, ref names) => {
+                    let names = names
+                        .iter()
+                        .map(|name| WorkspaceName::parse(name.clone()))
+                        .collect::<Result<Vec<_>, _>>()?;
+                    self.admit_socket_action(BuiltinAction::EnsureNamedWorkspaces {
+                        monitor: monitor_idx,
+                        names,
+                    })?;
+                }
+                SocketMessage::NewWorkspace => {
+                    self.admit_socket_action(BuiltinAction::NewWorkspace)?;
+                }
+                SocketMessage::WorkspaceName(monitor_idx, workspace_idx, ref name) => {
+                    self.admit_socket_action(BuiltinAction::SetWorkspaceName {
+                        monitor: monitor_idx,
+                        workspace: workspace_idx,
+                        name: WorkspaceName::parse(name.clone())?,
+                    })?;
+                }
+                SocketMessage::State => {
+                    let state = match serde_json::to_string_pretty(&state::State::from(&*self)) {
+                        Ok(state) => state,
+                        Err(error) => error.to_string(),
+                    };
 
-                let monitors_state = serde_json::to_string_pretty(&monitors)
-                    .unwrap_or_else(|error| error.to_string());
+                    tracing::info!("replying to state");
 
-                reply.write_all(monitors_state.as_bytes())?;
-            }
-            SocketMessage::Query(query) => {
-                let response = match query {
-                    StateQuery::FocusedMonitorIndex => self.focused_monitor_idx().to_string(),
-                    StateQuery::FocusedWorkspaceIndex => self
-                        .focused_monitor()
-                        .ok_or_eyre("there is no monitor")?
-                        .focused_workspace_idx()
-                        .to_string(),
-                    StateQuery::FocusedContainerIndex => self
-                        .focused_workspace()?
-                        .focused_container_idx()
-                        .to_string(),
-                    StateQuery::FocusedWindowIndex => {
-                        self.focused_container()?.focused_window_idx().to_string()
+                    reply.write_all(state.as_bytes())?;
+
+                    tracing::info!("replying to state done");
+                }
+                SocketMessage::GlobalState => {
+                    let state = match serde_json::to_string_pretty(&GlobalState::default()) {
+                        Ok(state) => state,
+                        Err(error) => error.to_string(),
+                    };
+
+                    tracing::info!("replying to global state");
+
+                    reply.write_all(state.as_bytes())?;
+
+                    tracing::info!("replying to global state done");
+                }
+                SocketMessage::VisibleWindows => {
+                    let mut monitor_visible_windows = HashMap::new();
+
+                    for monitor in self.monitors() {
+                        if let Some(ws) = monitor.focused_workspace() {
+                            monitor_visible_windows.insert(
+                                monitor.device_id.clone(),
+                                ws.visible_window_details().clone(),
+                            );
+                        }
                     }
-                    StateQuery::FocusedWorkspaceName => {
-                        let focused_monitor =
-                            self.focused_monitor().ok_or_eyre("there is no monitor")?;
 
-                        focused_monitor
-                            .focused_workspace_name()
-                            .unwrap_or_else(|| focused_monitor.focused_workspace_idx().to_string())
-                    }
-                    StateQuery::Version => build::RUST_VERSION.to_string(),
-                    StateQuery::FocusedWorkspaceLayout => {
-                        let focused_monitor =
-                            self.focused_monitor().ok_or_eyre("there is no monitor")?;
+                    let visible_windows_state =
+                        serde_json::to_string_pretty(&monitor_visible_windows)
+                            .unwrap_or_else(|error| error.to_string());
 
-                        focused_monitor.focused_workspace_layout().map_or_else(
-                            || "None".to_string(),
-                            |layout| match layout {
-                                Layout::Default(default_layout) => default_layout.to_string(),
-                                Layout::Custom(_) => "Custom".to_string(),
-                            },
-                        )
+                    reply.write_all(visible_windows_state.as_bytes())?;
+                }
+                SocketMessage::MonitorInformation => {
+                    let mut monitors = vec![];
+                    for monitor in self.monitors() {
+                        monitors.push(MonitorInformation::from(monitor));
                     }
-                    StateQuery::FocusedContainerKind => {
-                        match self.focused_workspace()?.focused_container() {
-                            None => "None".to_string(),
-                            Some(container) => {
-                                if container.windows().len() > 1 {
-                                    "Stack".to_string()
-                                } else {
-                                    "Single".to_string()
+
+                    let monitors_state = serde_json::to_string_pretty(&monitors)
+                        .unwrap_or_else(|error| error.to_string());
+
+                    reply.write_all(monitors_state.as_bytes())?;
+                }
+                SocketMessage::Query(query) => {
+                    let response = match query {
+                        StateQuery::FocusedMonitorIndex => self.focused_monitor_idx().to_string(),
+                        StateQuery::FocusedWorkspaceIndex => self
+                            .focused_monitor()
+                            .ok_or_eyre("there is no monitor")?
+                            .focused_workspace_idx()
+                            .to_string(),
+                        StateQuery::FocusedContainerIndex => self
+                            .focused_workspace()?
+                            .focused_container_idx()
+                            .to_string(),
+                        StateQuery::FocusedWindowIndex => {
+                            self.focused_container()?.focused_window_idx().to_string()
+                        }
+                        StateQuery::FocusedWorkspaceName => {
+                            let focused_monitor =
+                                self.focused_monitor().ok_or_eyre("there is no monitor")?;
+
+                            focused_monitor.focused_workspace_name().unwrap_or_else(|| {
+                                focused_monitor.focused_workspace_idx().to_string()
+                            })
+                        }
+                        StateQuery::Version => build::RUST_VERSION.to_string(),
+                        StateQuery::FocusedWorkspaceLayout => {
+                            let focused_monitor =
+                                self.focused_monitor().ok_or_eyre("there is no monitor")?;
+
+                            focused_monitor.focused_workspace_layout().map_or_else(
+                                || "None".to_string(),
+                                |layout| match layout {
+                                    Layout::Default(default_layout) => default_layout.to_string(),
+                                    Layout::Custom(_) => "Custom".to_string(),
+                                },
+                            )
+                        }
+                        StateQuery::FocusedContainerKind => {
+                            match self.focused_workspace()?.focused_container() {
+                                None => "None".to_string(),
+                                Some(container) => {
+                                    if container.windows().len() > 1 {
+                                        "Stack".to_string()
+                                    } else {
+                                        "Single".to_string()
+                                    }
                                 }
                             }
                         }
-                    }
-                };
+                    };
 
-                reply.write_all(response.as_bytes())?;
-            }
-            SocketMessage::ResizeWindowEdge(direction, sizing) => {
-                let action = to_builtin_action(
-                    &SocketMessage::ResizeWindowEdge(direction, sizing),
-                    self.resize_delta,
-                )
-                .ok_or_eyre("resize delta must be non-zero")?;
-                self.admit_socket_action(action)?;
-            }
-            SocketMessage::ResizeWindowAxis(axis, sizing) => {
-                let action = to_builtin_action(
-                    &SocketMessage::ResizeWindowAxis(axis, sizing),
-                    self.resize_delta,
-                )
-                .ok_or_eyre("resize delta must be non-zero")?;
-                self.admit_socket_action(action)?;
-            }
-            SocketMessage::FocusFollowsMouse(implementation, enable) => {
-                self.admit_socket_action(BuiltinAction::SetFocusFollowsMouse {
-                    implementation,
-                    enabled: enable,
-                })?;
-            }
-            SocketMessage::ToggleFocusFollowsMouse(implementation) => {
-                self.admit_socket_action(BuiltinAction::ToggleFocusFollowsMouse {
-                    implementation,
-                })?;
-            }
-            SocketMessage::ReloadConfiguration => {
-                Self::reload_configuration();
-                force_update_borders = true;
-            }
-            SocketMessage::ReplaceConfiguration(ref config) => {
-                // Check that this is a valid static config file first
-                if StaticConfig::read(config).is_ok() {
-                    // Clear workspace rules; these will need to be replaced
-                    WORKSPACE_MATCHING_RULES.lock().clear();
-                    // Pause so that restored windows come to the foreground from all workspaces
-                    self.is_paused = true;
-                    // Bring all windows to the foreground
-                    self.restore_all_windows(false)?;
+                    reply.write_all(response.as_bytes())?;
+                }
+                SocketMessage::ResizeWindowEdge(direction, sizing) => {
+                    let action = to_builtin_action(
+                        &SocketMessage::ResizeWindowEdge(direction, sizing),
+                        self.resize_delta,
+                    )
+                    .ok_or_eyre("resize delta must be non-zero")?;
+                    self.admit_socket_action(action)?;
+                }
+                SocketMessage::ResizeWindowAxis(axis, sizing) => {
+                    let action = to_builtin_action(
+                        &SocketMessage::ResizeWindowAxis(axis, sizing),
+                        self.resize_delta,
+                    )
+                    .ok_or_eyre("resize delta must be non-zero")?;
+                    self.admit_socket_action(action)?;
+                }
+                SocketMessage::FocusFollowsMouse(implementation, enable) => {
+                    self.admit_socket_action(BuiltinAction::SetFocusFollowsMouse {
+                        implementation,
+                        enabled: enable,
+                    })?;
+                }
+                SocketMessage::ToggleFocusFollowsMouse(implementation) => {
+                    self.admit_socket_action(BuiltinAction::ToggleFocusFollowsMouse {
+                        implementation,
+                    })?;
+                }
+                SocketMessage::ReloadConfiguration => {
+                    Self::reload_configuration();
+                    force_update_borders = true;
+                }
+                SocketMessage::ReplaceConfiguration(ref config) => {
+                    // Check that this is a valid static config file first
+                    if StaticConfig::read(config).is_ok() {
+                        // Clear workspace rules; these will need to be replaced
+                        WORKSPACE_MATCHING_RULES.lock().clear();
+                        // Pause so that restored windows come to the foreground from all workspaces
+                        self.is_paused = true;
+                        // Bring all windows to the foreground
+                        self.restore_all_windows(false)?;
 
-                    // Create a new wm from the config path
-                    let mut wm = StaticConfig::preload(
-                        config,
-                        winevent_listener::event_rx(),
-                        self.command_listener.try_clone().ok(),
-                    )?;
+                        // Create a new wm from the config path
+                        let mut wm = StaticConfig::preload(
+                            config,
+                            winevent_listener::event_rx(),
+                            self.command_listener.try_clone().ok(),
+                        )?;
 
-                    // Initialize the new wm
-                    wm.init()?;
+                        // Initialize the new wm
+                        wm.init()?;
 
-                    wm.restore_all_windows(true)?;
+                        wm.restore_all_windows(true)?;
 
-                    // This is equivalent to StaticConfig::postload for this use case
-                    StaticConfig::reload(config, &mut wm)?;
+                        // This is equivalent to StaticConfig::postload for this use case
+                        StaticConfig::reload(config, &mut wm)?;
 
-                    // Set self to the new wm instance
-                    *self = wm;
+                        // Set self to the new wm instance
+                        *self = wm;
 
-                    // check if there are any bars
-                    let mut system = sysinfo::System::new_all();
-                    system.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
+                        // check if there are any bars
+                        let mut system = sysinfo::System::new_all();
+                        system.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
 
-                    let has_bar = system
-                        .processes_by_name("komorebi-bar.exe".as_ref())
-                        .next()
-                        .is_some();
+                        let has_bar = system
+                            .processes_by_name("komorebi-bar.exe".as_ref())
+                            .next()
+                            .is_some();
 
-                    // stop bar(s)
-                    if has_bar {
-                        let script = r"
+                        // stop bar(s)
+                        if has_bar {
+                            let script = r"
 Stop-Process -Name:komorebi-bar -ErrorAction SilentlyContinue
                 ";
-                        match powershell_script::run(script) {
-                            Ok(_) => {
-                                println!("{script}");
+                            match powershell_script::run(script) {
+                                Ok(_) => {
+                                    println!("{script}");
 
-                                // start new bar(s)
-                                let mut config = StaticConfig::read(config)?;
-                                if let Some(display_bar_configurations) =
-                                    &mut config.bar_configurations
-                                {
-                                    for config_file_path in &mut *display_bar_configurations {
-                                        let script = r#"Start-Process "komorebi-bar" '"--config" "CONFIGFILE"' -WindowStyle hidden"#
+                                    // start new bar(s)
+                                    let mut config = StaticConfig::read(config)?;
+                                    if let Some(display_bar_configurations) =
+                                        &mut config.bar_configurations
+                                    {
+                                        for config_file_path in &mut *display_bar_configurations {
+                                            let script = r#"Start-Process "komorebi-bar" '"--config" "CONFIGFILE"' -WindowStyle hidden"#
                                             .replace("CONFIGFILE", &config_file_path.to_string_lossy());
 
-                                        match powershell_script::run(&script) {
+                                            match powershell_script::run(&script) {
+                                                Ok(_) => {
+                                                    println!("{script}");
+                                                }
+                                                Err(error) => {
+                                                    println!("Error: {error}");
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        let script = r"
+if (!(Get-Process komorebi-bar -ErrorAction SilentlyContinue))
+{
+  Start-Process komorebi-bar -WindowStyle hidden
+}
+                ";
+                                        match powershell_script::run(script) {
                                             Ok(_) => {
                                                 println!("{script}");
                                             }
@@ -1064,472 +1121,469 @@ Stop-Process -Name:komorebi-bar -ErrorAction SilentlyContinue
                                             }
                                         }
                                     }
-                                } else {
-                                    let script = r"
-if (!(Get-Process komorebi-bar -ErrorAction SilentlyContinue))
-{
-  Start-Process komorebi-bar -WindowStyle hidden
-}
-                ";
-                                    match powershell_script::run(script) {
-                                        Ok(_) => {
-                                            println!("{script}");
-                                        }
-                                        Err(error) => {
-                                            println!("Error: {error}");
-                                        }
-                                    }
+                                }
+                                Err(error) => {
+                                    println!("Error: {error}");
                                 }
                             }
-                            Err(error) => {
-                                println!("Error: {error}");
-                            }
+                        }
+
+                        force_update_borders = true;
+                    }
+                }
+                SocketMessage::ReloadStaticConfiguration(ref pathbuf) => {
+                    self.reload_static_configuration(pathbuf)?;
+                    force_update_borders = true;
+                }
+                SocketMessage::CompleteConfiguration => {
+                    if !INITIAL_CONFIGURATION_LOADED.load(Ordering::SeqCst) {
+                        INITIAL_CONFIGURATION_LOADED.store(true, Ordering::SeqCst);
+                        self.update_focused_workspace(false, false)?;
+                        force_update_borders = true;
+                    }
+                }
+                SocketMessage::WatchConfiguration(enable) => {
+                    self.watch_configuration(enable)?;
+                }
+                SocketMessage::IdentifyObjectNameChangeApplication(identifier, ref id) => {
+                    let mut identifiers = OBJECT_NAME_CHANGE_ON_LAUNCH.lock();
+
+                    let mut should_push = true;
+                    for i in &*identifiers {
+                        if let MatchingRule::Simple(i) = i
+                            && i.id.eq(id)
+                        {
+                            should_push = false;
                         }
                     }
 
-                    force_update_borders = true;
-                }
-            }
-            SocketMessage::ReloadStaticConfiguration(ref pathbuf) => {
-                self.reload_static_configuration(pathbuf)?;
-                force_update_borders = true;
-            }
-            SocketMessage::CompleteConfiguration => {
-                if !INITIAL_CONFIGURATION_LOADED.load(Ordering::SeqCst) {
-                    INITIAL_CONFIGURATION_LOADED.store(true, Ordering::SeqCst);
-                    self.update_focused_workspace(false, false)?;
-                    force_update_borders = true;
-                }
-            }
-            SocketMessage::WatchConfiguration(enable) => {
-                self.watch_configuration(enable)?;
-            }
-            SocketMessage::IdentifyObjectNameChangeApplication(identifier, ref id) => {
-                let mut identifiers = OBJECT_NAME_CHANGE_ON_LAUNCH.lock();
-
-                let mut should_push = true;
-                for i in &*identifiers {
-                    if let MatchingRule::Simple(i) = i
-                        && i.id.eq(id)
-                    {
-                        should_push = false;
+                    if should_push {
+                        identifiers.push(MatchingRule::Simple(IdWithIdentifier {
+                            kind: identifier,
+                            id: id.clone(),
+                            matching_strategy: Option::from(MatchingStrategy::Legacy),
+                        }));
                     }
                 }
+                SocketMessage::IdentifyTrayApplication(identifier, ref id) => {
+                    let mut identifiers = TRAY_AND_MULTI_WINDOW_IDENTIFIERS.lock();
+                    let mut should_push = true;
+                    for i in &*identifiers {
+                        if let MatchingRule::Simple(i) = i
+                            && i.id.eq(id)
+                        {
+                            should_push = false;
+                        }
+                    }
 
-                if should_push {
-                    identifiers.push(MatchingRule::Simple(IdWithIdentifier {
-                        kind: identifier,
-                        id: id.clone(),
-                        matching_strategy: Option::from(MatchingStrategy::Legacy),
-                    }));
-                }
-            }
-            SocketMessage::IdentifyTrayApplication(identifier, ref id) => {
-                let mut identifiers = TRAY_AND_MULTI_WINDOW_IDENTIFIERS.lock();
-                let mut should_push = true;
-                for i in &*identifiers {
-                    if let MatchingRule::Simple(i) = i
-                        && i.id.eq(id)
-                    {
-                        should_push = false;
+                    if should_push {
+                        identifiers.push(MatchingRule::Simple(IdWithIdentifier {
+                            kind: identifier,
+                            id: id.clone(),
+                            matching_strategy: Option::from(MatchingStrategy::Legacy),
+                        }));
                     }
                 }
+                SocketMessage::IdentifyLayeredApplication(identifier, ref id) => {
+                    let mut identifiers = LAYERED_WHITELIST.lock();
 
-                if should_push {
-                    identifiers.push(MatchingRule::Simple(IdWithIdentifier {
-                        kind: identifier,
-                        id: id.clone(),
-                        matching_strategy: Option::from(MatchingStrategy::Legacy),
-                    }));
-                }
-            }
-            SocketMessage::IdentifyLayeredApplication(identifier, ref id) => {
-                let mut identifiers = LAYERED_WHITELIST.lock();
+                    let mut should_push = true;
+                    for i in &*identifiers {
+                        if let MatchingRule::Simple(i) = i
+                            && i.id.eq(id)
+                        {
+                            should_push = false;
+                        }
+                    }
 
-                let mut should_push = true;
-                for i in &*identifiers {
-                    if let MatchingRule::Simple(i) = i
-                        && i.id.eq(id)
-                    {
-                        should_push = false;
+                    if should_push {
+                        identifiers.push(MatchingRule::Simple(IdWithIdentifier {
+                            kind: identifier,
+                            id: id.clone(),
+                            matching_strategy: Option::from(MatchingStrategy::Legacy),
+                        }));
                     }
                 }
-
-                if should_push {
-                    identifiers.push(MatchingRule::Simple(IdWithIdentifier {
-                        kind: identifier,
-                        id: id.clone(),
-                        matching_strategy: Option::from(MatchingStrategy::Legacy),
-                    }));
+                SocketMessage::ManageFocusedWindow => {
+                    self.admit_socket_action(BuiltinAction::ManageFocusedWindow)?;
                 }
-            }
-            SocketMessage::ManageFocusedWindow => {
-                self.admit_socket_action(BuiltinAction::ManageFocusedWindow)?;
-            }
-            SocketMessage::UnmanageFocusedWindow => {
-                self.admit_socket_action(BuiltinAction::UnmanageFocusedWindow)?;
-            }
-            SocketMessage::InvisibleBorders(_rect) => {}
-            SocketMessage::WorkAreaOffset(rect) => {
-                self.work_area_offset = Option::from(rect);
-                self.retile_all(false)?;
-            }
-            SocketMessage::MonitorWorkAreaOffset(monitor_idx, rect) => {
-                if let Some(monitor) = self.monitors_mut().get_mut(monitor_idx) {
-                    monitor.work_area_offset = Option::from(rect);
+                SocketMessage::UnmanageFocusedWindow => {
+                    self.admit_socket_action(BuiltinAction::UnmanageFocusedWindow)?;
+                }
+                SocketMessage::InvisibleBorders(_rect) => {}
+                SocketMessage::WorkAreaOffset(rect) => {
+                    self.work_area_offset = Option::from(rect);
                     self.retile_all(false)?;
                 }
-            }
-            SocketMessage::WorkspaceWorkAreaOffset(monitor_idx, workspace_idx, rect) => {
-                if let Some(monitor) = self.monitors_mut().get_mut(monitor_idx)
-                    && let Some(workspace) = monitor.workspaces_mut().get_mut(workspace_idx)
-                {
-                    workspace.work_area_offset = Option::from(rect);
-                    self.retile_all(false)?
+                SocketMessage::MonitorWorkAreaOffset(monitor_idx, rect) => {
+                    if let Some(monitor) = self.monitors_mut().get_mut(monitor_idx) {
+                        monitor.work_area_offset = Option::from(rect);
+                        self.retile_all(false)?;
+                    }
                 }
-            }
-            SocketMessage::ToggleWindowBasedWorkAreaOffset => {
-                let workspace = self.focused_workspace_mut()?;
-                workspace.apply_window_based_work_area_offset =
-                    !workspace.apply_window_based_work_area_offset;
+                SocketMessage::WorkspaceWorkAreaOffset(monitor_idx, workspace_idx, rect) => {
+                    if let Some(monitor) = self.monitors_mut().get_mut(monitor_idx)
+                        && let Some(workspace) = monitor.workspaces_mut().get_mut(workspace_idx)
+                    {
+                        workspace.work_area_offset = Option::from(rect);
+                        self.retile_all(false)?
+                    }
+                }
+                SocketMessage::ToggleWindowBasedWorkAreaOffset => {
+                    let workspace = self.focused_workspace_mut()?;
+                    workspace.apply_window_based_work_area_offset =
+                        !workspace.apply_window_based_work_area_offset;
 
-                self.retile_all(true)?;
-            }
-            SocketMessage::QuickSave => {
-                let workspace = self.focused_workspace()?;
-                let resize = &workspace.resize_dimensions;
+                    self.retile_all(true)?;
+                }
+                SocketMessage::QuickSave => {
+                    let workspace = self.focused_workspace()?;
+                    let resize = &workspace.resize_dimensions;
 
-                let quicksave_json = std::env::temp_dir().join("komorebi.quicksave.json");
+                    let quicksave_json = std::env::temp_dir().join("komorebi.quicksave.json");
 
-                let file = OpenOptions::new()
-                    .write(true)
-                    .truncate(true)
-                    .create(true)
-                    .open(quicksave_json)?;
+                    let file = OpenOptions::new()
+                        .write(true)
+                        .truncate(true)
+                        .create(true)
+                        .open(quicksave_json)?;
 
-                serde_json::to_writer_pretty(&file, &resize)?;
-            }
-            SocketMessage::QuickLoad => {
-                let workspace = self.focused_workspace_mut()?;
+                    serde_json::to_writer_pretty(&file, &resize)?;
+                }
+                SocketMessage::QuickLoad => {
+                    let workspace = self.focused_workspace_mut()?;
 
-                let quicksave_json = std::env::temp_dir().join("komorebi.quicksave.json");
+                    let quicksave_json = std::env::temp_dir().join("komorebi.quicksave.json");
 
-                let file = File::open(&quicksave_json).wrap_err(format!(
-                    "no quicksave found at {}",
-                    quicksave_json.display()
-                ))?;
+                    let file = File::open(&quicksave_json).wrap_err(format!(
+                        "no quicksave found at {}",
+                        quicksave_json.display()
+                    ))?;
 
-                let resize: Vec<Option<Rect>> = serde_json::from_reader(file)?;
+                    let resize: Vec<Option<Rect>> = serde_json::from_reader(file)?;
 
-                workspace.resize_dimensions = resize;
-                self.update_focused_workspace(false, false)?;
-            }
-            SocketMessage::Save(ref path) => {
-                let workspace = self.focused_workspace_mut()?;
-                let resize = &workspace.resize_dimensions;
+                    workspace.resize_dimensions = resize;
+                    self.update_focused_workspace(false, false)?;
+                }
+                SocketMessage::Save(ref path) => {
+                    let workspace = self.focused_workspace_mut()?;
+                    let resize = &workspace.resize_dimensions;
 
-                let file = OpenOptions::new()
-                    .write(true)
-                    .truncate(true)
-                    .create(true)
-                    .open(path)?;
+                    let file = OpenOptions::new()
+                        .write(true)
+                        .truncate(true)
+                        .create(true)
+                        .open(path)?;
 
-                serde_json::to_writer_pretty(&file, &resize)?;
-            }
-            SocketMessage::Load(ref path) => {
-                let workspace = self.focused_workspace_mut()?;
+                    serde_json::to_writer_pretty(&file, &resize)?;
+                }
+                SocketMessage::Load(ref path) => {
+                    let workspace = self.focused_workspace_mut()?;
 
-                let file =
-                    File::open(path).wrap_err(format!("no file found at {}", path.display()))?;
+                    let file = File::open(path)
+                        .wrap_err(format!("no file found at {}", path.display()))?;
 
-                let resize: Vec<Option<Rect>> = serde_json::from_reader(file)?;
+                    let resize: Vec<Option<Rect>> = serde_json::from_reader(file)?;
 
-                workspace.resize_dimensions = resize;
-                self.update_focused_workspace(false, false)?;
-            }
-            SocketMessage::AddSubscriberSocket(ref socket) => {
-                SUBSCRIBERS
-                    .lock()
-                    .add_socket(&DATA_DIR, socket.clone(), None)?;
-            }
-            SocketMessage::AddSubscriberSocketWithOptions(ref socket, options) => {
-                SUBSCRIBERS
-                    .lock()
-                    .add_socket(&DATA_DIR, socket.clone(), Some(options))?;
-            }
-            SocketMessage::RemoveSubscriberSocket(ref socket) => {
-                SUBSCRIBERS.lock().remove_socket(socket);
-            }
-            SocketMessage::AddSubscriberPipe(ref subscriber) => {
-                let pipe_path = subscriber.named_pipe_path();
-                let pipe = connect(&pipe_path).wrap_err(format!(
+                    workspace.resize_dimensions = resize;
+                    self.update_focused_workspace(false, false)?;
+                }
+                SocketMessage::AddSubscriberSocket(ref socket) => {
+                    SUBSCRIBERS
+                        .lock()
+                        .add_socket(&DATA_DIR, socket.clone(), None)?;
+                }
+                SocketMessage::AddSubscriberSocketWithOptions(ref socket, options) => {
+                    SUBSCRIBERS
+                        .lock()
+                        .add_socket(&DATA_DIR, socket.clone(), Some(options))?;
+                }
+                SocketMessage::RemoveSubscriberSocket(ref socket) => {
+                    SUBSCRIBERS.lock().remove_socket(socket);
+                }
+                SocketMessage::AddSubscriberPipe(ref subscriber) => {
+                    let pipe_path = subscriber.named_pipe_path();
+                    let pipe = connect(&pipe_path).wrap_err(format!(
                     "the named pipe '{pipe_path}' has not yet been created; please create it before running this command"
                 ))?;
 
-                SUBSCRIBERS.lock().add_pipe(subscriber.clone(), pipe);
-            }
-            SocketMessage::RemoveSubscriberPipe(ref subscriber) => {
-                SUBSCRIBERS.lock().remove_pipe(subscriber);
-            }
-            SocketMessage::MouseFollowsFocus(enable) => {
-                self.admit_socket_action(BuiltinAction::SetMouseFollowsFocus { enabled: enable })?;
-            }
-            SocketMessage::ToggleMouseFollowsFocus => {
-                self.admit_socket_action(BuiltinAction::ToggleMouseFollowsFocus)?;
-            }
-            SocketMessage::ResizeDelta(delta) => {
-                self.resize_delta = delta;
-            }
-            SocketMessage::ToggleWindowContainerBehaviour => {
-                self.admit_socket_action(BuiltinAction::ToggleWindowContainerBehaviour)?;
-            }
-            SocketMessage::ToggleFloatOverride => {
-                self.admit_socket_action(BuiltinAction::ToggleFloatOverride)?;
-            }
-            SocketMessage::ToggleWorkspaceWindowContainerBehaviour => {
-                self.admit_socket_action(BuiltinAction::ToggleWorkspaceWindowContainerBehaviour)?;
-            }
-            SocketMessage::ToggleWorkspaceFloatOverride => {
-                self.admit_socket_action(BuiltinAction::ToggleWorkspaceFloatOverride)?;
-            }
-            SocketMessage::WindowHidingBehaviour(behaviour) => {
-                self.admit_socket_action(BuiltinAction::SetWindowHidingBehaviour { behaviour })?;
-            }
-            SocketMessage::ToggleCrossMonitorMoveBehaviour => {
-                self.admit_socket_action(BuiltinAction::ToggleCrossMonitorMoveBehaviour)?;
-            }
-            SocketMessage::CrossMonitorMoveBehaviour(behaviour) => {
-                self.admit_socket_action(BuiltinAction::SetCrossMonitorMoveBehaviour {
-                    behaviour,
-                })?;
-            }
-            SocketMessage::ToggleMonocleFocusBehaviour => {
-                self.admit_socket_action(BuiltinAction::ToggleMonocleFocusBehaviour)?;
-            }
-            SocketMessage::MonocleFocusBehaviour(behaviour) => {
-                self.admit_socket_action(BuiltinAction::SetMonocleFocusBehaviour { behaviour })?;
-            }
-            SocketMessage::UnmanagedWindowOperationBehaviour(behaviour) => {
-                self.admit_socket_action(BuiltinAction::SetUnmanagedWindowOperationBehaviour {
-                    behaviour,
-                })?;
-            }
-            SocketMessage::Border(enable) => {
-                border_manager::BORDER_ENABLED.store(enable, Ordering::SeqCst);
-                if !enable {
-                    match IMPLEMENTATION.load() {
-                        BorderImplementation::Komorebi => {
-                            border_manager::destroy_all_borders()?;
+                    SUBSCRIBERS.lock().add_pipe(subscriber.clone(), pipe);
+                }
+                SocketMessage::RemoveSubscriberPipe(ref subscriber) => {
+                    SUBSCRIBERS.lock().remove_pipe(subscriber);
+                }
+                SocketMessage::MouseFollowsFocus(enable) => {
+                    self.admit_socket_action(BuiltinAction::SetMouseFollowsFocus {
+                        enabled: enable,
+                    })?;
+                }
+                SocketMessage::ToggleMouseFollowsFocus => {
+                    self.admit_socket_action(BuiltinAction::ToggleMouseFollowsFocus)?;
+                }
+                SocketMessage::ResizeDelta(delta) => {
+                    self.resize_delta = delta;
+                }
+                SocketMessage::ToggleWindowContainerBehaviour => {
+                    self.admit_socket_action(BuiltinAction::ToggleWindowContainerBehaviour)?;
+                }
+                SocketMessage::ToggleFloatOverride => {
+                    self.admit_socket_action(BuiltinAction::ToggleFloatOverride)?;
+                }
+                SocketMessage::ToggleWorkspaceWindowContainerBehaviour => {
+                    self.admit_socket_action(
+                        BuiltinAction::ToggleWorkspaceWindowContainerBehaviour,
+                    )?;
+                }
+                SocketMessage::ToggleWorkspaceFloatOverride => {
+                    self.admit_socket_action(BuiltinAction::ToggleWorkspaceFloatOverride)?;
+                }
+                SocketMessage::WindowHidingBehaviour(behaviour) => {
+                    self.admit_socket_action(BuiltinAction::SetWindowHidingBehaviour {
+                        behaviour,
+                    })?;
+                }
+                SocketMessage::ToggleCrossMonitorMoveBehaviour => {
+                    self.admit_socket_action(BuiltinAction::ToggleCrossMonitorMoveBehaviour)?;
+                }
+                SocketMessage::CrossMonitorMoveBehaviour(behaviour) => {
+                    self.admit_socket_action(BuiltinAction::SetCrossMonitorMoveBehaviour {
+                        behaviour,
+                    })?;
+                }
+                SocketMessage::ToggleMonocleFocusBehaviour => {
+                    self.admit_socket_action(BuiltinAction::ToggleMonocleFocusBehaviour)?;
+                }
+                SocketMessage::MonocleFocusBehaviour(behaviour) => {
+                    self.admit_socket_action(BuiltinAction::SetMonocleFocusBehaviour {
+                        behaviour,
+                    })?;
+                }
+                SocketMessage::UnmanagedWindowOperationBehaviour(behaviour) => {
+                    self.admit_socket_action(
+                        BuiltinAction::SetUnmanagedWindowOperationBehaviour { behaviour },
+                    )?;
+                }
+                SocketMessage::Border(enable) => {
+                    border_manager::BORDER_ENABLED.store(enable, Ordering::SeqCst);
+                    if !enable {
+                        match IMPLEMENTATION.load() {
+                            BorderImplementation::Komorebi => {
+                                border_manager::destroy_all_borders()?;
+                            }
+                            BorderImplementation::Windows => {
+                                self.remove_all_accents()?;
+                            }
                         }
-                        BorderImplementation::Windows => {
-                            self.remove_all_accents()?;
+                    } else if matches!(IMPLEMENTATION.load(), BorderImplementation::Komorebi) {
+                        force_update_borders = true;
+                    }
+                }
+                SocketMessage::BorderImplementation(implementation) => {
+                    if !*WINDOWS_11 && matches!(implementation, BorderImplementation::Windows) {
+                        tracing::error!(
+                            "BorderImplementation::Windows is only supported on Windows 11 and above"
+                        );
+                    } else {
+                        IMPLEMENTATION.store(implementation);
+                        match IMPLEMENTATION.load() {
+                            BorderImplementation::Komorebi => {
+                                self.remove_all_accents()?;
+                                force_update_borders = true;
+                            }
+                            BorderImplementation::Windows => {
+                                border_manager::destroy_all_borders()?;
+                            }
                         }
                     }
-                } else if matches!(IMPLEMENTATION.load(), BorderImplementation::Komorebi) {
+                }
+                SocketMessage::BorderColour(kind, r, g, b) => {
+                    match kind {
+                        WindowKind::Single => {
+                            border_manager::FOCUSED
+                                .store(Rgb::new(r, g, b).into(), Ordering::SeqCst);
+                        }
+                        WindowKind::Stack => {
+                            border_manager::STACK.store(Rgb::new(r, g, b).into(), Ordering::SeqCst);
+                        }
+                        WindowKind::Monocle => {
+                            border_manager::MONOCLE
+                                .store(Rgb::new(r, g, b).into(), Ordering::SeqCst);
+                        }
+                        WindowKind::Unfocused => {
+                            border_manager::UNFOCUSED
+                                .store(Rgb::new(r, g, b).into(), Ordering::SeqCst);
+                        }
+                        WindowKind::UnfocusedLocked => {
+                            border_manager::UNFOCUSED_LOCKED
+                                .store(Rgb::new(r, g, b).into(), Ordering::SeqCst);
+                        }
+                        WindowKind::Floating => {
+                            border_manager::FLOATING
+                                .store(Rgb::new(r, g, b).into(), Ordering::SeqCst);
+                        }
+                    }
                     force_update_borders = true;
                 }
-            }
-            SocketMessage::BorderImplementation(implementation) => {
-                if !*WINDOWS_11 && matches!(implementation, BorderImplementation::Windows) {
-                    tracing::error!(
-                        "BorderImplementation::Windows is only supported on Windows 11 and above"
-                    );
-                } else {
-                    IMPLEMENTATION.store(implementation);
-                    match IMPLEMENTATION.load() {
-                        BorderImplementation::Komorebi => {
-                            self.remove_all_accents()?;
-                            force_update_borders = true;
-                        }
-                        BorderImplementation::Windows => {
-                            border_manager::destroy_all_borders()?;
-                        }
+                SocketMessage::BorderStyle(style) => {
+                    STYLE.store(style);
+                    force_update_borders = true;
+                }
+                SocketMessage::BorderWidth(width) => {
+                    border_manager::BORDER_WIDTH.store(width, Ordering::SeqCst);
+                    force_update_borders = true;
+                }
+                SocketMessage::BorderOffset(offset) => {
+                    border_manager::BORDER_OFFSET.store(offset, Ordering::SeqCst);
+                    force_update_borders = true;
+                }
+                SocketMessage::Animation(enable, prefix) => match prefix {
+                    Some(prefix) => {
+                        ANIMATION_ENABLED_PER_ANIMATION
+                            .lock()
+                            .insert(prefix, enable);
+                    }
+                    None => {
+                        ANIMATION_ENABLED_GLOBAL.store(enable, Ordering::SeqCst);
+                        ANIMATION_ENABLED_PER_ANIMATION.lock().clear();
+                    }
+                },
+                SocketMessage::AnimationDuration(duration, prefix) => match prefix {
+                    Some(prefix) => {
+                        ANIMATION_DURATION_PER_ANIMATION
+                            .lock()
+                            .insert(prefix, duration);
+                    }
+                    None => {
+                        ANIMATION_DURATION_GLOBAL.store(duration, Ordering::SeqCst);
+                        ANIMATION_DURATION_PER_ANIMATION.lock().clear();
+                    }
+                },
+                SocketMessage::AnimationFps(fps) => {
+                    ANIMATION_FPS.store(fps, Ordering::SeqCst);
+                }
+                SocketMessage::AnimationStyle(style, prefix) => match prefix {
+                    Some(prefix) => {
+                        ANIMATION_STYLE_PER_ANIMATION.lock().insert(prefix, style);
+                    }
+                    None => {
+                        let mut animation_style = ANIMATION_STYLE_GLOBAL.lock();
+                        *animation_style = style;
+                        ANIMATION_STYLE_PER_ANIMATION.lock().clear();
+                    }
+                },
+                SocketMessage::ToggleTransparency => {
+                    let current = transparency_manager::TRANSPARENCY_ENABLED.load(Ordering::SeqCst);
+                    transparency_manager::TRANSPARENCY_ENABLED.store(!current, Ordering::SeqCst);
+                }
+                SocketMessage::Transparency(enable) => {
+                    transparency_manager::TRANSPARENCY_ENABLED.store(enable, Ordering::SeqCst);
+                }
+                SocketMessage::TransparencyAlpha(alpha) => {
+                    transparency_manager::TRANSPARENCY_ALPHA.store(alpha, Ordering::SeqCst);
+                }
+                SocketMessage::StackbarMode(mode) => {
+                    STACKBAR_MODE.store(mode);
+                    self.retile_all(true)?;
+                }
+                SocketMessage::StackbarLabel(label) => {
+                    STACKBAR_LABEL.store(label);
+                }
+                SocketMessage::StackbarFocusedTextColour(r, g, b) => {
+                    let rgb = Rgb::new(r, g, b);
+                    STACKBAR_FOCUSED_TEXT_COLOUR.store(rgb.into(), Ordering::SeqCst);
+                }
+                SocketMessage::StackbarUnfocusedTextColour(r, g, b) => {
+                    let rgb = Rgb::new(r, g, b);
+                    STACKBAR_UNFOCUSED_TEXT_COLOUR.store(rgb.into(), Ordering::SeqCst);
+                }
+                SocketMessage::StackbarBackgroundColour(r, g, b) => {
+                    let rgb = Rgb::new(r, g, b);
+                    STACKBAR_TAB_BACKGROUND_COLOUR.store(rgb.into(), Ordering::SeqCst);
+                }
+                SocketMessage::StackbarHeight(height) => {
+                    STACKBAR_TAB_HEIGHT.store(height, Ordering::SeqCst);
+                }
+                SocketMessage::StackbarTabWidth(width) => {
+                    STACKBAR_TAB_WIDTH.store(width, Ordering::SeqCst);
+                }
+                SocketMessage::StackbarFontSize(size) => {
+                    STACKBAR_FONT_SIZE.store(size, Ordering::SeqCst);
+                }
+                #[allow(clippy::assigning_clones)]
+                SocketMessage::StackbarFontFamily(ref font_family) => {
+                    *STACKBAR_FONT_FAMILY.lock() = font_family.clone();
+                }
+                SocketMessage::ApplicationSpecificConfigurationSchema => {
+                    #[cfg(feature = "schemars")]
+                    {
+                        let asc = schemars::schema_for!(
+                            Vec<crate::core::config_generation::ApplicationConfiguration>
+                        );
+                        let schema = serde_json::to_string_pretty(&asc)?;
+
+                        reply.write_all(schema.as_bytes())?;
                     }
                 }
-            }
-            SocketMessage::BorderColour(kind, r, g, b) => {
-                match kind {
-                    WindowKind::Single => {
-                        border_manager::FOCUSED.store(Rgb::new(r, g, b).into(), Ordering::SeqCst);
-                    }
-                    WindowKind::Stack => {
-                        border_manager::STACK.store(Rgb::new(r, g, b).into(), Ordering::SeqCst);
-                    }
-                    WindowKind::Monocle => {
-                        border_manager::MONOCLE.store(Rgb::new(r, g, b).into(), Ordering::SeqCst);
-                    }
-                    WindowKind::Unfocused => {
-                        border_manager::UNFOCUSED.store(Rgb::new(r, g, b).into(), Ordering::SeqCst);
-                    }
-                    WindowKind::UnfocusedLocked => {
-                        border_manager::UNFOCUSED_LOCKED
-                            .store(Rgb::new(r, g, b).into(), Ordering::SeqCst);
-                    }
-                    WindowKind::Floating => {
-                        border_manager::FLOATING.store(Rgb::new(r, g, b).into(), Ordering::SeqCst);
+                SocketMessage::NotificationSchema => {
+                    #[cfg(feature = "schemars")]
+                    {
+                        let notification = schemars::schema_for!(Notification);
+                        let schema = serde_json::to_string_pretty(&notification)?;
+
+                        reply.write_all(schema.as_bytes())?;
                     }
                 }
-                force_update_borders = true;
-            }
-            SocketMessage::BorderStyle(style) => {
-                STYLE.store(style);
-                force_update_borders = true;
-            }
-            SocketMessage::BorderWidth(width) => {
-                border_manager::BORDER_WIDTH.store(width, Ordering::SeqCst);
-                force_update_borders = true;
-            }
-            SocketMessage::BorderOffset(offset) => {
-                border_manager::BORDER_OFFSET.store(offset, Ordering::SeqCst);
-                force_update_borders = true;
-            }
-            SocketMessage::Animation(enable, prefix) => match prefix {
-                Some(prefix) => {
-                    ANIMATION_ENABLED_PER_ANIMATION
-                        .lock()
-                        .insert(prefix, enable);
+                SocketMessage::SocketSchema => {
+                    #[cfg(feature = "schemars")]
+                    {
+                        let socket_message = schemars::schema_for!(SocketMessage);
+                        let schema = serde_json::to_string_pretty(&socket_message)?;
+
+                        reply.write_all(schema.as_bytes())?;
+                    }
                 }
-                None => {
-                    ANIMATION_ENABLED_GLOBAL.store(enable, Ordering::SeqCst);
-                    ANIMATION_ENABLED_PER_ANIMATION.lock().clear();
+                SocketMessage::StaticConfigSchema => {
+                    #[cfg(feature = "schemars")]
+                    {
+                        let socket_message = schemars::schema_for!(SocketMessage);
+                        let schema = serde_json::to_string_pretty(&socket_message)?;
+
+                        reply.write_all(schema.as_bytes())?;
+                    }
                 }
-            },
-            SocketMessage::AnimationDuration(duration, prefix) => match prefix {
-                Some(prefix) => {
-                    ANIMATION_DURATION_PER_ANIMATION
-                        .lock()
-                        .insert(prefix, duration);
+                SocketMessage::GenerateStaticConfig => {
+                    let config = serde_json::to_string_pretty(&StaticConfig::from(&*self))?;
+
+                    reply.write_all(config.as_bytes())?;
                 }
-                None => {
-                    ANIMATION_DURATION_GLOBAL.store(duration, Ordering::SeqCst);
-                    ANIMATION_DURATION_PER_ANIMATION.lock().clear();
+                SocketMessage::RemoveTitleBar(identifier, ref id) => {
+                    self.admit_socket_action(BuiltinAction::RemoveTitleBar {
+                        identifier,
+                        id: id.clone(),
+                    })?;
                 }
-            },
-            SocketMessage::AnimationFps(fps) => {
-                ANIMATION_FPS.store(fps, Ordering::SeqCst);
-            }
-            SocketMessage::AnimationStyle(style, prefix) => match prefix {
-                Some(prefix) => {
-                    ANIMATION_STYLE_PER_ANIMATION.lock().insert(prefix, style);
+                SocketMessage::ToggleTitleBars => {
+                    self.admit_socket_action(BuiltinAction::ToggleTitleBars)?;
                 }
-                None => {
-                    let mut animation_style = ANIMATION_STYLE_GLOBAL.lock();
-                    *animation_style = style;
-                    ANIMATION_STYLE_PER_ANIMATION.lock().clear();
-                }
-            },
-            SocketMessage::ToggleTransparency => {
-                let current = transparency_manager::TRANSPARENCY_ENABLED.load(Ordering::SeqCst);
-                transparency_manager::TRANSPARENCY_ENABLED.store(!current, Ordering::SeqCst);
-            }
-            SocketMessage::Transparency(enable) => {
-                transparency_manager::TRANSPARENCY_ENABLED.store(enable, Ordering::SeqCst);
-            }
-            SocketMessage::TransparencyAlpha(alpha) => {
-                transparency_manager::TRANSPARENCY_ALPHA.store(alpha, Ordering::SeqCst);
-            }
-            SocketMessage::StackbarMode(mode) => {
-                STACKBAR_MODE.store(mode);
-                self.retile_all(true)?;
-            }
-            SocketMessage::StackbarLabel(label) => {
-                STACKBAR_LABEL.store(label);
-            }
-            SocketMessage::StackbarFocusedTextColour(r, g, b) => {
-                let rgb = Rgb::new(r, g, b);
-                STACKBAR_FOCUSED_TEXT_COLOUR.store(rgb.into(), Ordering::SeqCst);
-            }
-            SocketMessage::StackbarUnfocusedTextColour(r, g, b) => {
-                let rgb = Rgb::new(r, g, b);
-                STACKBAR_UNFOCUSED_TEXT_COLOUR.store(rgb.into(), Ordering::SeqCst);
-            }
-            SocketMessage::StackbarBackgroundColour(r, g, b) => {
-                let rgb = Rgb::new(r, g, b);
-                STACKBAR_TAB_BACKGROUND_COLOUR.store(rgb.into(), Ordering::SeqCst);
-            }
-            SocketMessage::StackbarHeight(height) => {
-                STACKBAR_TAB_HEIGHT.store(height, Ordering::SeqCst);
-            }
-            SocketMessage::StackbarTabWidth(width) => {
-                STACKBAR_TAB_WIDTH.store(width, Ordering::SeqCst);
-            }
-            SocketMessage::StackbarFontSize(size) => {
-                STACKBAR_FONT_SIZE.store(size, Ordering::SeqCst);
-            }
-            #[allow(clippy::assigning_clones)]
-            SocketMessage::StackbarFontFamily(ref font_family) => {
-                *STACKBAR_FONT_FAMILY.lock() = font_family.clone();
-            }
-            SocketMessage::ApplicationSpecificConfigurationSchema => {
-                #[cfg(feature = "schemars")]
-                {
-                    let asc = schemars::schema_for!(
-                        Vec<crate::core::config_generation::ApplicationConfiguration>
-                    );
-                    let schema = serde_json::to_string_pretty(&asc)?;
+                SocketMessage::DebugWindow(hwnd) => {
+                    let window = Window::from(hwnd);
+                    let mut rule_debug = RuleDebug::default();
+                    let _ = window.should_manage(None, &mut rule_debug);
+                    let schema = serde_json::to_string_pretty(&rule_debug)?;
 
                     reply.write_all(schema.as_bytes())?;
                 }
-            }
-            SocketMessage::NotificationSchema => {
-                #[cfg(feature = "schemars")]
-                {
-                    let notification = schemars::schema_for!(Notification);
-                    let schema = serde_json::to_string_pretty(&notification)?;
-
-                    reply.write_all(schema.as_bytes())?;
+                SocketMessage::Theme(ref theme) => {
+                    theme_manager::send_notification(*theme.clone());
                 }
-            }
-            SocketMessage::SocketSchema => {
-                #[cfg(feature = "schemars")]
-                {
-                    let socket_message = schemars::schema_for!(SocketMessage);
-                    let schema = serde_json::to_string_pretty(&socket_message)?;
-
-                    reply.write_all(schema.as_bytes())?;
+                SocketMessage::ApplyState(ref state) => {
+                    self.apply_state(state.clone());
                 }
-            }
-            SocketMessage::StaticConfigSchema => {
-                #[cfg(feature = "schemars")]
-                {
-                    let socket_message = schemars::schema_for!(SocketMessage);
-                    let schema = serde_json::to_string_pretty(&socket_message)?;
-
-                    reply.write_all(schema.as_bytes())?;
-                }
-            }
-            SocketMessage::GenerateStaticConfig => {
-                let config = serde_json::to_string_pretty(&StaticConfig::from(&*self))?;
-
-                reply.write_all(config.as_bytes())?;
-            }
-            SocketMessage::RemoveTitleBar(identifier, ref id) => {
-                self.admit_socket_action(BuiltinAction::RemoveTitleBar {
-                    identifier,
-                    id: id.clone(),
-                })?;
-            }
-            SocketMessage::ToggleTitleBars => {
-                self.admit_socket_action(BuiltinAction::ToggleTitleBars)?;
-            }
-            SocketMessage::DebugWindow(hwnd) => {
-                let window = Window::from(hwnd);
-                let mut rule_debug = RuleDebug::default();
-                let _ = window.should_manage(None, &mut rule_debug);
-                let schema = serde_json::to_string_pretty(&rule_debug)?;
-
-                reply.write_all(schema.as_bytes())?;
-            }
-            SocketMessage::Theme(ref theme) => {
-                theme_manager::send_notification(*theme.clone());
-            }
-            SocketMessage::ApplyState(ref state) => {
-                self.apply_state(state.clone());
-            }
-            // Deprecated commands
-            SocketMessage::AltFocusHack(_)
-            | SocketMessage::IdentifyBorderOverflowApplication(_, _) => {}
-        };
+                // Deprecated commands
+                SocketMessage::AltFocusHack(_)
+                | SocketMessage::IdentifyBorderOverflowApplication(_, _) => {}
+            };
+        }
 
         // Update list of known_hwnds and their monitor/workspace index pair
         self.update_known_hwnds();
@@ -1580,7 +1634,7 @@ pub fn read_commands_uds(
                         | SocketMessage::State
                         | SocketMessage::GlobalState
                         | SocketMessage::Stop => Ok(wm.process_command(message, &mut stream)?),
-                        other if to_builtin_action(&other, wm.resize_delta).is_some() => {
+                        other if classify(&other) == SocketMessageClass::Action => {
                             Ok(wm.process_command(other, &mut stream)?)
                         }
                         _ => {
@@ -1631,7 +1685,7 @@ pub fn read_commands_tcp(
                         | SocketMessage::State
                         | SocketMessage::GlobalState
                         | SocketMessage::Stop => Ok(wm.process_command(message, stream)?),
-                        other if to_builtin_action(&other, wm.resize_delta).is_some() => {
+                        other if classify(&other) == SocketMessageClass::Action => {
                             Ok(wm.process_command(other, stream)?)
                         }
                         _ => {
