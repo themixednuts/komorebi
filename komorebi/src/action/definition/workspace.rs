@@ -11,7 +11,7 @@ pub const SET_WORKSPACE_LAYOUT: ActionDefinition = ActionDefinition {
     parameters: LAYOUT,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const FOCUS_WORKSPACE: ActionDefinition = ActionDefinition {
@@ -25,7 +25,7 @@ pub const FOCUS_WORKSPACE: ActionDefinition = ActionDefinition {
     parameters: INDEX,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const CYCLE_FOCUS_WORKSPACE: ActionDefinition = ActionDefinition {
@@ -39,7 +39,7 @@ pub const CYCLE_FOCUS_WORKSPACE: ActionDefinition = ActionDefinition {
     parameters: CYCLE,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const CYCLE_FOCUS_EMPTY_WORKSPACE: ActionDefinition = ActionDefinition {
@@ -53,7 +53,7 @@ pub const CYCLE_FOCUS_EMPTY_WORKSPACE: ActionDefinition = ActionDefinition {
     parameters: CYCLE,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const FOCUS_LAST_WORKSPACE: ActionDefinition = ActionDefinition {
@@ -67,7 +67,7 @@ pub const FOCUS_LAST_WORKSPACE: ActionDefinition = ActionDefinition {
     parameters: NONE,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const CLOSE_WORKSPACE: ActionDefinition = ActionDefinition {
@@ -81,7 +81,7 @@ pub const CLOSE_WORKSPACE: ActionDefinition = ActionDefinition {
     parameters: NONE,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const FOCUS_MONITOR: ActionDefinition = ActionDefinition {
@@ -95,7 +95,7 @@ pub const FOCUS_MONITOR: ActionDefinition = ActionDefinition {
     parameters: INDEX,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const CYCLE_FOCUS_MONITOR: ActionDefinition = ActionDefinition {
@@ -109,7 +109,7 @@ pub const CYCLE_FOCUS_MONITOR: ActionDefinition = ActionDefinition {
     parameters: CYCLE,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const FOCUS_MONITOR_AT_CURSOR: ActionDefinition = ActionDefinition {
@@ -123,7 +123,7 @@ pub const FOCUS_MONITOR_AT_CURSOR: ActionDefinition = ActionDefinition {
     parameters: NONE,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const FOCUS_WORKSPACE_ON_ALL_MONITORS: ActionDefinition = ActionDefinition {
@@ -137,7 +137,7 @@ pub const FOCUS_WORKSPACE_ON_ALL_MONITORS: ActionDefinition = ActionDefinition {
     parameters: INDEX,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const FOCUS_MONITOR_WORKSPACE: ActionDefinition = ActionDefinition {
@@ -151,7 +151,7 @@ pub const FOCUS_MONITOR_WORKSPACE: ActionDefinition = ActionDefinition {
     parameters: MONITOR_WORKSPACE,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const NEW_WORKSPACE: ActionDefinition = ActionDefinition {
@@ -165,7 +165,7 @@ pub const NEW_WORKSPACE: ActionDefinition = ActionDefinition {
     parameters: NONE,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const TOGGLE_TILING: ActionDefinition = ActionDefinition {
@@ -179,7 +179,7 @@ pub const TOGGLE_TILING: ActionDefinition = ActionDefinition {
     parameters: NONE,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const CYCLE_LAYOUT: ActionDefinition = ActionDefinition {
@@ -193,7 +193,7 @@ pub const CYCLE_LAYOUT: ActionDefinition = ActionDefinition {
     parameters: CYCLE,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const FLIP_LAYOUT: ActionDefinition = ActionDefinition {
@@ -207,7 +207,7 @@ pub const FLIP_LAYOUT: ActionDefinition = ActionDefinition {
     parameters: AXIS,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const TOGGLE_WORKSPACE_LAYER: ActionDefinition = ActionDefinition {
@@ -221,7 +221,7 @@ pub const TOGGLE_WORKSPACE_LAYER: ActionDefinition = ActionDefinition {
     parameters: NONE,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const MOVE_CONTAINER_TO_LAST_WORKSPACE: ActionDefinition = ActionDefinition {
@@ -235,7 +235,7 @@ pub const MOVE_CONTAINER_TO_LAST_WORKSPACE: ActionDefinition = ActionDefinition 
     parameters: NONE,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const SEND_CONTAINER_TO_LAST_WORKSPACE: ActionDefinition = ActionDefinition {
@@ -249,7 +249,7 @@ pub const SEND_CONTAINER_TO_LAST_WORKSPACE: ActionDefinition = ActionDefinition 
     parameters: NONE,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const MOVE_CONTAINER_TO_WORKSPACE: ActionDefinition = ActionDefinition {
@@ -263,7 +263,7 @@ pub const MOVE_CONTAINER_TO_WORKSPACE: ActionDefinition = ActionDefinition {
     parameters: INDEX,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const CYCLE_MOVE_CONTAINER_TO_WORKSPACE: ActionDefinition = ActionDefinition {
@@ -277,7 +277,7 @@ pub const CYCLE_MOVE_CONTAINER_TO_WORKSPACE: ActionDefinition = ActionDefinition
     parameters: CYCLE,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const SEND_CONTAINER_TO_WORKSPACE: ActionDefinition = ActionDefinition {
@@ -291,7 +291,7 @@ pub const SEND_CONTAINER_TO_WORKSPACE: ActionDefinition = ActionDefinition {
     parameters: INDEX,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const CYCLE_SEND_CONTAINER_TO_WORKSPACE: ActionDefinition = ActionDefinition {
@@ -305,7 +305,7 @@ pub const CYCLE_SEND_CONTAINER_TO_WORKSPACE: ActionDefinition = ActionDefinition
     parameters: CYCLE,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const MOVE_CONTAINER_TO_MONITOR: ActionDefinition = ActionDefinition {
@@ -319,7 +319,7 @@ pub const MOVE_CONTAINER_TO_MONITOR: ActionDefinition = ActionDefinition {
     parameters: INDEX,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const CYCLE_MOVE_CONTAINER_TO_MONITOR: ActionDefinition = ActionDefinition {
@@ -333,7 +333,7 @@ pub const CYCLE_MOVE_CONTAINER_TO_MONITOR: ActionDefinition = ActionDefinition {
     parameters: CYCLE,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const SEND_CONTAINER_TO_MONITOR: ActionDefinition = ActionDefinition {
@@ -347,7 +347,7 @@ pub const SEND_CONTAINER_TO_MONITOR: ActionDefinition = ActionDefinition {
     parameters: INDEX,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const CYCLE_SEND_CONTAINER_TO_MONITOR: ActionDefinition = ActionDefinition {
@@ -361,7 +361,7 @@ pub const CYCLE_SEND_CONTAINER_TO_MONITOR: ActionDefinition = ActionDefinition {
     parameters: CYCLE,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const MOVE_CONTAINER_TO_MONITOR_WORKSPACE: ActionDefinition = ActionDefinition {
@@ -375,7 +375,7 @@ pub const MOVE_CONTAINER_TO_MONITOR_WORKSPACE: ActionDefinition = ActionDefiniti
     parameters: MONITOR_WORKSPACE,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const SEND_CONTAINER_TO_MONITOR_WORKSPACE: ActionDefinition = ActionDefinition {
@@ -389,7 +389,7 @@ pub const SEND_CONTAINER_TO_MONITOR_WORKSPACE: ActionDefinition = ActionDefiniti
     parameters: MONITOR_WORKSPACE,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const MOVE_WORKSPACE_TO_MONITOR: ActionDefinition = ActionDefinition {
@@ -403,7 +403,7 @@ pub const MOVE_WORKSPACE_TO_MONITOR: ActionDefinition = ActionDefinition {
     parameters: INDEX,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const CYCLE_MOVE_WORKSPACE_TO_MONITOR: ActionDefinition = ActionDefinition {
@@ -417,7 +417,7 @@ pub const CYCLE_MOVE_WORKSPACE_TO_MONITOR: ActionDefinition = ActionDefinition {
     parameters: CYCLE,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const SWAP_WORKSPACES_TO_MONITOR: ActionDefinition = ActionDefinition {
@@ -431,7 +431,7 @@ pub const SWAP_WORKSPACES_TO_MONITOR: ActionDefinition = ActionDefinition {
     parameters: INDEX,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const RETILE: ActionDefinition = ActionDefinition {
@@ -445,7 +445,7 @@ pub const RETILE: ActionDefinition = ActionDefinition {
     parameters: NONE,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const RETILE_WITH_RESIZE_DIMENSIONS: ActionDefinition = ActionDefinition {
@@ -459,7 +459,7 @@ pub const RETILE_WITH_RESIZE_DIMENSIONS: ActionDefinition = ActionDefinition {
     parameters: NONE,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const ADJUST_CONTAINER_PADDING: ActionDefinition = ActionDefinition {
@@ -473,7 +473,7 @@ pub const ADJUST_CONTAINER_PADDING: ActionDefinition = ActionDefinition {
     parameters: PADDING,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const ADJUST_WORKSPACE_PADDING: ActionDefinition = ActionDefinition {
@@ -487,7 +487,7 @@ pub const ADJUST_WORKSPACE_PADDING: ActionDefinition = ActionDefinition {
     parameters: PADDING,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const TOGGLE_MOUSE_FOLLOWS_FOCUS: ActionDefinition = ActionDefinition {
@@ -501,7 +501,7 @@ pub const TOGGLE_MOUSE_FOLLOWS_FOCUS: ActionDefinition = ActionDefinition {
     parameters: NONE,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const SET_MOUSE_FOLLOWS_FOCUS: ActionDefinition = ActionDefinition {
@@ -515,7 +515,7 @@ pub const SET_MOUSE_FOLLOWS_FOCUS: ActionDefinition = ActionDefinition {
     parameters: FLAG,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const TOGGLE_WORKSPACE_WINDOW_CONTAINER_BEHAVIOUR: ActionDefinition = ActionDefinition {
@@ -529,7 +529,7 @@ pub const TOGGLE_WORKSPACE_WINDOW_CONTAINER_BEHAVIOUR: ActionDefinition = Action
     parameters: NONE,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const TOGGLE_WORKSPACE_FLOAT_OVERRIDE: ActionDefinition = ActionDefinition {
@@ -543,7 +543,7 @@ pub const TOGGLE_WORKSPACE_FLOAT_OVERRIDE: ActionDefinition = ActionDefinition {
     parameters: NONE,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const TOGGLE_CROSS_MONITOR_MOVE_BEHAVIOUR: ActionDefinition = ActionDefinition {
@@ -557,7 +557,7 @@ pub const TOGGLE_CROSS_MONITOR_MOVE_BEHAVIOUR: ActionDefinition = ActionDefiniti
     parameters: NONE,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const TOGGLE_PAUSE: ActionDefinition = ActionDefinition {
@@ -571,7 +571,7 @@ pub const TOGGLE_PAUSE: ActionDefinition = ActionDefinition {
     parameters: NONE,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const SET_FOCUSED_CONTAINER_PADDING: ActionDefinition = ActionDefinition {
@@ -585,7 +585,7 @@ pub const SET_FOCUSED_CONTAINER_PADDING: ActionDefinition = ActionDefinition {
     parameters: SIZE,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const SET_FOCUSED_WORKSPACE_PADDING: ActionDefinition = ActionDefinition {
@@ -599,7 +599,7 @@ pub const SET_FOCUSED_WORKSPACE_PADDING: ActionDefinition = ActionDefinition {
     parameters: SIZE,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const SET_CONTAINER_PADDING: ActionDefinition = ActionDefinition {
@@ -613,7 +613,7 @@ pub const SET_CONTAINER_PADDING: ActionDefinition = ActionDefinition {
     parameters: MONITOR_WORKSPACE_SIZE,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const SET_WORKSPACE_PADDING: ActionDefinition = ActionDefinition {
@@ -627,7 +627,7 @@ pub const SET_WORKSPACE_PADDING: ActionDefinition = ActionDefinition {
     parameters: MONITOR_WORKSPACE_SIZE,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const SET_WORKSPACE_TILING: ActionDefinition = ActionDefinition {
@@ -641,7 +641,7 @@ pub const SET_WORKSPACE_TILING: ActionDefinition = ActionDefinition {
     parameters: MONITOR_WORKSPACE_FLAG,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const SET_MONITOR_WORKSPACE_LAYOUT: ActionDefinition = ActionDefinition {
@@ -655,7 +655,7 @@ pub const SET_MONITOR_WORKSPACE_LAYOUT: ActionDefinition = ActionDefinition {
     parameters: MONITOR_WORKSPACE_LAYOUT,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const ENSURE_WORKSPACES: ActionDefinition = ActionDefinition {
@@ -669,7 +669,7 @@ pub const ENSURE_WORKSPACES: ActionDefinition = ActionDefinition {
     parameters: MONITOR_COUNT,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const CLEAR_WORKSPACE_LAYOUT_RULES: ActionDefinition = ActionDefinition {
@@ -683,7 +683,7 @@ pub const CLEAR_WORKSPACE_LAYOUT_RULES: ActionDefinition = ActionDefinition {
     parameters: MONITOR_WORKSPACE,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const SET_SCROLLING_COLUMNS: ActionDefinition = ActionDefinition {
@@ -697,7 +697,7 @@ pub const SET_SCROLLING_COLUMNS: ActionDefinition = ActionDefinition {
     parameters: COLUMNS,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const ENFORCE_WORKSPACE_RULES: ActionDefinition = ActionDefinition {
@@ -711,7 +711,7 @@ pub const ENFORCE_WORKSPACE_RULES: ActionDefinition = ActionDefinition {
     parameters: NONE,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const ADD_WORKSPACE_LAYOUT_RULE: ActionDefinition = def(

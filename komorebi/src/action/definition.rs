@@ -471,7 +471,7 @@ const fn def(
         parameters,
         permitted_uses: BOTH_USES,
         confirmation: ConfirmationPolicy::None,
-        undo: UndoPolicy::PriorManagerIntent,
+        undo: UndoPolicy::None,
     }
 }
 
@@ -635,6 +635,11 @@ mod tests {
             assert_eq!(definition.kind, kind);
             assert_eq!(definition.id, kind.id());
             assert_eq!(definition.schema_version, ActionSchemaVersion::V1);
+            assert_eq!(
+                definition.undo,
+                UndoPolicy::None,
+                "{kind:?} must not advertise undo until it captures an executable inverse"
+            );
         }
     }
 

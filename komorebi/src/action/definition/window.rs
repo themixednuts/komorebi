@@ -11,7 +11,7 @@ pub const FOCUS_WINDOW: ActionDefinition = ActionDefinition {
     parameters: DIRECTION,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const MOVE_WINDOW: ActionDefinition = ActionDefinition {
@@ -25,7 +25,7 @@ pub const MOVE_WINDOW: ActionDefinition = ActionDefinition {
     parameters: DIRECTION,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const RESIZE_WINDOW: ActionDefinition = ActionDefinition {
@@ -39,7 +39,7 @@ pub const RESIZE_WINDOW: ActionDefinition = ActionDefinition {
     parameters: RESIZE,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const TOGGLE_WINDOW_FLOAT: ActionDefinition = ActionDefinition {
@@ -53,7 +53,7 @@ pub const TOGGLE_WINDOW_FLOAT: ActionDefinition = ActionDefinition {
     parameters: WINDOW,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const CYCLE_FOCUS_WINDOW: ActionDefinition = ActionDefinition {
@@ -67,7 +67,7 @@ pub const CYCLE_FOCUS_WINDOW: ActionDefinition = ActionDefinition {
     parameters: CYCLE,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const CYCLE_MOVE_WINDOW: ActionDefinition = ActionDefinition {
@@ -81,7 +81,7 @@ pub const CYCLE_MOVE_WINDOW: ActionDefinition = ActionDefinition {
     parameters: CYCLE,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const TOGGLE_WINDOW_MONOCLE: ActionDefinition = ActionDefinition {
@@ -95,7 +95,7 @@ pub const TOGGLE_WINDOW_MONOCLE: ActionDefinition = ActionDefinition {
     parameters: WINDOW,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const TOGGLE_WINDOW_MAXIMIZE: ActionDefinition = ActionDefinition {
@@ -109,7 +109,7 @@ pub const TOGGLE_WINDOW_MAXIMIZE: ActionDefinition = ActionDefinition {
     parameters: WINDOW,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const TOGGLE_CONTAINER_LOCK: ActionDefinition = ActionDefinition {
@@ -123,7 +123,7 @@ pub const TOGGLE_CONTAINER_LOCK: ActionDefinition = ActionDefinition {
     parameters: WINDOW,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const STACK_WINDOW: ActionDefinition = ActionDefinition {
@@ -137,7 +137,7 @@ pub const STACK_WINDOW: ActionDefinition = ActionDefinition {
     parameters: DIRECTION,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const UNSTACK_WINDOW: ActionDefinition = ActionDefinition {
@@ -151,7 +151,7 @@ pub const UNSTACK_WINDOW: ActionDefinition = ActionDefinition {
     parameters: WINDOW,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const STACK_ALL: ActionDefinition = ActionDefinition {
@@ -165,7 +165,7 @@ pub const STACK_ALL: ActionDefinition = ActionDefinition {
     parameters: NONE,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const UNSTACK_ALL: ActionDefinition = ActionDefinition {
@@ -179,7 +179,7 @@ pub const UNSTACK_ALL: ActionDefinition = ActionDefinition {
     parameters: NONE,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const CYCLE_STACK: ActionDefinition = ActionDefinition {
@@ -193,7 +193,7 @@ pub const CYCLE_STACK: ActionDefinition = ActionDefinition {
     parameters: CYCLE,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const CYCLE_STACK_INDEX: ActionDefinition = ActionDefinition {
@@ -207,7 +207,7 @@ pub const CYCLE_STACK_INDEX: ActionDefinition = ActionDefinition {
     parameters: CYCLE,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const FOCUS_STACK_WINDOW: ActionDefinition = ActionDefinition {
@@ -221,7 +221,7 @@ pub const FOCUS_STACK_WINDOW: ActionDefinition = ActionDefinition {
     parameters: INDEX,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const CLOSE_WINDOW: ActionDefinition = ActionDefinition {
@@ -235,7 +235,7 @@ pub const CLOSE_WINDOW: ActionDefinition = ActionDefinition {
     parameters: WINDOW,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const MINIMIZE_WINDOW: ActionDefinition = ActionDefinition {
@@ -249,7 +249,7 @@ pub const MINIMIZE_WINDOW: ActionDefinition = ActionDefinition {
     parameters: WINDOW,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const FORCE_FOCUS: ActionDefinition = ActionDefinition {
@@ -263,7 +263,7 @@ pub const FORCE_FOCUS: ActionDefinition = ActionDefinition {
     parameters: WINDOW,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const PROMOTE_CONTAINER: ActionDefinition = ActionDefinition {
@@ -277,7 +277,7 @@ pub const PROMOTE_CONTAINER: ActionDefinition = ActionDefinition {
     parameters: NONE,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const PROMOTE_CONTAINER_SWAP: ActionDefinition = ActionDefinition {
@@ -291,7 +291,7 @@ pub const PROMOTE_CONTAINER_SWAP: ActionDefinition = ActionDefinition {
     parameters: NONE,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const PROMOTE_FOCUS: ActionDefinition = ActionDefinition {
@@ -305,7 +305,7 @@ pub const PROMOTE_FOCUS: ActionDefinition = ActionDefinition {
     parameters: NONE,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const PROMOTE_WINDOW: ActionDefinition = ActionDefinition {
@@ -319,7 +319,7 @@ pub const PROMOTE_WINDOW: ActionDefinition = ActionDefinition {
     parameters: DIRECTION,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const PRESELECT_DIRECTION: ActionDefinition = ActionDefinition {
@@ -333,7 +333,7 @@ pub const PRESELECT_DIRECTION: ActionDefinition = ActionDefinition {
     parameters: DIRECTION,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const CANCEL_PRESELECT: ActionDefinition = ActionDefinition {
@@ -347,7 +347,7 @@ pub const CANCEL_PRESELECT: ActionDefinition = ActionDefinition {
     parameters: NONE,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const MANAGE_FOCUSED_WINDOW: ActionDefinition = ActionDefinition {
@@ -361,7 +361,7 @@ pub const MANAGE_FOCUSED_WINDOW: ActionDefinition = ActionDefinition {
     parameters: NONE,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const UNMANAGE_FOCUSED_WINDOW: ActionDefinition = ActionDefinition {
@@ -375,7 +375,7 @@ pub const UNMANAGE_FOCUSED_WINDOW: ActionDefinition = ActionDefinition {
     parameters: NONE,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const TOGGLE_WINDOW_CONTAINER_BEHAVIOUR: ActionDefinition = ActionDefinition {
@@ -389,7 +389,7 @@ pub const TOGGLE_WINDOW_CONTAINER_BEHAVIOUR: ActionDefinition = ActionDefinition
     parameters: NONE,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const TOGGLE_FLOAT_OVERRIDE: ActionDefinition = ActionDefinition {
@@ -403,7 +403,7 @@ pub const TOGGLE_FLOAT_OVERRIDE: ActionDefinition = ActionDefinition {
     parameters: NONE,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const TOGGLE_MONOCLE_FOCUS_BEHAVIOUR: ActionDefinition = ActionDefinition {
@@ -417,7 +417,7 @@ pub const TOGGLE_MONOCLE_FOCUS_BEHAVIOUR: ActionDefinition = ActionDefinition {
     parameters: NONE,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const LOCK_CONTAINER: ActionDefinition = ActionDefinition {
@@ -431,7 +431,7 @@ pub const LOCK_CONTAINER: ActionDefinition = ActionDefinition {
     parameters: MONITOR_WORKSPACE_CONTAINER,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const UNLOCK_CONTAINER: ActionDefinition = ActionDefinition {
@@ -445,7 +445,7 @@ pub const UNLOCK_CONTAINER: ActionDefinition = ActionDefinition {
     parameters: MONITOR_WORKSPACE_CONTAINER,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const TOGGLE_TITLE_BARS: ActionDefinition = ActionDefinition {
@@ -459,7 +459,7 @@ pub const TOGGLE_TITLE_BARS: ActionDefinition = ActionDefinition {
     parameters: NONE,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const ADD_SESSION_FLOAT_RULE: ActionDefinition = ActionDefinition {
@@ -473,7 +473,7 @@ pub const ADD_SESSION_FLOAT_RULE: ActionDefinition = ActionDefinition {
     parameters: NONE,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const CLEAR_SESSION_FLOAT_RULES: ActionDefinition = ActionDefinition {
@@ -487,7 +487,7 @@ pub const CLEAR_SESSION_FLOAT_RULES: ActionDefinition = ActionDefinition {
     parameters: NONE,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
-    undo: UndoPolicy::PriorManagerIntent,
+    undo: UndoPolicy::None,
 };
 
 pub const RESIZE_WINDOW_EDGE: ActionDefinition = def(
