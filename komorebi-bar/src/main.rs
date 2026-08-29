@@ -18,6 +18,7 @@ use hotwatch::Hotwatch;
 use komorebi_client::PathExt;
 use komorebi_client::SocketMessage;
 use komorebi_client::SubscribeOptions;
+use komorebi_client::SubscriberName;
 use komorebi_client::replace_env_in_path;
 use std::io::BufReader;
 use std::io::Read;
@@ -342,14 +343,24 @@ fn main() -> color_eyre::Result<()> {
 
             let ctx_komorebi = cc.egui_ctx.clone();
             std::thread::spawn(move || {
-                let subscriber_name = format!("komorebi-bar-{}", random_word::get(random_word::Lang::En));
+                let subscriber_name = SubscriberName::parse(&format!(
+                    "komorebi-bar-{}",
+                    random_word::get(random_word::Lang::En)
+                ))
+                .expect("generated bar subscriber names are valid");
 
-                let listener = komorebi_client::subscribe_with_options(&subscriber_name, SubscribeOptions {
-                    filter_state_changes: true,
-                })
-                    .expect("could not subscribe to komorebi notifications");
+                let listener = komorebi_client::subscribe_with_options(
+                    subscriber_name.as_str(),
+                    SubscribeOptions {
+                        filter_state_changes: true,
+                    },
+                )
+                .expect("could not subscribe to komorebi notifications");
 
-                tracing::info!("subscribed to komorebi notifications: \"{}\"", subscriber_name);
+                tracing::info!(
+                    "subscribed to komorebi notifications: \"{}\"",
+                    subscriber_name
+                );
 
                 for client in listener.incoming() {
                     match client {

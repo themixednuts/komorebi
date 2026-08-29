@@ -35,9 +35,7 @@ use crate::NotificationEvent;
 use crate::OBJECT_NAME_CHANGE_ON_LAUNCH;
 use crate::REMOVE_TITLEBARS;
 use crate::SESSION_FLOATING_APPLICATIONS;
-use crate::SUBSCRIPTION_PIPES;
-use crate::SUBSCRIPTION_SOCKET_OPTIONS;
-use crate::SUBSCRIPTION_SOCKETS;
+use crate::SUBSCRIBERS;
 use crate::TCP_CONNECTIONS;
 use crate::TRAY_AND_MULTI_WINDOW_IDENTIFIERS;
 use crate::WINDOWS_11;
@@ -1966,34 +1964,28 @@ if (!(Get-Process komorebi-bar -ErrorAction SilentlyContinue))
                 self.update_focused_workspace(false, false)?;
             }
             SocketMessage::AddSubscriberSocket(ref socket) => {
-                let mut sockets = SUBSCRIPTION_SOCKETS.lock();
-                let socket_path = DATA_DIR.join(socket);
-                sockets.insert(socket.clone(), socket_path);
+                SUBSCRIBERS
+                    .lock()
+                    .add_socket(&DATA_DIR, socket.clone(), None)?;
             }
             SocketMessage::AddSubscriberSocketWithOptions(ref socket, options) => {
-                let mut sockets = SUBSCRIPTION_SOCKETS.lock();
-                let socket_path = DATA_DIR.join(socket);
-                sockets.insert(socket.clone(), socket_path);
-
-                let mut socket_options = SUBSCRIPTION_SOCKET_OPTIONS.lock();
-                socket_options.insert(socket.clone(), options);
+                SUBSCRIBERS
+                    .lock()
+                    .add_socket(&DATA_DIR, socket.clone(), Some(options))?;
             }
             SocketMessage::RemoveSubscriberSocket(ref socket) => {
-                let mut sockets = SUBSCRIPTION_SOCKETS.lock();
-                sockets.remove(socket);
+                SUBSCRIBERS.lock().remove_socket(socket);
             }
             SocketMessage::AddSubscriberPipe(ref subscriber) => {
-                let mut pipes = SUBSCRIPTION_PIPES.lock();
-                let pipe_path = format!(r"\\.\pipe\{subscriber}");
-                let pipe = connect(&pipe_path).wrap_err(
-                    format!("the named pipe '{}' has not yet been created; please create it before running this command", pipe_path)
-                )?;
+                let pipe_path = subscriber.named_pipe_path();
+                let pipe = connect(&pipe_path).wrap_err(format!(
+                    "the named pipe '{pipe_path}' has not yet been created; please create it before running this command"
+                ))?;
 
-                pipes.insert(subscriber.clone(), pipe);
+                SUBSCRIBERS.lock().add_pipe(subscriber.clone(), pipe);
             }
             SocketMessage::RemoveSubscriberPipe(ref subscriber) => {
-                let mut pipes = SUBSCRIPTION_PIPES.lock();
-                pipes.remove(subscriber);
+                SUBSCRIBERS.lock().remove_pipe(subscriber);
             }
             SocketMessage::MouseFollowsFocus(enable) => {
                 self.mouse_follows_focus = enable;

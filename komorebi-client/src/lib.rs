@@ -68,6 +68,8 @@ pub use komorebi::core::SocketMessage;
 pub use komorebi::core::StackbarLabel;
 pub use komorebi::core::StackbarMode;
 pub use komorebi::core::StateQuery;
+pub use komorebi::core::SubscriberName;
+pub use komorebi::core::SubscriberNameError;
 pub use komorebi::core::WindowKind;
 pub use komorebi::core::config_generation::ApplicationConfigurationGenerator;
 pub use komorebi::core::replace_env_in_path;
@@ -138,30 +140,28 @@ pub fn send_query(message: &SocketMessage) -> std::io::Result<String> {
 }
 
 pub fn subscribe(name: &str) -> std::io::Result<UnixListener> {
-    let socket = DATA_DIR.join(name);
-
-    match std::fs::remove_file(&socket) {
-        Ok(()) => {}
-        Err(error) => match error.kind() {
-            std::io::ErrorKind::NotFound => {}
-            _ => {
-                return Err(error);
-            }
-        },
-    };
-
-    let listener = UnixListener::bind(&socket)?;
-
-    send_message(&SocketMessage::AddSubscriberSocket(name.to_string()))?;
-
-    Ok(listener)
+    let name = parse_subscriber_name(name)?;
+    bind_subscriber_socket(&name, None)
 }
 
 pub fn subscribe_with_options(
     name: &str,
     options: SubscribeOptions,
 ) -> std::io::Result<UnixListener> {
-    let socket = DATA_DIR.join(name);
+    let name = parse_subscriber_name(name)?;
+    bind_subscriber_socket(&name, Some(options))
+}
+
+fn parse_subscriber_name(name: &str) -> std::io::Result<SubscriberName> {
+    SubscriberName::parse(name)
+        .map_err(|error| std::io::Error::new(std::io::ErrorKind::InvalidInput, error))
+}
+
+fn bind_subscriber_socket(
+    name: &SubscriberName,
+    options: Option<SubscribeOptions>,
+) -> std::io::Result<UnixListener> {
+    let socket = DATA_DIR.join(name.as_str());
 
     match std::fs::remove_file(&socket) {
         Ok(()) => {}
@@ -175,10 +175,17 @@ pub fn subscribe_with_options(
 
     let listener = UnixListener::bind(&socket)?;
 
-    send_message(&SocketMessage::AddSubscriberSocketWithOptions(
-        name.to_string(),
-        options,
-    ))?;
+    match options {
+        Some(options) => {
+            send_message(&SocketMessage::AddSubscriberSocketWithOptions(
+                name.clone(),
+                options,
+            ))?;
+        }
+        None => {
+            send_message(&SocketMessage::AddSubscriberSocket(name.clone()))?;
+        }
+    }
 
     Ok(listener)
 }

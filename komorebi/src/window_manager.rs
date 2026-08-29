@@ -48,7 +48,7 @@ use crate::DATA_DIR;
 use crate::HOME_DIR;
 use crate::NO_TITLEBAR;
 use crate::REGEX_IDENTIFIERS;
-use crate::SUBSCRIPTION_SOCKETS;
+use crate::SUBSCRIBERS;
 use crate::WORKSPACE_MATCHING_RULES;
 use crate::border_manager;
 use crate::border_manager::BORDER_OFFSET;
@@ -1376,8 +1376,8 @@ impl WindowManager {
             WindowsApi::disable_focus_follows_mouse()?;
         }
 
-        let sockets = SUBSCRIPTION_SOCKETS.lock();
-        for path in (*sockets).values() {
+        let subscribers = SUBSCRIBERS.lock();
+        for path in subscribers.socket_paths() {
             if let Ok(stream) = UnixStream::connect(path) {
                 stream.shutdown(Shutdown::Both)?;
             }

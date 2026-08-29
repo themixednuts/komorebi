@@ -371,8 +371,8 @@ fn main() -> eyre::Result<()> {
         WindowsApi::disable_focus_follows_mouse()?;
     }
 
-    let sockets = komorebi::SUBSCRIPTION_SOCKETS.lock();
-    for path in (*sockets).values() {
+    let subscribers = komorebi::SUBSCRIBERS.lock();
+    for path in subscribers.socket_paths() {
         if let Ok(stream) = UnixStream::connect(path) {
             stream.shutdown(Shutdown::Both)?;
         }

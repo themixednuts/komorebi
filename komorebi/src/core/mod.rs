@@ -49,11 +49,15 @@ pub use pathext::PathExt;
 pub use pathext::ResolvedPathBuf;
 pub use pathext::replace_env_in_path;
 pub use pathext::resolve_option_hashmap_usize_path;
+pub use subscriber::SubscriberName;
+pub use subscriber::SubscriberNameError;
+pub use subscriber::SubscriberRegistry;
 
 pub mod animation;
 pub mod asc;
 pub mod config_generation;
 pub mod pathext;
+pub mod subscriber;
 
 // serde_as must be before derive
 #[serde_with::serde_as]
@@ -249,11 +253,11 @@ pub enum SocketMessage {
     ToggleMouseFollowsFocus,
     RemoveTitleBar(ApplicationIdentifier, String),
     ToggleTitleBars,
-    AddSubscriberSocket(String),
-    AddSubscriberSocketWithOptions(String, SubscribeOptions),
-    RemoveSubscriberSocket(String),
-    AddSubscriberPipe(String),
-    RemoveSubscriberPipe(String),
+    AddSubscriberSocket(SubscriberName),
+    AddSubscriberSocketWithOptions(SubscriberName, SubscribeOptions),
+    RemoveSubscriberSocket(SubscriberName),
+    AddSubscriberPipe(SubscriberName),
+    RemoveSubscriberPipe(SubscriberName),
     ApplicationSpecificConfigurationSchema,
     NotificationSchema,
     SocketSchema,

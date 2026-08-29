@@ -60,6 +60,7 @@ use komorebi_client::Sizing;
 use komorebi_client::SocketMessage;
 use komorebi_client::StateQuery;
 use komorebi_client::StaticConfig;
+use komorebi_client::SubscriberName;
 use komorebi_client::WindowKind;
 use komorebi_client::splash::ValidationFeedback;
 
@@ -895,25 +896,35 @@ struct LoadCustomLayout {
 #[derive(Parser)]
 struct SubscribeSocket {
     /// Name of the socket to send event notifications to
-    socket: String,
+    #[clap(value_parser = parse_subscriber_name)]
+    socket: SubscriberName,
 }
 
 #[derive(Parser)]
 struct UnsubscribeSocket {
     /// Name of the socket to stop sending event notifications to
-    socket: String,
+    #[clap(value_parser = parse_subscriber_name)]
+    socket: SubscriberName,
 }
 
 #[derive(Parser)]
 struct SubscribePipe {
     /// Name of the pipe to send event notifications to (without "\\.\pipe\" prepended)
-    named_pipe: String,
+    #[clap(value_parser = parse_subscriber_name)]
+    named_pipe: SubscriberName,
 }
 
 #[derive(Parser)]
 struct UnsubscribePipe {
     /// Name of the pipe to stop sending event notifications to (without "\\.\pipe\" prepended)
-    named_pipe: String,
+    #[clap(value_parser = parse_subscriber_name)]
+    named_pipe: SubscriberName,
+}
+
+fn parse_subscriber_name(
+    raw: &str,
+) -> Result<SubscriberName, komorebi_client::SubscriberNameError> {
+    SubscriberName::parse(raw)
 }
 
 #[derive(Parser)]

@@ -36,8 +36,6 @@ use lazy_static::lazy_static;
 use monitor_reconciliator::MonitorNotification;
 use std::collections::HashMap;
 use std::collections::VecDeque;
-use std::fs::File;
-use std::io::Write;
 use std::net::TcpStream;
 use std::path::PathBuf;
 use std::process::Command;
@@ -73,7 +71,6 @@ use regex::Regex;
 use serde::Deserialize;
 use serde::Serialize;
 use state::State;
-use uds_windows::UnixStream;
 use which::which;
 use winreg::RegKey;
 use winreg::enums::HKEY_CURRENT_USER;
@@ -187,12 +184,8 @@ lazy_static! {
     ]));
     static ref DUPLICATE_MONITOR_SERIAL_IDS: Arc<RwLock<Vec<String>>> =
         Arc::new(RwLock::new(Vec::new()));
-    static ref SUBSCRIPTION_PIPES: Arc<Mutex<HashMap<String, File>>> =
-        Arc::new(Mutex::new(HashMap::new()));
-    pub static ref SUBSCRIPTION_SOCKETS: Arc<Mutex<HashMap<String, PathBuf>>> =
-        Arc::new(Mutex::new(HashMap::new()));
-    pub static ref SUBSCRIPTION_SOCKET_OPTIONS: Arc<Mutex<HashMap<String, SubscribeOptions>>> =
-        Arc::new(Mutex::new(HashMap::new()));
+    pub static ref SUBSCRIBERS: Arc<Mutex<SubscriberRegistry>> =
+        Arc::new(Mutex::new(SubscriberRegistry::default()));
     static ref TCP_CONNECTIONS: Arc<Mutex<HashMap<String, TcpStream>>> =
         Arc::new(Mutex::new(HashMap::new()));
     static ref HIDING_BEHAVIOUR: Arc<Mutex<HidingBehaviour>> =
@@ -367,71 +360,13 @@ pub fn notify_subscribers(
             | NotificationEvent::WindowManager(WindowManagerEvent::Uncloak(_, _))
     );
 
-    let notification = &serde_json::to_string(&notification)?;
-    let mut stale_sockets = vec![];
-    let mut sockets = SUBSCRIPTION_SOCKETS.lock();
-    let options = SUBSCRIPTION_SOCKET_OPTIONS.lock();
-
-    for (socket, path) in &mut *sockets {
-        let apply_state_filter = (*options)
-            .get(socket)
-            .copied()
-            .unwrap_or_default()
-            .filter_state_changes;
-
-        if !apply_state_filter || state_has_been_modified || is_override_event {
-            match UnixStream::connect(path) {
-                Ok(mut stream) => {
-                    tracing::debug!("pushed notification to subscriber: {socket}");
-                    stream.write_all(notification.as_bytes())?;
-                }
-                Err(_) => {
-                    stale_sockets.push(socket.clone());
-                }
-            }
-        }
-    }
-
-    for socket in stale_sockets {
-        tracing::warn!("removing stale subscription: {socket}");
-        sockets.remove(&socket);
-        let socket_path = DATA_DIR.join(socket);
-        if let Err(error) = std::fs::remove_file(&socket_path) {
-            tracing::error!(
-                "could not remove stale subscriber socket file at {}: {error}",
-                socket_path.display()
-            )
-        }
-    }
-
-    let mut stale_pipes = vec![];
-    let mut pipes = SUBSCRIPTION_PIPES.lock();
-    for (subscriber, pipe) in &mut *pipes {
-        match writeln!(pipe, "{notification}") {
-            Ok(()) => {
-                tracing::debug!("pushed notification to subscriber: {subscriber}");
-            }
-            Err(error) => {
-                // ERROR_FILE_NOT_FOUND
-                // 2 (0x2)
-                // The system cannot find the file specified.
-
-                // ERROR_NO_DATA
-                // 232 (0xE8)
-                // The pipe is being closed.
-
-                // Remove the subscription; the process will have to subscribe again
-                if let Some(2 | 232) = error.raw_os_error() {
-                    stale_pipes.push(subscriber.clone());
-                }
-            }
-        }
-    }
-
-    for subscriber in stale_pipes {
-        tracing::warn!("removing stale subscription: {}", subscriber);
-        pipes.remove(&subscriber);
-    }
+    let notification = serde_json::to_string(&notification)?;
+    SUBSCRIBERS.lock().deliver(
+        &DATA_DIR,
+        &notification,
+        state_has_been_modified,
+        is_override_event,
+    )?;
 
     Ok(())
 }
