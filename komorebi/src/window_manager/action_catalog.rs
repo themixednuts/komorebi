@@ -11,6 +11,7 @@ use crate::action::InvocationContext;
 use crate::action::InvocationId;
 use crate::action::InvocationOrigin;
 use crate::action::InvokeAction;
+use crate::action::NamedWorkspaceTarget;
 use crate::action::NativeEffect;
 use crate::action::NativeEffectFailure;
 use crate::action::PlannedEffect;
@@ -103,14 +104,18 @@ impl WindowManager {
         }
     }
 
-    fn named_workspaces_for_catalog(&self) -> Vec<(crate::action::WorkspaceName, usize, usize)> {
+    fn named_workspaces_for_catalog(&self) -> Vec<NamedWorkspaceTarget> {
         let mut named = Vec::new();
         for (monitor_idx, monitor) in self.monitors().iter().enumerate() {
             for (workspace_idx, workspace) in monitor.workspaces().iter().enumerate() {
                 if let Some(name) = &workspace.name
                     && let Ok(name) = crate::action::WorkspaceName::parse(name)
                 {
-                    named.push((name, monitor_idx, workspace_idx));
+                    named.push(NamedWorkspaceTarget {
+                        name,
+                        monitor: monitor_idx,
+                        workspace: workspace_idx,
+                    });
                 }
             }
         }

@@ -1,3 +1,7 @@
+mod availability;
+mod choices;
+mod policy;
+
 use crate::core::DefaultLayout;
 use crate::core::OperationDirection;
 
@@ -10,6 +14,16 @@ use super::id::PrincipalId;
 use super::id::Revision;
 use super::id::WindowId;
 
+pub use choices::DynamicParameterChoice;
+pub use choices::DynamicParameterChoices;
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct NamedWorkspaceTarget {
+    pub name: WorkspaceName,
+    pub monitor: usize,
+    pub workspace: usize,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ActionSnapshot {
     pub revision: Revision,
@@ -21,7 +35,7 @@ pub struct ActionSnapshot {
     pub neighbor_down: bool,
     pub current_layout: DefaultLayout,
     pub focused_window_floating: bool,
-    pub named_workspaces: Vec<(WorkspaceName, usize, usize)>,
+    pub named_workspaces: Vec<NamedWorkspaceTarget>,
     pub bindings: Vec<BindingHint>,
 }
 
@@ -47,8 +61,8 @@ impl ActionSnapshot {
     pub fn workspace_by_name(&self, name: &WorkspaceName) -> Option<(usize, usize)> {
         self.named_workspaces
             .iter()
-            .find(|(workspace_name, _, _)| workspace_name == name)
-            .map(|(_, monitor, workspace)| (*monitor, *workspace))
+            .find(|target| &target.name == name)
+            .map(|target| (target.monitor, target.workspace))
     }
 }
 
@@ -115,6 +129,7 @@ pub struct ActionOffer {
     pub revision: Revision,
     pub availability: ActionAvailability,
     pub current_value: Option<ActionCurrentValue>,
+    pub dynamic_choices: Vec<DynamicParameterChoices>,
     pub bindings: Vec<BindingHint>,
 }
 
@@ -132,126 +147,7 @@ fn offer_kind(
     kind: BuiltinActionKind,
 ) -> ActionOffer {
     let definition = kind.definition();
-    let availability = availability(snapshot, authority, kind);
-    let current_value = match kind {
-        BuiltinActionKind::SetWorkspaceLayout => {
-            Some(ActionCurrentValue::Layout(snapshot.current_layout))
-        }
-        BuiltinActionKind::ToggleWindowFloat => Some(ActionCurrentValue::Floating(
-            snapshot.focused_window_floating,
-        )),
-        BuiltinActionKind::FocusWindow
-        | BuiltinActionKind::MoveWindow
-        | BuiltinActionKind::ResizeWindow
-        | BuiltinActionKind::CycleFocusWindow
-        | BuiltinActionKind::CycleMoveWindow
-        | BuiltinActionKind::ToggleWindowMonocle
-        | BuiltinActionKind::ToggleWindowMaximize
-        | BuiltinActionKind::ToggleContainerLock
-        | BuiltinActionKind::StackWindow
-        | BuiltinActionKind::UnstackWindow
-        | BuiltinActionKind::StackAll
-        | BuiltinActionKind::UnstackAll
-        | BuiltinActionKind::CycleStack
-        | BuiltinActionKind::CycleStackIndex
-        | BuiltinActionKind::FocusStackWindow
-        | BuiltinActionKind::FocusWorkspace
-        | BuiltinActionKind::CycleFocusWorkspace
-        | BuiltinActionKind::CycleFocusEmptyWorkspace
-        | BuiltinActionKind::FocusLastWorkspace
-        | BuiltinActionKind::CloseWorkspace
-        | BuiltinActionKind::FocusMonitor
-        | BuiltinActionKind::CycleFocusMonitor
-        | BuiltinActionKind::FocusMonitorAtCursor
-        | BuiltinActionKind::FocusWorkspaceOnAllMonitors
-        | BuiltinActionKind::FocusMonitorWorkspace
-        | BuiltinActionKind::CloseWindow
-        | BuiltinActionKind::MinimizeWindow
-        | BuiltinActionKind::ForceFocus
-        | BuiltinActionKind::PromoteContainer
-        | BuiltinActionKind::PromoteContainerSwap
-        | BuiltinActionKind::PromoteFocus
-        | BuiltinActionKind::PromoteWindow
-        | BuiltinActionKind::NewWorkspace
-        | BuiltinActionKind::ToggleTiling
-        | BuiltinActionKind::CycleLayout
-        | BuiltinActionKind::FlipLayout
-        | BuiltinActionKind::ToggleWorkspaceLayer
-        | BuiltinActionKind::MoveContainerToLastWorkspace
-        | BuiltinActionKind::SendContainerToLastWorkspace
-        | BuiltinActionKind::MoveContainerToWorkspace
-        | BuiltinActionKind::CycleMoveContainerToWorkspace
-        | BuiltinActionKind::SendContainerToWorkspace
-        | BuiltinActionKind::CycleSendContainerToWorkspace
-        | BuiltinActionKind::MoveContainerToMonitor
-        | BuiltinActionKind::CycleMoveContainerToMonitor
-        | BuiltinActionKind::SendContainerToMonitor
-        | BuiltinActionKind::CycleSendContainerToMonitor
-        | BuiltinActionKind::MoveContainerToMonitorWorkspace
-        | BuiltinActionKind::SendContainerToMonitorWorkspace
-        | BuiltinActionKind::MoveWorkspaceToMonitor
-        | BuiltinActionKind::CycleMoveWorkspaceToMonitor
-        | BuiltinActionKind::SwapWorkspacesToMonitor
-        | BuiltinActionKind::PreselectDirection
-        | BuiltinActionKind::CancelPreselect
-        | BuiltinActionKind::Retile
-        | BuiltinActionKind::RetileWithResizeDimensions
-        | BuiltinActionKind::ManageFocusedWindow
-        | BuiltinActionKind::UnmanageFocusedWindow
-        | BuiltinActionKind::AdjustContainerPadding
-        | BuiltinActionKind::AdjustWorkspacePadding
-        | BuiltinActionKind::ToggleMouseFollowsFocus
-        | BuiltinActionKind::SetMouseFollowsFocus
-        | BuiltinActionKind::ToggleWindowContainerBehaviour
-        | BuiltinActionKind::ToggleFloatOverride
-        | BuiltinActionKind::ToggleWorkspaceWindowContainerBehaviour
-        | BuiltinActionKind::ToggleWorkspaceFloatOverride
-        | BuiltinActionKind::ToggleCrossMonitorMoveBehaviour
-        | BuiltinActionKind::ToggleMonocleFocusBehaviour
-        | BuiltinActionKind::TogglePause
-        | BuiltinActionKind::SetFocusedContainerPadding
-        | BuiltinActionKind::SetFocusedWorkspacePadding
-        | BuiltinActionKind::SetContainerPadding
-        | BuiltinActionKind::SetWorkspacePadding
-        | BuiltinActionKind::SetWorkspaceTiling
-        | BuiltinActionKind::SetMonitorWorkspaceLayout
-        | BuiltinActionKind::EnsureWorkspaces
-        | BuiltinActionKind::ClearWorkspaceLayoutRules
-        | BuiltinActionKind::SetScrollingColumns
-        | BuiltinActionKind::LockContainer
-        | BuiltinActionKind::UnlockContainer
-        | BuiltinActionKind::ToggleTitleBars
-        | BuiltinActionKind::EnforceWorkspaceRules
-        | BuiltinActionKind::AddSessionFloatRule
-        | BuiltinActionKind::ClearSessionFloatRules
-        | BuiltinActionKind::ResizeWindowEdge
-        | BuiltinActionKind::SetWindowHidingBehaviour
-        | BuiltinActionKind::SetCrossMonitorMoveBehaviour
-        | BuiltinActionKind::SetMonocleFocusBehaviour
-        | BuiltinActionKind::SetUnmanagedWindowOperationBehaviour
-        | BuiltinActionKind::SetFocusFollowsMouse
-        | BuiltinActionKind::ToggleFocusFollowsMouse
-        | BuiltinActionKind::AddWorkspaceLayoutRule
-        | BuiltinActionKind::FocusNamedWorkspace
-        | BuiltinActionKind::MoveContainerToNamedWorkspace
-        | BuiltinActionKind::SendContainerToNamedWorkspace
-        | BuiltinActionKind::SetNamedWorkspaceContainerPadding
-        | BuiltinActionKind::SetNamedWorkspacePadding
-        | BuiltinActionKind::SetNamedWorkspaceTiling
-        | BuiltinActionKind::SetNamedWorkspaceLayout
-        | BuiltinActionKind::SetNamedWorkspaceCustomLayout
-        | BuiltinActionKind::AddNamedWorkspaceLayoutRule
-        | BuiltinActionKind::AddNamedWorkspaceCustomLayoutRule
-        | BuiltinActionKind::ClearNamedWorkspaceLayoutRules
-        | BuiltinActionKind::EnsureNamedWorkspaces
-        | BuiltinActionKind::SetWorkspaceName
-        | BuiltinActionKind::SetLayoutRatios
-        | BuiltinActionKind::SetCustomLayout
-        | BuiltinActionKind::SetWorkspaceCustomLayout
-        | BuiltinActionKind::AddWorkspaceCustomLayoutRule
-        | BuiltinActionKind::EagerFocus
-        | BuiltinActionKind::RemoveTitleBar => None,
-    };
+    let policy = policy::policy(kind);
     let bindings = snapshot
         .bindings
         .iter()
@@ -261,157 +157,25 @@ fn offer_kind(
     ActionOffer {
         definition,
         revision: snapshot.revision,
-        availability,
-        current_value,
+        availability: availability::availability(snapshot, authority, kind, policy),
+        current_value: current_value(snapshot, policy.current_value),
+        dynamic_choices: choices::dynamic_choices(snapshot, policy.choices),
         bindings,
     }
 }
 
-fn availability(
+fn current_value(
     snapshot: &ActionSnapshot,
-    authority: &ActionAuthority,
-    kind: BuiltinActionKind,
-) -> ActionAvailability {
-    if !authority.grants.contains(kind) {
-        return ActionAvailability::Unavailable(Unavailability::Unauthorized);
-    }
-    if kind == BuiltinActionKind::TogglePause {
-        return ActionAvailability::Available;
-    }
-    if snapshot.paused {
-        return ActionAvailability::Unavailable(Unavailability::ManagerPaused);
-    }
-    match kind {
-        BuiltinActionKind::FocusWindow | BuiltinActionKind::MoveWindow => {
-            if snapshot.focused_window.is_none() {
-                ActionAvailability::Unavailable(Unavailability::NoFocusedWindow)
-            } else if snapshot.neighbor_left
-                || snapshot.neighbor_right
-                || snapshot.neighbor_up
-                || snapshot.neighbor_down
-            {
-                ActionAvailability::Available
-            } else {
-                ActionAvailability::Unavailable(Unavailability::NoWindowInDirection)
-            }
+    source: policy::CurrentValueSource,
+) -> Option<ActionCurrentValue> {
+    match source {
+        policy::CurrentValueSource::Layout => {
+            Some(ActionCurrentValue::Layout(snapshot.current_layout))
         }
-        BuiltinActionKind::ResizeWindow
-        | BuiltinActionKind::ToggleWindowFloat
-        | BuiltinActionKind::CycleFocusWindow
-        | BuiltinActionKind::CycleMoveWindow
-        | BuiltinActionKind::ToggleWindowMonocle
-        | BuiltinActionKind::ToggleWindowMaximize
-        | BuiltinActionKind::ToggleContainerLock
-        | BuiltinActionKind::StackWindow
-        | BuiltinActionKind::UnstackWindow
-        | BuiltinActionKind::CycleStack
-        | BuiltinActionKind::CycleStackIndex
-        | BuiltinActionKind::FocusStackWindow
-        | BuiltinActionKind::CloseWindow
-        | BuiltinActionKind::MinimizeWindow
-        | BuiltinActionKind::ForceFocus
-        | BuiltinActionKind::PromoteContainer
-        | BuiltinActionKind::PromoteContainerSwap
-        | BuiltinActionKind::PromoteFocus
-        | BuiltinActionKind::PromoteWindow
-        | BuiltinActionKind::MoveContainerToLastWorkspace
-        | BuiltinActionKind::SendContainerToLastWorkspace
-        | BuiltinActionKind::MoveContainerToWorkspace
-        | BuiltinActionKind::CycleMoveContainerToWorkspace
-        | BuiltinActionKind::SendContainerToWorkspace
-        | BuiltinActionKind::CycleSendContainerToWorkspace
-        | BuiltinActionKind::MoveContainerToMonitor
-        | BuiltinActionKind::CycleMoveContainerToMonitor
-        | BuiltinActionKind::SendContainerToMonitor
-        | BuiltinActionKind::CycleSendContainerToMonitor
-        | BuiltinActionKind::MoveContainerToMonitorWorkspace
-        | BuiltinActionKind::SendContainerToMonitorWorkspace
-        | BuiltinActionKind::PreselectDirection
-        | BuiltinActionKind::UnmanageFocusedWindow
-        | BuiltinActionKind::AddSessionFloatRule
-        | BuiltinActionKind::ResizeWindowEdge
-        | BuiltinActionKind::MoveContainerToNamedWorkspace
-        | BuiltinActionKind::SendContainerToNamedWorkspace
-        | BuiltinActionKind::EagerFocus => {
-            if snapshot.focused_window.is_some() {
-                ActionAvailability::Available
-            } else {
-                ActionAvailability::Unavailable(Unavailability::NoFocusedWindow)
-            }
-        }
-        BuiltinActionKind::SetWorkspaceLayout
-        | BuiltinActionKind::StackAll
-        | BuiltinActionKind::UnstackAll
-        | BuiltinActionKind::FocusWorkspace
-        | BuiltinActionKind::CycleFocusWorkspace
-        | BuiltinActionKind::CycleFocusEmptyWorkspace
-        | BuiltinActionKind::FocusLastWorkspace
-        | BuiltinActionKind::CloseWorkspace
-        | BuiltinActionKind::FocusMonitor
-        | BuiltinActionKind::CycleFocusMonitor
-        | BuiltinActionKind::FocusMonitorAtCursor
-        | BuiltinActionKind::FocusWorkspaceOnAllMonitors
-        | BuiltinActionKind::FocusMonitorWorkspace
-        | BuiltinActionKind::NewWorkspace
-        | BuiltinActionKind::ToggleTiling
-        | BuiltinActionKind::CycleLayout
-        | BuiltinActionKind::FlipLayout
-        | BuiltinActionKind::ToggleWorkspaceLayer
-        | BuiltinActionKind::MoveWorkspaceToMonitor
-        | BuiltinActionKind::CycleMoveWorkspaceToMonitor
-        | BuiltinActionKind::SwapWorkspacesToMonitor
-        | BuiltinActionKind::CancelPreselect
-        | BuiltinActionKind::Retile
-        | BuiltinActionKind::RetileWithResizeDimensions
-        | BuiltinActionKind::ManageFocusedWindow
-        | BuiltinActionKind::AdjustContainerPadding
-        | BuiltinActionKind::AdjustWorkspacePadding
-        | BuiltinActionKind::ToggleMouseFollowsFocus
-        | BuiltinActionKind::SetMouseFollowsFocus
-        | BuiltinActionKind::ToggleWindowContainerBehaviour
-        | BuiltinActionKind::ToggleFloatOverride
-        | BuiltinActionKind::ToggleWorkspaceWindowContainerBehaviour
-        | BuiltinActionKind::ToggleWorkspaceFloatOverride
-        | BuiltinActionKind::ToggleCrossMonitorMoveBehaviour
-        | BuiltinActionKind::ToggleMonocleFocusBehaviour
-        | BuiltinActionKind::TogglePause
-        | BuiltinActionKind::SetFocusedContainerPadding
-        | BuiltinActionKind::SetFocusedWorkspacePadding
-        | BuiltinActionKind::SetContainerPadding
-        | BuiltinActionKind::SetWorkspacePadding
-        | BuiltinActionKind::SetWorkspaceTiling
-        | BuiltinActionKind::SetMonitorWorkspaceLayout
-        | BuiltinActionKind::EnsureWorkspaces
-        | BuiltinActionKind::ClearWorkspaceLayoutRules
-        | BuiltinActionKind::SetScrollingColumns
-        | BuiltinActionKind::LockContainer
-        | BuiltinActionKind::UnlockContainer
-        | BuiltinActionKind::ToggleTitleBars
-        | BuiltinActionKind::EnforceWorkspaceRules
-        | BuiltinActionKind::ClearSessionFloatRules
-        | BuiltinActionKind::SetWindowHidingBehaviour
-        | BuiltinActionKind::SetCrossMonitorMoveBehaviour
-        | BuiltinActionKind::SetMonocleFocusBehaviour
-        | BuiltinActionKind::SetUnmanagedWindowOperationBehaviour
-        | BuiltinActionKind::SetFocusFollowsMouse
-        | BuiltinActionKind::ToggleFocusFollowsMouse
-        | BuiltinActionKind::AddWorkspaceLayoutRule
-        | BuiltinActionKind::FocusNamedWorkspace
-        | BuiltinActionKind::SetNamedWorkspaceContainerPadding
-        | BuiltinActionKind::SetNamedWorkspacePadding
-        | BuiltinActionKind::SetNamedWorkspaceTiling
-        | BuiltinActionKind::SetNamedWorkspaceLayout
-        | BuiltinActionKind::SetNamedWorkspaceCustomLayout
-        | BuiltinActionKind::AddNamedWorkspaceLayoutRule
-        | BuiltinActionKind::AddNamedWorkspaceCustomLayoutRule
-        | BuiltinActionKind::ClearNamedWorkspaceLayoutRules
-        | BuiltinActionKind::EnsureNamedWorkspaces
-        | BuiltinActionKind::SetWorkspaceName
-        | BuiltinActionKind::SetLayoutRatios
-        | BuiltinActionKind::SetCustomLayout
-        | BuiltinActionKind::SetWorkspaceCustomLayout
-        | BuiltinActionKind::AddWorkspaceCustomLayoutRule
-        | BuiltinActionKind::RemoveTitleBar => ActionAvailability::Available,
+        policy::CurrentValueSource::Floating => Some(ActionCurrentValue::Floating(
+            snapshot.focused_window_floating,
+        )),
+        policy::CurrentValueSource::None => None,
     }
 }
 
@@ -433,7 +197,8 @@ pub fn current_layout_name(snapshot: &ActionSnapshot) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::action::id::Revision;
+    use crate::action::ParameterId;
+    use crate::action::definition::ParameterDomain;
 
     fn live_snapshot() -> ActionSnapshot {
         ActionSnapshot {
@@ -446,7 +211,11 @@ mod tests {
             neighbor_down: false,
             current_layout: DefaultLayout::BSP,
             focused_window_floating: false,
-            named_workspaces: Vec::new(),
+            named_workspaces: vec![NamedWorkspaceTarget {
+                name: WorkspaceName::parse("chat").unwrap(),
+                monitor: 1,
+                workspace: 2,
+            }],
             bindings: vec![BindingHint {
                 action: ActionId::FOCUS_WINDOW,
                 trigger: "alt+h".to_owned(),
@@ -454,15 +223,25 @@ mod tests {
         }
     }
 
+    fn all_authority() -> ActionAuthority {
+        ActionAuthority {
+            principal: PrincipalId::new(1),
+            grants: ActionGrants::all(),
+        }
+    }
+
+    fn offer(snapshot: &ActionSnapshot, kind: BuiltinActionKind) -> ActionOffer {
+        offers(snapshot, &all_authority())
+            .into_iter()
+            .find(|offer| offer.definition.kind == kind)
+            .expect("every built-in kind has an offer")
+    }
+
     #[test]
     fn paused_manager_keeps_actions_discoverable_with_a_reason() {
         let mut snapshot = live_snapshot();
         snapshot.paused = true;
-        let authority = ActionAuthority {
-            principal: PrincipalId::new(1),
-            grants: ActionGrants::all(),
-        };
-        let catalog = offers(&snapshot, &authority);
+        let catalog = offers(&snapshot, &all_authority());
         assert_eq!(catalog.len(), BuiltinActionKind::ALL.len());
         assert!(catalog.iter().all(|offer| {
             if offer.definition.kind == BuiltinActionKind::TogglePause {
@@ -477,16 +256,8 @@ mod tests {
     fn missing_focus_is_explained_instead_of_hidden() {
         let mut snapshot = live_snapshot();
         snapshot.focused_window = None;
-        let authority = ActionAuthority {
-            principal: PrincipalId::new(1),
-            grants: ActionGrants::all(),
-        };
-        let focus = offers(&snapshot, &authority)
-            .into_iter()
-            .find(|offer| offer.definition.kind == BuiltinActionKind::FocusWindow)
-            .expect("focus-window stays discoverable");
         assert_eq!(
-            focus.availability,
+            offer(&snapshot, BuiltinActionKind::FocusWindow).availability,
             ActionAvailability::Unavailable(Unavailability::NoFocusedWindow)
         );
     }
@@ -494,19 +265,82 @@ mod tests {
     #[test]
     fn layout_offer_projects_the_current_built_in_layout() {
         let snapshot = live_snapshot();
-        let authority = ActionAuthority {
-            principal: PrincipalId::new(1),
-            grants: ActionGrants::all(),
-        };
-        let layout = offers(&snapshot, &authority)
-            .into_iter()
-            .find(|offer| offer.definition.kind == BuiltinActionKind::SetWorkspaceLayout)
-            .expect("layout offer");
+        let layout = offer(&snapshot, BuiltinActionKind::SetWorkspaceLayout);
         assert_eq!(
             layout.current_value,
             Some(ActionCurrentValue::Layout(DefaultLayout::BSP))
         );
         assert_eq!(current_layout_name(&snapshot), "bsp");
         assert_eq!(layout.revision, Revision::new(3));
+    }
+
+    #[test]
+    fn directional_choices_expose_only_live_targets() {
+        let focus = offer(&live_snapshot(), BuiltinActionKind::FocusWindow);
+        assert_eq!(
+            focus.dynamic_choices,
+            vec![DynamicParameterChoices {
+                parameter: ParameterId::DIRECTION,
+                choices: vec![DynamicParameterChoice::Direction(OperationDirection::Left)],
+            }]
+        );
+    }
+
+    #[test]
+    fn named_workspace_choices_are_typed_action_arguments() {
+        let focus = offer(&live_snapshot(), BuiltinActionKind::FocusNamedWorkspace);
+        assert_eq!(
+            focus.dynamic_choices,
+            vec![DynamicParameterChoices {
+                parameter: ParameterId::NAME,
+                choices: vec![DynamicParameterChoice::WorkspaceName(
+                    WorkspaceName::parse("chat").unwrap()
+                )],
+            }]
+        );
+    }
+
+    #[test]
+    fn promote_window_is_unavailable_without_a_directional_target() {
+        let mut snapshot = live_snapshot();
+        snapshot.neighbor_left = false;
+        assert_eq!(
+            offer(&snapshot, BuiltinActionKind::PromoteWindow).availability,
+            ActionAvailability::Unavailable(Unavailability::NoWindowInDirection)
+        );
+    }
+
+    #[test]
+    fn an_empty_named_workspace_domain_is_explained() {
+        let mut snapshot = live_snapshot();
+        snapshot.named_workspaces.clear();
+        assert_eq!(
+            offer(&snapshot, BuiltinActionKind::FocusNamedWorkspace).availability,
+            ActionAvailability::Unavailable(Unavailability::UnknownWorkspace)
+        );
+    }
+
+    #[test]
+    fn every_dynamic_choice_matches_a_declared_parameter_domain() {
+        for offer in offers(&live_snapshot(), &all_authority()) {
+            for dynamic in offer.dynamic_choices {
+                let parameter = offer
+                    .definition
+                    .parameters
+                    .iter()
+                    .find(|parameter| parameter.id == dynamic.parameter)
+                    .expect("dynamic choices reference a declared parameter");
+                assert!(dynamic.choices.iter().all(|choice| matches!(
+                    (parameter.domain, choice),
+                    (
+                        ParameterDomain::Direction,
+                        DynamicParameterChoice::Direction(_)
+                    ) | (
+                        ParameterDomain::Name,
+                        DynamicParameterChoice::WorkspaceName(_)
+                    )
+                )));
+            }
+        }
     }
 }
