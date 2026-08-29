@@ -1,5 +1,7 @@
 #![warn(clippy::all)]
 
+pub mod action;
+pub mod adapters;
 pub mod animation;
 pub mod border_manager;
 pub mod com;

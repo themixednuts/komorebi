@@ -3292,6 +3292,7 @@ dependencies = [
  "shadow-rs",
  "strum",
  "sysinfo 0.39.6",
+ "thiserror 2.0.20",
  "tracing",
  "tracing-appender",
  "tracing-subscriber",
