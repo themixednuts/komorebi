@@ -498,7 +498,7 @@ mod scrolling_layout_tests {
         let len = NonZeroUsize::new(5).unwrap();
         let opts = LayoutOptions {
             scrolling: Some(crate::ScrollingLayoutOptions {
-                columns: 3,
+                columns: NonZeroUsize::new(3).unwrap(),
                 center_focused_column: None,
             }),
             grid: None,
@@ -1840,6 +1840,111 @@ mod flip_resize_adjacency_tests {
                 pair[0].right,
                 pair[1].left,
             );
+        }
+    }
+}
+
+mod layout_invariant_tests {
+    use super::*;
+
+    const TILING_LAYOUTS: [DefaultLayout; 8] = [
+        DefaultLayout::BSP,
+        DefaultLayout::Columns,
+        DefaultLayout::Rows,
+        DefaultLayout::VerticalStack,
+        DefaultLayout::HorizontalStack,
+        DefaultLayout::UltrawideVerticalStack,
+        DefaultLayout::Grid,
+        DefaultLayout::RightMainVerticalStack,
+    ];
+
+    const FLIPS: [Option<Axis>; 4] = [
+        None,
+        Some(Axis::Horizontal),
+        Some(Axis::Vertical),
+        Some(Axis::HorizontalAndVertical),
+    ];
+
+    fn assert_tiles_area(layout: DefaultLayout, area: Rect, len: NonZeroUsize, flip: Option<Axis>) {
+        let rectangles = layout.calculate(&area, len, None, flip, &[], 0, None, &[]);
+        let context = format!("layout={layout:?}, area={area:?}, len={len}, flip={flip:?}");
+
+        assert_eq!(
+            rectangles.len(),
+            len.get(),
+            "wrong rectangle count: {context}"
+        );
+
+        for (index, rectangle) in rectangles.iter().enumerate() {
+            assert!(
+                rectangle.right > 0 && rectangle.bottom > 0,
+                "non-positive rectangle {index}: {rectangle:?}; {context}"
+            );
+            assert!(
+                rectangle.left >= area.left
+                    && rectangle.top >= area.top
+                    && rectangle.left + rectangle.right <= area.left + area.right
+                    && rectangle.top + rectangle.bottom <= area.top + area.bottom,
+                "out-of-bounds rectangle {index}: {rectangle:?}; {context}"
+            );
+        }
+
+        for (left_index, left) in rectangles.iter().enumerate() {
+            for (right_index, right) in rectangles.iter().enumerate().skip(left_index + 1) {
+                let overlaps_horizontally =
+                    left.left < right.left + right.right && right.left < left.left + left.right;
+                let overlaps_vertically =
+                    left.top < right.top + right.bottom && right.top < left.top + left.bottom;
+                assert!(
+                    !(overlaps_horizontally && overlaps_vertically),
+                    "rectangles {left_index} and {right_index} overlap: {left:?} vs {right:?}; {context}"
+                );
+            }
+        }
+
+        let tiled_area: i64 = rectangles
+            .iter()
+            .map(|rectangle| i64::from(rectangle.right) * i64::from(rectangle.bottom))
+            .sum();
+        assert_eq!(
+            tiled_area,
+            i64::from(area.right) * i64::from(area.bottom),
+            "rectangles leave a gap: {context}"
+        );
+    }
+
+    #[test]
+    fn tiling_layouts_cover_offset_uneven_areas_without_overlap() {
+        let areas = [
+            Rect {
+                left: 0,
+                top: 0,
+                right: 1919,
+                bottom: 1079,
+            },
+            Rect {
+                left: -1920,
+                top: -137,
+                right: 2560,
+                bottom: 1440,
+            },
+            Rect {
+                left: 137,
+                top: 53,
+                right: 3441,
+                bottom: 1081,
+            },
+        ];
+
+        for layout in TILING_LAYOUTS {
+            for area in areas {
+                for count in 1..=24 {
+                    let len = NonZeroUsize::new(count).unwrap();
+                    for flip in FLIPS {
+                        assert_tiles_area(layout, area, len, flip);
+                    }
+                }
+            }
         }
     }
 }

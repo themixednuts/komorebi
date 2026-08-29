@@ -5,6 +5,7 @@ mod policy;
 use crate::core::DefaultLayout;
 use crate::core::OperationDirection;
 
+use super::DirectionSet;
 use super::builtin::BuiltinActionKind;
 use super::builtin::WorkspaceName;
 use super::definition::ActionDefinition;
@@ -13,6 +14,8 @@ use super::id::ActionId;
 use super::id::PrincipalId;
 use super::id::Revision;
 use super::id::WindowId;
+use super::index::MonitorIndex;
+use super::index::WorkspaceIndex;
 
 pub use choices::DynamicParameterChoice;
 pub use choices::DynamicParameterChoices;
@@ -20,8 +23,8 @@ pub use choices::DynamicParameterChoices;
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct NamedWorkspaceTarget {
     pub name: WorkspaceName,
-    pub monitor: usize,
-    pub workspace: usize,
+    pub monitor: MonitorIndex,
+    pub workspace: WorkspaceIndex,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -29,10 +32,7 @@ pub struct ActionSnapshot {
     pub revision: Revision,
     pub paused: bool,
     pub focused_window: Option<WindowId>,
-    pub neighbor_left: bool,
-    pub neighbor_right: bool,
-    pub neighbor_up: bool,
-    pub neighbor_down: bool,
+    pub directional_targets: DirectionSet,
     pub current_layout: DefaultLayout,
     pub focused_window_floating: bool,
     pub named_workspaces: Vec<NamedWorkspaceTarget>,
@@ -46,10 +46,7 @@ impl ActionSnapshot {
             revision: Revision::new(0),
             paused: false,
             focused_window: None,
-            neighbor_left: false,
-            neighbor_right: false,
-            neighbor_up: false,
-            neighbor_down: false,
+            directional_targets: DirectionSet::empty(),
             current_layout: DefaultLayout::BSP,
             focused_window_floating: false,
             named_workspaces: Vec::new(),
@@ -58,7 +55,10 @@ impl ActionSnapshot {
     }
 
     #[must_use]
-    pub fn workspace_by_name(&self, name: &WorkspaceName) -> Option<(usize, usize)> {
+    pub fn workspace_by_name(
+        &self,
+        name: &WorkspaceName,
+    ) -> Option<(MonitorIndex, WorkspaceIndex)> {
         self.named_workspaces
             .iter()
             .find(|target| &target.name == name)
@@ -181,12 +181,7 @@ fn current_value(
 
 #[must_use]
 pub fn neighbor_in(snapshot: &ActionSnapshot, direction: OperationDirection) -> bool {
-    match direction {
-        OperationDirection::Left => snapshot.neighbor_left,
-        OperationDirection::Right => snapshot.neighbor_right,
-        OperationDirection::Up => snapshot.neighbor_up,
-        OperationDirection::Down => snapshot.neighbor_down,
-    }
+    snapshot.directional_targets.contains(direction)
 }
 
 #[must_use]
@@ -205,16 +200,13 @@ mod tests {
             revision: Revision::new(3),
             paused: false,
             focused_window: Some(WindowId::new(1)),
-            neighbor_left: true,
-            neighbor_right: false,
-            neighbor_up: false,
-            neighbor_down: false,
+            directional_targets: [OperationDirection::Left].into(),
             current_layout: DefaultLayout::BSP,
             focused_window_floating: false,
             named_workspaces: vec![NamedWorkspaceTarget {
                 name: WorkspaceName::parse("chat").unwrap(),
-                monitor: 1,
-                workspace: 2,
+                monitor: MonitorIndex::new(1),
+                workspace: WorkspaceIndex::new(2),
             }],
             bindings: vec![BindingHint {
                 action: ActionId::FOCUS_WINDOW,
@@ -303,7 +295,7 @@ mod tests {
     #[test]
     fn promote_window_is_unavailable_without_a_directional_target() {
         let mut snapshot = live_snapshot();
-        snapshot.neighbor_left = false;
+        snapshot.directional_targets = DirectionSet::empty();
         assert_eq!(
             offer(&snapshot, BuiltinActionKind::PromoteWindow).availability,
             ActionAvailability::Unavailable(Unavailability::NoWindowInDirection)

@@ -68,7 +68,7 @@ impl Arrangement for DefaultLayout {
             Self::Scrolling => {
                 let column_count = layout_options
                     .as_ref()
-                    .and_then(|o| o.scrolling.map(|s| s.columns))
+                    .and_then(|o| o.scrolling.map(|s| s.columns.get()))
                     .unwrap_or(3);
 
                 let column_width = area.right / column_count.min(len) as i32;
@@ -609,7 +609,9 @@ impl Arrangement for DefaultLayout {
 
                 let len = len as i32;
 
-                let row_constraint = layout_options.as_ref().and_then(|o| o.grid.map(|g| g.rows));
+                let row_constraint = layout_options
+                    .as_ref()
+                    .and_then(|o| o.grid.map(|g| g.rows.get()));
                 let column_ratios = layout_options.and_then(|o| o.column_ratios);
 
                 // Count defined column ratios (already validated at deserialization to sum < 1.0)
@@ -1202,9 +1204,15 @@ fn recursive_fibonacci(
     };
 
     #[allow(clippy::cast_possible_truncation)]
-    let primary_resized_width = (resized.right as f32 * column_split_ratio) as i32;
+    let desired_width = (resized.right as f32 * column_split_ratio) as i32;
     #[allow(clippy::cast_possible_truncation)]
-    let primary_resized_height = (resized.bottom as f32 * row_split_ratio) as i32;
+    let desired_height = (resized.bottom as f32 * row_split_ratio) as i32;
+    let remaining_count = count.saturating_sub(1);
+    let (remaining_width, remaining_height) = fibonacci_minimum_extent(idx + 1, remaining_count);
+    let primary_resized_width =
+        bounded_partition_extent(area.right, desired_width, remaining_width);
+    let primary_resized_height =
+        bounded_partition_extent(area.bottom, desired_height, remaining_height);
 
     let (main_x, alt_x, alt_y, main_y);
 
@@ -1292,6 +1300,28 @@ fn recursive_fibonacci(
             row_split_ratio,
         ));
         res
+    }
+}
+
+fn fibonacci_minimum_extent(starting_index: usize, count: usize) -> (i32, i32) {
+    let split_count = count.saturating_sub(1);
+    let vertical_splits = if starting_index.is_multiple_of(2) {
+        split_count.div_ceil(2)
+    } else {
+        split_count / 2
+    };
+    let horizontal_splits = split_count - vertical_splits;
+
+    #[allow(clippy::cast_possible_wrap)]
+    (vertical_splits as i32 + 1, horizontal_splits as i32 + 1)
+}
+
+fn bounded_partition_extent(total: i32, desired: i32, remaining_minimum: i32) -> i32 {
+    let maximum = total - remaining_minimum;
+    if maximum < 1 {
+        1
+    } else {
+        desired.clamp(1, maximum)
     }
 }
 

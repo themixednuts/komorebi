@@ -14,6 +14,10 @@ use crate::core::Sizing;
 
 use super::builtin::Pixels;
 use super::builtin::WorkspaceName;
+use super::index::ContainerIndex;
+use super::index::MonitorIndex;
+use super::index::StackIndex;
+use super::index::WorkspaceIndex;
 use super::path::WindowsPath;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -56,10 +60,10 @@ pub enum ActionResult {
         direction: CycleDirection,
     },
     StackWindowFocused {
-        index: usize,
+        index: StackIndex,
     },
     WorkspaceFocused {
-        index: usize,
+        index: WorkspaceIndex,
     },
     WorkspaceCycled {
         direction: CycleDirection,
@@ -70,18 +74,18 @@ pub enum ActionResult {
     LastWorkspaceFocused,
     WorkspaceClosed,
     MonitorFocused {
-        index: usize,
+        index: MonitorIndex,
     },
     MonitorCycled {
         direction: CycleDirection,
     },
     MonitorAtCursorFocused,
     WorkspaceFocusedOnAllMonitors {
-        index: usize,
+        index: WorkspaceIndex,
     },
     MonitorWorkspaceFocused {
-        monitor: usize,
-        workspace: usize,
+        monitor: MonitorIndex,
+        workspace: WorkspaceIndex,
     },
     WindowClosed,
     WindowMinimized,
@@ -104,45 +108,45 @@ pub enum ActionResult {
     ContainerMovedToLastWorkspace,
     ContainerSentToLastWorkspace,
     ContainerMovedToWorkspace {
-        index: usize,
+        index: WorkspaceIndex,
     },
     ContainerCycledToWorkspace {
         direction: CycleDirection,
     },
     ContainerSentToWorkspace {
-        index: usize,
+        index: WorkspaceIndex,
     },
     ContainerCycleSentToWorkspace {
         direction: CycleDirection,
     },
     ContainerMovedToMonitor {
-        index: usize,
+        index: MonitorIndex,
     },
     ContainerCycledToMonitor {
         direction: CycleDirection,
     },
     ContainerSentToMonitor {
-        index: usize,
+        index: MonitorIndex,
     },
     ContainerCycleSentToMonitor {
         direction: CycleDirection,
     },
     ContainerMovedToMonitorWorkspace {
-        monitor: usize,
-        workspace: usize,
+        monitor: MonitorIndex,
+        workspace: WorkspaceIndex,
     },
     ContainerSentToMonitorWorkspace {
-        monitor: usize,
-        workspace: usize,
+        monitor: MonitorIndex,
+        workspace: WorkspaceIndex,
     },
     WorkspaceMovedToMonitor {
-        index: usize,
+        index: MonitorIndex,
     },
     WorkspaceCycledToMonitor {
         direction: CycleDirection,
     },
     WorkspacesSwappedToMonitor {
-        index: usize,
+        index: MonitorIndex,
     },
     DirectionPreselected {
         direction: OperationDirection,
@@ -180,45 +184,45 @@ pub enum ActionResult {
         size: i32,
     },
     ContainerPaddingSet {
-        monitor: usize,
-        workspace: usize,
+        monitor: MonitorIndex,
+        workspace: WorkspaceIndex,
         size: i32,
     },
     WorkspacePaddingSet {
-        monitor: usize,
-        workspace: usize,
+        monitor: MonitorIndex,
+        workspace: WorkspaceIndex,
         size: i32,
     },
     WorkspaceTilingSet {
-        monitor: usize,
-        workspace: usize,
+        monitor: MonitorIndex,
+        workspace: WorkspaceIndex,
         tile: bool,
     },
     MonitorWorkspaceLayoutSet {
-        monitor: usize,
-        workspace: usize,
+        monitor: MonitorIndex,
+        workspace: WorkspaceIndex,
         layout: DefaultLayout,
     },
     WorkspacesEnsured {
-        monitor: usize,
+        monitor: MonitorIndex,
         count: usize,
     },
     WorkspaceLayoutRulesCleared {
-        monitor: usize,
-        workspace: usize,
+        monitor: MonitorIndex,
+        workspace: WorkspaceIndex,
     },
     ScrollingColumnsSet {
         columns: NonZeroUsize,
     },
     ContainerLocked {
-        monitor: usize,
-        workspace: usize,
-        container: usize,
+        monitor: MonitorIndex,
+        workspace: WorkspaceIndex,
+        container: ContainerIndex,
     },
     ContainerUnlocked {
-        monitor: usize,
-        workspace: usize,
-        container: usize,
+        monitor: MonitorIndex,
+        workspace: WorkspaceIndex,
+        container: ContainerIndex,
     },
     TitleBarsToggled,
     WorkspaceRulesEnforced,
@@ -248,28 +252,28 @@ pub enum ActionResult {
         implementation: FocusFollowsMouseImplementation,
     },
     WorkspaceLayoutRuleAdded {
-        monitor: usize,
-        workspace: usize,
+        monitor: MonitorIndex,
+        workspace: WorkspaceIndex,
         at_container_count: usize,
         layout: DefaultLayout,
     },
     LayoutRatiosSet,
     CustomLayoutSet,
     WorkspaceCustomLayoutSet {
-        monitor: usize,
-        workspace: usize,
+        monitor: MonitorIndex,
+        workspace: WorkspaceIndex,
     },
     WorkspaceCustomLayoutRuleAdded {
-        monitor: usize,
-        workspace: usize,
+        monitor: MonitorIndex,
+        workspace: WorkspaceIndex,
         at_container_count: usize,
     },
     NamedWorkspacesEnsured {
-        monitor: usize,
+        monitor: MonitorIndex,
     },
     WorkspaceNamed {
-        monitor: usize,
-        workspace: usize,
+        monitor: MonitorIndex,
+        workspace: WorkspaceIndex,
     },
     EagerFocused,
     TitleBarRemoved,
@@ -342,10 +346,10 @@ pub enum NativeEffect {
         direction: CycleDirection,
     },
     FocusStack {
-        index: usize,
+        index: StackIndex,
     },
     FocusWorkspace {
-        index: usize,
+        index: WorkspaceIndex,
     },
     CycleFocusWorkspace {
         direction: CycleDirection,
@@ -356,18 +360,18 @@ pub enum NativeEffect {
     FocusLastWorkspace,
     CloseWorkspace,
     FocusMonitor {
-        index: usize,
+        index: MonitorIndex,
     },
     CycleFocusMonitor {
         direction: CycleDirection,
     },
     FocusMonitorAtCursor,
     FocusWorkspaceOnAllMonitors {
-        index: usize,
+        index: WorkspaceIndex,
     },
     FocusMonitorWorkspace {
-        monitor: usize,
-        workspace: usize,
+        monitor: MonitorIndex,
+        workspace: WorkspaceIndex,
     },
     CloseWindow,
     MinimizeWindow,
@@ -390,45 +394,45 @@ pub enum NativeEffect {
     MoveContainerToLastWorkspace,
     SendContainerToLastWorkspace,
     MoveContainerToWorkspace {
-        index: usize,
+        index: WorkspaceIndex,
     },
     CycleMoveContainerToWorkspace {
         direction: CycleDirection,
     },
     SendContainerToWorkspace {
-        index: usize,
+        index: WorkspaceIndex,
     },
     CycleSendContainerToWorkspace {
         direction: CycleDirection,
     },
     MoveContainerToMonitor {
-        index: usize,
+        index: MonitorIndex,
     },
     CycleMoveContainerToMonitor {
         direction: CycleDirection,
     },
     SendContainerToMonitor {
-        index: usize,
+        index: MonitorIndex,
     },
     CycleSendContainerToMonitor {
         direction: CycleDirection,
     },
     MoveContainerToMonitorWorkspace {
-        monitor: usize,
-        workspace: usize,
+        monitor: MonitorIndex,
+        workspace: WorkspaceIndex,
     },
     SendContainerToMonitorWorkspace {
-        monitor: usize,
-        workspace: usize,
+        monitor: MonitorIndex,
+        workspace: WorkspaceIndex,
     },
     MoveWorkspaceToMonitor {
-        index: usize,
+        index: MonitorIndex,
     },
     CycleMoveWorkspaceToMonitor {
         direction: CycleDirection,
     },
     SwapWorkspacesToMonitor {
-        index: usize,
+        index: MonitorIndex,
     },
     PreselectDirection {
         direction: OperationDirection,
@@ -464,45 +468,45 @@ pub enum NativeEffect {
         size: i32,
     },
     SetContainerPadding {
-        monitor: usize,
-        workspace: usize,
+        monitor: MonitorIndex,
+        workspace: WorkspaceIndex,
         size: i32,
     },
     SetWorkspacePadding {
-        monitor: usize,
-        workspace: usize,
+        monitor: MonitorIndex,
+        workspace: WorkspaceIndex,
         size: i32,
     },
     SetWorkspaceTiling {
-        monitor: usize,
-        workspace: usize,
+        monitor: MonitorIndex,
+        workspace: WorkspaceIndex,
         tile: bool,
     },
     SetMonitorWorkspaceLayout {
-        monitor: usize,
-        workspace: usize,
+        monitor: MonitorIndex,
+        workspace: WorkspaceIndex,
         layout: DefaultLayout,
     },
     EnsureWorkspaces {
-        monitor: usize,
+        monitor: MonitorIndex,
         count: usize,
     },
     ClearWorkspaceLayoutRules {
-        monitor: usize,
-        workspace: usize,
+        monitor: MonitorIndex,
+        workspace: WorkspaceIndex,
     },
     SetScrollingColumns {
         columns: NonZeroUsize,
     },
     LockContainer {
-        monitor: usize,
-        workspace: usize,
-        container: usize,
+        monitor: MonitorIndex,
+        workspace: WorkspaceIndex,
+        container: ContainerIndex,
     },
     UnlockContainer {
-        monitor: usize,
-        workspace: usize,
-        container: usize,
+        monitor: MonitorIndex,
+        workspace: WorkspaceIndex,
+        container: ContainerIndex,
     },
     ToggleTitleBars,
     EnforceWorkspaceRules,
@@ -532,8 +536,8 @@ pub enum NativeEffect {
         implementation: FocusFollowsMouseImplementation,
     },
     AddWorkspaceLayoutRule {
-        monitor: usize,
-        workspace: usize,
+        monitor: MonitorIndex,
+        workspace: WorkspaceIndex,
         at_container_count: usize,
         layout: DefaultLayout,
     },
@@ -545,23 +549,23 @@ pub enum NativeEffect {
         path: WindowsPath,
     },
     SetWorkspaceCustomLayout {
-        monitor: usize,
-        workspace: usize,
+        monitor: MonitorIndex,
+        workspace: WorkspaceIndex,
         path: WindowsPath,
     },
     AddWorkspaceCustomLayoutRule {
-        monitor: usize,
-        workspace: usize,
+        monitor: MonitorIndex,
+        workspace: WorkspaceIndex,
         at_container_count: usize,
         path: WindowsPath,
     },
     EnsureNamedWorkspaces {
-        monitor: usize,
+        monitor: MonitorIndex,
         names: Vec<WorkspaceName>,
     },
     SetWorkspaceName {
-        monitor: usize,
-        workspace: usize,
+        monitor: MonitorIndex,
+        workspace: WorkspaceIndex,
         name: WorkspaceName,
     },
     EagerFocus {

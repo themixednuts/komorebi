@@ -2791,13 +2791,13 @@ impl WindowManager {
         let options = match focused_workspace.layout_options {
             Some(mut opts) => {
                 if let Some(scrolling) = &mut opts.scrolling {
-                    scrolling.columns = columns.into();
+                    scrolling.columns = columns;
                 }
                 opts
             }
             None => LayoutOptions {
                 scrolling: Some(ScrollingLayoutOptions {
-                    columns: columns.into(),
+                    columns,
                     center_focused_column: Default::default(),
                 }),
                 grid: None,

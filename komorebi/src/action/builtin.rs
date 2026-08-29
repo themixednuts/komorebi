@@ -17,6 +17,10 @@ use crate::core::OperationDirection;
 use crate::core::Sizing;
 
 use super::id::ActionId;
+use super::index::ContainerIndex;
+use super::index::MonitorIndex;
+use super::index::StackIndex;
+use super::index::WorkspaceIndex;
 use super::path::WindowsPath;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
@@ -493,10 +497,10 @@ pub enum BuiltinAction {
         direction: CycleDirection,
     },
     FocusStackWindow {
-        index: usize,
+        index: StackIndex,
     },
     FocusWorkspace {
-        index: usize,
+        index: WorkspaceIndex,
     },
     CycleFocusWorkspace {
         direction: CycleDirection,
@@ -507,18 +511,18 @@ pub enum BuiltinAction {
     FocusLastWorkspace,
     CloseWorkspace,
     FocusMonitor {
-        index: usize,
+        index: MonitorIndex,
     },
     CycleFocusMonitor {
         direction: CycleDirection,
     },
     FocusMonitorAtCursor,
     FocusWorkspaceOnAllMonitors {
-        index: usize,
+        index: WorkspaceIndex,
     },
     FocusMonitorWorkspace {
-        monitor: usize,
-        workspace: usize,
+        monitor: MonitorIndex,
+        workspace: WorkspaceIndex,
     },
     CloseWindow {
         window: WindowSelector,
@@ -547,45 +551,45 @@ pub enum BuiltinAction {
     MoveContainerToLastWorkspace,
     SendContainerToLastWorkspace,
     MoveContainerToWorkspace {
-        index: usize,
+        index: WorkspaceIndex,
     },
     CycleMoveContainerToWorkspace {
         direction: CycleDirection,
     },
     SendContainerToWorkspace {
-        index: usize,
+        index: WorkspaceIndex,
     },
     CycleSendContainerToWorkspace {
         direction: CycleDirection,
     },
     MoveContainerToMonitor {
-        index: usize,
+        index: MonitorIndex,
     },
     CycleMoveContainerToMonitor {
         direction: CycleDirection,
     },
     SendContainerToMonitor {
-        index: usize,
+        index: MonitorIndex,
     },
     CycleSendContainerToMonitor {
         direction: CycleDirection,
     },
     MoveContainerToMonitorWorkspace {
-        monitor: usize,
-        workspace: usize,
+        monitor: MonitorIndex,
+        workspace: WorkspaceIndex,
     },
     SendContainerToMonitorWorkspace {
-        monitor: usize,
-        workspace: usize,
+        monitor: MonitorIndex,
+        workspace: WorkspaceIndex,
     },
     MoveWorkspaceToMonitor {
-        index: usize,
+        index: MonitorIndex,
     },
     CycleMoveWorkspaceToMonitor {
         direction: CycleDirection,
     },
     SwapWorkspacesToMonitor {
-        index: usize,
+        index: MonitorIndex,
     },
     PreselectDirection {
         direction: OperationDirection,
@@ -621,45 +625,45 @@ pub enum BuiltinAction {
         size: i32,
     },
     SetContainerPadding {
-        monitor: usize,
-        workspace: usize,
+        monitor: MonitorIndex,
+        workspace: WorkspaceIndex,
         size: i32,
     },
     SetWorkspacePadding {
-        monitor: usize,
-        workspace: usize,
+        monitor: MonitorIndex,
+        workspace: WorkspaceIndex,
         size: i32,
     },
     SetWorkspaceTiling {
-        monitor: usize,
-        workspace: usize,
+        monitor: MonitorIndex,
+        workspace: WorkspaceIndex,
         tile: bool,
     },
     SetMonitorWorkspaceLayout {
-        monitor: usize,
-        workspace: usize,
+        monitor: MonitorIndex,
+        workspace: WorkspaceIndex,
         layout: DefaultLayout,
     },
     EnsureWorkspaces {
-        monitor: usize,
+        monitor: MonitorIndex,
         count: usize,
     },
     ClearWorkspaceLayoutRules {
-        monitor: usize,
-        workspace: usize,
+        monitor: MonitorIndex,
+        workspace: WorkspaceIndex,
     },
     SetScrollingColumns {
         columns: NonZeroUsize,
     },
     LockContainer {
-        monitor: usize,
-        workspace: usize,
-        container: usize,
+        monitor: MonitorIndex,
+        workspace: WorkspaceIndex,
+        container: ContainerIndex,
     },
     UnlockContainer {
-        monitor: usize,
-        workspace: usize,
-        container: usize,
+        monitor: MonitorIndex,
+        workspace: WorkspaceIndex,
+        container: ContainerIndex,
     },
     ToggleTitleBars,
     EnforceWorkspaceRules,
@@ -689,8 +693,8 @@ pub enum BuiltinAction {
         implementation: FocusFollowsMouseImplementation,
     },
     AddWorkspaceLayoutRule {
-        monitor: usize,
-        workspace: usize,
+        monitor: MonitorIndex,
+        workspace: WorkspaceIndex,
         at_container_count: usize,
         layout: DefaultLayout,
     },
@@ -737,12 +741,12 @@ pub enum BuiltinAction {
         name: WorkspaceName,
     },
     EnsureNamedWorkspaces {
-        monitor: usize,
+        monitor: MonitorIndex,
         names: Vec<WorkspaceName>,
     },
     SetWorkspaceName {
-        monitor: usize,
-        workspace: usize,
+        monitor: MonitorIndex,
+        workspace: WorkspaceIndex,
         name: WorkspaceName,
     },
     SetLayoutRatios {
@@ -753,13 +757,13 @@ pub enum BuiltinAction {
         path: WindowsPath,
     },
     SetWorkspaceCustomLayout {
-        monitor: usize,
-        workspace: usize,
+        monitor: MonitorIndex,
+        workspace: WorkspaceIndex,
         path: WindowsPath,
     },
     AddWorkspaceCustomLayoutRule {
-        monitor: usize,
-        workspace: usize,
+        monitor: MonitorIndex,
+        workspace: WorkspaceIndex,
         at_container_count: usize,
         path: WindowsPath,
     },

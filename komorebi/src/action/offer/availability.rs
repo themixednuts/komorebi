@@ -50,11 +50,7 @@ fn focused_window(snapshot: &ActionSnapshot) -> ActionAvailability {
 fn directional_target(snapshot: &ActionSnapshot) -> ActionAvailability {
     if snapshot.focused_window.is_none() {
         ActionAvailability::Unavailable(Unavailability::NoFocusedWindow)
-    } else if snapshot.neighbor_left
-        || snapshot.neighbor_right
-        || snapshot.neighbor_up
-        || snapshot.neighbor_down
-    {
+    } else if !snapshot.directional_targets.is_empty() {
         ActionAvailability::Available
     } else {
         ActionAvailability::Unavailable(Unavailability::NoWindowInDirection)

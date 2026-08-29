@@ -1,4 +1,5 @@
 use super::DefaultLayout;
+use super::DirectionSet;
 use super::OperationDirection;
 #[cfg(feature = "win32")]
 use super::custom_layout::Column;
@@ -273,23 +274,9 @@ impl Direction for DefaultLayout {
 }
 
 struct GridItem {
-    state: GridItemState,
     row: usize,
     num_rows: usize,
-    touching_edges: GridTouchingEdges,
-}
-
-enum GridItemState {
-    Valid,
-    Invalid,
-}
-
-#[allow(clippy::struct_excessive_bools)]
-struct GridTouchingEdges {
-    left: bool,
-    right: bool,
-    up: bool,
-    down: bool,
+    touching_edges: DirectionSet,
 }
 
 #[allow(
@@ -297,8 +284,12 @@ struct GridTouchingEdges {
     clippy::cast_precision_loss,
     clippy::cast_sign_loss
 )]
-fn get_grid_item(idx: usize, count: usize, layout_options: Option<LayoutOptions>) -> GridItem {
-    let row_constraint = layout_options.and_then(|o| o.grid.map(|g| g.rows));
+fn get_grid_item(
+    idx: usize,
+    count: usize,
+    layout_options: Option<LayoutOptions>,
+) -> Option<GridItem> {
+    let row_constraint = layout_options.and_then(|o| o.grid.map(|g| g.rows.get()));
     let num_cols = if let Some(rows) = row_constraint {
         ((count as f32) / (rows as f32)).ceil() as i32
     } else {
@@ -319,34 +310,26 @@ fn get_grid_item(idx: usize, count: usize, layout_options: Option<LayoutOptions>
 
         for row in 0..num_rows_in_this_col {
             if iter == idx {
-                return GridItem {
-                    state: GridItemState::Valid,
+                return Some(GridItem {
                     row: (row + 1) as usize,
                     num_rows: num_rows_in_this_col as usize,
-                    touching_edges: GridTouchingEdges {
-                        left: col == 0,
-                        right: col == num_cols - 1,
-                        up: row == 0,
-                        down: row == num_rows_in_this_col - 1,
-                    },
-                };
+                    touching_edges: [
+                        (col == 0, OperationDirection::Left),
+                        (col == num_cols - 1, OperationDirection::Right),
+                        (row == 0, OperationDirection::Up),
+                        (row == num_rows_in_this_col - 1, OperationDirection::Down),
+                    ]
+                    .into_iter()
+                    .filter_map(|(touches, direction)| touches.then_some(direction))
+                    .collect(),
+                });
             }
 
             iter += 1;
         }
     }
 
-    GridItem {
-        state: GridItemState::Invalid,
-        row: 0,
-        num_rows: 0,
-        touching_edges: GridTouchingEdges {
-            left: true,
-            right: true,
-            up: true,
-            down: true,
-        },
-    }
+    None
 }
 
 fn is_grid_edge(
@@ -355,17 +338,8 @@ fn is_grid_edge(
     count: usize,
     layout_options: Option<LayoutOptions>,
 ) -> bool {
-    let item = get_grid_item(idx, count, layout_options);
-
-    match item.state {
-        GridItemState::Invalid => false,
-        GridItemState::Valid => match op_direction {
-            OperationDirection::Left => item.touching_edges.left,
-            OperationDirection::Right => item.touching_edges.right,
-            OperationDirection::Up => item.touching_edges.up,
-            OperationDirection::Down => item.touching_edges.down,
-        },
-    }
+    get_grid_item(idx, count, layout_options)
+        .is_some_and(|item| item.touching_edges.contains(op_direction))
 }
 
 fn grid_neighbor(
@@ -382,17 +356,26 @@ fn grid_neighbor(
         return 0;
     };
 
-    let item = get_grid_item(idx, count, layout_options);
+    let Some(item) = get_grid_item(idx, count, layout_options) else {
+        return idx;
+    };
 
     match op_direction {
         OperationDirection::Left => {
-            let item_from_prev_col = get_grid_item(idx - item.row, count, layout_options);
+            let Some(item_from_prev_col) = get_grid_item(idx - item.row, count, layout_options)
+            else {
+                return idx;
+            };
 
-            if item.touching_edges.up && item.num_rows != item_from_prev_col.num_rows {
+            if item.touching_edges.contains(OperationDirection::Up)
+                && item.num_rows != item_from_prev_col.num_rows
+            {
                 return idx - (item.num_rows - 1);
             }
 
-            if item.num_rows != item_from_prev_col.num_rows && !item.touching_edges.down {
+            if item.num_rows != item_from_prev_col.num_rows
+                && !item.touching_edges.contains(OperationDirection::Down)
+            {
                 return idx - (item.num_rows - 1);
             }
 

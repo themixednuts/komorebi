@@ -1,7 +1,6 @@
 use crate::core::OperationDirection;
 
 use super::ActionSnapshot;
-use super::neighbor_in;
 use crate::action::ParameterId;
 use crate::action::WorkspaceName;
 
@@ -41,14 +40,9 @@ pub(super) fn dynamic_choices(
 }
 
 fn directional_targets(snapshot: &ActionSnapshot) -> Vec<DynamicParameterChoice> {
-    [
-        OperationDirection::Left,
-        OperationDirection::Right,
-        OperationDirection::Up,
-        OperationDirection::Down,
-    ]
-    .into_iter()
-    .filter(|direction| neighbor_in(snapshot, *direction))
-    .map(DynamicParameterChoice::Direction)
-    .collect()
+    snapshot
+        .directional_targets
+        .iter()
+        .map(DynamicParameterChoice::Direction)
+        .collect()
 }

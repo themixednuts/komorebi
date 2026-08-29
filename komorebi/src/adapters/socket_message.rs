@@ -1,7 +1,11 @@
 use crate::action::BuiltinAction;
+use crate::action::ContainerIndex;
+use crate::action::MonitorIndex;
 use crate::action::Pixels;
+use crate::action::StackIndex;
 use crate::action::WindowSelector;
 use crate::action::WindowsPath;
+use crate::action::WorkspaceIndex;
 use crate::action::WorkspaceName;
 use crate::action::WorkspaceSelector;
 use crate::core::Sizing;
@@ -276,12 +280,12 @@ pub fn to_builtin_action(message: &SocketMessage, resize_delta: i32) -> Option<B
         SocketMessage::CycleStackIndex(direction) => Some(BuiltinAction::CycleStackIndex {
             direction: *direction,
         }),
-        SocketMessage::FocusStackWindow(index) => {
-            Some(BuiltinAction::FocusStackWindow { index: *index })
-        }
-        SocketMessage::FocusWorkspaceNumber(index) => {
-            Some(BuiltinAction::FocusWorkspace { index: *index })
-        }
+        SocketMessage::FocusStackWindow(index) => Some(BuiltinAction::FocusStackWindow {
+            index: StackIndex::new(*index),
+        }),
+        SocketMessage::FocusWorkspaceNumber(index) => Some(BuiltinAction::FocusWorkspace {
+            index: WorkspaceIndex::new(*index),
+        }),
         SocketMessage::CycleFocusWorkspace(direction) => Some(BuiltinAction::CycleFocusWorkspace {
             direction: *direction,
         }),
@@ -292,20 +296,22 @@ pub fn to_builtin_action(message: &SocketMessage, resize_delta: i32) -> Option<B
         }
         SocketMessage::FocusLastWorkspace => Some(BuiltinAction::FocusLastWorkspace),
         SocketMessage::CloseWorkspace => Some(BuiltinAction::CloseWorkspace),
-        SocketMessage::FocusMonitorNumber(index) => {
-            Some(BuiltinAction::FocusMonitor { index: *index })
-        }
+        SocketMessage::FocusMonitorNumber(index) => Some(BuiltinAction::FocusMonitor {
+            index: MonitorIndex::new(*index),
+        }),
         SocketMessage::CycleFocusMonitor(direction) => Some(BuiltinAction::CycleFocusMonitor {
             direction: *direction,
         }),
         SocketMessage::FocusMonitorAtCursor => Some(BuiltinAction::FocusMonitorAtCursor),
         SocketMessage::FocusWorkspaceNumbers(index) => {
-            Some(BuiltinAction::FocusWorkspaceOnAllMonitors { index: *index })
+            Some(BuiltinAction::FocusWorkspaceOnAllMonitors {
+                index: WorkspaceIndex::new(*index),
+            })
         }
         SocketMessage::FocusMonitorWorkspaceNumber(monitor, workspace) => {
             Some(BuiltinAction::FocusMonitorWorkspace {
-                monitor: *monitor,
-                workspace: *workspace,
+                monitor: MonitorIndex::new(*monitor),
+                workspace: WorkspaceIndex::new(*workspace),
             })
         }
         SocketMessage::Close => Some(BuiltinAction::CloseWindow {
@@ -337,7 +343,9 @@ pub fn to_builtin_action(message: &SocketMessage, resize_delta: i32) -> Option<B
             Some(BuiltinAction::SendContainerToLastWorkspace)
         }
         SocketMessage::MoveContainerToWorkspaceNumber(index) => {
-            Some(BuiltinAction::MoveContainerToWorkspace { index: *index })
+            Some(BuiltinAction::MoveContainerToWorkspace {
+                index: WorkspaceIndex::new(*index),
+            })
         }
         SocketMessage::CycleMoveContainerToWorkspace(direction) => {
             Some(BuiltinAction::CycleMoveContainerToWorkspace {
@@ -345,7 +353,9 @@ pub fn to_builtin_action(message: &SocketMessage, resize_delta: i32) -> Option<B
             })
         }
         SocketMessage::SendContainerToWorkspaceNumber(index) => {
-            Some(BuiltinAction::SendContainerToWorkspace { index: *index })
+            Some(BuiltinAction::SendContainerToWorkspace {
+                index: WorkspaceIndex::new(*index),
+            })
         }
         SocketMessage::CycleSendContainerToWorkspace(direction) => {
             Some(BuiltinAction::CycleSendContainerToWorkspace {
@@ -353,7 +363,9 @@ pub fn to_builtin_action(message: &SocketMessage, resize_delta: i32) -> Option<B
             })
         }
         SocketMessage::MoveContainerToMonitorNumber(index) => {
-            Some(BuiltinAction::MoveContainerToMonitor { index: *index })
+            Some(BuiltinAction::MoveContainerToMonitor {
+                index: MonitorIndex::new(*index),
+            })
         }
         SocketMessage::CycleMoveContainerToMonitor(direction) => {
             Some(BuiltinAction::CycleMoveContainerToMonitor {
@@ -361,7 +373,9 @@ pub fn to_builtin_action(message: &SocketMessage, resize_delta: i32) -> Option<B
             })
         }
         SocketMessage::SendContainerToMonitorNumber(index) => {
-            Some(BuiltinAction::SendContainerToMonitor { index: *index })
+            Some(BuiltinAction::SendContainerToMonitor {
+                index: MonitorIndex::new(*index),
+            })
         }
         SocketMessage::CycleSendContainerToMonitor(direction) => {
             Some(BuiltinAction::CycleSendContainerToMonitor {
@@ -370,18 +384,20 @@ pub fn to_builtin_action(message: &SocketMessage, resize_delta: i32) -> Option<B
         }
         SocketMessage::MoveContainerToMonitorWorkspaceNumber(monitor, workspace) => {
             Some(BuiltinAction::MoveContainerToMonitorWorkspace {
-                monitor: *monitor,
-                workspace: *workspace,
+                monitor: MonitorIndex::new(*monitor),
+                workspace: WorkspaceIndex::new(*workspace),
             })
         }
         SocketMessage::SendContainerToMonitorWorkspaceNumber(monitor, workspace) => {
             Some(BuiltinAction::SendContainerToMonitorWorkspace {
-                monitor: *monitor,
-                workspace: *workspace,
+                monitor: MonitorIndex::new(*monitor),
+                workspace: WorkspaceIndex::new(*workspace),
             })
         }
         SocketMessage::MoveWorkspaceToMonitorNumber(index) => {
-            Some(BuiltinAction::MoveWorkspaceToMonitor { index: *index })
+            Some(BuiltinAction::MoveWorkspaceToMonitor {
+                index: MonitorIndex::new(*index),
+            })
         }
         SocketMessage::CycleMoveWorkspaceToMonitor(direction) => {
             Some(BuiltinAction::CycleMoveWorkspaceToMonitor {
@@ -389,7 +405,9 @@ pub fn to_builtin_action(message: &SocketMessage, resize_delta: i32) -> Option<B
             })
         }
         SocketMessage::SwapWorkspacesToMonitorNumber(index) => {
-            Some(BuiltinAction::SwapWorkspacesToMonitor { index: *index })
+            Some(BuiltinAction::SwapWorkspacesToMonitor {
+                index: MonitorIndex::new(*index),
+            })
         }
         SocketMessage::PreselectDirection(direction) => Some(BuiltinAction::PreselectDirection {
             direction: *direction,
@@ -442,40 +460,40 @@ pub fn to_builtin_action(message: &SocketMessage, resize_delta: i32) -> Option<B
         }
         SocketMessage::ContainerPadding(monitor, workspace, size) => {
             Some(BuiltinAction::SetContainerPadding {
-                monitor: *monitor,
-                workspace: *workspace,
+                monitor: MonitorIndex::new(*monitor),
+                workspace: WorkspaceIndex::new(*workspace),
                 size: *size,
             })
         }
         SocketMessage::WorkspacePadding(monitor, workspace, size) => {
             Some(BuiltinAction::SetWorkspacePadding {
-                monitor: *monitor,
-                workspace: *workspace,
+                monitor: MonitorIndex::new(*monitor),
+                workspace: WorkspaceIndex::new(*workspace),
                 size: *size,
             })
         }
         SocketMessage::WorkspaceTiling(monitor, workspace, tile) => {
             Some(BuiltinAction::SetWorkspaceTiling {
-                monitor: *monitor,
-                workspace: *workspace,
+                monitor: MonitorIndex::new(*monitor),
+                workspace: WorkspaceIndex::new(*workspace),
                 tile: *tile,
             })
         }
         SocketMessage::WorkspaceLayout(monitor, workspace, layout) => {
             Some(BuiltinAction::SetMonitorWorkspaceLayout {
-                monitor: *monitor,
-                workspace: *workspace,
+                monitor: MonitorIndex::new(*monitor),
+                workspace: WorkspaceIndex::new(*workspace),
                 layout: *layout,
             })
         }
         SocketMessage::EnsureWorkspaces(monitor, count) => Some(BuiltinAction::EnsureWorkspaces {
-            monitor: *monitor,
+            monitor: MonitorIndex::new(*monitor),
             count: *count,
         }),
         SocketMessage::ClearWorkspaceLayoutRules(monitor, workspace) => {
             Some(BuiltinAction::ClearWorkspaceLayoutRules {
-                monitor: *monitor,
-                workspace: *workspace,
+                monitor: MonitorIndex::new(*monitor),
+                workspace: WorkspaceIndex::new(*workspace),
             })
         }
         SocketMessage::ScrollingLayoutColumns(columns) => {
@@ -483,16 +501,16 @@ pub fn to_builtin_action(message: &SocketMessage, resize_delta: i32) -> Option<B
         }
         SocketMessage::LockMonitorWorkspaceContainer(monitor, workspace, container) => {
             Some(BuiltinAction::LockContainer {
-                monitor: *monitor,
-                workspace: *workspace,
-                container: *container,
+                monitor: MonitorIndex::new(*monitor),
+                workspace: WorkspaceIndex::new(*workspace),
+                container: ContainerIndex::new(*container),
             })
         }
         SocketMessage::UnlockMonitorWorkspaceContainer(monitor, workspace, container) => {
             Some(BuiltinAction::UnlockContainer {
-                monitor: *monitor,
-                workspace: *workspace,
-                container: *container,
+                monitor: MonitorIndex::new(*monitor),
+                workspace: WorkspaceIndex::new(*workspace),
+                container: ContainerIndex::new(*container),
             })
         }
         SocketMessage::ToggleTitleBars => Some(BuiltinAction::ToggleTitleBars),
@@ -542,8 +560,8 @@ pub fn to_builtin_action(message: &SocketMessage, resize_delta: i32) -> Option<B
         }
         SocketMessage::WorkspaceLayoutRule(monitor, workspace, at_container_count, layout) => {
             Some(BuiltinAction::AddWorkspaceLayoutRule {
-                monitor: *monitor,
-                workspace: *workspace,
+                monitor: MonitorIndex::new(*monitor),
+                workspace: WorkspaceIndex::new(*workspace),
                 at_container_count: *at_container_count,
                 layout: *layout,
             })
@@ -617,14 +635,14 @@ pub fn to_builtin_action(message: &SocketMessage, resize_delta: i32) -> Option<B
                 .collect::<Result<Vec<_>, _>>()
                 .ok()?;
             Some(BuiltinAction::EnsureNamedWorkspaces {
-                monitor: *monitor,
+                monitor: MonitorIndex::new(*monitor),
                 names,
             })
         }
         SocketMessage::WorkspaceName(monitor, workspace, name) => {
             Some(BuiltinAction::SetWorkspaceName {
-                monitor: *monitor,
-                workspace: *workspace,
+                monitor: MonitorIndex::new(*monitor),
+                workspace: WorkspaceIndex::new(*workspace),
                 name: WorkspaceName::parse(name.clone()).ok()?,
             })
         }
@@ -637,15 +655,15 @@ pub fn to_builtin_action(message: &SocketMessage, resize_delta: i32) -> Option<B
         }),
         SocketMessage::WorkspaceLayoutCustom(monitor, workspace, path) => {
             Some(BuiltinAction::SetWorkspaceCustomLayout {
-                monitor: *monitor,
-                workspace: *workspace,
+                monitor: MonitorIndex::new(*monitor),
+                workspace: WorkspaceIndex::new(*workspace),
                 path: WindowsPath::new(path.clone()).ok()?,
             })
         }
         SocketMessage::WorkspaceLayoutCustomRule(monitor, workspace, at_container_count, path) => {
             Some(BuiltinAction::AddWorkspaceCustomLayoutRule {
-                monitor: *monitor,
-                workspace: *workspace,
+                monitor: MonitorIndex::new(*monitor),
+                workspace: WorkspaceIndex::new(*workspace),
                 at_container_count: *at_container_count,
                 path: WindowsPath::new(path.clone()).ok()?,
             })
@@ -760,17 +778,21 @@ mod tests {
         );
         assert_eq!(
             to_builtin_action(&SocketMessage::FocusMonitorNumber(2), 50),
-            Some(BuiltinAction::FocusMonitor { index: 2 })
+            Some(BuiltinAction::FocusMonitor {
+                index: MonitorIndex::new(2),
+            })
         );
         assert_eq!(
             to_builtin_action(&SocketMessage::FocusWorkspaceNumbers(3), 50),
-            Some(BuiltinAction::FocusWorkspaceOnAllMonitors { index: 3 })
+            Some(BuiltinAction::FocusWorkspaceOnAllMonitors {
+                index: WorkspaceIndex::new(3),
+            })
         );
         assert_eq!(
             to_builtin_action(&SocketMessage::FocusMonitorWorkspaceNumber(1, 4), 50),
             Some(BuiltinAction::FocusMonitorWorkspace {
-                monitor: 1,
-                workspace: 4,
+                monitor: MonitorIndex::new(1),
+                workspace: WorkspaceIndex::new(4),
             })
         );
         assert_eq!(classify(&SocketMessage::State), SocketMessageClass::Query);
@@ -839,10 +861,7 @@ mod tests {
             revision: Revision::new(1),
             paused: false,
             focused_window: Some(WindowId::new(9)),
-            neighbor_left: true,
-            neighbor_right: false,
-            neighbor_up: false,
-            neighbor_down: false,
+            directional_targets: [OperationDirection::Left].into(),
             current_layout: DefaultLayout::BSP,
             focused_window_floating: false,
             named_workspaces: Vec::new(),

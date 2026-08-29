@@ -7,15 +7,18 @@ use crate::action::ActionGrants;
 use crate::action::ActionRejection;
 use crate::action::ActionSnapshot;
 use crate::action::BuiltinAction;
+use crate::action::DirectionSet;
 use crate::action::InvocationContext;
 use crate::action::InvocationId;
 use crate::action::InvocationOrigin;
 use crate::action::InvokeAction;
+use crate::action::MonitorIndex;
 use crate::action::NamedWorkspaceTarget;
 use crate::action::NativeEffect;
 use crate::action::NativeEffectFailure;
 use crate::action::PlannedEffect;
 use crate::action::PrincipalId;
+use crate::action::WorkspaceIndex;
 use crate::action::WorkspaceName;
 use crate::action::id::WindowId;
 use crate::border_manager;
@@ -93,10 +96,15 @@ impl WindowManager {
             revision: self.catalog.snapshot().revision,
             paused: self.is_paused,
             focused_window,
-            neighbor_left: self.can_focus_in_direction(OperationDirection::Left),
-            neighbor_right: self.can_focus_in_direction(OperationDirection::Right),
-            neighbor_up: self.can_focus_in_direction(OperationDirection::Up),
-            neighbor_down: self.can_focus_in_direction(OperationDirection::Down),
+            directional_targets: [
+                OperationDirection::Left,
+                OperationDirection::Right,
+                OperationDirection::Up,
+                OperationDirection::Down,
+            ]
+            .into_iter()
+            .filter(|direction| self.can_focus_in_direction(*direction))
+            .collect::<DirectionSet>(),
             current_layout,
             focused_window_floating,
             named_workspaces: self.named_workspaces_for_catalog(),
@@ -113,8 +121,8 @@ impl WindowManager {
                 {
                     named.push(NamedWorkspaceTarget {
                         name,
-                        monitor: monitor_idx,
-                        workspace: workspace_idx,
+                        monitor: MonitorIndex::new(monitor_idx),
+                        workspace: WorkspaceIndex::new(workspace_idx),
                     });
                 }
             }
@@ -302,10 +310,10 @@ impl WindowManager {
                 if let Some(monitor_idx) = self.monitor_idx_from_current_pos() {
                     self.focus_monitor(monitor_idx)?;
                 }
-                self.focus_container_window(index)?;
+                self.focus_container_window(index.get())?;
             }
             NativeEffect::FocusWorkspace { index } => {
-                self.focus_workspace_number(index)?;
+                self.focus_workspace_number(index.get())?;
             }
             NativeEffect::CycleFocusWorkspace { direction } => {
                 self.cycle_focus_workspace(direction)?;
@@ -320,7 +328,7 @@ impl WindowManager {
                 self.close_focused_workspace()?;
             }
             NativeEffect::FocusMonitor { index } => {
-                self.focus_monitor_number(index)?;
+                self.focus_monitor_number(index.get())?;
             }
             NativeEffect::CycleFocusMonitor { direction } => {
                 self.cycle_focus_monitor(direction)?;
@@ -329,10 +337,10 @@ impl WindowManager {
                 self.focus_monitor_at_cursor()?;
             }
             NativeEffect::FocusWorkspaceOnAllMonitors { index } => {
-                self.focus_workspace_on_all_monitors(index)?;
+                self.focus_workspace_on_all_monitors(index.get())?;
             }
             NativeEffect::FocusMonitorWorkspace { monitor, workspace } => {
-                self.focus_monitor_workspace(monitor, workspace)?;
+                self.focus_monitor_workspace(monitor.get(), workspace.get())?;
             }
             NativeEffect::CloseWindow => {
                 self.close_foreground_window()?;
@@ -377,43 +385,43 @@ impl WindowManager {
                 self.move_container_to_last_workspace(false)?;
             }
             NativeEffect::MoveContainerToWorkspace { index } => {
-                self.move_container_to_workspace(index, true, None)?;
+                self.move_container_to_workspace(index.get(), true, None)?;
             }
             NativeEffect::CycleMoveContainerToWorkspace { direction } => {
                 self.cycle_move_container_to_workspace(direction, true)?;
             }
             NativeEffect::SendContainerToWorkspace { index } => {
-                self.move_container_to_workspace(index, false, None)?;
+                self.move_container_to_workspace(index.get(), false, None)?;
             }
             NativeEffect::CycleSendContainerToWorkspace { direction } => {
                 self.cycle_move_container_to_workspace(direction, false)?;
             }
             NativeEffect::MoveContainerToMonitor { index } => {
-                self.transfer_container_to_monitor(index, None, true)?;
+                self.transfer_container_to_monitor(index.get(), None, true)?;
             }
             NativeEffect::CycleMoveContainerToMonitor { direction } => {
                 self.cycle_transfer_container_to_monitor(direction, true)?;
             }
             NativeEffect::SendContainerToMonitor { index } => {
-                self.transfer_container_to_monitor(index, None, false)?;
+                self.transfer_container_to_monitor(index.get(), None, false)?;
             }
             NativeEffect::CycleSendContainerToMonitor { direction } => {
                 self.cycle_transfer_container_to_monitor(direction, false)?;
             }
             NativeEffect::MoveContainerToMonitorWorkspace { monitor, workspace } => {
-                self.transfer_container_to_monitor(monitor, Some(workspace), true)?;
+                self.transfer_container_to_monitor(monitor.get(), Some(workspace.get()), true)?;
             }
             NativeEffect::SendContainerToMonitorWorkspace { monitor, workspace } => {
-                self.transfer_container_to_monitor(monitor, Some(workspace), false)?;
+                self.transfer_container_to_monitor(monitor.get(), Some(workspace.get()), false)?;
             }
             NativeEffect::MoveWorkspaceToMonitor { index } => {
-                self.move_workspace_to_monitor(index)?;
+                self.move_workspace_to_monitor(index.get())?;
             }
             NativeEffect::CycleMoveWorkspaceToMonitor { direction } => {
                 self.cycle_move_workspace_to_monitor(direction)?;
             }
             NativeEffect::SwapWorkspacesToMonitor { index } => {
-                self.swap_focused_monitor(index)?;
+                self.swap_focused_monitor(index.get())?;
             }
             NativeEffect::PreselectDirection { direction } => {
                 self.apply_preselect_direction(direction)?;
@@ -479,34 +487,34 @@ impl WindowManager {
                 workspace,
                 size,
             } => {
-                self.set_container_padding(monitor, workspace, size)?;
+                self.set_container_padding(monitor.get(), workspace.get(), size)?;
             }
             NativeEffect::SetWorkspacePadding {
                 monitor,
                 workspace,
                 size,
             } => {
-                self.set_workspace_padding(monitor, workspace, size)?;
+                self.set_workspace_padding(monitor.get(), workspace.get(), size)?;
             }
             NativeEffect::SetWorkspaceTiling {
                 monitor,
                 workspace,
                 tile,
             } => {
-                self.set_workspace_tiling(monitor, workspace, tile)?;
+                self.set_workspace_tiling(monitor.get(), workspace.get(), tile)?;
             }
             NativeEffect::SetMonitorWorkspaceLayout {
                 monitor,
                 workspace,
                 layout,
             } => {
-                self.set_workspace_layout_default(monitor, workspace, layout)?;
+                self.set_workspace_layout_default(monitor.get(), workspace.get(), layout)?;
             }
             NativeEffect::EnsureWorkspaces { monitor, count } => {
-                self.ensure_workspaces_for_monitor(monitor, count)?;
+                self.ensure_workspaces_for_monitor(monitor.get(), count)?;
             }
             NativeEffect::ClearWorkspaceLayoutRules { monitor, workspace } => {
-                self.clear_workspace_layout_rules(monitor, workspace)?;
+                self.clear_workspace_layout_rules(monitor.get(), workspace.get())?;
             }
             NativeEffect::SetScrollingColumns { columns } => {
                 self.set_scrolling_columns(columns)?;
@@ -516,14 +524,14 @@ impl WindowManager {
                 workspace,
                 container,
             } => {
-                self.set_container_locked(monitor, workspace, container, true)?;
+                self.set_container_locked(monitor.get(), workspace.get(), container.get(), true)?;
             }
             NativeEffect::UnlockContainer {
                 monitor,
                 workspace,
                 container,
             } => {
-                self.set_container_locked(monitor, workspace, container, false)?;
+                self.set_container_locked(monitor.get(), workspace.get(), container.get(), false)?;
             }
             NativeEffect::ToggleTitleBars => {
                 self.toggle_title_bars()?;
@@ -574,8 +582,8 @@ impl WindowManager {
                 layout,
             } => {
                 self.add_workspace_layout_default_rule(
-                    monitor,
-                    workspace,
+                    monitor.get(),
+                    workspace.get(),
                     at_container_count,
                     layout,
                 )?;
@@ -591,7 +599,7 @@ impl WindowManager {
                 workspace,
                 path,
             } => {
-                self.set_workspace_layout_custom(monitor, workspace, path)?;
+                self.set_workspace_layout_custom(monitor.get(), workspace.get(), path)?;
             }
             NativeEffect::AddWorkspaceCustomLayoutRule {
                 monitor,
@@ -600,8 +608,8 @@ impl WindowManager {
                 path,
             } => {
                 self.add_workspace_layout_custom_rule(
-                    monitor,
-                    workspace,
+                    monitor.get(),
+                    workspace.get(),
                     at_container_count,
                     path,
                 )?;
@@ -609,14 +617,14 @@ impl WindowManager {
             NativeEffect::EnsureNamedWorkspaces { monitor, names } => {
                 let names: Vec<String> =
                     names.into_iter().map(WorkspaceName::into_string).collect();
-                self.ensure_named_workspaces_for_monitor(monitor, &names)?;
+                self.ensure_named_workspaces_for_monitor(monitor.get(), &names)?;
             }
             NativeEffect::SetWorkspaceName {
                 monitor,
                 workspace,
                 name,
             } => {
-                self.set_workspace_name(monitor, workspace, name.into_string())?;
+                self.set_workspace_name(monitor.get(), workspace.get(), name.into_string())?;
             }
             NativeEffect::EagerFocus { exe } => {
                 self.eager_focus_exe(&exe)?;

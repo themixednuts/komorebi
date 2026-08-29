@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::num::NonZeroUsize;
 
 use clap::ValueEnum;
 use serde::Deserialize;
@@ -239,7 +240,7 @@ pub struct LayoutOptions {
 /// Options for the Scrolling layout
 pub struct ScrollingLayoutOptions {
     /// Desired number of visible columns (default: 3)
-    pub columns: usize,
+    pub columns: NonZeroUsize,
     /// With an odd number of visible columns, keep the focused window column centered
     pub center_focused_column: Option<bool>,
 }
@@ -249,7 +250,7 @@ pub struct ScrollingLayoutOptions {
 /// Options for the Grid layout
 pub struct GridLayoutOptions {
     /// Maximum number of rows per grid column
-    pub rows: usize,
+    pub rows: NonZeroUsize,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]

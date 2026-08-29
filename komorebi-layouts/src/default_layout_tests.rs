@@ -1,5 +1,21 @@
 use super::*;
 
+#[test]
+fn scrolling_layout_rejects_zero_visible_columns() {
+    let result = serde_json::from_str::<ScrollingLayoutOptions>(
+        r#"{"columns":0,"center_focused_column":false}"#,
+    );
+
+    assert!(result.is_err());
+}
+
+#[test]
+fn grid_layout_rejects_zero_rows() {
+    let result = serde_json::from_str::<GridLayoutOptions>(r#"{"rows":0}"#);
+
+    assert!(result.is_err());
+}
+
 // Helper to create LayoutOptions with column ratios
 fn layout_options_with_column_ratios(ratios: &[f32]) -> LayoutOptions {
     let mut arr = [None; MAX_RATIOS];
@@ -256,9 +272,9 @@ mod layout_options_tests {
         let opts: LayoutOptions = serde_json::from_str(json).unwrap();
 
         assert!(opts.scrolling.is_some());
-        assert_eq!(opts.scrolling.unwrap().columns, 3);
+        assert_eq!(opts.scrolling.unwrap().columns.get(), 3);
         assert!(opts.grid.is_some());
-        assert_eq!(opts.grid.unwrap().rows, 2);
+        assert_eq!(opts.grid.unwrap().rows.get(), 2);
         assert!(opts.column_ratios.is_some());
         assert!(opts.row_ratios.is_some());
     }
@@ -398,10 +414,10 @@ mod layout_options_rules_tests {
         let rules: std::collections::HashMap<usize, LayoutOptions> =
             serde_json::from_str(json).unwrap();
         assert_eq!(rules.len(), 2);
-        assert_eq!(rules[&2].scrolling.unwrap().columns, 3);
+        assert_eq!(rules[&2].scrolling.unwrap().columns.get(), 3);
         assert!(rules[&2].grid.is_none());
         assert!(rules[&5].scrolling.is_none());
-        assert_eq!(rules[&5].grid.unwrap().rows, 2);
+        assert_eq!(rules[&5].grid.unwrap().rows.get(), 2);
     }
 
     #[test]
@@ -418,9 +434,9 @@ mod layout_options_rules_tests {
         assert_eq!(col[1], Some(0.3));
         let row = opts.row_ratios.unwrap();
         assert_eq!(row[0], Some(0.5));
-        assert_eq!(opts.scrolling.unwrap().columns, 4);
+        assert_eq!(opts.scrolling.unwrap().columns.get(), 4);
         assert_eq!(opts.scrolling.unwrap().center_focused_column, Some(true));
-        assert_eq!(opts.grid.unwrap().rows, 2);
+        assert_eq!(opts.grid.unwrap().rows.get(), 2);
     }
 
     #[test]
@@ -608,12 +624,12 @@ mod layout_default_entry_tests {
         let entry: LayoutDefaultEntry = serde_json::from_str(json).unwrap();
 
         let base = entry.layout_options.unwrap();
-        assert_eq!(base.scrolling.unwrap().columns, 3);
-        assert_eq!(base.grid.unwrap().rows, 2);
+        assert_eq!(base.scrolling.unwrap().columns.get(), 3);
+        assert_eq!(base.grid.unwrap().rows.get(), 2);
 
         let rules = entry.layout_options_rules.unwrap();
         let r4 = &rules[&4];
-        assert_eq!(r4.scrolling.unwrap().columns, 5);
+        assert_eq!(r4.scrolling.unwrap().columns.get(), 5);
         assert_eq!(r4.scrolling.unwrap().center_focused_column, Some(true));
         // Rule doesn't inherit base fields - full replacement
         assert!(r4.column_ratios.is_none());
