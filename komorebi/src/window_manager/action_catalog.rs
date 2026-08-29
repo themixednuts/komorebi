@@ -12,6 +12,8 @@ use crate::action::InvocationId;
 use crate::action::InvocationOrigin;
 use crate::action::InvokeAction;
 use crate::action::NativeEffect;
+use crate::action::NativeEffectFailure;
+use crate::action::PlannedEffect;
 use crate::action::PrincipalId;
 use crate::action::WorkspaceName;
 use crate::action::id::WindowId;
@@ -37,9 +39,18 @@ pub enum CatalogActionError {
     #[error("native effects failed for invocation {invocation_id:?}")]
     NativeEffects {
         invocation_id: InvocationId,
+        failure: NativeEffectFailure,
         #[source]
         source: eyre::Report,
     },
+}
+
+#[derive(Debug, thiserror::Error)]
+#[error("native effect {failure:?} failed")]
+struct NativeEffectExecutionError {
+    failure: NativeEffectFailure,
+    #[source]
+    source: eyre::Report,
 }
 
 impl CatalogActionError {
@@ -153,10 +164,12 @@ impl WindowManager {
                     Ok(invocation_id)
                 }
                 Err(error) => {
-                    self.catalog.degrade(invocation_id, 1);
+                    self.catalog
+                        .degrade(invocation_id, vec![error.failure.clone()]);
                     Err(CatalogActionError::NativeEffects {
                         invocation_id,
-                        source: error,
+                        failure: error.failure,
+                        source: error.source,
                     })
                 }
             },
@@ -183,412 +196,428 @@ impl WindowManager {
         )
     }
 
-    fn apply_catalog_effects(&mut self, effects: &[NativeEffect]) -> eyre::Result<()> {
-        for effect in effects {
-            match effect.clone() {
-                NativeEffect::FocusNeighbor { direction } => {
-                    let focused_workspace = self.focused_workspace()?;
-                    match focused_workspace.layer {
-                        WorkspaceLayer::Tiling => {
-                            self.focus_container_in_direction(direction)?;
-                        }
-                        WorkspaceLayer::Floating => {
-                            self.focus_floating_window_in_direction(direction)?;
-                        }
+    fn apply_catalog_effects(
+        &mut self,
+        effects: &[PlannedEffect],
+    ) -> Result<(), NativeEffectExecutionError> {
+        for planned in effects {
+            if let Err(source) = self.apply_catalog_effect(&planned.effect) {
+                return Err(NativeEffectExecutionError {
+                    failure: NativeEffectFailure {
+                        effect_id: planned.id,
+                        message: source.to_string(),
+                    },
+                    source,
+                });
+            }
+        }
+        Ok(())
+    }
+
+    fn apply_catalog_effect(&mut self, effect: &NativeEffect) -> eyre::Result<()> {
+        match effect.clone() {
+            NativeEffect::FocusNeighbor { direction } => {
+                let focused_workspace = self.focused_workspace()?;
+                match focused_workspace.layer {
+                    WorkspaceLayer::Tiling => {
+                        self.focus_container_in_direction(direction)?;
+                    }
+                    WorkspaceLayer::Floating => {
+                        self.focus_floating_window_in_direction(direction)?;
                     }
                 }
-                NativeEffect::MoveNeighbor { direction } => {
-                    let focused_workspace = self.focused_workspace()?;
-                    match focused_workspace.layer {
-                        WorkspaceLayer::Tiling => {
-                            self.move_container_in_direction(direction)?;
-                        }
-                        WorkspaceLayer::Floating => {
-                            self.move_floating_window_in_direction(direction)?;
-                        }
+            }
+            NativeEffect::MoveNeighbor { direction } => {
+                let focused_workspace = self.focused_workspace()?;
+                match focused_workspace.layer {
+                    WorkspaceLayer::Tiling => {
+                        self.move_container_in_direction(direction)?;
+                    }
+                    WorkspaceLayer::Floating => {
+                        self.move_floating_window_in_direction(direction)?;
                     }
                 }
-                NativeEffect::SetLayout { layout } => {
-                    self.change_workspace_layout_default(layout)?;
-                }
-                NativeEffect::SetWindowFloating { .. } => {
-                    self.toggle_float(false)?;
-                }
-                NativeEffect::Resize { axis, delta } => {
-                    let sizing = if delta.get() > 0 {
-                        Sizing::Increase
-                    } else {
-                        Sizing::Decrease
-                    };
-                    self.resize_window_on_axis(axis, sizing, delta.get().unsigned_abs() as i32)?;
-                }
-                NativeEffect::CycleFocus { direction } => {
-                    let focused_workspace = self.focused_workspace()?;
-                    match focused_workspace.layer {
-                        WorkspaceLayer::Tiling => {
-                            self.focus_container_in_cycle_direction(direction)?;
-                        }
-                        WorkspaceLayer::Floating => {
-                            self.focus_floating_window_in_cycle_direction(direction)?;
-                        }
+            }
+            NativeEffect::SetLayout { layout } => {
+                self.change_workspace_layout_default(layout)?;
+            }
+            NativeEffect::SetWindowFloating { .. } => {
+                self.toggle_float(false)?;
+            }
+            NativeEffect::Resize { axis, delta } => {
+                let sizing = if delta.get() > 0 {
+                    Sizing::Increase
+                } else {
+                    Sizing::Decrease
+                };
+                self.resize_window_on_axis(axis, sizing, delta.get().unsigned_abs() as i32)?;
+            }
+            NativeEffect::CycleFocus { direction } => {
+                let focused_workspace = self.focused_workspace()?;
+                match focused_workspace.layer {
+                    WorkspaceLayer::Tiling => {
+                        self.focus_container_in_cycle_direction(direction)?;
+                    }
+                    WorkspaceLayer::Floating => {
+                        self.focus_floating_window_in_cycle_direction(direction)?;
                     }
                 }
-                NativeEffect::CycleMove { direction } => {
-                    self.move_container_in_cycle_direction(direction)?;
-                }
-                NativeEffect::ToggleMonocle => {
-                    self.toggle_monocle()?;
-                }
-                NativeEffect::ToggleMaximize => {
-                    self.toggle_maximize()?;
-                }
-                NativeEffect::ToggleLock => {
-                    self.toggle_lock()?;
-                }
-                NativeEffect::Stack { direction } => {
-                    self.add_window_to_container(direction)?;
-                }
-                NativeEffect::Unstack => {
-                    self.remove_window_from_container()?;
-                }
-                NativeEffect::StackAll => {
-                    self.stack_all()?;
-                }
-                NativeEffect::UnstackAll => {
-                    self.unstack_all(true)?;
-                }
-                NativeEffect::CycleStack { direction } => {
-                    self.cycle_container_window_in_direction(direction)?;
-                }
-                NativeEffect::CycleStackIndex { direction } => {
-                    self.cycle_container_window_index_in_direction(direction)?;
-                }
-                NativeEffect::FocusStack { index } => {
-                    if let Some(monitor_idx) = self.monitor_idx_from_current_pos() {
-                        self.focus_monitor(monitor_idx)?;
-                    }
-                    self.focus_container_window(index)?;
-                }
-                NativeEffect::FocusWorkspace { index } => {
-                    self.focus_workspace_number(index)?;
-                }
-                NativeEffect::CycleFocusWorkspace { direction } => {
-                    self.cycle_focus_workspace(direction)?;
-                }
-                NativeEffect::CycleFocusEmptyWorkspace { direction } => {
-                    self.cycle_focus_empty_workspace(direction)?;
-                }
-                NativeEffect::FocusLastWorkspace => {
-                    self.focus_last_workspace()?;
-                }
-                NativeEffect::CloseWorkspace => {
-                    self.close_focused_workspace()?;
-                }
-                NativeEffect::FocusMonitor { index } => {
-                    self.focus_monitor_number(index)?;
-                }
-                NativeEffect::CycleFocusMonitor { direction } => {
-                    self.cycle_focus_monitor(direction)?;
-                }
-                NativeEffect::FocusMonitorAtCursor => {
-                    self.focus_monitor_at_cursor()?;
-                }
-                NativeEffect::FocusWorkspaceOnAllMonitors { index } => {
-                    self.focus_workspace_on_all_monitors(index)?;
-                }
-                NativeEffect::FocusMonitorWorkspace { monitor, workspace } => {
-                    self.focus_monitor_workspace(monitor, workspace)?;
-                }
-                NativeEffect::CloseWindow => {
-                    self.close_foreground_window()?;
-                }
-                NativeEffect::MinimizeWindow => {
-                    self.minimize_foreground_window()?;
-                }
-                NativeEffect::ForceFocus => {
-                    self.force_focus_window()?;
-                }
-                NativeEffect::PromoteContainer => {
-                    self.promote_container_to_front()?;
-                }
-                NativeEffect::PromoteContainerSwap => {
-                    self.promote_container_swap()?;
-                }
-                NativeEffect::PromoteFocus => {
-                    self.promote_focus_to_front()?;
-                }
-                NativeEffect::PromoteWindow { direction } => {
-                    self.promote_window_in_direction(direction)?;
-                }
-                NativeEffect::CreateWorkspace => {
-                    self.new_workspace()?;
-                }
-                NativeEffect::ToggleTiling => {
-                    self.toggle_tiling()?;
-                }
-                NativeEffect::CycleLayout { direction } => {
-                    self.cycle_layout(direction)?;
-                }
-                NativeEffect::FlipLayout { axis } => {
-                    self.flip_layout(axis)?;
-                }
-                NativeEffect::ToggleWorkspaceLayer => {
-                    self.toggle_workspace_layer()?;
-                }
-                NativeEffect::MoveContainerToLastWorkspace => {
-                    self.move_container_to_last_workspace(true)?;
-                }
-                NativeEffect::SendContainerToLastWorkspace => {
-                    self.move_container_to_last_workspace(false)?;
-                }
-                NativeEffect::MoveContainerToWorkspace { index } => {
-                    self.move_container_to_workspace(index, true, None)?;
-                }
-                NativeEffect::CycleMoveContainerToWorkspace { direction } => {
-                    self.cycle_move_container_to_workspace(direction, true)?;
-                }
-                NativeEffect::SendContainerToWorkspace { index } => {
-                    self.move_container_to_workspace(index, false, None)?;
-                }
-                NativeEffect::CycleSendContainerToWorkspace { direction } => {
-                    self.cycle_move_container_to_workspace(direction, false)?;
-                }
-                NativeEffect::MoveContainerToMonitor { index } => {
-                    self.transfer_container_to_monitor(index, None, true)?;
-                }
-                NativeEffect::CycleMoveContainerToMonitor { direction } => {
-                    self.cycle_transfer_container_to_monitor(direction, true)?;
-                }
-                NativeEffect::SendContainerToMonitor { index } => {
-                    self.transfer_container_to_monitor(index, None, false)?;
-                }
-                NativeEffect::CycleSendContainerToMonitor { direction } => {
-                    self.cycle_transfer_container_to_monitor(direction, false)?;
-                }
-                NativeEffect::MoveContainerToMonitorWorkspace { monitor, workspace } => {
-                    self.transfer_container_to_monitor(monitor, Some(workspace), true)?;
-                }
-                NativeEffect::SendContainerToMonitorWorkspace { monitor, workspace } => {
-                    self.transfer_container_to_monitor(monitor, Some(workspace), false)?;
-                }
-                NativeEffect::MoveWorkspaceToMonitor { index } => {
-                    self.move_workspace_to_monitor(index)?;
-                }
-                NativeEffect::CycleMoveWorkspaceToMonitor { direction } => {
-                    self.cycle_move_workspace_to_monitor(direction)?;
-                }
-                NativeEffect::SwapWorkspacesToMonitor { index } => {
-                    self.swap_focused_monitor(index)?;
-                }
-                NativeEffect::PreselectDirection { direction } => {
-                    self.apply_preselect_direction(direction)?;
-                }
-                NativeEffect::CancelPreselect => {
-                    self.cancel_focused_preselect()?;
-                }
-                NativeEffect::Retile => {
-                    border_manager::destroy_all_borders()?;
-                    self.retile_all(false)?;
-                }
-                NativeEffect::RetileWithResizeDimensions => {
-                    border_manager::destroy_all_borders()?;
-                    self.retile_all(true)?;
-                }
-                NativeEffect::ManageFocusedWindow => {
-                    self.manage_focused_window()?;
-                }
-                NativeEffect::UnmanageFocusedWindow => {
-                    self.unmanage_focused_window()?;
-                }
-                NativeEffect::AdjustContainerPadding { sizing, adjustment } => {
-                    self.adjust_container_padding(sizing, adjustment)?;
-                }
-                NativeEffect::AdjustWorkspacePadding { sizing, adjustment } => {
-                    self.adjust_workspace_padding(sizing, adjustment)?;
-                }
-                NativeEffect::ToggleMouseFollowsFocus => {
-                    self.toggle_mouse_follows_focus();
-                }
-                NativeEffect::SetMouseFollowsFocus { enabled } => {
-                    self.set_mouse_follows_focus(enabled);
-                }
-                NativeEffect::ToggleWindowContainerBehaviour => {
-                    self.toggle_window_container_behaviour();
-                }
-                NativeEffect::ToggleFloatOverride => {
-                    self.toggle_float_override();
-                }
-                NativeEffect::ToggleWorkspaceWindowContainerBehaviour => {
-                    self.toggle_workspace_window_container_behaviour()?;
-                }
-                NativeEffect::ToggleWorkspaceFloatOverride => {
-                    self.toggle_workspace_float_override()?;
-                }
-                NativeEffect::ToggleCrossMonitorMoveBehaviour => {
-                    self.toggle_cross_monitor_move_behaviour();
-                }
-                NativeEffect::ToggleMonocleFocusBehaviour => {
-                    self.toggle_monocle_focus_behaviour();
-                }
-                NativeEffect::TogglePause => {
-                    self.toggle_pause()?;
-                }
-                NativeEffect::SetFocusedContainerPadding { size } => {
-                    self.set_focused_container_padding(size)?;
-                }
-                NativeEffect::SetFocusedWorkspacePadding { size } => {
-                    self.set_focused_workspace_padding(size)?;
-                }
-                NativeEffect::SetContainerPadding {
-                    monitor,
-                    workspace,
-                    size,
-                } => {
-                    self.set_container_padding(monitor, workspace, size)?;
-                }
-                NativeEffect::SetWorkspacePadding {
-                    monitor,
-                    workspace,
-                    size,
-                } => {
-                    self.set_workspace_padding(monitor, workspace, size)?;
-                }
-                NativeEffect::SetWorkspaceTiling {
-                    monitor,
-                    workspace,
-                    tile,
-                } => {
-                    self.set_workspace_tiling(monitor, workspace, tile)?;
-                }
-                NativeEffect::SetMonitorWorkspaceLayout {
-                    monitor,
-                    workspace,
-                    layout,
-                } => {
-                    self.set_workspace_layout_default(monitor, workspace, layout)?;
-                }
-                NativeEffect::EnsureWorkspaces { monitor, count } => {
-                    self.ensure_workspaces_for_monitor(monitor, count)?;
-                }
-                NativeEffect::ClearWorkspaceLayoutRules { monitor, workspace } => {
-                    self.clear_workspace_layout_rules(monitor, workspace)?;
-                }
-                NativeEffect::SetScrollingColumns { columns } => {
-                    self.set_scrolling_columns(columns)?;
-                }
-                NativeEffect::LockContainer {
-                    monitor,
-                    workspace,
-                    container,
-                } => {
-                    self.set_container_locked(monitor, workspace, container, true)?;
-                }
-                NativeEffect::UnlockContainer {
-                    monitor,
-                    workspace,
-                    container,
-                } => {
-                    self.set_container_locked(monitor, workspace, container, false)?;
-                }
-                NativeEffect::ToggleTitleBars => {
-                    self.toggle_title_bars()?;
-                }
-                NativeEffect::EnforceWorkspaceRules => {
-                    self.already_moved_window_handles.lock().clear();
-                    self.enforce_workspace_rules()?;
-                }
-                NativeEffect::AddSessionFloatRule => {
-                    self.add_session_float_rule()?;
-                }
-                NativeEffect::ClearSessionFloatRules => {
-                    self.clear_session_float_rules();
-                }
-                NativeEffect::ResizeEdge { direction, delta } => {
-                    let sizing = if delta.get() > 0 {
-                        Sizing::Increase
-                    } else {
-                        Sizing::Decrease
-                    };
-                    self.resize_window(direction, sizing, delta.get().unsigned_abs() as i32, true)?;
-                }
-                NativeEffect::SetWindowHidingBehaviour { behaviour } => {
-                    *HIDING_BEHAVIOUR.lock() = behaviour;
-                }
-                NativeEffect::SetCrossMonitorMoveBehaviour { behaviour } => {
-                    self.cross_monitor_move_behaviour = behaviour;
-                }
-                NativeEffect::SetMonocleFocusBehaviour { behaviour } => {
-                    self.monocle_focus_behaviour = behaviour;
-                }
-                NativeEffect::SetUnmanagedWindowOperationBehaviour { behaviour } => {
-                    self.unmanaged_window_operation_behaviour = behaviour;
-                }
-                NativeEffect::SetFocusFollowsMouse {
-                    implementation,
-                    enabled,
-                } => {
-                    self.set_focus_follows_mouse_implementation(implementation, enabled)?;
-                }
-                NativeEffect::ToggleFocusFollowsMouse { implementation } => {
-                    self.toggle_focus_follows_mouse_implementation(implementation)?;
-                }
-                NativeEffect::AddWorkspaceLayoutRule {
+            }
+            NativeEffect::CycleMove { direction } => {
+                self.move_container_in_cycle_direction(direction)?;
+            }
+            NativeEffect::ToggleMonocle => {
+                self.toggle_monocle()?;
+            }
+            NativeEffect::ToggleMaximize => {
+                self.toggle_maximize()?;
+            }
+            NativeEffect::ToggleLock => {
+                self.toggle_lock()?;
+            }
+            NativeEffect::Stack { direction } => {
+                self.add_window_to_container(direction)?;
+            }
+            NativeEffect::Unstack => {
+                self.remove_window_from_container()?;
+            }
+            NativeEffect::StackAll => {
+                self.stack_all()?;
+            }
+            NativeEffect::UnstackAll => {
+                self.unstack_all(true)?;
+            }
+            NativeEffect::CycleStack { direction } => {
+                self.cycle_container_window_in_direction(direction)?;
+            }
+            NativeEffect::CycleStackIndex { direction } => {
+                self.cycle_container_window_index_in_direction(direction)?;
+            }
+            NativeEffect::FocusStack { index } => {
+                if let Some(monitor_idx) = self.monitor_idx_from_current_pos() {
+                    self.focus_monitor(monitor_idx)?;
+                }
+                self.focus_container_window(index)?;
+            }
+            NativeEffect::FocusWorkspace { index } => {
+                self.focus_workspace_number(index)?;
+            }
+            NativeEffect::CycleFocusWorkspace { direction } => {
+                self.cycle_focus_workspace(direction)?;
+            }
+            NativeEffect::CycleFocusEmptyWorkspace { direction } => {
+                self.cycle_focus_empty_workspace(direction)?;
+            }
+            NativeEffect::FocusLastWorkspace => {
+                self.focus_last_workspace()?;
+            }
+            NativeEffect::CloseWorkspace => {
+                self.close_focused_workspace()?;
+            }
+            NativeEffect::FocusMonitor { index } => {
+                self.focus_monitor_number(index)?;
+            }
+            NativeEffect::CycleFocusMonitor { direction } => {
+                self.cycle_focus_monitor(direction)?;
+            }
+            NativeEffect::FocusMonitorAtCursor => {
+                self.focus_monitor_at_cursor()?;
+            }
+            NativeEffect::FocusWorkspaceOnAllMonitors { index } => {
+                self.focus_workspace_on_all_monitors(index)?;
+            }
+            NativeEffect::FocusMonitorWorkspace { monitor, workspace } => {
+                self.focus_monitor_workspace(monitor, workspace)?;
+            }
+            NativeEffect::CloseWindow => {
+                self.close_foreground_window()?;
+            }
+            NativeEffect::MinimizeWindow => {
+                self.minimize_foreground_window()?;
+            }
+            NativeEffect::ForceFocus => {
+                self.force_focus_window()?;
+            }
+            NativeEffect::PromoteContainer => {
+                self.promote_container_to_front()?;
+            }
+            NativeEffect::PromoteContainerSwap => {
+                self.promote_container_swap()?;
+            }
+            NativeEffect::PromoteFocus => {
+                self.promote_focus_to_front()?;
+            }
+            NativeEffect::PromoteWindow { direction } => {
+                self.promote_window_in_direction(direction)?;
+            }
+            NativeEffect::CreateWorkspace => {
+                self.new_workspace()?;
+            }
+            NativeEffect::ToggleTiling => {
+                self.toggle_tiling()?;
+            }
+            NativeEffect::CycleLayout { direction } => {
+                self.cycle_layout(direction)?;
+            }
+            NativeEffect::FlipLayout { axis } => {
+                self.flip_layout(axis)?;
+            }
+            NativeEffect::ToggleWorkspaceLayer => {
+                self.toggle_workspace_layer()?;
+            }
+            NativeEffect::MoveContainerToLastWorkspace => {
+                self.move_container_to_last_workspace(true)?;
+            }
+            NativeEffect::SendContainerToLastWorkspace => {
+                self.move_container_to_last_workspace(false)?;
+            }
+            NativeEffect::MoveContainerToWorkspace { index } => {
+                self.move_container_to_workspace(index, true, None)?;
+            }
+            NativeEffect::CycleMoveContainerToWorkspace { direction } => {
+                self.cycle_move_container_to_workspace(direction, true)?;
+            }
+            NativeEffect::SendContainerToWorkspace { index } => {
+                self.move_container_to_workspace(index, false, None)?;
+            }
+            NativeEffect::CycleSendContainerToWorkspace { direction } => {
+                self.cycle_move_container_to_workspace(direction, false)?;
+            }
+            NativeEffect::MoveContainerToMonitor { index } => {
+                self.transfer_container_to_monitor(index, None, true)?;
+            }
+            NativeEffect::CycleMoveContainerToMonitor { direction } => {
+                self.cycle_transfer_container_to_monitor(direction, true)?;
+            }
+            NativeEffect::SendContainerToMonitor { index } => {
+                self.transfer_container_to_monitor(index, None, false)?;
+            }
+            NativeEffect::CycleSendContainerToMonitor { direction } => {
+                self.cycle_transfer_container_to_monitor(direction, false)?;
+            }
+            NativeEffect::MoveContainerToMonitorWorkspace { monitor, workspace } => {
+                self.transfer_container_to_monitor(monitor, Some(workspace), true)?;
+            }
+            NativeEffect::SendContainerToMonitorWorkspace { monitor, workspace } => {
+                self.transfer_container_to_monitor(monitor, Some(workspace), false)?;
+            }
+            NativeEffect::MoveWorkspaceToMonitor { index } => {
+                self.move_workspace_to_monitor(index)?;
+            }
+            NativeEffect::CycleMoveWorkspaceToMonitor { direction } => {
+                self.cycle_move_workspace_to_monitor(direction)?;
+            }
+            NativeEffect::SwapWorkspacesToMonitor { index } => {
+                self.swap_focused_monitor(index)?;
+            }
+            NativeEffect::PreselectDirection { direction } => {
+                self.apply_preselect_direction(direction)?;
+            }
+            NativeEffect::CancelPreselect => {
+                self.cancel_focused_preselect()?;
+            }
+            NativeEffect::Retile => {
+                border_manager::destroy_all_borders()?;
+                self.retile_all(false)?;
+            }
+            NativeEffect::RetileWithResizeDimensions => {
+                border_manager::destroy_all_borders()?;
+                self.retile_all(true)?;
+            }
+            NativeEffect::ManageFocusedWindow => {
+                self.manage_focused_window()?;
+            }
+            NativeEffect::UnmanageFocusedWindow => {
+                self.unmanage_focused_window()?;
+            }
+            NativeEffect::AdjustContainerPadding { sizing, adjustment } => {
+                self.adjust_container_padding(sizing, adjustment)?;
+            }
+            NativeEffect::AdjustWorkspacePadding { sizing, adjustment } => {
+                self.adjust_workspace_padding(sizing, adjustment)?;
+            }
+            NativeEffect::ToggleMouseFollowsFocus => {
+                self.toggle_mouse_follows_focus();
+            }
+            NativeEffect::SetMouseFollowsFocus { enabled } => {
+                self.set_mouse_follows_focus(enabled);
+            }
+            NativeEffect::ToggleWindowContainerBehaviour => {
+                self.toggle_window_container_behaviour();
+            }
+            NativeEffect::ToggleFloatOverride => {
+                self.toggle_float_override();
+            }
+            NativeEffect::ToggleWorkspaceWindowContainerBehaviour => {
+                self.toggle_workspace_window_container_behaviour()?;
+            }
+            NativeEffect::ToggleWorkspaceFloatOverride => {
+                self.toggle_workspace_float_override()?;
+            }
+            NativeEffect::ToggleCrossMonitorMoveBehaviour => {
+                self.toggle_cross_monitor_move_behaviour();
+            }
+            NativeEffect::ToggleMonocleFocusBehaviour => {
+                self.toggle_monocle_focus_behaviour();
+            }
+            NativeEffect::TogglePause => {
+                self.toggle_pause()?;
+            }
+            NativeEffect::SetFocusedContainerPadding { size } => {
+                self.set_focused_container_padding(size)?;
+            }
+            NativeEffect::SetFocusedWorkspacePadding { size } => {
+                self.set_focused_workspace_padding(size)?;
+            }
+            NativeEffect::SetContainerPadding {
+                monitor,
+                workspace,
+                size,
+            } => {
+                self.set_container_padding(monitor, workspace, size)?;
+            }
+            NativeEffect::SetWorkspacePadding {
+                monitor,
+                workspace,
+                size,
+            } => {
+                self.set_workspace_padding(monitor, workspace, size)?;
+            }
+            NativeEffect::SetWorkspaceTiling {
+                monitor,
+                workspace,
+                tile,
+            } => {
+                self.set_workspace_tiling(monitor, workspace, tile)?;
+            }
+            NativeEffect::SetMonitorWorkspaceLayout {
+                monitor,
+                workspace,
+                layout,
+            } => {
+                self.set_workspace_layout_default(monitor, workspace, layout)?;
+            }
+            NativeEffect::EnsureWorkspaces { monitor, count } => {
+                self.ensure_workspaces_for_monitor(monitor, count)?;
+            }
+            NativeEffect::ClearWorkspaceLayoutRules { monitor, workspace } => {
+                self.clear_workspace_layout_rules(monitor, workspace)?;
+            }
+            NativeEffect::SetScrollingColumns { columns } => {
+                self.set_scrolling_columns(columns)?;
+            }
+            NativeEffect::LockContainer {
+                monitor,
+                workspace,
+                container,
+            } => {
+                self.set_container_locked(monitor, workspace, container, true)?;
+            }
+            NativeEffect::UnlockContainer {
+                monitor,
+                workspace,
+                container,
+            } => {
+                self.set_container_locked(monitor, workspace, container, false)?;
+            }
+            NativeEffect::ToggleTitleBars => {
+                self.toggle_title_bars()?;
+            }
+            NativeEffect::EnforceWorkspaceRules => {
+                self.already_moved_window_handles.lock().clear();
+                self.enforce_workspace_rules()?;
+            }
+            NativeEffect::AddSessionFloatRule => {
+                self.add_session_float_rule()?;
+            }
+            NativeEffect::ClearSessionFloatRules => {
+                self.clear_session_float_rules();
+            }
+            NativeEffect::ResizeEdge { direction, delta } => {
+                let sizing = if delta.get() > 0 {
+                    Sizing::Increase
+                } else {
+                    Sizing::Decrease
+                };
+                self.resize_window(direction, sizing, delta.get().unsigned_abs() as i32, true)?;
+            }
+            NativeEffect::SetWindowHidingBehaviour { behaviour } => {
+                *HIDING_BEHAVIOUR.lock() = behaviour;
+            }
+            NativeEffect::SetCrossMonitorMoveBehaviour { behaviour } => {
+                self.cross_monitor_move_behaviour = behaviour;
+            }
+            NativeEffect::SetMonocleFocusBehaviour { behaviour } => {
+                self.monocle_focus_behaviour = behaviour;
+            }
+            NativeEffect::SetUnmanagedWindowOperationBehaviour { behaviour } => {
+                self.unmanaged_window_operation_behaviour = behaviour;
+            }
+            NativeEffect::SetFocusFollowsMouse {
+                implementation,
+                enabled,
+            } => {
+                self.set_focus_follows_mouse_implementation(implementation, enabled)?;
+            }
+            NativeEffect::ToggleFocusFollowsMouse { implementation } => {
+                self.toggle_focus_follows_mouse_implementation(implementation)?;
+            }
+            NativeEffect::AddWorkspaceLayoutRule {
+                monitor,
+                workspace,
+                at_container_count,
+                layout,
+            } => {
+                self.add_workspace_layout_default_rule(
                     monitor,
                     workspace,
                     at_container_count,
                     layout,
-                } => {
-                    self.add_workspace_layout_default_rule(
-                        monitor,
-                        workspace,
-                        at_container_count,
-                        layout,
-                    )?;
-                }
-                NativeEffect::SetLayoutRatios { columns, rows } => {
-                    self.set_layout_ratios(columns.as_deref(), rows.as_deref())?;
-                }
-                NativeEffect::SetCustomLayout { path } => {
-                    self.change_workspace_custom_layout(path)?;
-                }
-                NativeEffect::SetWorkspaceCustomLayout {
-                    monitor,
-                    workspace,
-                    path,
-                } => {
-                    self.set_workspace_layout_custom(monitor, workspace, path)?;
-                }
-                NativeEffect::AddWorkspaceCustomLayoutRule {
+                )?;
+            }
+            NativeEffect::SetLayoutRatios { columns, rows } => {
+                self.set_layout_ratios(columns.as_deref(), rows.as_deref())?;
+            }
+            NativeEffect::SetCustomLayout { path } => {
+                self.change_workspace_custom_layout(path)?;
+            }
+            NativeEffect::SetWorkspaceCustomLayout {
+                monitor,
+                workspace,
+                path,
+            } => {
+                self.set_workspace_layout_custom(monitor, workspace, path)?;
+            }
+            NativeEffect::AddWorkspaceCustomLayoutRule {
+                monitor,
+                workspace,
+                at_container_count,
+                path,
+            } => {
+                self.add_workspace_layout_custom_rule(
                     monitor,
                     workspace,
                     at_container_count,
                     path,
-                } => {
-                    self.add_workspace_layout_custom_rule(
-                        monitor,
-                        workspace,
-                        at_container_count,
-                        path,
-                    )?;
-                }
-                NativeEffect::EnsureNamedWorkspaces { monitor, names } => {
-                    let names: Vec<String> =
-                        names.into_iter().map(WorkspaceName::into_string).collect();
-                    self.ensure_named_workspaces_for_monitor(monitor, &names)?;
-                }
-                NativeEffect::SetWorkspaceName {
-                    monitor,
-                    workspace,
-                    name,
-                } => {
-                    self.set_workspace_name(monitor, workspace, name.into_string())?;
-                }
-                NativeEffect::EagerFocus { exe } => {
-                    self.eager_focus_exe(&exe)?;
-                }
-                NativeEffect::RemoveTitleBar { identifier, id } => {
-                    self.add_no_titlebar_rule(identifier, id);
-                }
+                )?;
+            }
+            NativeEffect::EnsureNamedWorkspaces { monitor, names } => {
+                let names: Vec<String> =
+                    names.into_iter().map(WorkspaceName::into_string).collect();
+                self.ensure_named_workspaces_for_monitor(monitor, &names)?;
+            }
+            NativeEffect::SetWorkspaceName {
+                monitor,
+                workspace,
+                name,
+            } => {
+                self.set_workspace_name(monitor, workspace, name.into_string())?;
+            }
+            NativeEffect::EagerFocus { exe } => {
+                self.eager_focus_exe(&exe)?;
+            }
+            NativeEffect::RemoveTitleBar { identifier, id } => {
+                self.add_no_titlebar_rule(identifier, id);
             }
         }
         Ok(())
@@ -644,12 +673,17 @@ mod tests {
             })
             .expect_err("layout application without a monitor should fail");
         let invocation_id = error.invocation_id();
+        let failure = match error {
+            CatalogActionError::NativeEffects { failure, .. } => failure,
+            CatalogActionError::Rejected { .. } => panic!("expected native-effect failure"),
+        };
+        assert_eq!(failure.effect_id.ordinal(), 0);
 
         assert_eq!(
             manager.catalog.status(invocation_id),
             Some(&InvocationStatus::Degraded {
                 revision: Revision::new(1),
-                failures: 1,
+                failures: vec![failure],
             })
         );
     }

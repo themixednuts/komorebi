@@ -13,7 +13,10 @@ use super::offer::ActionGrants;
 use super::offer::ActionSnapshot;
 use super::offer::Unavailability;
 pub use super::outcome::ActionResult;
+pub use super::outcome::EffectId;
 pub use super::outcome::NativeEffect;
+pub use super::outcome::NativeEffectFailure;
+pub use super::outcome::PlannedEffect;
 use super::transition::apply_logical;
 use super::transition::bind_named_targets;
 use super::transition::directional_gap;
@@ -66,7 +69,7 @@ pub enum ActionAdmission {
         revision: Revision,
         logical_result: ActionResult,
         undo: Option<UndoRecord>,
-        effects: Vec<NativeEffect>,
+        effects: Vec<PlannedEffect>,
     },
 }
 
@@ -85,7 +88,7 @@ pub enum InvocationStatus {
     },
     Degraded {
         revision: Revision,
-        failures: usize,
+        failures: Vec<NativeEffectFailure>,
     },
     Superseded {
         by_revision: Revision,
@@ -237,7 +240,14 @@ impl CatalogState {
                     revision,
                     logical_result: logical_result(&action, &self.snapshot),
                     undo,
-                    effects: effects(&action, &self.snapshot),
+                    effects: effects(&action, &self.snapshot)
+                        .into_iter()
+                        .enumerate()
+                        .map(|(ordinal, effect)| PlannedEffect {
+                            id: EffectId::new(ordinal as u64),
+                            effect,
+                        })
+                        .collect(),
                 };
                 self.statuses.insert(
                     request.invocation_id,
@@ -262,7 +272,7 @@ impl CatalogState {
         }
     }
 
-    pub fn degrade(&mut self, id: InvocationId, failures: usize) {
+    pub fn degrade(&mut self, id: InvocationId, failures: Vec<NativeEffectFailure>) {
         if let Some(InvocationStatus::Committed { revision }) = self.statuses.get(&id).cloned() {
             self.statuses
                 .insert(id, InvocationStatus::Degraded { revision, failures });
@@ -425,18 +435,31 @@ mod tests {
                 result: logical_result
             })
         );
-        state.degrade(id, 1);
+        state.degrade(
+            id,
+            vec![NativeEffectFailure {
+                effect_id: EffectId::new(0),
+                message: "injected failure".to_string(),
+            }],
+        );
         // settle already moved it; degrade only from Committed. seed a committed status.
         state
             .statuses
             .insert(id, InvocationStatus::Committed { revision });
-        state.degrade(id, 2);
+        let failures = vec![
+            NativeEffectFailure {
+                effect_id: EffectId::new(0),
+                message: "first injected failure".to_string(),
+            },
+            NativeEffectFailure {
+                effect_id: EffectId::new(1),
+                message: "second injected failure".to_string(),
+            },
+        ];
+        state.degrade(id, failures.clone());
         assert_eq!(
             state.status(id),
-            Some(&InvocationStatus::Degraded {
-                revision,
-                failures: 2
-            })
+            Some(&InvocationStatus::Degraded { revision, failures })
         );
         state.supersede(id, Revision::new(12));
         assert_eq!(

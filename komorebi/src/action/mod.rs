@@ -36,3 +36,6 @@ pub use offer::ActionGrants;
 pub use offer::ActionOffer;
 pub use offer::ActionSnapshot;
 pub use offer::offers;
+pub use outcome::EffectId;
+pub use outcome::NativeEffectFailure;
+pub use outcome::PlannedEffect;

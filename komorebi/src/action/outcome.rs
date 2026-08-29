@@ -275,6 +275,33 @@ pub enum ActionResult {
     TitleBarRemoved,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+pub struct EffectId(u64);
+
+impl EffectId {
+    #[must_use]
+    pub const fn new(ordinal: u64) -> Self {
+        Self(ordinal)
+    }
+
+    #[must_use]
+    pub const fn ordinal(self) -> u64 {
+        self.0
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct PlannedEffect {
+    pub id: EffectId,
+    pub effect: NativeEffect,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct NativeEffectFailure {
+    pub effect_id: EffectId,
+    pub message: String,
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum NativeEffect {
     FocusNeighbor {
