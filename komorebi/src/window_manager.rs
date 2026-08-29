@@ -50,6 +50,17 @@ use crate::NO_TITLEBAR;
 use crate::REGEX_IDENTIFIERS;
 use crate::SUBSCRIBERS;
 use crate::WORKSPACE_MATCHING_RULES;
+use crate::action::ActionAdmission;
+use crate::action::ActionGrants;
+use crate::action::ActionSnapshot;
+use crate::action::BuiltinAction;
+use crate::action::CatalogState;
+use crate::action::InvocationContext;
+use crate::action::InvocationId;
+use crate::action::InvocationOrigin;
+use crate::action::InvokeAction;
+use crate::action::PrincipalId;
+use crate::action::id::WindowId;
 use crate::border_manager;
 use crate::border_manager::BORDER_OFFSET;
 use crate::border_manager::BORDER_WIDTH;
@@ -94,6 +105,7 @@ pub struct WindowManager {
     pub uncloack_to_ignore: usize,
     /// Maps each known window hwnd to the (monitor, workspace) index pair managing it
     pub known_hwnds: HashMap<isize, (usize, usize)>,
+    pub catalog: CatalogState,
 }
 
 impl AsRef<Self> for WindowManager {
@@ -171,7 +183,95 @@ impl WindowManager {
             already_moved_window_handles: Arc::new(Mutex::new(HashSet::new())),
             uncloack_to_ignore: 0,
             known_hwnds: HashMap::new(),
+            catalog: CatalogState::new(ActionSnapshot::empty()),
         })
+    }
+
+    pub fn refresh_catalog_observation(&mut self) {
+        let snapshot = self.observe_action_snapshot();
+        self.catalog.replace_observation(snapshot);
+    }
+
+    #[must_use]
+    pub fn observe_action_snapshot(&self) -> ActionSnapshot {
+        let focused_window = self
+            .focused_window()
+            .ok()
+            .map(|window| WindowId::new(window.hwnd as u64));
+        let current_layout = self
+            .focused_workspace()
+            .ok()
+            .and_then(|workspace| match workspace.layout {
+                Layout::Default(layout) => Some(layout),
+                Layout::Custom(_) => None,
+            })
+            .unwrap_or(DefaultLayout::BSP);
+        let focused_window_floating = self
+            .focused_workspace()
+            .ok()
+            .is_some_and(|workspace| workspace.layer == WorkspaceLayer::Floating);
+        ActionSnapshot {
+            revision: self.catalog.snapshot().revision,
+            paused: self.is_paused,
+            focused_window,
+            neighbor_left: self.can_focus_in_direction(OperationDirection::Left),
+            neighbor_right: self.can_focus_in_direction(OperationDirection::Right),
+            neighbor_up: self.can_focus_in_direction(OperationDirection::Up),
+            neighbor_down: self.can_focus_in_direction(OperationDirection::Down),
+            current_layout,
+            focused_window_floating,
+            bindings: Vec::new(),
+        }
+    }
+
+    fn can_focus_in_direction(&self, direction: OperationDirection) -> bool {
+        let Ok(workspace) = self.focused_workspace() else {
+            return false;
+        };
+        if workspace.new_idx_for_direction(direction).is_some() {
+            return true;
+        }
+        if matches!(
+            self.cross_boundary_behaviour,
+            CrossBoundaryBehaviour::Workspace
+        ) && matches!(
+            direction,
+            OperationDirection::Left | OperationDirection::Right
+        ) && self
+            .focused_monitor()
+            .is_some_and(|monitor| monitor.workspaces().len() > 1)
+        {
+            return true;
+        }
+        self.monitor_idx_in_direction(direction).is_some()
+    }
+
+    pub fn admit_focus_window(&mut self, direction: OperationDirection) -> eyre::Result<()> {
+        self.refresh_catalog_observation();
+        let admission = self.catalog.admit(
+            InvokeAction {
+                invocation_id: InvocationId::new(),
+                expected_revision: self.catalog.snapshot().revision,
+                action: BuiltinAction::FocusWindow { direction },
+                confirmation: None,
+            },
+            &InvocationContext {
+                principal: PrincipalId::new(0),
+                origin: InvocationOrigin::Cli,
+                grants: ActionGrants::all(),
+            },
+            std::time::Instant::now(),
+        );
+        match admission {
+            ActionAdmission::Rejected(reason) => bail!("{reason}"),
+            ActionAdmission::Committed { .. } => {
+                let focused_workspace = self.focused_workspace()?;
+                match focused_workspace.layer {
+                    WorkspaceLayer::Tiling => self.focus_container_in_direction(direction),
+                    WorkspaceLayer::Floating => self.focus_floating_window_in_direction(direction),
+                }
+            }
+        }
     }
 
     #[tracing::instrument(skip(self))]

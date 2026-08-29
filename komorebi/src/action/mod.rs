@@ -22,6 +22,7 @@ pub use id::InvocationId;
 pub use id::PrincipalId;
 pub use id::Revision;
 pub use invoke::ActionAdmission;
+pub use invoke::ActionRejection;
 pub use invoke::CatalogState;
 pub use invoke::InvocationContext;
 pub use invoke::InvocationOrigin;

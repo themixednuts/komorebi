@@ -40,6 +40,7 @@ use crate::TCP_CONNECTIONS;
 use crate::TRAY_AND_MULTI_WINDOW_IDENTIFIERS;
 use crate::WINDOWS_11;
 use crate::WORKSPACE_MATCHING_RULES;
+use crate::adapters::socket_message::to_builtin_action;
 use crate::animation::ANIMATION_DURATION_GLOBAL;
 use crate::animation::ANIMATION_DURATION_PER_ANIMATION;
 use crate::animation::ANIMATION_ENABLED_GLOBAL;
@@ -291,15 +292,7 @@ impl WindowManager {
                 }
             }
             SocketMessage::FocusWindow(direction) => {
-                let focused_workspace = self.focused_workspace()?;
-                match focused_workspace.layer {
-                    WorkspaceLayer::Tiling => {
-                        self.focus_container_in_direction(direction)?;
-                    }
-                    WorkspaceLayer::Floating => {
-                        self.focus_floating_window_in_direction(direction)?;
-                    }
-                }
+                self.admit_focus_window(direction)?;
             }
             SocketMessage::PreselectDirection(direction) => {
                 let focused_workspace = self.focused_workspace()?;
@@ -2353,6 +2346,9 @@ pub fn read_commands_uds(
                         | SocketMessage::State
                         | SocketMessage::GlobalState
                         | SocketMessage::Stop => Ok(wm.process_command(message, &mut stream)?),
+                        other if to_builtin_action(&other).is_some() => {
+                            Ok(wm.process_command(other, &mut stream)?)
+                        }
                         _ => {
                             tracing::trace!("ignoring while paused");
                             Ok(())
@@ -2401,6 +2397,9 @@ pub fn read_commands_tcp(
                         | SocketMessage::State
                         | SocketMessage::GlobalState
                         | SocketMessage::Stop => Ok(wm.process_command(message, stream)?),
+                        other if to_builtin_action(&other).is_some() => {
+                            Ok(wm.process_command(other, stream)?)
+                        }
                         _ => {
                             tracing::trace!("ignoring while paused");
                             Ok(())
@@ -2481,6 +2480,40 @@ mod tests {
 
         // check the updated window manager state
         assert_eq!(wm.focused_workspace_idx().unwrap(), 5);
+
+        std::fs::remove_file(socket_path).unwrap();
+    }
+
+    #[test]
+    fn paused_focus_window_is_rejected_instead_of_ignored() {
+        let (_sender, receiver): (Sender<WindowManagerEvent>, Receiver<WindowManagerEvent>) =
+            bounded(1);
+        let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
+        let socket_path = PathBuf::from(&socket_name);
+        let mut wm = WindowManager::new(receiver, Some(socket_path.clone())).unwrap();
+        let m = monitor::new(
+            0,
+            Rect::default(),
+            Rect::default(),
+            "TestMonitor".to_string(),
+            "TestDevice".to_string(),
+            "TestDeviceID".to_string(),
+            Some("TestMonitorID".to_string()),
+        );
+        wm.monitors_mut().push_back(m);
+        wm.is_paused = true;
+
+        let stream = UnixStream::connect(&socket_path).unwrap();
+        let error = wm
+            .process_command(
+                SocketMessage::FocusWindow(crate::core::OperationDirection::Left),
+                stream,
+            )
+            .expect_err("paused focus must not no-op");
+        assert!(
+            error.to_string().contains("unavailable"),
+            "unexpected rejection: {error}"
+        );
 
         std::fs::remove_file(socket_path).unwrap();
     }

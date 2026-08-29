@@ -31,6 +31,8 @@ use crate::WINDOW_HANDLING_BEHAVIOUR;
 use crate::WINDOWS_11;
 use crate::WORKSPACE_MATCHING_RULES;
 use crate::WindowHandlingBehaviour;
+use crate::action::ActionSnapshot;
+use crate::action::CatalogState;
 use crate::animation::ANIMATION_DURATION_GLOBAL;
 use crate::animation::ANIMATION_DURATION_PER_ANIMATION;
 use crate::animation::ANIMATION_ENABLED_GLOBAL;
@@ -1377,6 +1379,7 @@ impl StaticConfig {
             already_moved_window_handles: Arc::new(Mutex::new(HashSet::new())),
             uncloack_to_ignore: 0,
             known_hwnds: HashMap::new(),
+            catalog: CatalogState::new(ActionSnapshot::empty()),
         };
 
         #[allow(deprecated)]

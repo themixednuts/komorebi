@@ -45,13 +45,16 @@ pub struct InvokeAction {
     pub confirmation: Option<super::id::ConfirmationToken>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, thiserror::Error)]
 pub enum ActionRejection {
+    #[error("expected revision {expected:?} but catalog is at {actual:?}")]
     StaleRevision {
         expected: Revision,
         actual: Revision,
     },
+    #[error("action is unavailable: {0:?}")]
     Unavailable(Unavailability),
+    #[error(transparent)]
     Confirmation(ConfirmationError),
 }
 
@@ -195,6 +198,11 @@ impl CatalogState {
     #[must_use]
     pub fn snapshot(&self) -> &ActionSnapshot {
         &self.snapshot
+    }
+
+    pub fn replace_observation(&mut self, mut snapshot: ActionSnapshot) {
+        snapshot.revision = self.snapshot.revision;
+        self.snapshot = snapshot;
     }
 
     #[must_use]

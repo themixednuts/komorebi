@@ -23,6 +23,24 @@ pub struct ActionSnapshot {
     pub bindings: Vec<BindingHint>,
 }
 
+impl ActionSnapshot {
+    #[must_use]
+    pub fn empty() -> Self {
+        Self {
+            revision: Revision::new(0),
+            paused: false,
+            focused_window: None,
+            neighbor_left: false,
+            neighbor_right: false,
+            neighbor_up: false,
+            neighbor_down: false,
+            current_layout: DefaultLayout::BSP,
+            focused_window_floating: false,
+            bindings: Vec::new(),
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct BindingHint {
     pub action: ActionId,
