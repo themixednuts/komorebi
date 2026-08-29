@@ -110,17 +110,23 @@ pub fn send_batch<Q>(messages: impl IntoIterator<Item = Q>) -> std::io::Result<(
 where
     Q: Borrow<SocketMessage>,
 {
+    let messages = encode_batch(messages)?;
     let socket = DATA_DIR.join(KOMOREBI);
     let mut stream = UnixStream::connect(socket)?;
     stream.set_write_timeout(Some(Duration::from_secs(1)))?;
-    let msgs = messages.into_iter().fold(String::new(), |mut s, m| {
-        if let Ok(m_str) = serde_json::to_string(m.borrow()) {
-            s.push_str(&m_str);
-            s.push('\n');
-        }
-        s
-    });
-    stream.write_all(msgs.as_bytes())
+    stream.write_all(&messages)
+}
+
+fn encode_batch<Q>(messages: impl IntoIterator<Item = Q>) -> serde_json::Result<Vec<u8>>
+where
+    Q: Borrow<SocketMessage>,
+{
+    let mut encoded = Vec::new();
+    for message in messages {
+        serde_json::to_writer(&mut encoded, message.borrow())?;
+        encoded.push(b'\n');
+    }
+    Ok(encoded)
 }
 
 pub fn send_query(message: &SocketMessage) -> std::io::Result<String> {
@@ -188,4 +194,47 @@ fn bind_subscriber_socket(
     }
 
     Ok(listener)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn batch_encoding_preserves_order_and_framing() {
+        let encoded =
+            encode_batch([SocketMessage::TogglePause, SocketMessage::CancelPreselect]).unwrap();
+        let decoded = encoded
+            .split(|byte| *byte == b'\n')
+            .filter(|frame| !frame.is_empty())
+            .map(serde_json::from_slice)
+            .collect::<Result<Vec<SocketMessage>, _>>()
+            .unwrap();
+        assert!(matches!(
+            decoded.as_slice(),
+            [SocketMessage::TogglePause, SocketMessage::CancelPreselect]
+        ));
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn one_unencodable_message_rejects_the_entire_batch() {
+        use std::ffi::OsString;
+        use std::os::windows::ffi::OsStringExt;
+        use std::path::PathBuf;
+
+        let path = PathBuf::from(OsString::from_wide(&[
+            b'C' as u16,
+            b':' as u16,
+            b'\\' as u16,
+            0xD800,
+        ]));
+        assert!(
+            encode_batch([
+                SocketMessage::TogglePause,
+                SocketMessage::ChangeLayoutCustom(path),
+            ])
+            .is_err()
+        );
+    }
 }
