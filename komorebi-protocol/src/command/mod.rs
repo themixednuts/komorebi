@@ -12,6 +12,7 @@ mod control;
 mod control_codec;
 mod lease;
 mod lease_codec;
+mod submission;
 
 #[cfg(test)]
 mod catalog_tests;
@@ -98,3 +99,5 @@ pub use lease::InvocationLeaseRejection;
 pub use lease::InvocationLeaseReply;
 pub use lease::InvocationLeaseRequest;
 pub use lease_codec::InvocationLeaseCodec;
+pub use submission::InvocationRejection;
+pub use submission::InvocationSubmissionReply;
