@@ -5,7 +5,6 @@ use std::num::NonZeroU64;
 #[cfg(windows)]
 use std::os::windows::ffi::OsStringExt;
 
-use komorebi_command_store::ActionParameterDocument;
 use komorebi_command_store::CommittedEventDocument;
 use komorebi_command_store::CommittedRevision;
 use komorebi_command_store::CompactionDecision;
@@ -20,17 +19,43 @@ use komorebi_command_store::NamespaceRegistration;
 use komorebi_command_store::OutcomeDocument;
 use komorebi_command_store::RecoveryPolicy;
 use komorebi_command_store::ReservationDecision;
-use komorebi_command_store::ReservationRequest;
 use komorebi_command_store::StatusDecision;
 use komorebi_command_store::TerminalKind;
 use komorebi_command_store::TerminalRecord;
 use komorebi_command_store::TerminalRetention;
 use komorebi_command_store::TransitionDecision;
-use komorebi_protocol::InvocationDigest;
 use komorebi_protocol::InvocationId;
 use komorebi_protocol::InvocationNamespaceId;
 use komorebi_protocol::InvocationSequence;
 use komorebi_protocol::PrincipalId;
+
+fn canonical_invocation(
+    id: InvocationId,
+    value: u8,
+) -> Result<komorebi_protocol::ActionInvocation, Box<dyn Error>> {
+    let epoch = komorebi_protocol::ManagerEpoch::new([4; 16])?;
+    let revision = komorebi_protocol::Revision::try_from(1)?;
+    let arguments = komorebi_protocol::ActionArguments::new(std::collections::BTreeMap::from([(
+        komorebi_protocol::ParameterId::parse("enabled")?,
+        komorebi_protocol::ActionArgument::Scalar(komorebi_protocol::ArgumentScalar::Unsigned(
+            u64::from(value),
+        )),
+    )]))?;
+    Ok(komorebi_protocol::ActionInvocation::new(
+        id,
+        komorebi_protocol::OfferRef::new(
+            komorebi_protocol::ActionKey::new(
+                komorebi_protocol::ActionId::parse("set-enabled")?,
+                komorebi_protocol::ActionSchemaVersion::new(NonZeroU16::MIN),
+            ),
+            komorebi_protocol::ActionContractFingerprint::new([5; 32]),
+            komorebi_protocol::CatalogStamp::new(epoch, revision, revision, revision),
+        ),
+        komorebi_protocol::StateStamp::new(epoch, revision),
+        arguments,
+        None,
+    ))
+}
 
 struct IdentityFixture {
     principal: PrincipalId,
@@ -55,28 +80,18 @@ impl IdentityFixture {
     }
 }
 
-fn document(payload: u8) -> Result<ActionParameterDocument, Box<dyn Error>> {
-    Ok(ActionParameterDocument::new(NonZeroU16::MIN, [payload])?)
-}
-
-fn digest(value: u8) -> Result<InvocationDigest, Box<dyn Error>> {
-    Ok(InvocationDigest::new([value; 32])?)
-}
-
 fn reserve(
     ledger: &mut DurableInvocationLedger,
     fixture: &IdentityFixture,
     id: InvocationId,
-    digest: InvocationDigest,
+    value: u8,
     at: i64,
 ) -> Result<ReservationDecision, Box<dyn Error>> {
-    Ok(ledger.reserve(ReservationRequest {
-        principal: fixture.principal,
-        invocation_id: id,
-        digest,
-        parameters: document(9)?,
-        reserved_at: LedgerTimestamp::from_unix_millis(at)?,
-    })?)
+    Ok(ledger.reserve_invocation(
+        fixture.principal,
+        &canonical_invocation(id, value)?,
+        LedgerTimestamp::from_unix_millis(at)?,
+    )?)
 }
 
 fn open_registered(
@@ -107,35 +122,68 @@ fn lease_one(
 }
 
 #[test]
+fn typed_invocation_reservation_uses_one_canonical_representation() -> Result<(), Box<dyn Error>> {
+    let directory = tempfile::tempdir()?;
+    let fixture = IdentityFixture::new()?;
+    let id = fixture.id(1)?;
+    let mut ledger = open_registered(&directory.path().join("typed.sqlite"), &fixture)?;
+    lease_one(&mut ledger, &fixture)?;
+    let invocation = canonical_invocation(id, 1)?;
+
+    assert!(matches!(
+        ledger.reserve_invocation(
+            fixture.principal,
+            &invocation,
+            LedgerTimestamp::from_unix_millis(1)?,
+        )?,
+        ReservationDecision::Reserved(_)
+    ));
+    assert!(matches!(
+        ledger.reserve_invocation(
+            fixture.principal,
+            &invocation,
+            LedgerTimestamp::from_unix_millis(2)?,
+        )?,
+        ReservationDecision::Retained(_)
+    ));
+    assert_eq!(
+        ledger.reserve_invocation(
+            fixture.principal,
+            &canonical_invocation(id, 0)?,
+            LedgerTimestamp::from_unix_millis(3)?,
+        )?,
+        ReservationDecision::IdempotencyConflict
+    );
+    Ok(())
+}
+
+#[test]
 fn terminal_status_survives_reopen_on_a_unicode_windows_path() -> Result<(), Box<dyn Error>> {
     let directory = tempfile::tempdir()?;
     let path = directory.path().join("台帳-💮.sqlite");
     let fixture = IdentityFixture::new()?;
     let id = fixture.id(1)?;
-    let invocation_digest = digest(7)?;
     let mut ledger = open_registered(&path, &fixture)?;
     lease_one(&mut ledger, &fixture)?;
 
-    let reservation = match reserve(&mut ledger, &fixture, id, invocation_digest, 1)? {
+    let reservation = match reserve(&mut ledger, &fixture, id, 7, 1)? {
         ReservationDecision::Reserved(reservation) => reservation,
         other => return Err(format!("expected reservation, got {other:?}").into()),
     };
     assert!(matches!(
-        reserve(&mut ledger, &fixture, id, invocation_digest, 1)?,
+        reserve(&mut ledger, &fixture, id, 7, 1)?,
         ReservationDecision::Retained(_)
     ));
     assert_eq!(
-        reserve(&mut ledger, &fixture, id, digest(8)?, 1)?,
+        reserve(&mut ledger, &fixture, id, 8, 1)?,
         ReservationDecision::IdempotencyConflict
     );
     assert_eq!(
-        ledger.reserve(ReservationRequest {
-            principal: fixture.other_principal,
-            invocation_id: id,
-            digest: invocation_digest,
-            parameters: document(9)?,
-            reserved_at: LedgerTimestamp::from_unix_millis(1)?,
-        })?,
+        ledger.reserve_invocation(
+            fixture.other_principal,
+            &canonical_invocation(id, 7)?,
+            LedgerTimestamp::from_unix_millis(1)?,
+        )?,
         ReservationDecision::IdempotencyConflict
     );
 
@@ -223,10 +271,9 @@ fn restart_never_blindly_replays_an_ambiguous_effect() -> Result<(), Box<dyn Err
     let reserved_id = fixture.id(1)?;
     let logical_id = fixture.id(2)?;
     let dispatched_id = fixture.id(3)?;
-    let _reserved = reserve(&mut ledger, &fixture, reserved_id, digest(1)?, 1)?;
+    let _reserved = reserve(&mut ledger, &fixture, reserved_id, 1, 1)?;
 
-    let ReservationDecision::Reserved(logical) =
-        reserve(&mut ledger, &fixture, logical_id, digest(2)?, 1)?
+    let ReservationDecision::Reserved(logical) = reserve(&mut ledger, &fixture, logical_id, 2, 1)?
     else {
         return Err("logical invocation was not reserved".into());
     };
@@ -245,7 +292,7 @@ fn restart_never_blindly_replays_an_ambiguous_effect() -> Result<(), Box<dyn Err
     );
 
     let ReservationDecision::Reserved(dispatched) =
-        reserve(&mut ledger, &fixture, dispatched_id, digest(3)?, 1)?
+        reserve(&mut ledger, &fixture, dispatched_id, 3, 1)?
     else {
         return Err("dispatched invocation was not reserved".into());
     };
@@ -292,8 +339,7 @@ fn compaction_advances_expiry_only_after_the_retention_floor() -> Result<(), Box
     let id = fixture.id(1)?;
     let mut ledger = open_registered(&path, &fixture)?;
     lease_one(&mut ledger, &fixture)?;
-    let ReservationDecision::Reserved(_) = reserve(&mut ledger, &fixture, id, digest(1)?, 1)?
-    else {
+    let ReservationDecision::Reserved(_) = reserve(&mut ledger, &fixture, id, 1, 1)? else {
         return Err("invocation was not reserved".into());
     };
     assert_eq!(
@@ -331,7 +377,7 @@ fn compaction_advances_expiry_only_after_the_retention_floor() -> Result<(), Box
         StatusDecision::InvocationExpired
     );
     assert_eq!(
-        reserve(&mut ledger, &fixture, id, digest(1)?, retained_until)?,
+        reserve(&mut ledger, &fixture, id, 1, retained_until)?,
         ReservationDecision::InvocationExpired
     );
     Ok(())

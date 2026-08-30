@@ -4,19 +4,27 @@ use std::num::NonZeroU32;
 use std::time::Duration;
 use std::time::Instant;
 
-use komorebi_command_store::ActionParameterDocument;
 use komorebi_command_store::DurableInvocationLedger;
 use komorebi_command_store::LeaseDecision;
 use komorebi_command_store::LeaseRequest;
 use komorebi_command_store::LedgerTimestamp;
 use komorebi_command_store::NamespaceRegistration;
 use komorebi_command_store::ReservationDecision;
-use komorebi_command_store::ReservationRequest;
-use komorebi_protocol::InvocationDigest;
+use komorebi_protocol::ActionArguments;
+use komorebi_protocol::ActionContractFingerprint;
+use komorebi_protocol::ActionId;
+use komorebi_protocol::ActionInvocation;
+use komorebi_protocol::ActionKey;
+use komorebi_protocol::ActionSchemaVersion;
+use komorebi_protocol::CatalogStamp;
 use komorebi_protocol::InvocationId;
 use komorebi_protocol::InvocationNamespaceId;
 use komorebi_protocol::InvocationSequence;
+use komorebi_protocol::ManagerEpoch;
+use komorebi_protocol::OfferRef;
 use komorebi_protocol::PrincipalId;
+use komorebi_protocol::Revision;
+use komorebi_protocol::StateStamp;
 
 const SAMPLES: u32 = 1_024;
 const P99_BUDGET: Duration = Duration::from_millis(16);
@@ -35,7 +43,17 @@ fn main() -> Result<(), Box<dyn Error>> {
     let path = directory.path().join("admission-latency.sqlite");
     let principal = PrincipalId::new([1; 32])?;
     let namespace = InvocationNamespaceId::new([2; 16])?;
-    let digest = InvocationDigest::new([3; 32])?;
+    let epoch = ManagerEpoch::new([3; 16])?;
+    let revision = Revision::try_from(1)?;
+    let offer = OfferRef::new(
+        ActionKey::new(
+            ActionId::parse("measure-admission")?,
+            ActionSchemaVersion::new(NonZeroU16::MIN),
+        ),
+        ActionContractFingerprint::new([4; 32]),
+        CatalogStamp::new(epoch, revision, revision, revision),
+    );
+    let state = StateStamp::new(epoch, revision);
     let count = NonZeroU32::new(SAMPLES).ok_or("sample count must be nonzero")?;
     let mut ledger = DurableInvocationLedger::open(&path)?;
 
@@ -55,15 +73,19 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let mut samples = Vec::with_capacity(SAMPLES as usize);
     for sequence in 1..=u64::from(SAMPLES) {
-        let request = ReservationRequest {
-            principal,
-            invocation_id: InvocationId::new(namespace, InvocationSequence::try_from(sequence)?),
-            digest,
-            parameters: ActionParameterDocument::new(NonZeroU16::MIN, [9; 64])?,
-            reserved_at: LedgerTimestamp::from_unix_millis(1)?,
-        };
+        let invocation = ActionInvocation::new(
+            InvocationId::new(namespace, InvocationSequence::try_from(sequence)?),
+            offer.clone(),
+            state,
+            ActionArguments::default(),
+            None,
+        );
         let started = Instant::now();
-        let decision = ledger.reserve(request)?;
+        let decision = ledger.reserve_invocation(
+            principal,
+            &invocation,
+            LedgerTimestamp::from_unix_millis(1)?,
+        )?;
         samples.push(started.elapsed());
         if !matches!(decision, ReservationDecision::Reserved(_)) {
             return Err(format!("sample {sequence} was not reserved: {decision:?}").into());

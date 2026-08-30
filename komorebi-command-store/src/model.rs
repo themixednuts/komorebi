@@ -9,8 +9,8 @@ use komorebi_protocol::InvocationSequence;
 use komorebi_protocol::PrincipalId;
 use thiserror::Error;
 
-use crate::document::ActionParameterDocument;
 use crate::document::CommittedEventDocument;
+use crate::document::InvocationDocument;
 use crate::document::OutcomeDocument;
 use crate::storage::CommittedRevision;
 
@@ -63,12 +63,12 @@ pub enum LeaseDecision {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct ReservationRequest {
-    pub principal: PrincipalId,
-    pub invocation_id: InvocationId,
-    pub digest: InvocationDigest,
-    pub parameters: ActionParameterDocument,
-    pub reserved_at: LedgerTimestamp,
+pub(crate) struct ReservationRequest {
+    pub(crate) principal: PrincipalId,
+    pub(crate) invocation_id: InvocationId,
+    pub(crate) digest: InvocationDigest,
+    pub(crate) invocation: InvocationDocument,
+    pub(crate) reserved_at: LedgerTimestamp,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -169,7 +169,7 @@ pub struct RecoveryInvocation {
     pub revision: CommittedRevision,
     pub policy: RecoveryPolicy,
     pub dispatch: DispatchState,
-    pub parameters: ActionParameterDocument,
+    pub invocation: InvocationDocument,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

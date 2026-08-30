@@ -3,6 +3,8 @@ use drizzle::core::expr::eq;
 use drizzle::core::expr::ne;
 use drizzle::error::DrizzleError;
 use drizzle::sqlite::connection::SQLiteTransactionType;
+use komorebi_protocol::ActionInvocation;
+use komorebi_protocol::ActionInvocationCodec;
 use komorebi_protocol::InvocationId;
 use komorebi_protocol::PrincipalId;
 
@@ -10,6 +12,7 @@ use super::DurableInvocationLedger;
 use super::LedgerError;
 use super::is_missing;
 use super::status_from_row;
+use crate::document::InvocationDocument;
 use crate::model::MAX_LIVE_RECORDS_PER_NAMESPACE;
 use crate::model::RecoveryPolicy;
 use crate::model::Reservation;
@@ -35,12 +38,38 @@ use crate::storage::StoredRevision;
 use crate::storage::StoredSequence;
 
 impl DurableInvocationLedger {
+    /// Canonicalizes and durably reserves one authenticated invocation.
+    ///
+    /// The persisted bytes and idempotency digest are produced together, so a
+    /// caller cannot hash a different representation from the recovery record.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`LedgerError`] when canonical encoding or the typed durable
+    /// transaction fails.
+    pub fn reserve_invocation(
+        &mut self,
+        principal: PrincipalId,
+        invocation: &ActionInvocation,
+        reserved_at: crate::model::LedgerTimestamp,
+    ) -> Result<ReservationDecision, LedgerError> {
+        let canonical = ActionInvocationCodec::canonicalize(invocation)?;
+        let digest = canonical.digest();
+        self.reserve(ReservationRequest {
+            principal,
+            invocation_id: invocation.invocation_id(),
+            digest,
+            invocation: InvocationDocument::new(std::num::NonZeroU16::MIN, canonical.into_bytes())?,
+            reserved_at,
+        })
+    }
+
     /// Durably reserves an invocation before admission.
     ///
     /// # Errors
     ///
     /// Returns [`LedgerError`] if the typed durable transaction fails.
-    pub fn reserve(
+    pub(crate) fn reserve(
         &mut self,
         request: ReservationRequest,
     ) -> Result<ReservationDecision, LedgerError> {
@@ -102,7 +131,7 @@ impl DurableInvocationLedger {
                         sequence,
                         principal,
                         digest,
-                        request.parameters,
+                        request.invocation,
                         StoredPhase::Reserved,
                         request.reserved_at.as_unix_millis(),
                     )])

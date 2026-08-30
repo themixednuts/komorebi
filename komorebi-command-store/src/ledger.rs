@@ -3,6 +3,7 @@ use std::path::Path;
 use drizzle::error::DrizzleError;
 use drizzle::migrations::Tracking;
 use drizzle::sqlite::rusqlite::Drizzle;
+use komorebi_protocol::ActionInvocationCodecError;
 use komorebi_protocol::InvocationId;
 use thiserror::Error;
 
@@ -176,6 +177,10 @@ pub enum LedgerError {
     SQLite(#[from] rusqlite::Error),
     #[error("typed Drizzle operation failed: {0}")]
     Drizzle(#[from] DrizzleError),
+    #[error("canonical invocation failed: {0}")]
+    InvocationCodec(#[from] ActionInvocationCodecError),
+    #[error("durable invocation document failed: {0}")]
+    Document(#[from] crate::DocumentError),
     #[error("terminal retention does not fit the ledger's millisecond clock")]
     RetentionOverflow,
 }

@@ -1,0 +1,1 @@
+ALTER TABLE `invocation_records` RENAME COLUMN `parameters` TO `invocation`;

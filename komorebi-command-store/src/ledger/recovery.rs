@@ -84,7 +84,7 @@ impl DurableInvocationLedger {
                                     } else {
                                         DispatchState::NotStarted
                                     },
-                                    parameters: row.parameters,
+                                    invocation: row.invocation,
                                 });
                             }
                         }

@@ -41,6 +41,7 @@ pub use command::ArgumentError;
 pub use command::ArgumentScalar;
 pub use command::ArgumentScalars;
 pub use command::BoundedText;
+pub use command::CanonicalActionInvocation;
 pub use command::CatalogStamp;
 pub use command::ChoiceId;
 pub use command::Color;

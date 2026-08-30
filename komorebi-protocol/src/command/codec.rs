@@ -56,6 +56,29 @@ const REQUIRED_INVOCATION_FIELDS: [u8; 4] = [0, 1, 2, 3];
 #[derive(Clone, Copy, Debug, Default)]
 pub struct ActionInvocationCodec;
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CanonicalActionInvocation {
+    bytes: Box<[u8]>,
+    digest: InvocationDigest,
+}
+
+impl CanonicalActionInvocation {
+    #[must_use]
+    pub fn bytes(&self) -> &[u8] {
+        &self.bytes
+    }
+
+    #[must_use]
+    pub const fn digest(&self) -> InvocationDigest {
+        self.digest
+    }
+
+    #[must_use]
+    pub fn into_bytes(self) -> Box<[u8]> {
+        self.bytes
+    }
+}
+
 impl ActionInvocationCodec {
     /// Encodes a canonical version 1 action invocation payload.
     ///
@@ -152,8 +175,21 @@ impl ActionInvocationCodec {
     pub fn digest(
         invocation: &ActionInvocation,
     ) -> Result<InvocationDigest, ActionInvocationCodecError> {
-        let bytes = Self::encode(invocation)?;
-        InvocationDigest::new(Sha256::digest(bytes).into()).map_err(Into::into)
+        Ok(Self::canonicalize(invocation)?.digest())
+    }
+
+    /// Produces the exact bytes and matching durable digest in one pass.
+    ///
+    /// # Errors
+    ///
+    /// Returns the same errors as [`Self::encode`], or an identity error in the
+    /// cryptographically negligible event of an all-zero SHA-256 output.
+    pub fn canonicalize(
+        invocation: &ActionInvocation,
+    ) -> Result<CanonicalActionInvocation, ActionInvocationCodecError> {
+        let bytes = Self::encode(invocation)?.into_boxed_slice();
+        let digest = InvocationDigest::new(Sha256::digest(&bytes).into())?;
+        Ok(CanonicalActionInvocation { bytes, digest })
     }
 }
 

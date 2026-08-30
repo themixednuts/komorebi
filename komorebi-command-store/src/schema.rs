@@ -1,7 +1,7 @@
 use drizzle::sqlite::prelude::*;
 
-use crate::document::ActionParameterDocument;
 use crate::document::CommittedEventDocument;
+use crate::document::InvocationDocument;
 use crate::document::OutcomeDocument;
 use crate::storage::StoredDigest;
 use crate::storage::StoredNamespaceId;
@@ -66,7 +66,7 @@ pub(crate) struct InvocationRecords {
     #[column(blob)]
     pub digest: StoredDigest,
     #[column(blob)]
-    pub parameters: ActionParameterDocument,
+    pub invocation: InvocationDocument,
     #[column(integer, enum)]
     pub phase: StoredPhase,
     #[column(integer, enum)]
@@ -91,7 +91,7 @@ pub(crate) struct InvocationRecords {
 pub(crate) struct RecoveryCandidate {
     pub namespace: StoredNamespaceId,
     pub sequence: StoredSequence,
-    pub parameters: ActionParameterDocument,
+    pub invocation: InvocationDocument,
     pub phase: StoredPhase,
     pub recovery_policy: Option<StoredRecoveryPolicy>,
     pub logical_revision: Option<StoredRevision>,

@@ -7,9 +7,9 @@ mod path;
 mod schema;
 mod storage;
 
-pub use document::ActionParameterDocument;
 pub use document::CommittedEventDocument;
 pub use document::DocumentError;
+pub use document::InvocationDocument;
 pub use document::OutcomeDocument;
 pub use ledger::DurableInvocationLedger;
 pub use ledger::LedgerError;
@@ -29,7 +29,6 @@ pub use model::RecoveryPolicy;
 pub use model::RecoveryReport;
 pub use model::Reservation;
 pub use model::ReservationDecision;
-pub use model::ReservationRequest;
 pub use model::RetentionError;
 pub use model::StatusDecision;
 pub use model::TerminalKind;

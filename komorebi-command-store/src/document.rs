@@ -126,7 +126,7 @@ macro_rules! versioned_document {
     };
 }
 
-versioned_document!(ActionParameterDocument, "action parameter");
+versioned_document!(InvocationDocument, "invocation");
 versioned_document!(OutcomeDocument, "outcome");
 versioned_document!(CommittedEventDocument, "committed event");
 
@@ -142,7 +142,7 @@ mod tests {
 
     #[test]
     fn typed_blob_round_trips_and_rejects_storage_mismatch() -> Result<(), DrizzleError> {
-        let document = ActionParameterDocument::new(NonZeroU16::MIN, [1, 2, 3])
+        let document = InvocationDocument::new(NonZeroU16::MIN, [1, 2, 3])
             .map_err(|error| DrizzleError::ConversionError(error.to_string().into()))?;
         let encoded = document.clone().encode_owned();
         let OwnedSQLiteValue::Blob(encoded) = encoded else {
@@ -152,11 +152,11 @@ mod tests {
         };
 
         assert_eq!(
-            ActionParameterDocument::decode(SQLiteValueRef::Blob(&encoded))?,
+            InvocationDocument::decode(SQLiteValueRef::Blob(&encoded))?,
             document
         );
-        assert!(ActionParameterDocument::decode(SQLiteValueRef::Text("1")).is_err());
-        assert!(ActionParameterDocument::decode(SQLiteValueRef::Blob(&[0, 0])).is_err());
+        assert!(InvocationDocument::decode(SQLiteValueRef::Text("1")).is_err());
+        assert!(InvocationDocument::decode(SQLiteValueRef::Blob(&[0, 0])).is_err());
         Ok(())
     }
 }

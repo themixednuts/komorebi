@@ -25,6 +25,7 @@ pub use argument::UnitValue;
 pub use argument::WindowsPathInput;
 pub use codec::ActionInvocationCodec;
 pub use codec::ActionInvocationCodecError;
+pub use codec::CanonicalActionInvocation;
 pub use contract::ActionContractError;
 pub use contract::ActionContractFingerprint;
 pub use contract::ActionId;
