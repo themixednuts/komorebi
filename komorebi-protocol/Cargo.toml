@@ -5,6 +5,7 @@ edition = "2024"
 publish = false
 
 [dependencies]
+minicbor = { version = "=2.3.0", features = ["std"] }
 thiserror = "2"
 
 [dev-dependencies]
