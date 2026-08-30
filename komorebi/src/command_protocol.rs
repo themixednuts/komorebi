@@ -19,6 +19,8 @@ use tokio::task::JoinSet;
 use crate::command_control::CommandControlError;
 use crate::command_control::CommandControlPlane;
 use crate::command_control::CommandControlPlaneOwner;
+use crate::manager_control::ManagerControl;
+use crate::manager_control::ManagerControlError;
 
 pub struct CommandProtocol {
     shutdown: watch::Sender<bool>,
@@ -37,6 +39,7 @@ impl CommandProtocol {
     pub async fn start(
         manager_epoch: ManagerEpoch,
         ledger_path: PathBuf,
+        manager: ManagerControl,
     ) -> Result<Self, CommandProtocolError> {
         let server = CommandProtocolServer::bind_current(
             manager_epoch,
@@ -47,7 +50,7 @@ impl CommandProtocol {
         let (control, control_owner) = CommandControlPlane::start(ledger_path).await?;
 
         let (shutdown, shutdown_rx) = watch::channel(false);
-        let server = tokio::spawn(run_server(server, control, shutdown_rx));
+        let server = tokio::spawn(run_server(server, control, manager, shutdown_rx));
         Ok(Self {
             shutdown,
             server,
@@ -106,6 +109,7 @@ impl CommandProtocol {
 async fn run_server(
     mut server: CommandProtocolServer,
     control: CommandControlPlane,
+    manager: ManagerControl,
     mut shutdown: watch::Receiver<bool>,
 ) -> Result<(), CommandProtocolError> {
     let mut sessions = JoinSet::new();
@@ -118,7 +122,7 @@ async fn run_server(
             }
             accepted = server.accept() => {
                 let pending = accepted?;
-                sessions.spawn(run_pending_session(pending, control.clone()));
+                sessions.spawn(run_pending_session(pending, control.clone(), manager.clone()));
             }
             completed = sessions.join_next(), if !sessions.is_empty() => {
                 report_session_completion(completed);
@@ -151,9 +155,10 @@ fn report_session_completion(
 async fn run_pending_session(
     pending: PendingProtocolSession,
     control: CommandControlPlane,
+    manager: ManagerControl,
 ) -> Result<(), CommandProtocolError> {
     match pending.negotiate().await? {
-        SessionAcceptance::Established(session) => run_session(*session, control).await,
+        SessionAcceptance::Established(session) => run_session(*session, control, manager).await,
         SessionAcceptance::Unsupported { peer } => {
             tracing::debug!(principal = ?peer.principal_id(), "rejected unsupported command protocol session");
             Ok(())
@@ -164,11 +169,13 @@ async fn run_pending_session(
 async fn run_session(
     mut session: EstablishedSession,
     control: CommandControlPlane,
+    manager: ManagerControl,
 ) -> Result<(), CommandProtocolError> {
     loop {
         let authenticated = session.receive_request().await?;
         let reply_target = authenticated.reply_target();
         let principal = authenticated.authority().principal();
+        let authority = authenticated.authority().capabilities().clone();
         let reply = match authenticated.into_request() {
             SessionRequest::LeaseInvocationIds(request) => {
                 SessionReply::InvocationLease(control.lease(principal, request).await?)
@@ -179,8 +186,8 @@ async fn run_session(
             SessionRequest::CancelInvocation(request) => {
                 SessionReply::CancelInvocation(control.cancel(principal, request).await?)
             }
-            SessionRequest::GetCatalog(_) => {
-                return Err(CommandProtocolError::CatalogNotConnected);
+            SessionRequest::GetCatalog(query) => {
+                SessionReply::Catalog(manager.catalog(authority, query).await?)
             }
             SessionRequest::Invoke(_) => return Err(CommandProtocolError::InvokeNotConnected),
         };
@@ -194,12 +201,12 @@ pub enum CommandProtocolError {
     Transport(#[from] TransportError),
     #[error("command control plane failed: {0}")]
     Control(#[from] CommandControlError),
+    #[error("manager control request failed: {0}")]
+    Manager(#[from] ManagerControlError),
     #[error("command protocol owner task failed: {0}")]
     Join(#[from] JoinError),
     #[error("action invocation is not connected to the manager owner yet")]
     InvokeNotConnected,
-    #[error("action catalog is not connected to the manager owner yet")]
-    CatalogNotConnected,
     #[error("command protocol server stopped before process shutdown")]
     ServerStopped,
     #[error("could not wait for the process shutdown signal: {0}")]

@@ -84,6 +84,7 @@ use crate::workspace::WorkspaceWindowLocation;
 mod action_catalog;
 
 pub use action_catalog::CatalogActionError;
+pub use action_catalog::CatalogReplyError;
 
 #[derive(Debug)]
 pub struct WindowManager {

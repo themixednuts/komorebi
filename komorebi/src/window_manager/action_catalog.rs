@@ -244,8 +244,14 @@ impl WindowManager {
         &mut self,
         action: BuiltinAction,
     ) -> Result<InvocationId, CatalogActionError> {
+        let invocation_id = InvocationId::new();
+        self.refresh_catalog_observation()
+            .map_err(|source| CatalogActionError::Observation {
+                invocation_id,
+                source,
+            })?;
         let request = InvokeAction {
-            invocation_id: InvocationId::new(),
+            invocation_id,
             expected_state: self.catalog.snapshot().state,
             action,
             confirmation: None,

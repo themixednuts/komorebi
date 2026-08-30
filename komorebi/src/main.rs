@@ -46,6 +46,8 @@ use komorebi::border_manager;
 use komorebi::command_protocol::CommandProtocol;
 use komorebi::focus_manager;
 use komorebi::load_configuration;
+use komorebi::manager_control::ManagerControl;
+use komorebi::manager_control::ManagerControlCapacity;
 use komorebi::monitor_reconciliator;
 use komorebi::process_command::bind_legacy_command_listener;
 use komorebi::process_command::listen_for_commands;
@@ -344,14 +346,24 @@ async fn main() -> eyre::Result<()> {
         listen_for_commands_tcp(wm.clone(), port);
     }
 
-    listen_for_events(wm.clone(), winevent_listener::event_rx());
+    let (manager_control, manager_control_receiver) =
+        ManagerControl::channel(ManagerControlCapacity::DEFAULT);
+    listen_for_events(
+        wm.clone(),
+        winevent_listener::event_rx(),
+        manager_control_receiver,
+    );
 
     if CUSTOM_FFM.load(Ordering::SeqCst) {
         listen_for_movements(wm.clone());
     }
 
-    let command_protocol =
-        CommandProtocol::start(manager_epoch, DATA_DIR.join("komorebi.commands.sqlite")).await?;
+    let command_protocol = CommandProtocol::start(
+        manager_epoch,
+        DATA_DIR.join("komorebi.commands.sqlite"),
+        manager_control,
+    )
+    .await?;
 
     command_protocol.run_until_ctrl_c().await?;
 

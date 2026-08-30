@@ -28,6 +28,7 @@ use crate::border_manager;
 use crate::border_manager::BORDER_OFFSET;
 use crate::border_manager::BORDER_WIDTH;
 use crate::current_virtual_desktop;
+use crate::manager_control::ManagerControlReceiver;
 use crate::notify_subscribers;
 use crate::splash;
 use crate::splash::mdm_enrollment;
@@ -96,8 +97,12 @@ mod destroy_focus_tests {
     }
 }
 
-#[tracing::instrument]
-pub fn listen_for_events(wm: Arc<Mutex<WindowManager>>, receiver: Receiver<WindowManagerEvent>) {
+#[tracing::instrument(skip(wm, receiver, control))]
+pub fn listen_for_events(
+    wm: Arc<Mutex<WindowManager>>,
+    receiver: Receiver<WindowManagerEvent>,
+    control: ManagerControlReceiver,
+) {
     std::thread::spawn(|| {
         loop {
             if let Ok((mdm, server)) = mdm_enrollment() {
@@ -121,21 +126,28 @@ pub fn listen_for_events(wm: Arc<Mutex<WindowManager>>, receiver: Receiver<Windo
     std::thread::spawn(move || {
         tracing::info!("listening");
         loop {
-            if let Ok(event) = receiver.recv() {
-                let mut guard = wm.lock();
-                match guard.process_event(event) {
-                    Ok(()) => {}
-                    Err(error) => {
-                        if cfg!(debug_assertions) {
-                            tracing::error!("{:?}", error)
-                        } else {
-                            tracing::error!("{}", error)
-                        }
-                    }
-                }
+            crossbeam_channel::select! {
+                recv(receiver) -> event => match event {
+                    Ok(event) => report_event_result(wm.lock().process_event(event)),
+                    Err(_) => break,
+                },
+                recv(control.receiver()) -> request => match request {
+                    Ok(request) => control.handle(&mut wm.lock(), request),
+                    Err(_) => break,
+                },
             }
         }
     });
+}
+
+fn report_event_result(result: eyre::Result<()>) {
+    if let Err(error) = result {
+        if cfg!(debug_assertions) {
+            tracing::error!("{:?}", error);
+        } else {
+            tracing::error!("{}", error);
+        }
+    }
 }
 
 impl WindowManager {

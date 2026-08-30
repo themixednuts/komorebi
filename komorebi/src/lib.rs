@@ -13,6 +13,7 @@ pub mod container;
 pub mod core;
 pub mod focus_manager;
 pub mod lockable_sequence;
+pub mod manager_control;
 pub mod monitor;
 pub mod monitor_reconciliator;
 pub mod process_command;
