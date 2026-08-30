@@ -19,6 +19,7 @@ use tokio::task::JoinSet;
 use crate::command_control::CommandControlError;
 use crate::command_control::CommandControlPlane;
 use crate::command_control::CommandControlPlaneOwner;
+use crate::command_control::ManagerInvocationLedger;
 use crate::manager_control::ManagerControl;
 use crate::manager_control::ManagerControlError;
 
@@ -26,6 +27,7 @@ pub struct CommandProtocol {
     shutdown: watch::Sender<bool>,
     server: JoinHandle<Result<(), CommandProtocolError>>,
     control_owner: CommandControlPlaneOwner,
+    manager_ledger: ManagerInvocationLedger,
 }
 
 impl CommandProtocol {
@@ -47,7 +49,8 @@ impl CommandProtocol {
             AuthoritySummary::command_owner(),
         )?;
         tracing::info!(endpoint = ?server.endpoint(), "bound authenticated command protocol");
-        let (control, control_owner) = CommandControlPlane::start(ledger_path).await?;
+        let (control, manager_ledger, control_owner) =
+            CommandControlPlane::start(ledger_path).await?;
 
         let (shutdown, shutdown_rx) = watch::channel(false);
         let server = tokio::spawn(run_server(server, control, manager, shutdown_rx));
@@ -55,7 +58,13 @@ impl CommandProtocol {
             shutdown,
             server,
             control_owner,
+            manager_ledger,
         })
+    }
+
+    #[must_use]
+    pub fn manager_ledger(&self) -> ManagerInvocationLedger {
+        self.manager_ledger.clone()
     }
 
     /// Waits for Ctrl-C or a server failure, then stops accepting, cancels and
@@ -189,7 +198,9 @@ async fn run_session(
             SessionRequest::GetCatalog(query) => {
                 SessionReply::Catalog(manager.catalog(authority, query).await?)
             }
-            SessionRequest::Invoke(_) => return Err(CommandProtocolError::InvokeNotConnected),
+            SessionRequest::Invoke(invocation) => SessionReply::InvocationSubmission(
+                manager.invoke(principal, authority, invocation).await?,
+            ),
         };
         session.send_reply(reply_target, reply).await?;
     }
@@ -205,8 +216,6 @@ pub enum CommandProtocolError {
     Manager(#[from] ManagerControlError),
     #[error("command protocol owner task failed: {0}")]
     Join(#[from] JoinError),
-    #[error("action invocation is not connected to the manager owner yet")]
-    InvokeNotConnected,
     #[error("command protocol server stopped before process shutdown")]
     ServerStopped,
     #[error("could not wait for the process shutdown signal: {0}")]

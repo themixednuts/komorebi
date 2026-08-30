@@ -89,6 +89,7 @@ pub use command::InvocationLeaseRequest;
 pub use command::InvocationProgress;
 pub use command::InvocationRejection;
 pub use command::InvocationStatus;
+pub use command::InvocationStatusCodec;
 pub use command::InvocationStatusReply;
 pub use command::InvocationStatusRequest;
 pub use command::InvocationSubmissionCodec;

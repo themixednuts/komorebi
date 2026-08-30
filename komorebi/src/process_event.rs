@@ -27,7 +27,9 @@ use crate::Window;
 use crate::border_manager;
 use crate::border_manager::BORDER_OFFSET;
 use crate::border_manager::BORDER_WIDTH;
+use crate::command_control::ManagerInvocationLedger;
 use crate::current_virtual_desktop;
+use crate::manager_control::ManagerControlFlow;
 use crate::manager_control::ManagerControlReceiver;
 use crate::notify_subscribers;
 use crate::splash;
@@ -97,11 +99,12 @@ mod destroy_focus_tests {
     }
 }
 
-#[tracing::instrument(skip(wm, receiver, control))]
+#[tracing::instrument(skip(wm, receiver, control, ledger))]
 pub fn listen_for_events(
     wm: Arc<Mutex<WindowManager>>,
     receiver: Receiver<WindowManagerEvent>,
     control: ManagerControlReceiver,
+    ledger: ManagerInvocationLedger,
 ) {
     std::thread::spawn(|| {
         loop {
@@ -132,7 +135,16 @@ pub fn listen_for_events(
                     Err(_) => break,
                 },
                 recv(control.receiver()) -> request => match request {
-                    Ok(request) => control.handle(&mut wm.lock(), request),
+                    Ok(request) => {
+                        if control.handle(&mut wm.lock(), &ledger, request)
+                            == ManagerControlFlow::StopForRecovery
+                        {
+                            tracing::error!(
+                                "stopping canonical manager ingress after a post-commit failure"
+                            );
+                            break;
+                        }
+                    }
                     Err(_) => break,
                 },
             }

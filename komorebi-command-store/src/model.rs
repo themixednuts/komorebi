@@ -99,21 +99,24 @@ pub enum NewLeaseDecision {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) struct ReservationRequest {
+pub(crate) struct InvocationCommit {
     pub(crate) principal: PrincipalId,
     pub(crate) invocation_id: InvocationId,
     pub(crate) digest: InvocationDigest,
     pub(crate) invocation: InvocationDocument,
-    pub(crate) reserved_at: LedgerTimestamp,
+    pub(crate) state: StateStamp,
+    pub(crate) recovery_policy: RecoveryPolicy,
+    pub(crate) committed_event: CommittedEventDocument,
+    pub(crate) committed_at: LedgerTimestamp,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct Reservation {
+pub struct CommittedInvocation {
     invocation_id: InvocationId,
     digest: InvocationDigest,
 }
 
-impl Reservation {
+impl CommittedInvocation {
     pub(crate) const fn new(invocation_id: InvocationId, digest: InvocationDigest) -> Self {
         Self {
             invocation_id,
@@ -133,8 +136,8 @@ impl Reservation {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub enum ReservationDecision {
-    Reserved(Reservation),
+pub enum InvocationCommitDecision {
+    Committed(CommittedInvocation),
     Retained(DurableInvocationRecord),
     IdempotencyConflict,
     InvocationExpired,
@@ -143,18 +146,19 @@ pub enum ReservationDecision {
     CapacityFull,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum InvocationInspection {
+    Vacant,
+    Retained(DurableInvocationRecord),
+    IdempotencyConflict,
+    InvocationExpired,
+    UnknownNamespace,
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum RecoveryPolicy {
     ObserveAndConverge,
     NeverReplay,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct LogicalCommit {
-    pub state: StateStamp,
-    pub recovery_policy: RecoveryPolicy,
-    pub committed_event: CommittedEventDocument,
-    pub committed_at: LedgerTimestamp,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

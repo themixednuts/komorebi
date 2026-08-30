@@ -2,14 +2,22 @@ use std::path::PathBuf;
 use std::thread::JoinHandle;
 
 use komorebi_command_store::DurableInvocationLedger;
+use komorebi_command_store::InvocationCommitDecision;
+use komorebi_command_store::InvocationInspection;
 use komorebi_command_store::LeaseDecision;
 use komorebi_command_store::LeaseRequest;
 use komorebi_command_store::LedgerError;
 use komorebi_command_store::LedgerTimestamp;
 use komorebi_command_store::NewLeaseDecision;
+use komorebi_command_store::OutcomeDocument;
+use komorebi_command_store::RecoveryPolicy;
+use komorebi_command_store::TerminalRecord;
 use komorebi_command_store::TimeError;
+use komorebi_command_store::TransitionDecision;
+use komorebi_protocol::ActionInvocation;
 use komorebi_protocol::CancelInvocationReply;
 use komorebi_protocol::CancelInvocationRequest;
+use komorebi_protocol::InvocationId;
 use komorebi_protocol::InvocationIdentityError;
 use komorebi_protocol::InvocationLeaseRejection;
 use komorebi_protocol::InvocationLeaseReply;
@@ -19,6 +27,8 @@ use komorebi_protocol::InvocationStatusReply;
 use komorebi_protocol::InvocationStatusRequest;
 use komorebi_protocol::LaneLimits;
 use komorebi_protocol::PrincipalId;
+use komorebi_protocol::SettledInvocationKind;
+use komorebi_protocol::StateStamp;
 use thiserror::Error;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
@@ -26,6 +36,13 @@ use uuid::Uuid;
 
 #[derive(Clone)]
 pub struct CommandControlPlane {
+    requests: mpsc::Sender<ControlRequest>,
+}
+
+/// Synchronous durable transitions available only to the serialized manager
+/// owner.
+#[derive(Clone)]
+pub struct ManagerInvocationLedger {
     requests: mpsc::Sender<ControlRequest>,
 }
 
@@ -51,6 +68,28 @@ enum ControlRequest {
         request: CancelInvocationRequest,
         reply: oneshot::Sender<Result<CancelInvocationReply, CommandControlError>>,
     },
+    InspectInvocation {
+        principal: PrincipalId,
+        invocation: ActionInvocation,
+        reply: oneshot::Sender<Result<InvocationInspection, CommandControlError>>,
+    },
+    CommitInvocation {
+        principal: PrincipalId,
+        invocation: ActionInvocation,
+        state: StateStamp,
+        recovery_policy: RecoveryPolicy,
+        reply: oneshot::Sender<Result<InvocationCommitDecision, CommandControlError>>,
+    },
+    MarkEffectDispatched {
+        invocation_id: InvocationId,
+        reply: oneshot::Sender<Result<TransitionDecision, CommandControlError>>,
+    },
+    RecordTerminal {
+        invocation_id: InvocationId,
+        kind: SettledInvocationKind,
+        outcome: OutcomeDocument,
+        reply: oneshot::Sender<Result<TransitionDecision, CommandControlError>>,
+    },
     Shutdown(oneshot::Sender<()>),
 }
 
@@ -67,7 +106,8 @@ impl CommandControlPlane {
     /// durable ledger cannot be opened.
     pub async fn start(
         path: PathBuf,
-    ) -> Result<(Self, CommandControlPlaneOwner), CommandControlError> {
+    ) -> Result<(Self, ManagerInvocationLedger, CommandControlPlaneOwner), CommandControlError>
+    {
         let capacity = usize::try_from(LaneLimits::CONTROL.max_frames())
             .map_err(|_| CommandControlError::CapacityOutsideAddressSpace)?;
         let (request_tx, mut request_rx) = mpsc::channel(capacity);
@@ -98,7 +138,10 @@ impl CommandControlPlane {
                     stopped: stopped_rx,
                     worker,
                 };
-                Ok((control, owner))
+                let manager = ManagerInvocationLedger {
+                    requests: control.requests.clone(),
+                };
+                Ok((control, manager, owner))
             }
             Ok(Err(error)) => Err(error.into()),
             Err(_) => Err(CommandControlError::WorkerStopped),
@@ -163,6 +206,107 @@ impl CommandControlPlane {
     }
 }
 
+impl ManagerInvocationLedger {
+    /// Checks idempotency without consuming a vacant invocation identity.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`CommandControlError`] if the bounded ledger ingress is full
+    /// or closed, the owner stops, or durable inspection fails.
+    pub fn inspect(
+        &self,
+        principal: PrincipalId,
+        invocation: ActionInvocation,
+    ) -> Result<InvocationInspection, CommandControlError> {
+        let (reply, response) = oneshot::channel();
+        self.try_send(ControlRequest::InspectInvocation {
+            principal,
+            invocation,
+            reply,
+        })?;
+        response
+            .blocking_recv()
+            .map_err(|_| CommandControlError::WorkerStopped)?
+    }
+
+    /// Atomically claims a successfully prepared invocation and publishes its
+    /// logical revision.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`CommandControlError`] for bounded-ingress or durable failures.
+    pub fn commit_invocation(
+        &self,
+        principal: PrincipalId,
+        invocation: ActionInvocation,
+        state: StateStamp,
+        recovery_policy: RecoveryPolicy,
+    ) -> Result<InvocationCommitDecision, CommandControlError> {
+        let (reply, response) = oneshot::channel();
+        self.try_send(ControlRequest::CommitInvocation {
+            principal,
+            invocation,
+            state,
+            recovery_policy,
+            reply,
+        })?;
+        response
+            .blocking_recv()
+            .map_err(|_| CommandControlError::WorkerStopped)?
+    }
+
+    /// Records the dispatch boundary before the first native effect call.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`CommandControlError`] for bounded-ingress or durable failures.
+    pub fn mark_effect_dispatched(
+        &self,
+        invocation_id: InvocationId,
+    ) -> Result<TransitionDecision, CommandControlError> {
+        let (reply, response) = oneshot::channel();
+        self.try_send(ControlRequest::MarkEffectDispatched {
+            invocation_id,
+            reply,
+        })?;
+        response
+            .blocking_recv()
+            .map_err(|_| CommandControlError::WorkerStopped)?
+    }
+
+    /// Records one terminal outcome after native dispatch finishes.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`CommandControlError`] for bounded-ingress or durable failures.
+    pub fn record_terminal(
+        &self,
+        invocation_id: InvocationId,
+        kind: SettledInvocationKind,
+        outcome: OutcomeDocument,
+    ) -> Result<TransitionDecision, CommandControlError> {
+        let (reply, response) = oneshot::channel();
+        self.try_send(ControlRequest::RecordTerminal {
+            invocation_id,
+            kind,
+            outcome,
+            reply,
+        })?;
+        response
+            .blocking_recv()
+            .map_err(|_| CommandControlError::WorkerStopped)?
+    }
+
+    fn try_send(&self, request: ControlRequest) -> Result<(), CommandControlError> {
+        self.requests
+            .try_send(request)
+            .map_err(|error| match error {
+                mpsc::error::TrySendError::Full(_) => CommandControlError::WorkerSaturated,
+                mpsc::error::TrySendError::Closed(_) => CommandControlError::WorkerStopped,
+            })
+    }
+}
+
 impl CommandControlPlaneOwner {
     /// Drains admitted operations and joins the ledger owner.
     ///
@@ -219,6 +363,74 @@ fn run_ledger(ledger: &mut DurableInvocationLedger, requests: &mut mpsc::Receive
                     .and_then(|timestamp| {
                         ledger
                             .cancel_invocation(principal, request.invocation_id(), timestamp)
+                            .map_err(Into::into)
+                    });
+                let _ = reply.send(result);
+            }
+            ControlRequest::InspectInvocation {
+                principal,
+                invocation,
+                reply,
+            } => {
+                let _ = reply.send(
+                    ledger
+                        .inspect_invocation(principal, &invocation)
+                        .map_err(Into::into),
+                );
+            }
+            ControlRequest::CommitInvocation {
+                principal,
+                invocation,
+                state,
+                recovery_policy,
+                reply,
+            } => {
+                let result = LedgerTimestamp::now()
+                    .map_err(CommandControlError::from)
+                    .and_then(|committed_at| {
+                        ledger
+                            .commit_invocation(
+                                principal,
+                                &invocation,
+                                state,
+                                recovery_policy,
+                                committed_at,
+                            )
+                            .map_err(Into::into)
+                    });
+                let _ = reply.send(result);
+            }
+            ControlRequest::MarkEffectDispatched {
+                invocation_id,
+                reply,
+            } => {
+                let result = LedgerTimestamp::now()
+                    .map_err(CommandControlError::from)
+                    .and_then(|timestamp| {
+                        ledger
+                            .mark_effect_dispatched(invocation_id, timestamp)
+                            .map_err(Into::into)
+                    });
+                let _ = reply.send(result);
+            }
+            ControlRequest::RecordTerminal {
+                invocation_id,
+                kind,
+                outcome,
+                reply,
+            } => {
+                let result = LedgerTimestamp::now()
+                    .map_err(CommandControlError::from)
+                    .and_then(|recorded_at| {
+                        ledger
+                            .record_terminal(
+                                invocation_id,
+                                TerminalRecord {
+                                    kind,
+                                    outcome,
+                                    recorded_at,
+                                },
+                            )
                             .map_err(Into::into)
                     });
                 let _ = reply.send(result);
@@ -286,6 +498,8 @@ pub enum CommandControlError {
     ThreadStart(#[from] std::io::Error),
     #[error("the command-control ledger owner stopped")]
     WorkerStopped,
+    #[error("the command-control ledger ingress is saturated")]
+    WorkerSaturated,
     #[error("the command-control ledger owner panicked")]
     WorkerPanicked,
     #[error("a generated invocation namespace collided with durable state")]
@@ -313,7 +527,7 @@ mod tests {
     async fn leases_are_principal_scoped_and_control_queries_are_typed()
     -> Result<(), Box<dyn Error>> {
         let directory = tempfile::tempdir()?;
-        let (control, owner) =
+        let (control, _manager, owner) =
             CommandControlPlane::start(directory.path().join("commands.sqlite")).await?;
         let owner_principal = principal(1)?;
         let other_principal = principal(2)?;

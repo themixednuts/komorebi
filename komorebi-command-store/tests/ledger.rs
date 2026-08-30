@@ -4,20 +4,20 @@ use std::num::NonZeroU32;
 #[cfg(windows)]
 use std::os::windows::ffi::OsStringExt;
 
-use komorebi_command_store::CommittedEventDocument;
 use komorebi_command_store::CompactionDecision;
 use komorebi_command_store::DispatchState;
 use komorebi_command_store::DurableInvocationLedger;
+use komorebi_command_store::InvocationCommitDecision;
+use komorebi_command_store::InvocationInspection;
 use komorebi_command_store::LeaseDecision;
 use komorebi_command_store::LeaseRequest;
+use komorebi_command_store::LedgerError;
 use komorebi_command_store::LedgerTimestamp;
-use komorebi_command_store::LogicalCommit;
 use komorebi_command_store::MINIMUM_TERMINAL_RETENTION;
 use komorebi_command_store::NamespaceRegistration;
 use komorebi_command_store::NewLeaseDecision;
 use komorebi_command_store::OutcomeDocument;
 use komorebi_command_store::RecoveryPolicy;
-use komorebi_command_store::ReservationDecision;
 use komorebi_command_store::StatusDecision;
 use komorebi_command_store::TerminalRecord;
 use komorebi_command_store::TerminalRetention;
@@ -27,6 +27,7 @@ use komorebi_protocol::InvocationId;
 use komorebi_protocol::InvocationNamespaceId;
 use komorebi_protocol::InvocationProgress;
 use komorebi_protocol::InvocationSequence;
+use komorebi_protocol::InvocationStatusCodec;
 use komorebi_protocol::InvocationStatusReply;
 use komorebi_protocol::InvocationTerminal;
 use komorebi_protocol::InvocationUnavailable;
@@ -63,8 +64,8 @@ fn canonical_invocation(
 
 fn committed_state() -> Result<komorebi_protocol::StateStamp, Box<dyn Error>> {
     Ok(komorebi_protocol::StateStamp::new(
-        komorebi_protocol::ManagerEpoch::new([9; 16])?,
-        komorebi_protocol::Revision::try_from(1)?,
+        komorebi_protocol::ManagerEpoch::new([4; 16])?,
+        komorebi_protocol::Revision::try_from(2)?,
     ))
 }
 
@@ -91,16 +92,18 @@ impl IdentityFixture {
     }
 }
 
-fn reserve(
+fn commit(
     ledger: &mut DurableInvocationLedger,
     fixture: &IdentityFixture,
     id: InvocationId,
     value: u8,
     at: i64,
-) -> Result<ReservationDecision, Box<dyn Error>> {
-    Ok(ledger.reserve_invocation(
+) -> Result<InvocationCommitDecision, Box<dyn Error>> {
+    Ok(ledger.commit_invocation(
         fixture.principal,
         &canonical_invocation(id, value)?,
+        committed_state()?,
+        RecoveryPolicy::NeverReplay,
         LedgerTimestamp::from_unix_millis(at)?,
     )?)
 }
@@ -169,7 +172,7 @@ fn new_namespace_registration_and_first_lease_are_one_transaction() -> Result<()
 }
 
 #[test]
-fn typed_invocation_reservation_uses_one_canonical_representation() -> Result<(), Box<dyn Error>> {
+fn atomic_invocation_commit_uses_one_canonical_representation() -> Result<(), Box<dyn Error>> {
     let directory = tempfile::tempdir()?;
     let fixture = IdentityFixture::new()?;
     let id = fixture.id(1)?;
@@ -178,28 +181,108 @@ fn typed_invocation_reservation_uses_one_canonical_representation() -> Result<()
     let invocation = canonical_invocation(id, 1)?;
 
     assert!(matches!(
-        ledger.reserve_invocation(
+        ledger.commit_invocation(
             fixture.principal,
             &invocation,
+            committed_state()?,
+            RecoveryPolicy::NeverReplay,
             LedgerTimestamp::from_unix_millis(1)?,
         )?,
-        ReservationDecision::Reserved(_)
+        InvocationCommitDecision::Committed(_)
     ));
     assert!(matches!(
-        ledger.reserve_invocation(
+        ledger.commit_invocation(
             fixture.principal,
             &invocation,
+            committed_state()?,
+            RecoveryPolicy::NeverReplay,
             LedgerTimestamp::from_unix_millis(2)?,
         )?,
-        ReservationDecision::Retained(_)
+        InvocationCommitDecision::Retained(_)
     ));
     assert_eq!(
-        ledger.reserve_invocation(
+        ledger.commit_invocation(
             fixture.principal,
             &canonical_invocation(id, 0)?,
+            committed_state()?,
+            RecoveryPolicy::NeverReplay,
             LedgerTimestamp::from_unix_millis(3)?,
         )?,
-        ReservationDecision::IdempotencyConflict
+        InvocationCommitDecision::IdempotencyConflict
+    );
+    Ok(())
+}
+
+#[test]
+fn rejected_atomic_commit_does_not_consume_the_invocation_identity() -> Result<(), Box<dyn Error>> {
+    let directory = tempfile::tempdir()?;
+    let fixture = IdentityFixture::new()?;
+    let id = fixture.id(1)?;
+    let mut ledger = open_registered(&directory.path().join("rollback.sqlite"), &fixture)?;
+    lease_one(&mut ledger, &fixture)?;
+    let invocation = canonical_invocation(id, 1)?;
+    let wrong_epoch =
+        komorebi_protocol::StateStamp::initial(komorebi_protocol::ManagerEpoch::new([9; 16])?);
+
+    assert!(matches!(
+        ledger.commit_invocation(
+            fixture.principal,
+            &invocation,
+            wrong_epoch,
+            RecoveryPolicy::NeverReplay,
+            LedgerTimestamp::from_unix_millis(1)?,
+        ),
+        Err(LedgerError::CommitStateMismatch)
+    ));
+    assert_eq!(
+        ledger.inspect_invocation(fixture.principal, &invocation)?,
+        InvocationInspection::Vacant
+    );
+    assert!(matches!(
+        ledger.commit_invocation(
+            fixture.principal,
+            &invocation,
+            committed_state()?,
+            RecoveryPolicy::NeverReplay,
+            LedgerTimestamp::from_unix_millis(2)?,
+        )?,
+        InvocationCommitDecision::Committed(_)
+    ));
+    Ok(())
+}
+
+#[test]
+fn idempotency_inspection_does_not_consume_a_vacant_identity() -> Result<(), Box<dyn Error>> {
+    let directory = tempfile::tempdir()?;
+    let fixture = IdentityFixture::new()?;
+    let id = fixture.id(1)?;
+    let mut ledger = open_registered(&directory.path().join("inspect.sqlite"), &fixture)?;
+    lease_one(&mut ledger, &fixture)?;
+    let invocation = canonical_invocation(id, 1)?;
+
+    assert_eq!(
+        ledger.inspect_invocation(fixture.principal, &invocation)?,
+        InvocationInspection::Vacant
+    );
+    let committed = ledger.commit_invocation(
+        fixture.principal,
+        &invocation,
+        committed_state()?,
+        RecoveryPolicy::NeverReplay,
+        LedgerTimestamp::from_unix_millis(1)?,
+    )?;
+    assert!(matches!(committed, InvocationCommitDecision::Committed(_)));
+    assert!(matches!(
+        ledger.inspect_invocation(fixture.principal, &invocation)?,
+        InvocationInspection::Retained(_)
+    ));
+    assert_eq!(
+        ledger.inspect_invocation(fixture.principal, &canonical_invocation(id, 2)?)?,
+        InvocationInspection::IdempotencyConflict
+    );
+    assert_eq!(
+        ledger.inspect_invocation(fixture.other_principal, &invocation)?,
+        InvocationInspection::IdempotencyConflict
     );
     Ok(())
 }
@@ -213,42 +296,33 @@ fn terminal_status_survives_reopen_on_a_unicode_windows_path() -> Result<(), Box
     let mut ledger = open_registered(&path, &fixture)?;
     lease_one(&mut ledger, &fixture)?;
 
-    let reservation = match reserve(&mut ledger, &fixture, id, 7, 1)? {
-        ReservationDecision::Reserved(reservation) => reservation,
-        other => return Err(format!("expected reservation, got {other:?}").into()),
+    let committed = match commit(&mut ledger, &fixture, id, 7, 1)? {
+        InvocationCommitDecision::Committed(committed) => committed,
+        other => return Err(format!("expected commit, got {other:?}").into()),
     };
     assert!(matches!(
-        reserve(&mut ledger, &fixture, id, 7, 1)?,
-        ReservationDecision::Retained(_)
+        commit(&mut ledger, &fixture, id, 7, 1)?,
+        InvocationCommitDecision::Retained(_)
     ));
     assert_eq!(
-        reserve(&mut ledger, &fixture, id, 8, 1)?,
-        ReservationDecision::IdempotencyConflict
+        commit(&mut ledger, &fixture, id, 8, 1)?,
+        InvocationCommitDecision::IdempotencyConflict
     );
     assert_eq!(
-        ledger.reserve_invocation(
+        ledger.commit_invocation(
             fixture.other_principal,
             &canonical_invocation(id, 7)?,
+            committed_state()?,
+            RecoveryPolicy::NeverReplay,
             LedgerTimestamp::from_unix_millis(1)?,
         )?,
-        ReservationDecision::IdempotencyConflict
+        InvocationCommitDecision::IdempotencyConflict
     );
-
-    let event = CommittedEventDocument::new(NonZeroU16::MIN, [5])?;
     assert_eq!(
-        ledger.commit_logical(
-            reservation,
-            LogicalCommit {
-                state: committed_state()?,
-                recovery_policy: RecoveryPolicy::ObserveAndConverge,
-                committed_event: event.clone(),
-                committed_at: LedgerTimestamp::from_unix_millis(2)?,
-            },
+        ledger.mark_effect_dispatched(
+            committed.invocation_id(),
+            LedgerTimestamp::from_unix_millis(3)?,
         )?,
-        TransitionDecision::Applied
-    );
-    assert_eq!(
-        ledger.mark_effect_dispatched(id, LedgerTimestamp::from_unix_millis(3)?)?,
         TransitionDecision::Applied
     );
     let outcome = OutcomeDocument::new(NonZeroU16::MIN, [4])?;
@@ -287,7 +361,13 @@ fn terminal_status_survives_reopen_on_a_unicode_windows_path() -> Result<(), Box
         })
     );
     assert_eq!(status.outcome(), Some(&outcome));
-    assert_eq!(status.committed_event(), Some(&event));
+    let event = status
+        .committed_event()
+        .ok_or("logical commit omitted its recovery event")?;
+    assert_eq!(
+        InvocationStatusCodec::decode(event.payload())?.progress(),
+        InvocationProgress::LogicalCommitted(committed_state()?)
+    );
     Ok(())
 }
 
@@ -330,29 +410,12 @@ fn restart_never_blindly_replays_an_ambiguous_effect() -> Result<(), Box<dyn Err
     let mut ledger = open_registered(&path, &fixture)?;
     lease_one(&mut ledger, &fixture)?;
     lease_one(&mut ledger, &fixture)?;
-    lease_one(&mut ledger, &fixture)?;
-
-    let reserved_id = fixture.id(1)?;
-    let logical_id = fixture.id(2)?;
-    let dispatched_id = fixture.id(3)?;
-    let _reserved = reserve(&mut ledger, &fixture, reserved_id, 1, 1)?;
-
-    let ReservationDecision::Reserved(logical) = reserve(&mut ledger, &fixture, logical_id, 2, 1)?
+    let logical_id = fixture.id(1)?;
+    let dispatched_id = fixture.id(2)?;
+    let InvocationCommitDecision::Committed(_) = commit(&mut ledger, &fixture, logical_id, 2, 2)?
     else {
-        return Err("logical invocation was not reserved".into());
+        return Err("logical invocation was not committed".into());
     };
-    assert_eq!(
-        ledger.commit_logical(
-            logical,
-            LogicalCommit {
-                state: committed_state()?,
-                recovery_policy: RecoveryPolicy::NeverReplay,
-                committed_event: CommittedEventDocument::new(NonZeroU16::MIN, [6])?,
-                committed_at: LedgerTimestamp::from_unix_millis(2)?,
-            },
-        )?,
-        TransitionDecision::Applied
-    );
     assert!(matches!(
         ledger.cancel_invocation(
             fixture.principal,
@@ -363,23 +426,11 @@ fn restart_never_blindly_replays_an_ambiguous_effect() -> Result<(), Box<dyn Err
             if status.progress() == InvocationProgress::LogicalCommitted(committed_state()?)
     ));
 
-    let ReservationDecision::Reserved(dispatched) =
-        reserve(&mut ledger, &fixture, dispatched_id, 3, 1)?
+    let InvocationCommitDecision::Committed(_) =
+        commit(&mut ledger, &fixture, dispatched_id, 3, 2)?
     else {
-        return Err("dispatched invocation was not reserved".into());
+        return Err("dispatched invocation was not committed".into());
     };
-    assert_eq!(
-        ledger.commit_logical(
-            dispatched,
-            LogicalCommit {
-                state: committed_state()?,
-                recovery_policy: RecoveryPolicy::NeverReplay,
-                committed_event: CommittedEventDocument::new(NonZeroU16::MIN, [7])?,
-                committed_at: LedgerTimestamp::from_unix_millis(2)?,
-            },
-        )?,
-        TransitionDecision::Applied
-    );
     assert_eq!(
         ledger.mark_effect_dispatched(dispatched_id, LedgerTimestamp::from_unix_millis(3)?)?,
         TransitionDecision::Applied
@@ -388,19 +439,16 @@ fn restart_never_blindly_replays_an_ambiguous_effect() -> Result<(), Box<dyn Err
 
     let mut reopened = DurableInvocationLedger::open(&path)?;
     let report = reopened.recover(LedgerTimestamp::from_unix_millis(4)?)?;
-    assert_eq!(report.restarted_before_commit, [reserved_id]);
+    assert!(report.restarted_before_commit.is_empty());
     assert_eq!(report.indeterminate, [dispatched_id]);
     assert_eq!(report.reconcile.len(), 1);
     assert_eq!(report.reconcile[0].invocation_id, logical_id);
     assert_eq!(report.reconcile[0].state, committed_state()?);
     assert_eq!(report.reconcile[0].dispatch, DispatchState::NotStarted);
-    assert_eq!(report.reconcile[0].committed_event.payload(), [6]);
-    assert!(matches!(
-        reopened.status(fixture.principal, reserved_id)?,
-        StatusDecision::Retained(status)
-            if status.status().progress()
-                == InvocationProgress::Terminal(InvocationTerminal::RestartedBeforeCommit)
-    ));
+    assert_eq!(
+        InvocationStatusCodec::decode(report.reconcile[0].committed_event.payload())?.progress(),
+        InvocationProgress::LogicalCommitted(committed_state()?)
+    );
     assert!(matches!(
         reopened.status(fixture.principal, dispatched_id)?,
         StatusDecision::Retained(status)
@@ -409,8 +457,7 @@ fn restart_never_blindly_replays_an_ambiguous_effect() -> Result<(), Box<dyn Err
                     state: committed_state()?,
                     kind: SettledInvocationKind::Indeterminate,
                 })
-                && status.committed_event()
-                    == Some(&CommittedEventDocument::new(NonZeroU16::MIN, [7])?)
+                && status.committed_event().is_some()
     ));
     Ok(())
 }
@@ -475,19 +522,20 @@ fn compaction_advances_expiry_only_after_the_retention_floor() -> Result<(), Box
     let id = fixture.id(1)?;
     let mut ledger = open_registered(&path, &fixture)?;
     lease_one(&mut ledger, &fixture)?;
-    let ReservationDecision::Reserved(_) = reserve(&mut ledger, &fixture, id, 1, 1)? else {
-        return Err("invocation was not reserved".into());
+    let InvocationCommitDecision::Committed(_) = commit(&mut ledger, &fixture, id, 1, 1)? else {
+        return Err("invocation was not committed".into());
     };
-    assert!(matches!(
-        ledger.cancel_invocation(
-            fixture.principal,
+    assert_eq!(
+        ledger.record_terminal(
             id,
-            LedgerTimestamp::from_unix_millis(2)?,
+            TerminalRecord {
+                kind: SettledInvocationKind::Succeeded,
+                outcome: OutcomeDocument::new(NonZeroU16::MIN, [1])?,
+                recorded_at: LedgerTimestamp::from_unix_millis(2)?,
+            },
         )?,
-        CancelInvocationReply::Cancelled(status)
-            if status.progress()
-                == InvocationProgress::Terminal(InvocationTerminal::CancelledBeforeCommit)
-    ));
+        TransitionDecision::Applied
+    );
     assert!(matches!(
         ledger.cancel_invocation(
             fixture.principal,
@@ -496,7 +544,10 @@ fn compaction_advances_expiry_only_after_the_retention_floor() -> Result<(), Box
         )?,
         CancelInvocationReply::AlreadyTerminal(status)
             if status.progress()
-                == InvocationProgress::Terminal(InvocationTerminal::CancelledBeforeCommit)
+                == InvocationProgress::Terminal(InvocationTerminal::Settled {
+                    state: committed_state()?,
+                    kind: SettledInvocationKind::Succeeded,
+                })
     ));
 
     let retention = TerminalRetention::new(MINIMUM_TERMINAL_RETENTION)?;
@@ -526,8 +577,8 @@ fn compaction_advances_expiry_only_after_the_retention_floor() -> Result<(), Box
     ));
     assert_compacted_invocation_is_expired_and_scoped(&mut ledger, &fixture, id, retained_until)?;
     assert_eq!(
-        reserve(&mut ledger, &fixture, id, 1, retained_until)?,
-        ReservationDecision::InvocationExpired
+        commit(&mut ledger, &fixture, id, 1, retained_until)?,
+        InvocationCommitDecision::InvocationExpired
     );
     Ok(())
 }

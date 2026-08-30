@@ -217,6 +217,8 @@ pub enum LedgerError {
     Drizzle(#[from] DrizzleError),
     #[error("canonical invocation failed: {0}")]
     InvocationCodec(#[from] CommandCodecError),
+    #[error("logical commit state is not the invocation's immediate successor")]
+    CommitStateMismatch,
     #[error("durable invocation document failed: {0}")]
     Document(#[from] crate::DocumentError),
     #[error("terminal retention does not fit the ledger's millisecond clock")]

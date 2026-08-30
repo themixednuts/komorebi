@@ -47,6 +47,38 @@ enum ReplyBody {
 #[derive(Clone, Copy, Debug, Default)]
 pub struct InvocationControlCodec;
 
+#[derive(Clone, Copy, Debug, Default)]
+pub struct InvocationStatusCodec;
+
+impl InvocationStatusCodec {
+    /// Encodes the canonical status value used by durable committed-event and
+    /// outcome documents.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`CommandCodecError`] when CBOR encoding fails or exceeds the
+    /// command payload bound.
+    pub fn encode(status: InvocationStatus) -> Result<Vec<u8>, CommandCodecError> {
+        let mut encoder = Encoder::new(Vec::with_capacity(88));
+        encode_status(&mut encoder, status)?;
+        bounded_encoded(encoder.into_writer())
+    }
+
+    /// Decodes one strict canonical status value.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`CommandCodecError`] for malformed, duplicate, missing,
+    /// oversized, indefinite, unknown, or trailing input.
+    pub fn decode(bytes: &[u8]) -> Result<InvocationStatus, CommandCodecError> {
+        ensure_command_bound(bytes)?;
+        let mut decoder = Decoder::new(bytes);
+        let status = decode_status(&mut decoder)?;
+        require_eof(&decoder, bytes)?;
+        Ok(status)
+    }
+}
+
 impl InvocationControlCodec {
     /// Encodes a canonical invocation status request.
     ///
@@ -471,6 +503,10 @@ mod tests {
             InvocationProgress::Terminal(InvocationTerminal::RestartedBeforeCommit),
         ];
         for progress in progress {
+            let bare_status = status(progress)?;
+            let encoded = InvocationStatusCodec::encode(bare_status)?;
+            assert_eq!(InvocationStatusCodec::decode(&encoded)?, bare_status);
+
             let reply = InvocationStatusReply::Retained(status(progress)?);
             let encoded = InvocationControlCodec::encode_status_reply(reply)?;
             assert_eq!(
@@ -553,6 +589,7 @@ mod tests {
     proptest! {
         #[test]
         fn arbitrary_control_payloads_never_panic(bytes in prop::collection::vec(any::<u8>(), 0..20_000)) {
+            let _ = InvocationStatusCodec::decode(&bytes);
             let _ = InvocationControlCodec::decode_status_request(&bytes);
             let _ = InvocationControlCodec::decode_status_reply(&bytes);
             let _ = InvocationControlCodec::decode_cancel_request(&bytes);

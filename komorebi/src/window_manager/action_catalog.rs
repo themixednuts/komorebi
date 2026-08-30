@@ -33,6 +33,7 @@ use crate::workspace::WorkspaceLayer;
 use komorebi_protocol::CatalogReply;
 use komorebi_protocol::CatalogStamp;
 use komorebi_protocol::InvocationIdentityError;
+use komorebi_protocol::SettledInvocationKind;
 
 use super::WindowManager;
 
@@ -284,6 +285,30 @@ impl WindowManager {
             }
         }
         Ok(())
+    }
+
+    pub(crate) fn dispatch_committed_catalog_action(
+        &mut self,
+        invocation_id: InvocationId,
+        logical_result: crate::action::outcome::ActionResult,
+        effects: &[PlannedEffect],
+    ) -> SettledInvocationKind {
+        match self.apply_catalog_effects(effects) {
+            Ok(()) => {
+                self.catalog.settle(invocation_id, logical_result);
+                SettledInvocationKind::Succeeded
+            }
+            Err(error) => {
+                tracing::error!(
+                    ?invocation_id,
+                    effect = error.failure.effect_id.ordinal(),
+                    source = %error.source,
+                    "canonical action native effect failed"
+                );
+                self.catalog.degrade(invocation_id, vec![error.failure]);
+                SettledInvocationKind::Degraded
+            }
+        }
     }
 
     fn apply_catalog_effect(&mut self, effect: &NativeEffect) -> eyre::Result<()> {

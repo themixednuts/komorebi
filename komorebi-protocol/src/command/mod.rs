@@ -98,6 +98,7 @@ pub use control::InvocationTerminal;
 pub use control::InvocationUnavailable;
 pub use control::SettledInvocationKind;
 pub use control_codec::InvocationControlCodec;
+pub use control_codec::InvocationStatusCodec;
 pub use lease::InvocationLeaseRejection;
 pub use lease::InvocationLeaseReply;
 pub use lease::InvocationLeaseRequest;

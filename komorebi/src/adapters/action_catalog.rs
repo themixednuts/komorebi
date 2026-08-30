@@ -257,22 +257,22 @@ const fn project_availability(value: &offer::ActionAvailability) -> protocol::Ac
     match value {
         offer::ActionAvailability::Available => protocol::ActionAvailability::Available,
         offer::ActionAvailability::Unavailable(reason) => {
-            protocol::ActionAvailability::Unavailable(match reason {
-                offer::Unavailability::ManagerPaused => {
-                    protocol::ActionUnavailability::ManagerPaused
-                }
-                offer::Unavailability::NoFocusedWindow => {
-                    protocol::ActionUnavailability::NoFocusedWindow
-                }
-                offer::Unavailability::NoWindowInDirection => {
-                    protocol::ActionUnavailability::NoWindowInDirection
-                }
-                offer::Unavailability::Unauthorized => protocol::ActionUnavailability::Unauthorized,
-                offer::Unavailability::UnknownWorkspace => {
-                    protocol::ActionUnavailability::UnknownWorkspace
-                }
-            })
+            protocol::ActionAvailability::Unavailable(project_unavailability(reason))
         }
+    }
+}
+
+pub(crate) const fn project_unavailability(
+    value: &offer::Unavailability,
+) -> protocol::ActionUnavailability {
+    match value {
+        offer::Unavailability::ManagerPaused => protocol::ActionUnavailability::ManagerPaused,
+        offer::Unavailability::NoFocusedWindow => protocol::ActionUnavailability::NoFocusedWindow,
+        offer::Unavailability::NoWindowInDirection => {
+            protocol::ActionUnavailability::NoWindowInDirection
+        }
+        offer::Unavailability::Unauthorized => protocol::ActionUnavailability::Unauthorized,
+        offer::Unavailability::UnknownWorkspace => protocol::ActionUnavailability::UnknownWorkspace,
     }
 }
 

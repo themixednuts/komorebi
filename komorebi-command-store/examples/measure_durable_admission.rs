@@ -5,11 +5,12 @@ use std::time::Duration;
 use std::time::Instant;
 
 use komorebi_command_store::DurableInvocationLedger;
+use komorebi_command_store::InvocationCommitDecision;
 use komorebi_command_store::LeaseDecision;
 use komorebi_command_store::LeaseRequest;
 use komorebi_command_store::LedgerTimestamp;
 use komorebi_command_store::NamespaceRegistration;
-use komorebi_command_store::ReservationDecision;
+use komorebi_command_store::RecoveryPolicy;
 use komorebi_protocol::ActionArguments;
 use komorebi_protocol::ActionContractFingerprint;
 use komorebi_protocol::ActionId;
@@ -81,14 +82,16 @@ fn main() -> Result<(), Box<dyn Error>> {
             None,
         );
         let started = Instant::now();
-        let decision = ledger.reserve_invocation(
+        let decision = ledger.commit_invocation(
             principal,
             &invocation,
+            state.next()?,
+            RecoveryPolicy::NeverReplay,
             LedgerTimestamp::from_unix_millis(1)?,
         )?;
         samples.push(started.elapsed());
-        if !matches!(decision, ReservationDecision::Reserved(_)) {
-            return Err(format!("sample {sequence} was not reserved: {decision:?}").into());
+        if !matches!(decision, InvocationCommitDecision::Committed(_)) {
+            return Err(format!("sample {sequence} was not committed: {decision:?}").into());
         }
     }
 
@@ -98,7 +101,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let p99 = percentile(&samples, 99, 100);
     let maximum = samples.last().copied().ok_or("no latency samples")?;
     println!(
-        "durable reservation samples={SAMPLES} p50_ms={:.3} p95_ms={:.3} p99_ms={:.3} max_ms={:.3} budget_ms={:.3}",
+        "durable commit samples={SAMPLES} p50_ms={:.3} p95_ms={:.3} p99_ms={:.3} max_ms={:.3} budget_ms={:.3}",
         milliseconds(p50),
         milliseconds(p95),
         milliseconds(p99),
@@ -108,7 +111,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     if p99 > P99_BUDGET {
         return Err(format!(
-            "durable reservation p99 {:.3} ms exceeds {:.3} ms budget",
+            "durable commit p99 {:.3} ms exceeds {:.3} ms budget",
             milliseconds(p99),
             milliseconds(P99_BUDGET),
         )

@@ -348,22 +348,23 @@ async fn main() -> eyre::Result<()> {
 
     let (manager_control, manager_control_receiver) =
         ManagerControl::channel(ManagerControlCapacity::DEFAULT);
-    listen_for_events(
-        wm.clone(),
-        winevent_listener::event_rx(),
-        manager_control_receiver,
-    );
-
-    if CUSTOM_FFM.load(Ordering::SeqCst) {
-        listen_for_movements(wm.clone());
-    }
-
     let command_protocol = CommandProtocol::start(
         manager_epoch,
         DATA_DIR.join("komorebi.commands.sqlite"),
         manager_control,
     )
     .await?;
+
+    listen_for_events(
+        wm.clone(),
+        winevent_listener::event_rx(),
+        manager_control_receiver,
+        command_protocol.manager_ledger(),
+    );
+
+    if CUSTOM_FFM.load(Ordering::SeqCst) {
+        listen_for_movements(wm.clone());
+    }
 
     command_protocol.run_until_ctrl_c().await?;
 

@@ -6,18 +6,22 @@ use drizzle::sqlite::connection::SQLiteTransactionType;
 use komorebi_protocol::ActionInvocation;
 use komorebi_protocol::ActionInvocationCodec;
 use komorebi_protocol::InvocationId;
+use komorebi_protocol::InvocationProgress;
+use komorebi_protocol::InvocationStatus;
+use komorebi_protocol::InvocationStatusCodec;
 use komorebi_protocol::PrincipalId;
 
 use super::DurableInvocationLedger;
 use super::LedgerError;
 use super::is_missing;
 use super::status_from_row;
+use crate::document::CommittedEventDocument;
 use crate::document::InvocationDocument;
-use crate::model::LogicalCommit;
+use crate::model::CommittedInvocation;
+use crate::model::InvocationCommit;
+use crate::model::InvocationCommitDecision;
+use crate::model::InvocationInspection;
 use crate::model::MAX_LIVE_RECORDS_PER_NAMESPACE;
-use crate::model::Reservation;
-use crate::model::ReservationDecision;
-use crate::model::ReservationRequest;
 use crate::model::StatusDecision;
 use crate::model::TerminalRecord;
 use crate::model::TransitionDecision;
@@ -37,48 +41,93 @@ use crate::storage::StoredSequence;
 use crate::storage::StoredStateStamp;
 
 impl DurableInvocationLedger {
-    /// Canonicalizes and durably reserves one authenticated invocation.
+    /// Inspects idempotency before manager admission without reserving a new
+    /// invocation identity.
     ///
-    /// The persisted bytes and idempotency digest are produced together, so a
-    /// caller cannot hash a different representation from the recovery record.
+    /// This lets the serialized manager owner return an existing result before
+    /// reevaluating stale catalog/state preconditions. A vacant result is only
+    /// a snapshot; callers must still handle every [`InvocationCommitDecision`]
+    /// when they atomically commit after successful preparation.
     ///
     /// # Errors
     ///
     /// Returns [`LedgerError`] when canonical encoding or the typed durable
+    /// query fails.
+    pub fn inspect_invocation(
+        &self,
+        principal: PrincipalId,
+        invocation: &ActionInvocation,
+    ) -> Result<InvocationInspection, LedgerError> {
+        let digest = ActionInvocationCodec::canonicalize(invocation)?.digest();
+        Ok(match self.status(principal, invocation.invocation_id())? {
+            StatusDecision::Retained(record) if record.status().digest() == digest => {
+                InvocationInspection::Retained(record)
+            }
+            StatusDecision::Retained(_) | StatusDecision::PrincipalConflict => {
+                InvocationInspection::IdempotencyConflict
+            }
+            StatusDecision::InvocationExpired => InvocationInspection::InvocationExpired,
+            StatusDecision::UnknownInvocation => InvocationInspection::Vacant,
+            StatusDecision::UnknownNamespace => InvocationInspection::UnknownNamespace,
+        })
+    }
+
+    /// Atomically claims an authenticated invocation and publishes its logical
+    /// manager revision before native effect dispatch can begin.
+    ///
+    /// Canonical invocation bytes, their digest, the logical state, and the
+    /// exact committed event are written in one immediate transaction. A
+    /// failed operation therefore cannot consume an invocation identity
+    /// without its logical commit.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`LedgerError`] when the logical state is not the invocation's
+    /// immediate successor, canonical encoding fails, or the typed durable
     /// transaction fails.
-    pub fn reserve_invocation(
+    pub fn commit_invocation(
         &mut self,
         principal: PrincipalId,
         invocation: &ActionInvocation,
-        reserved_at: crate::model::LedgerTimestamp,
-    ) -> Result<ReservationDecision, LedgerError> {
+        state: komorebi_protocol::StateStamp,
+        recovery_policy: crate::model::RecoveryPolicy,
+        committed_at: crate::model::LedgerTimestamp,
+    ) -> Result<InvocationCommitDecision, LedgerError> {
+        if invocation.expected_state().next().ok() != Some(state) {
+            return Err(LedgerError::CommitStateMismatch);
+        }
+
         let canonical = ActionInvocationCodec::canonicalize(invocation)?;
         let digest = canonical.digest();
-        self.reserve(ReservationRequest {
+        let committed_status = InvocationStatus::new(
+            invocation.invocation_id(),
+            digest,
+            InvocationProgress::LogicalCommitted(state),
+        );
+        let committed_event = CommittedEventDocument::new(
+            std::num::NonZeroU16::MIN,
+            InvocationStatusCodec::encode(committed_status)?,
+        )?;
+        self.claim(InvocationCommit {
             principal,
             invocation_id: invocation.invocation_id(),
             digest,
             invocation: InvocationDocument::new(std::num::NonZeroU16::MIN, canonical.into_bytes())?,
-            reserved_at,
+            state,
+            recovery_policy,
+            committed_event,
+            committed_at,
         })
     }
 
-    /// Durably reserves an invocation before admission.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`LedgerError`] if the typed durable transaction fails.
-    pub(crate) fn reserve(
-        &mut self,
-        request: ReservationRequest,
-    ) -> Result<ReservationDecision, LedgerError> {
+    fn claim(&mut self, commit: InvocationCommit) -> Result<InvocationCommitDecision, LedgerError> {
         let namespaces = self.schema.leases;
         let records = self.schema.invocations;
-        let id = request.invocation_id;
+        let id = commit.invocation_id;
         let namespace = StoredNamespaceId(id.namespace());
         let sequence = StoredSequence(id.sequence());
-        let principal = StoredPrincipalId(request.principal);
-        let digest = StoredDigest(request.digest);
+        let principal = StoredPrincipalId(commit.principal);
+        let digest = StoredDigest(commit.digest);
 
         self.db
             .transaction(SQLiteTransactionType::Immediate, |transaction| {
@@ -91,9 +140,11 @@ impl DurableInvocationLedger {
                     Ok(existing)
                         if existing.principal == principal && existing.digest == digest =>
                     {
-                        return Ok(ReservationDecision::Retained(status_from_row(existing)?));
+                        return Ok(InvocationCommitDecision::Retained(status_from_row(
+                            existing,
+                        )?));
                     }
-                    Ok(_) => return Ok(ReservationDecision::IdempotencyConflict),
+                    Ok(_) => return Ok(InvocationCommitDecision::IdempotencyConflict),
                     Err(error) if is_missing(&error) => {}
                     Err(error) => return Err(error),
                 }
@@ -106,21 +157,21 @@ impl DurableInvocationLedger {
                 {
                     Ok(namespace) => namespace,
                     Err(error) if is_missing(&error) => {
-                        return Ok(ReservationDecision::UnknownNamespace);
+                        return Ok(InvocationCommitDecision::UnknownNamespace);
                     }
                     Err(error) => return Err(error),
                 };
                 if namespace_row.principal != principal {
-                    return Ok(ReservationDecision::IdempotencyConflict);
+                    return Ok(InvocationCommitDecision::IdempotencyConflict);
                 }
                 if sequence < namespace_row.minimum_accepted {
-                    return Ok(ReservationDecision::InvocationExpired);
+                    return Ok(InvocationCommitDecision::InvocationExpired);
                 }
                 if sequence >= namespace_row.next_sequence {
-                    return Ok(ReservationDecision::InvocationNotLeased);
+                    return Ok(InvocationCommitDecision::InvocationNotLeased);
                 }
                 if namespace_row.record_count >= MAX_LIVE_RECORDS_PER_NAMESPACE {
-                    return Ok(ReservationDecision::CapacityFull);
+                    return Ok(InvocationCommitDecision::CapacityFull);
                 }
 
                 transaction
@@ -130,10 +181,14 @@ impl DurableInvocationLedger {
                         sequence,
                         principal,
                         digest,
-                        request.invocation,
-                        StoredPhase::Reserved,
-                        request.reserved_at.as_unix_millis(),
-                    )])
+                        commit.invocation,
+                        StoredPhase::LogicalCommitted,
+                        commit.committed_at.as_unix_millis(),
+                    )
+                    .with_recovery_policy(StoredRecoveryPolicy::from(commit.recovery_policy))
+                    .with_state_stamp(StoredStateStamp(commit.state))
+                    .with_committed_event(commit.committed_event)
+                    .with_logical_committed_at_ms(commit.committed_at.as_unix_millis())])
                     .execute()?;
                 let updated = transaction
                     .update(namespaces)
@@ -148,36 +203,15 @@ impl DurableInvocationLedger {
                     .execute()?;
                 if updated != 1 {
                     return Err(DrizzleError::Other(
-                        "reservation count update lost namespace ownership".into(),
+                        "invocation count update lost namespace ownership".into(),
                     ));
                 }
 
-                Ok(ReservationDecision::Reserved(Reservation::new(
-                    id,
-                    request.digest,
-                )))
+                Ok(InvocationCommitDecision::Committed(
+                    CommittedInvocation::new(id, commit.digest),
+                ))
             })
             .map_err(Into::into)
-    }
-
-    /// Commits logical manager state before any native effect dispatch.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`LedgerError`] if the typed durable transition fails.
-    pub fn commit_logical(
-        &mut self,
-        reservation: Reservation,
-        commit: LogicalCommit,
-    ) -> Result<TransitionDecision, LedgerError> {
-        let policy = StoredRecoveryPolicy::from(commit.recovery_policy);
-        let update = UpdateInvocations::default()
-            .with_phase(StoredPhase::LogicalCommitted)
-            .with_state_stamp(StoredStateStamp(commit.state))
-            .with_recovery_policy(policy)
-            .with_committed_event(commit.committed_event)
-            .with_logical_committed_at_ms(commit.committed_at.as_unix_millis());
-        self.transition_from(reservation.invocation_id(), StoredPhase::Reserved, update)
     }
 
     /// Records that native dispatch began. Cancellation after this point never
