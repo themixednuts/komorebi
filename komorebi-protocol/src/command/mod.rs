@@ -1,4 +1,10 @@
 mod argument;
+mod catalog;
+mod catalog_codec;
+mod catalog_definition_codec;
+mod catalog_error;
+mod catalog_exchange;
+mod catalog_offer_codec;
 mod codec;
 mod contract;
 mod control;
@@ -6,6 +12,8 @@ mod control_codec;
 mod lease;
 mod lease_codec;
 
+#[cfg(test)]
+mod catalog_tests;
 #[cfg(test)]
 mod tests;
 
@@ -18,6 +26,8 @@ pub const INVOCATION_STATUS_FRAME_KIND: FrameKind = FrameKind::new(19);
 pub const INVOCATION_STATUS_REPLY_FRAME_KIND: FrameKind = FrameKind::new(20);
 pub const CANCEL_INVOCATION_FRAME_KIND: FrameKind = FrameKind::new(21);
 pub const CANCEL_INVOCATION_REPLY_FRAME_KIND: FrameKind = FrameKind::new(22);
+pub const GET_CATALOG_FRAME_KIND: FrameKind = FrameKind::new(23);
+pub const CATALOG_REPLY_FRAME_KIND: FrameKind = FrameKind::new(24);
 
 pub use argument::ActionArgument;
 pub use argument::ActionArguments;
@@ -37,6 +47,23 @@ pub use argument::StableIdError;
 pub use argument::Unit;
 pub use argument::UnitValue;
 pub use argument::WindowsPathInput;
+pub use catalog::ActionAvailability;
+pub use catalog::ActionCategory;
+pub use catalog::ActionDefinition;
+pub use catalog::ActionDefinitionSpec;
+pub use catalog::ActionOffer;
+pub use catalog::ActionParameter;
+pub use catalog::ActionUnavailability;
+pub use catalog::CatalogSnapshot;
+pub use catalog::ConfirmationPolicy;
+pub use catalog::DynamicParameterChoices;
+pub use catalog::ParameterDomain;
+pub use catalog::PermittedUse;
+pub use catalog::UndoPolicy;
+pub use catalog_codec::CatalogCodec;
+pub use catalog_error::CatalogContractError;
+pub use catalog_exchange::CatalogQuery;
+pub use catalog_exchange::CatalogReply;
 pub use codec::ActionInvocationCodec;
 pub use codec::CanonicalActionInvocation;
 pub use codec::CommandCodecError;

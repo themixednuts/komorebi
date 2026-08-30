@@ -110,7 +110,7 @@ impl ActionContractFingerprint {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct ActionKey {
     id: ActionId,
     schema_version: ActionSchemaVersion,

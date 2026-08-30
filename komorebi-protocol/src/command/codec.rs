@@ -212,7 +212,10 @@ pub(super) fn decode_invocation_id(
     ))
 }
 
-fn encode_offer(encoder: &mut Encoder<Vec<u8>>, offer: &OfferRef) -> Result<(), CommandCodecError> {
+pub(super) fn encode_offer(
+    encoder: &mut Encoder<Vec<u8>>,
+    offer: &OfferRef,
+) -> Result<(), CommandCodecError> {
     encoder.map(3)?.u8(0)?;
     encode_action_key(encoder, offer.action())?;
     encoder
@@ -222,7 +225,7 @@ fn encode_offer(encoder: &mut Encoder<Vec<u8>>, offer: &OfferRef) -> Result<(), 
     encode_catalog(encoder, offer.catalog())
 }
 
-fn decode_offer(decoder: &mut Decoder<'_>) -> Result<OfferRef, CommandCodecError> {
+pub(super) fn decode_offer(decoder: &mut Decoder<'_>) -> Result<OfferRef, CommandCodecError> {
     let count = bounded_map(decoder)?;
     let mut seen = [false; 256];
     let mut action = None;
@@ -243,7 +246,7 @@ fn decode_offer(decoder: &mut Decoder<'_>) -> Result<OfferRef, CommandCodecError
     ))
 }
 
-fn encode_action_key(
+pub(super) fn encode_action_key(
     encoder: &mut Encoder<Vec<u8>>,
     key: &ActionKey,
 ) -> Result<(), CommandCodecError> {
@@ -256,7 +259,7 @@ fn encode_action_key(
     Ok(())
 }
 
-fn decode_action_key(decoder: &mut Decoder<'_>) -> Result<ActionKey, CommandCodecError> {
+pub(super) fn decode_action_key(decoder: &mut Decoder<'_>) -> Result<ActionKey, CommandCodecError> {
     let count = bounded_map(decoder)?;
     let mut seen = [false; 256];
     let mut id = None;
@@ -299,7 +302,7 @@ pub(super) fn decode_state(decoder: &mut Decoder<'_>) -> Result<StateStamp, Comm
     Ok(StateStamp::new(required(epoch, 0)?, required(revision, 1)?))
 }
 
-fn encode_catalog(
+pub(super) fn encode_catalog(
     encoder: &mut Encoder<Vec<u8>>,
     catalog: CatalogStamp,
 ) -> Result<(), CommandCodecError> {
@@ -316,7 +319,7 @@ fn encode_catalog(
     Ok(())
 }
 
-fn decode_catalog(decoder: &mut Decoder<'_>) -> Result<CatalogStamp, CommandCodecError> {
+pub(super) fn decode_catalog(decoder: &mut Decoder<'_>) -> Result<CatalogStamp, CommandCodecError> {
     let count = bounded_map(decoder)?;
     let mut seen = [false; 256];
     let mut epoch = None;
@@ -420,7 +423,7 @@ fn decode_argument(decoder: &mut Decoder<'_>) -> Result<ActionArgument, CommandC
     )?))
 }
 
-fn encode_scalar(
+pub(super) fn encode_scalar(
     encoder: &mut Encoder<Vec<u8>>,
     value: &ArgumentScalar,
 ) -> Result<(), CommandCodecError> {
@@ -486,7 +489,9 @@ fn encode_scalar(
     Ok(())
 }
 
-fn decode_scalar(decoder: &mut Decoder<'_>) -> Result<ArgumentScalar, CommandCodecError> {
+pub(super) fn decode_scalar(
+    decoder: &mut Decoder<'_>,
+) -> Result<ArgumentScalar, CommandCodecError> {
     let length = definite(decoder.array()?)?;
     let tag = decoder.u8()?;
     if tag == 0 {
@@ -622,11 +627,11 @@ pub(super) fn definite(length: Option<u64>) -> Result<u64, CommandCodecError> {
     length.ok_or(CommandCodecError::IndefiniteCollection)
 }
 
-fn to_usize(value: u64) -> Result<usize, CommandCodecError> {
+pub(super) fn to_usize(value: u64) -> Result<usize, CommandCodecError> {
     usize::try_from(value).map_err(|_| CommandCodecError::CollectionTooLarge)
 }
 
-fn to_u64(value: usize) -> Result<u64, CommandCodecError> {
+pub(super) fn to_u64(value: usize) -> Result<u64, CommandCodecError> {
     u64::try_from(value).map_err(|_| CommandCodecError::CollectionTooLarge)
 }
 
@@ -696,6 +701,8 @@ fn ensure_skipped_bound(count: u64) -> Result<(), CommandCodecError> {
 pub enum CommandCodecError {
     #[error("command payload is {0} bytes; maximum is {MAX_COMMAND_PAYLOAD_BYTES}")]
     PayloadTooLarge(usize),
+    #[error("catalog payload is {0} bytes; maximum is 8 MiB")]
+    CatalogPayloadTooLarge(usize),
     #[error("CBOR collections must use definite lengths")]
     IndefiniteCollection,
     #[error("command map has {0} fields; maximum is {MAX_FIELDS}")]
@@ -734,6 +741,28 @@ pub enum CommandCodecError {
     WrongInvocationTerminalLength { tag: u8, length: u64 },
     #[error("unknown settled invocation kind {0}")]
     UnknownSettledInvocationKind(u8),
+    #[error("catalog collection has {actual} entries; maximum is {maximum}")]
+    CatalogCollectionTooLarge { actual: usize, maximum: usize },
+    #[error("unknown action category {0}")]
+    UnknownActionCategory(u8),
+    #[error("unknown permitted action use {0}")]
+    UnknownPermittedUse(u8),
+    #[error("unknown confirmation policy {0}")]
+    UnknownConfirmationPolicy(u8),
+    #[error("unknown undo policy {0}")]
+    UnknownUndoPolicy(u8),
+    #[error("unknown parameter domain {0}")]
+    UnknownParameterDomain(u8),
+    #[error("unknown catalog availability tag {0}")]
+    UnknownCatalogAvailabilityTag(u8),
+    #[error("catalog availability tag {tag} has array length {length}")]
+    WrongCatalogAvailabilityLength { tag: u8, length: u64 },
+    #[error("unknown action unavailability code {0}")]
+    UnknownActionUnavailability(u8),
+    #[error("unknown catalog reply tag {0}")]
+    UnknownCatalogReplyTag(u8),
+    #[error("catalog offer fingerprint does not match its canonical definition")]
+    DefinitionFingerprintMismatch,
     #[error("expected array length {expected}, received {actual}")]
     WrongArrayLength { expected: u64, actual: u64 },
     #[error("expected {expected} bytes, received {actual}")]
@@ -762,6 +791,8 @@ pub enum CommandCodecError {
     Argument(#[from] ArgumentError),
     #[error(transparent)]
     Contract(#[from] ActionContractError),
+    #[error(transparent)]
+    CatalogContract(#[from] super::CatalogContractError),
     #[error(transparent)]
     InvocationIdentity(#[from] InvocationIdentityError),
     #[error(transparent)]
