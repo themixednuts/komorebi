@@ -31,6 +31,26 @@ impl ServerSupport {
             limits,
         }
     }
+
+    #[must_use]
+    pub const fn protocol_versions(&self) -> &VersionRanges<ProtocolVersion> {
+        &self.protocol_versions
+    }
+
+    #[must_use]
+    pub const fn catalog_schemas(&self) -> &VersionRanges<CatalogSchemaVersion> {
+        &self.catalog_schemas
+    }
+
+    #[must_use]
+    pub const fn features(&self) -> &FeatureSet {
+        &self.features
+    }
+
+    #[must_use]
+    pub const fn limits(&self) -> SessionLimits {
+        self.limits
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

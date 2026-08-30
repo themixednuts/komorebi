@@ -361,6 +361,7 @@ mod tests {
     use super::*;
 
     #[tokio::test(flavor = "current_thread")]
+    #[serial_test::serial]
     async fn live_pipe_authenticates_and_round_trips_a_frame()
     -> Result<(), Box<dyn std::error::Error>> {
         let mut listener = CommandPipeListener::bind_current()?;

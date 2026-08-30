@@ -1,6 +1,9 @@
 use std::num::NonZeroU32;
 use std::os::windows::io::AsRawHandle;
 
+use komorebi_protocol::PrincipalId;
+use sha2::Digest;
+use sha2::Sha256;
 use tokio::net::windows::named_pipe::NamedPipeServer;
 use windows_sys::Win32::Foundation::HANDLE;
 use windows_sys::Win32::Security::RevertToSelf;
@@ -17,6 +20,7 @@ pub struct PeerIdentity {
     process_id: NonZeroU32,
     session_id: WindowsSessionId,
     logon_sid: LogonSid,
+    principal_id: PrincipalId,
 }
 
 impl PeerIdentity {
@@ -44,10 +48,12 @@ impl PeerIdentity {
                 actual: session_id.get(),
             });
         }
+        let principal_id = PrincipalId::new(Sha256::digest(logon_sid.as_bytes()).into())?;
         Ok(Self {
             process_id,
             session_id,
             logon_sid,
+            principal_id,
         })
     }
 
@@ -64,6 +70,13 @@ impl PeerIdentity {
     #[must_use]
     pub const fn logon_sid(&self) -> &LogonSid {
         &self.logon_sid
+    }
+
+    /// Returns the stable protocol principal derived from the authenticated
+    /// Windows logon SID, never from client-supplied bootstrap data.
+    #[must_use]
+    pub const fn principal_id(&self) -> PrincipalId {
+        self.principal_id
     }
 }
 

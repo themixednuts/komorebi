@@ -1,7 +1,12 @@
 use std::io;
 
+use komorebi_protocol::BootstrapCodecError;
 use komorebi_protocol::FrameError;
+use komorebi_protocol::FrameKind;
+use komorebi_protocol::IdentifierError;
+use komorebi_protocol::InvocationIdentityError;
 use komorebi_protocol::SequenceError;
+use komorebi_protocol::StreamId;
 use thiserror::Error;
 
 use crate::LogonSid;
@@ -33,6 +38,19 @@ pub enum TransportError {
     WriteZero,
     #[error("a frame is already queued for this connection")]
     WriteInProgress,
+    #[error("bootstrap must use the control stream, received {0:?}")]
+    BootstrapMustUseControlStream(StreamId),
+    #[error("expected first bootstrap frame {expected:?}, received {actual:?}")]
+    UnexpectedBootstrapFrame {
+        expected: FrameKind,
+        actual: FrameKind,
+    },
+    #[error(transparent)]
+    Bootstrap(#[from] BootstrapCodecError),
+    #[error(transparent)]
+    Identifier(#[from] IdentifierError),
+    #[error(transparent)]
+    InvocationIdentity(#[from] InvocationIdentityError),
     #[error(transparent)]
     Frame(#[from] FrameError),
     #[error(transparent)]

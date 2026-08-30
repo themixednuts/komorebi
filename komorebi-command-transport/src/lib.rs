@@ -7,6 +7,7 @@ mod mailbox;
 mod peer;
 mod pipe;
 mod security;
+mod server;
 mod token;
 
 pub use endpoint::CommandPipeEndpoint;
@@ -27,4 +28,8 @@ pub use peer::PeerIdentity;
 pub use pipe::AuthenticatedPipe;
 pub use pipe::CommandPipeListener;
 pub use pipe::ProtocolConnection;
+pub use server::CommandProtocolServer;
+pub use server::EstablishedSession;
+pub use server::PendingProtocolSession;
+pub use server::SessionAcceptance;
 pub use token::LogonSid;
