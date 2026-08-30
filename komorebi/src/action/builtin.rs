@@ -956,6 +956,14 @@ mod tests {
         ids.sort_unstable();
         ids.dedup();
         assert_eq!(ids.len(), BuiltinActionKind::ALL.len());
+        let protocol_ids = komorebi_protocol::BuiltInActionId::ALL
+            .iter()
+            .map(|action| action.as_str())
+            .collect::<std::collections::BTreeSet<_>>();
+        assert_eq!(
+            ids.into_iter().collect::<std::collections::BTreeSet<_>>(),
+            protocol_ids
+        );
     }
 
     #[test]

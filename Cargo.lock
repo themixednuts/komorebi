@@ -3609,7 +3609,10 @@ name = "komorebi-client"
 version = "0.1.42"
 dependencies = [
  "komorebi",
+ "komorebi-command-transport",
+ "komorebi-protocol",
  "serde_json_lenient",
+ "thiserror 2.0.20",
  "uds_windows",
 ]
 
@@ -3725,6 +3728,7 @@ dependencies = [
  "shadow-rs",
  "sysinfo 0.39.6",
  "thiserror 2.0.20",
+ "tokio",
  "which",
  "win-msgbox",
  "windows 0.62.2",

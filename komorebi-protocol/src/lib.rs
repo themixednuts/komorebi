@@ -48,6 +48,7 @@ pub use command::ArgumentError;
 pub use command::ArgumentScalar;
 pub use command::ArgumentScalars;
 pub use command::BoundedText;
+pub use command::BuiltInActionId;
 pub use command::CANCEL_INVOCATION_FRAME_KIND;
 pub use command::CANCEL_INVOCATION_REPLY_FRAME_KIND;
 pub use command::CATALOG_REPLY_FRAME_KIND;

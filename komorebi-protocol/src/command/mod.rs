@@ -1,4 +1,5 @@
 mod argument;
+mod builtin_id;
 mod catalog;
 mod catalog_codec;
 mod catalog_definition_codec;
@@ -51,6 +52,7 @@ pub use argument::StableIdError;
 pub use argument::Unit;
 pub use argument::UnitValue;
 pub use argument::WindowsPathInput;
+pub use builtin_id::BuiltInActionId;
 pub use catalog::ActionAvailability;
 pub use catalog::ActionCategory;
 pub use catalog::ActionDefinition;

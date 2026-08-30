@@ -28,6 +28,12 @@ use color_eyre::eyre::bail;
 use fs_tail::TailedFile;
 use komorebi_client::AppSpecificConfigurationPath;
 use komorebi_client::ApplicationSpecificConfiguration;
+use komorebi_client::command::ActionArguments;
+use komorebi_client::command::BuiltInActionId;
+use komorebi_client::command::CommandClient;
+use komorebi_client::command::InvocationSubmissionReply;
+use komorebi_client::command::RoleHint;
+use komorebi_client::command::SessionLifetime;
 use komorebi_client::send_message;
 use komorebi_client::send_query;
 use lazy_static::lazy_static;
@@ -1619,8 +1625,20 @@ fn startup_dir() -> eyre::Result<PathBuf> {
     Ok(startup)
 }
 
+async fn invoke_action(action: BuiltInActionId, arguments: ActionArguments) -> eyre::Result<()> {
+    let mut client =
+        CommandClient::connect(RoleHint::OwnerControl, SessionLifetime::OneShot).await?;
+    match client.invoke_builtin(action, arguments).await? {
+        InvocationSubmissionReply::Accepted(_) | InvocationSubmissionReply::Retained(_) => Ok(()),
+        InvocationSubmissionReply::Rejected(reason) => {
+            Err(eyre::eyre!("command was rejected: {reason:?}"))
+        }
+    }
+}
+
 #[allow(clippy::too_many_lines, clippy::cognitive_complexity)]
-fn main() -> eyre::Result<()> {
+#[tokio::main]
+async fn main() -> eyre::Result<()> {
     let opts: Opts = Opts::parse();
 
     match opts.subcmd {
@@ -2065,31 +2083,39 @@ fn main() -> eyre::Result<()> {
             send_message(&SocketMessage::FocusWindow(args.operation_direction))?;
         }
         SubCommand::ForceFocus => {
-            send_message(&SocketMessage::ForceFocus)?;
+            invoke_action(BuiltInActionId::ForceFocus, ActionArguments::default()).await?;
         }
         SubCommand::Close => {
-            send_message(&SocketMessage::Close)?;
+            invoke_action(BuiltInActionId::CloseWindow, ActionArguments::default()).await?;
         }
         SubCommand::Minimize => {
-            send_message(&SocketMessage::Minimize)?;
+            invoke_action(BuiltInActionId::MinimizeWindow, ActionArguments::default()).await?;
         }
         SubCommand::Promote => {
-            send_message(&SocketMessage::Promote)?;
+            invoke_action(
+                BuiltInActionId::PromoteContainer,
+                ActionArguments::default(),
+            )
+            .await?;
         }
         SubCommand::PromoteSwap => {
-            send_message(&SocketMessage::PromoteSwap)?;
+            invoke_action(
+                BuiltInActionId::PromoteContainerSwap,
+                ActionArguments::default(),
+            )
+            .await?;
         }
         SubCommand::PromoteFocus => {
-            send_message(&SocketMessage::PromoteFocus)?;
+            invoke_action(BuiltInActionId::PromoteFocus, ActionArguments::default()).await?;
         }
         SubCommand::PromoteWindow(args) => {
             send_message(&SocketMessage::PromoteWindow(args.operation_direction))?;
         }
         SubCommand::TogglePause => {
-            send_message(&SocketMessage::TogglePause)?;
+            invoke_action(BuiltInActionId::TogglePause, ActionArguments::default()).await?;
         }
         SubCommand::Retile => {
-            send_message(&SocketMessage::Retile)?;
+            invoke_action(BuiltInActionId::Retile, ActionArguments::default()).await?;
         }
         SubCommand::Move(args) => {
             send_message(&SocketMessage::MoveWindow(args.operation_direction))?;
@@ -2098,7 +2124,7 @@ fn main() -> eyre::Result<()> {
             send_message(&SocketMessage::PreselectDirection(args.operation_direction))?;
         }
         SubCommand::CancelPreselect => {
-            send_message(&SocketMessage::CancelPreselect)?;
+            invoke_action(BuiltInActionId::CancelPreselect, ActionArguments::default()).await?;
         }
         SubCommand::CycleFocus(args) => {
             send_message(&SocketMessage::CycleFocusWindow(args.cycle_direction))?;
@@ -2172,10 +2198,18 @@ fn main() -> eyre::Result<()> {
             ))?;
         }
         SubCommand::MoveToLastWorkspace => {
-            send_message(&SocketMessage::MoveContainerToLastWorkspace)?;
+            invoke_action(
+                BuiltInActionId::MoveContainerToLastWorkspace,
+                ActionArguments::default(),
+            )
+            .await?;
         }
         SubCommand::SendToLastWorkspace => {
-            send_message(&SocketMessage::SendContainerToLastWorkspace)?;
+            invoke_action(
+                BuiltInActionId::SendContainerToLastWorkspace,
+                ActionArguments::default(),
+            )
+            .await?;
         }
         SubCommand::SwapWorkspacesWithMonitor(args) => {
             send_message(&SocketMessage::SwapWorkspacesToMonitorNumber(args.target))?;
@@ -2272,19 +2306,35 @@ fn main() -> eyre::Result<()> {
             send_message(&SocketMessage::ToggleFocusFollowsMouse(args.implementation))?;
         }
         SubCommand::ToggleTiling => {
-            send_message(&SocketMessage::ToggleTiling)?;
+            invoke_action(BuiltInActionId::ToggleTiling, ActionArguments::default()).await?;
         }
         SubCommand::ToggleFloat => {
-            send_message(&SocketMessage::ToggleFloat)?;
+            invoke_action(
+                BuiltInActionId::ToggleWindowFloat,
+                ActionArguments::default(),
+            )
+            .await?;
         }
         SubCommand::ToggleMonocle => {
-            send_message(&SocketMessage::ToggleMonocle)?;
+            invoke_action(
+                BuiltInActionId::ToggleWindowMonocle,
+                ActionArguments::default(),
+            )
+            .await?;
         }
         SubCommand::ToggleMaximize => {
-            send_message(&SocketMessage::ToggleMaximize)?;
+            invoke_action(
+                BuiltInActionId::ToggleWindowMaximize,
+                ActionArguments::default(),
+            )
+            .await?;
         }
         SubCommand::ToggleLock => {
-            send_message(&SocketMessage::ToggleLock)?;
+            invoke_action(
+                BuiltInActionId::ToggleContainerLock,
+                ActionArguments::default(),
+            )
+            .await?;
         }
         SubCommand::WorkspaceLayout(args) => {
             send_message(&SocketMessage::WorkspaceLayout(
@@ -2878,13 +2928,21 @@ if (Get-Command Get-CimInstance -ErrorAction SilentlyContinue) {
             }
         }
         SubCommand::SessionFloatRule => {
-            send_message(&SocketMessage::SessionFloatRule)?;
+            invoke_action(
+                BuiltInActionId::AddSessionFloatRule,
+                ActionArguments::default(),
+            )
+            .await?;
         }
         SubCommand::SessionFloatRules => {
             print_query(&SocketMessage::SessionFloatRules);
         }
         SubCommand::ClearSessionFloatRules => {
-            send_message(&SocketMessage::ClearSessionFloatRules)?;
+            invoke_action(
+                BuiltInActionId::ClearSessionFloatRules,
+                ActionArguments::default(),
+            )
+            .await?;
         }
         SubCommand::IgnoreRule(args) => {
             send_message(&SocketMessage::IgnoreRule(args.identifier, args.id))?;
@@ -2935,19 +2993,23 @@ if (Get-Command Get-CimInstance -ErrorAction SilentlyContinue) {
             send_message(&SocketMessage::ClearAllWorkspaceRules)?;
         }
         SubCommand::EnforceWorkspaceRules => {
-            send_message(&SocketMessage::EnforceWorkspaceRules)?;
+            invoke_action(
+                BuiltInActionId::EnforceWorkspaceRules,
+                ActionArguments::default(),
+            )
+            .await?;
         }
         SubCommand::Stack(args) => {
             send_message(&SocketMessage::StackWindow(args.operation_direction))?;
         }
         SubCommand::StackAll => {
-            send_message(&SocketMessage::StackAll)?;
+            invoke_action(BuiltInActionId::StackAll, ActionArguments::default()).await?;
         }
         SubCommand::Unstack => {
-            send_message(&SocketMessage::UnstackWindow)?;
+            invoke_action(BuiltInActionId::UnstackWindow, ActionArguments::default()).await?;
         }
         SubCommand::UnstackAll => {
-            send_message(&SocketMessage::UnstackAll)?;
+            invoke_action(BuiltInActionId::UnstackAll, ActionArguments::default()).await?;
         }
         SubCommand::FocusStackWindow(args) => {
             send_message(&SocketMessage::FocusStackWindow(args.target))?;
@@ -2986,10 +3048,18 @@ if (Get-Command Get-CimInstance -ErrorAction SilentlyContinue) {
             send_message(&SocketMessage::FocusMonitorNumber(args.target))?;
         }
         SubCommand::FocusMonitorAtCursor => {
-            send_message(&SocketMessage::FocusMonitorAtCursor)?;
+            invoke_action(
+                BuiltInActionId::FocusMonitorAtCursor,
+                ActionArguments::default(),
+            )
+            .await?;
         }
         SubCommand::FocusLastWorkspace => {
-            send_message(&SocketMessage::FocusLastWorkspace)?;
+            invoke_action(
+                BuiltInActionId::FocusLastWorkspace,
+                ActionArguments::default(),
+            )
+            .await?;
         }
         SubCommand::FocusWorkspace(args) => {
             send_message(&SocketMessage::FocusWorkspaceNumber(args.target))?;
@@ -3007,7 +3077,7 @@ if (Get-Command Get-CimInstance -ErrorAction SilentlyContinue) {
             send_message(&SocketMessage::FocusNamedWorkspace(args.workspace))?;
         }
         SubCommand::CloseWorkspace => {
-            send_message(&SocketMessage::CloseWorkspace)?;
+            invoke_action(BuiltInActionId::CloseWorkspace, ActionArguments::default()).await?;
         }
         SubCommand::CycleMonitor(args) => {
             send_message(&SocketMessage::CycleFocusMonitor(args.cycle_direction))?;
@@ -3021,7 +3091,7 @@ if (Get-Command Get-CimInstance -ErrorAction SilentlyContinue) {
             ))?;
         }
         SubCommand::NewWorkspace => {
-            send_message(&SocketMessage::NewWorkspace)?;
+            invoke_action(BuiltInActionId::NewWorkspace, ActionArguments::default()).await?;
         }
         SubCommand::WorkspaceName(name) => {
             send_message(&SocketMessage::WorkspaceName(
@@ -3150,13 +3220,21 @@ if (Get-Command Get-CimInstance -ErrorAction SilentlyContinue) {
             send_message(&SocketMessage::RemoveTitleBar(target.identifier, target.id))?;
         }
         SubCommand::ToggleTitleBars => {
-            send_message(&SocketMessage::ToggleTitleBars)?;
+            invoke_action(BuiltInActionId::ToggleTitleBars, ActionArguments::default()).await?;
         }
         SubCommand::Manage => {
-            send_message(&SocketMessage::ManageFocusedWindow)?;
+            invoke_action(
+                BuiltInActionId::ManageFocusedWindow,
+                ActionArguments::default(),
+            )
+            .await?;
         }
         SubCommand::Unmanage => {
-            send_message(&SocketMessage::UnmanageFocusedWindow)?;
+            invoke_action(
+                BuiltInActionId::UnmanageFocusedWindow,
+                ActionArguments::default(),
+            )
+            .await?;
         }
         SubCommand::QuickSaveResize => {
             send_message(&SocketMessage::QuickSave)?;
@@ -3183,7 +3261,11 @@ if (Get-Command Get-CimInstance -ErrorAction SilentlyContinue) {
             send_message(&SocketMessage::RemoveSubscriberPipe(args.named_pipe))?;
         }
         SubCommand::ToggleMouseFollowsFocus => {
-            send_message(&SocketMessage::ToggleMouseFollowsFocus)?;
+            invoke_action(
+                BuiltInActionId::ToggleMouseFollowsFocus,
+                ActionArguments::default(),
+            )
+            .await?;
         }
         SubCommand::MouseFollowsFocus(args) => {
             send_message(&SocketMessage::MouseFollowsFocus(args.boolean_state.into()))?;
@@ -3249,19 +3331,39 @@ if (Get-Command Get-CimInstance -ErrorAction SilentlyContinue) {
             send_message(&SocketMessage::ResizeDelta(args.pixels))?;
         }
         SubCommand::ToggleWindowContainerBehaviour => {
-            send_message(&SocketMessage::ToggleWindowContainerBehaviour)?;
+            invoke_action(
+                BuiltInActionId::ToggleWindowContainerBehaviour,
+                ActionArguments::default(),
+            )
+            .await?;
         }
         SubCommand::ToggleFloatOverride => {
-            send_message(&SocketMessage::ToggleFloatOverride)?;
+            invoke_action(
+                BuiltInActionId::ToggleFloatOverride,
+                ActionArguments::default(),
+            )
+            .await?;
         }
         SubCommand::ToggleWorkspaceWindowContainerBehaviour => {
-            send_message(&SocketMessage::ToggleWorkspaceWindowContainerBehaviour)?;
+            invoke_action(
+                BuiltInActionId::ToggleWorkspaceWindowContainerBehaviour,
+                ActionArguments::default(),
+            )
+            .await?;
         }
         SubCommand::ToggleWorkspaceFloatOverride => {
-            send_message(&SocketMessage::ToggleWorkspaceFloatOverride)?;
+            invoke_action(
+                BuiltInActionId::ToggleWorkspaceFloatOverride,
+                ActionArguments::default(),
+            )
+            .await?;
         }
         SubCommand::ToggleWorkspaceLayer => {
-            send_message(&SocketMessage::ToggleWorkspaceLayer)?;
+            invoke_action(
+                BuiltInActionId::ToggleWorkspaceLayer,
+                ActionArguments::default(),
+            )
+            .await?;
         }
         SubCommand::WindowHidingBehaviour(args) => {
             send_message(&SocketMessage::WindowHidingBehaviour(args.hiding_behaviour))?;
@@ -3272,13 +3374,21 @@ if (Get-Command Get-CimInstance -ErrorAction SilentlyContinue) {
             ))?;
         }
         SubCommand::ToggleCrossMonitorMoveBehaviour => {
-            send_message(&SocketMessage::ToggleCrossMonitorMoveBehaviour)?;
+            invoke_action(
+                BuiltInActionId::ToggleCrossMonitorMoveBehaviour,
+                ActionArguments::default(),
+            )
+            .await?;
         }
         SubCommand::MonocleFocusBehaviour(args) => {
             send_message(&SocketMessage::MonocleFocusBehaviour(args.behaviour))?;
         }
         SubCommand::ToggleMonocleFocusBehaviour => {
-            send_message(&SocketMessage::ToggleMonocleFocusBehaviour)?;
+            invoke_action(
+                BuiltInActionId::ToggleMonocleFocusBehaviour,
+                ActionArguments::default(),
+            )
+            .await?;
         }
         SubCommand::UnmanagedWindowOperationBehaviour(args) => {
             send_message(&SocketMessage::UnmanagedWindowOperationBehaviour(

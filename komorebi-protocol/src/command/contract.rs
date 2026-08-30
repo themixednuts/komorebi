@@ -1,3 +1,4 @@
+use std::fmt;
 use std::num::NonZeroU16;
 use std::num::NonZeroU64;
 
@@ -25,9 +26,19 @@ impl ActionId {
         Ok(Self(value))
     }
 
+    pub(super) fn from_known(value: &'static str) -> Self {
+        Self(value.into())
+    }
+
     #[must_use]
     pub fn as_str(&self) -> &str {
         &self.0
+    }
+}
+
+impl fmt::Display for ActionId {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(self.as_str())
     }
 }
 
