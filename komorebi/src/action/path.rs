@@ -20,6 +20,16 @@ impl WindowsPath {
         Ok(Self(path))
     }
 
+    /// Creates a path from native Windows UTF-16 code units without Unicode repair.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`WindowsPathError`] when the current platform cannot represent
+    /// Windows path units or the input contains an interior NUL.
+    pub fn from_wtf16(units: impl Into<Vec<u16>>) -> Result<Self, WindowsPathError> {
+        Self::new(decode_wtf16(units.into())?)
+    }
+
     #[must_use]
     pub fn as_path(&self) -> &Path {
         &self.0
@@ -151,6 +161,19 @@ mod tests {
         let encoded = serde_json::to_string(&path).unwrap();
         let decoded: WindowsPath = serde_json::from_str(&encoded).unwrap();
         assert_eq!(decoded, path);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn direct_wtf16_construction_preserves_unpaired_surrogates() {
+        use std::os::windows::ffi::OsStrExt as _;
+
+        let units = [b'C' as u16, b':' as u16, b'\\' as u16, 0xD800, b'x' as u16];
+        let path = WindowsPath::from_wtf16(units).unwrap();
+        assert_eq!(
+            path.as_path().as_os_str().encode_wide().collect::<Vec<_>>(),
+            units
+        );
     }
 
     #[cfg(windows)]

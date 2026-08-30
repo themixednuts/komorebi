@@ -183,6 +183,12 @@ impl ParameterId {
     }
 }
 
+impl fmt::Display for ParameterId {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(self.0)
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct ActionSchemaVersion(u16);
