@@ -37,6 +37,11 @@ struct IssuedConfirmation {
     consumed: bool,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ValidatedConfirmation {
+    key: [u8; 16],
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct ConfirmationLedger {
     issued: HashMap<[u8; 16], IssuedConfirmation>,
@@ -77,7 +82,20 @@ impl ConfirmationLedger {
         state: StateStamp,
         now: Instant,
     ) -> Result<(), ConfirmationError> {
-        let Some(issued) = self.issued.get_mut(&token_bytes(&token)) else {
+        let validated = self.validate(token, principal, action, state, now)?;
+        self.consume_validated(validated)
+    }
+
+    pub fn validate(
+        &self,
+        token: ConfirmationToken,
+        principal: PrincipalId,
+        action: &BuiltinAction,
+        state: StateStamp,
+        now: Instant,
+    ) -> Result<ValidatedConfirmation, ConfirmationError> {
+        let key = token_bytes(&token);
+        let Some(issued) = self.issued.get(&key) else {
             return Err(ConfirmationError::Unknown);
         };
         if issued.consumed {
@@ -97,6 +115,19 @@ impl ConfirmationLedger {
         }
         if issued.state != state {
             return Err(ConfirmationError::StateMismatch);
+        }
+        Ok(ValidatedConfirmation { key })
+    }
+
+    pub fn consume_validated(
+        &mut self,
+        validated: ValidatedConfirmation,
+    ) -> Result<(), ConfirmationError> {
+        let Some(issued) = self.issued.get_mut(&validated.key) else {
+            return Err(ConfirmationError::Unknown);
+        };
+        if issued.consumed {
+            return Err(ConfirmationError::Replay);
         }
         issued.consumed = true;
         Ok(())
@@ -191,6 +222,38 @@ mod tests {
             .unwrap();
         assert_eq!(
             ledger.consume(token, principal, &focus_left(), state, now),
+            Err(ConfirmationError::Replay)
+        );
+    }
+
+    #[test]
+    fn validation_is_read_only_until_the_proof_is_consumed() {
+        let now = Instant::now();
+        let token = ConfirmationToken::issue();
+        let action = focus_left();
+        let principal = test_principal(3);
+        let state = stamp(4);
+        let mut ledger = ConfirmationLedger::new();
+        ledger.issue(
+            token,
+            principal,
+            &action,
+            state,
+            now + Duration::from_secs(1),
+        );
+
+        let first = ledger
+            .validate(token, principal, &action, state, now)
+            .expect("confirmation should validate");
+        let second = ledger
+            .validate(token, principal, &action, state, now)
+            .expect("validation must not consume the challenge");
+        assert_eq!(first, second);
+        ledger
+            .consume_validated(first)
+            .expect("validated proof should consume once");
+        assert_eq!(
+            ledger.consume_validated(second),
             Err(ConfirmationError::Replay)
         );
     }

@@ -15,7 +15,7 @@ pub enum UndoError {
     Unknown,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct UndoRecord {
     pub token: UndoToken,
     pub policy: UndoPolicy,
@@ -34,14 +34,23 @@ impl UndoLedger {
     }
 
     pub fn issue(&mut self, policy: UndoPolicy) -> Result<UndoRecord, UndoError> {
+        let record = Self::prepare(policy)?;
+        self.commit(record);
+        Ok(record)
+    }
+
+    pub fn prepare(policy: UndoPolicy) -> Result<UndoRecord, UndoError> {
         match policy {
             UndoPolicy::None => Err(UndoError::Unsupported),
-            UndoPolicy::PriorManagerIntent | UndoPolicy::ExactCapturedState => {
-                let token = UndoToken::new();
-                self.issued.insert(token);
-                Ok(UndoRecord { token, policy })
-            }
+            UndoPolicy::PriorManagerIntent | UndoPolicy::ExactCapturedState => Ok(UndoRecord {
+                token: UndoToken::new(),
+                policy,
+            }),
         }
+    }
+
+    pub fn commit(&mut self, record: UndoRecord) {
+        self.issued.insert(record.token);
     }
 
     pub fn consume(&mut self, token: UndoToken) -> Result<(), UndoError> {
@@ -68,5 +77,14 @@ mod tests {
         ledger.consume(record.token).unwrap();
         assert_eq!(ledger.consume(record.token), Err(UndoError::Consumed));
         assert_eq!(ledger.consume(UndoToken::new()), Err(UndoError::Unknown));
+    }
+
+    #[test]
+    fn prepared_undo_is_unknown_until_committed() {
+        let mut ledger = UndoLedger::new();
+        let record = UndoLedger::prepare(UndoPolicy::PriorManagerIntent).unwrap();
+        assert_eq!(ledger.consume(record.token), Err(UndoError::Unknown));
+        ledger.commit(record);
+        assert_eq!(ledger.consume(record.token), Ok(()));
     }
 }

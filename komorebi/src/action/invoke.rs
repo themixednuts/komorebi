@@ -4,6 +4,7 @@ use std::time::Instant;
 use super::builtin::BuiltinAction;
 use super::confirmation::ConfirmationError;
 use super::confirmation::ConfirmationLedger;
+use super::confirmation::ValidatedConfirmation;
 use super::definition::UndoPolicy;
 use super::id::InvocationId;
 use super::id::PrincipalId;
@@ -87,6 +88,67 @@ pub enum ActionAdmission {
         undo: Option<UndoRecord>,
         effects: Vec<PlannedEffect>,
     },
+}
+
+#[derive(Debug)]
+pub enum ActionPreparation {
+    Retained(ActionAdmission),
+    Rejected {
+        invocation_id: InvocationId,
+        source: ActionRejection,
+    },
+    Prepared(PreparedAction),
+}
+
+#[derive(Debug)]
+pub struct PreparedAction {
+    invocation_id: InvocationId,
+    previous_state: StateStamp,
+    snapshot: ActionSnapshot,
+    logical_result: ActionResult,
+    undo: Option<UndoRecord>,
+    effects: Vec<PlannedEffect>,
+    confirmation: Option<ValidatedConfirmation>,
+}
+
+impl PreparedAction {
+    #[must_use]
+    pub const fn invocation_id(&self) -> InvocationId {
+        self.invocation_id
+    }
+
+    #[must_use]
+    pub const fn previous_state(&self) -> StateStamp {
+        self.previous_state
+    }
+
+    #[must_use]
+    pub const fn committed_state(&self) -> StateStamp {
+        self.snapshot.state
+    }
+
+    #[must_use]
+    pub fn logical_result(&self) -> &ActionResult {
+        &self.logical_result
+    }
+
+    #[must_use]
+    pub fn effects(&self) -> &[PlannedEffect] {
+        &self.effects
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, thiserror::Error)]
+pub enum PreparedCommitError {
+    #[error("prepared action expected state {expected:?} but manager is at {actual:?}")]
+    StateChanged {
+        expected: StateStamp,
+        actual: StateStamp,
+    },
+    #[error("prepared invocation was already recorded")]
+    InvocationAlreadyRecorded,
+    #[error(transparent)]
+    Confirmation(#[from] ConfirmationError),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -194,52 +256,49 @@ impl CatalogState {
         Ok(InvocationId::new(self.local_namespace, sequence))
     }
 
-    pub fn admit(
-        &mut self,
-        request: InvokeAction,
+    #[must_use]
+    pub fn prepare(
+        &self,
+        request: &InvokeAction,
         context: &InvocationContext,
         now: Instant,
-    ) -> ActionAdmission {
+    ) -> ActionPreparation {
         if let Some(previous) = self.invocations.get(&request.invocation_id) {
-            return previous.clone();
+            return ActionPreparation::Retained(previous.clone());
         }
 
         if request.expected_state != self.snapshot.state {
-            return store(
-                &mut self.invocations,
+            return rejected(
                 request.invocation_id,
-                ActionAdmission::Rejected(ActionRejection::StaleState {
+                ActionRejection::StaleState {
                     expected: request.expected_state,
                     actual: self.snapshot.state,
-                }),
+                },
             );
         }
 
         if !context.grants.contains(request.action.kind()) {
-            return store(
-                &mut self.invocations,
+            return rejected(
                 request.invocation_id,
-                ActionAdmission::Rejected(ActionRejection::Unavailable(
-                    Unavailability::Unauthorized,
-                )),
+                ActionRejection::Unavailable(Unavailability::Unauthorized),
             );
         }
 
-        if let Some(token) = request.confirmation
-            && let Err(error) = self.confirmations.consume(
+        let confirmation = match request.confirmation {
+            Some(token) => match self.confirmations.validate(
                 token,
                 context.principal,
                 &request.action,
                 request.expected_state,
                 now,
-            )
-        {
-            return store(
-                &mut self.invocations,
-                request.invocation_id,
-                ActionAdmission::Rejected(ActionRejection::Confirmation(error)),
-            );
-        }
+            ) {
+                Ok(validated) => Some(validated),
+                Err(error) => {
+                    return rejected(request.invocation_id, ActionRejection::Confirmation(error));
+                }
+            },
+            None => None,
+        };
 
         let availability = super::offer::offers(
             &self.snapshot,
@@ -252,55 +311,42 @@ impl CatalogState {
         .map(|offer| offer.availability);
 
         match availability {
-            Some(ActionAvailability::Unavailable(reason)) => store(
-                &mut self.invocations,
-                request.invocation_id,
-                ActionAdmission::Rejected(ActionRejection::Unavailable(reason)),
-            ),
+            Some(ActionAvailability::Unavailable(reason)) => {
+                rejected(request.invocation_id, ActionRejection::Unavailable(reason))
+            }
             Some(ActionAvailability::Available) => {
                 let action = match bind_named_targets(&self.snapshot, &request.action) {
                     Ok(action) => action,
                     Err(reason) => {
-                        return store(
-                            &mut self.invocations,
+                        return rejected(
                             request.invocation_id,
-                            ActionAdmission::Rejected(ActionRejection::Unavailable(reason)),
+                            ActionRejection::Unavailable(reason),
                         );
                     }
                 };
                 if let Some(reason) = directional_gap(&self.snapshot, &action) {
-                    return store(
-                        &mut self.invocations,
-                        request.invocation_id,
-                        ActionAdmission::Rejected(ActionRejection::Unavailable(reason)),
-                    );
+                    return rejected(request.invocation_id, ActionRejection::Unavailable(reason));
                 }
                 let Ok(state) = self.snapshot.state.next() else {
-                    return store(
-                        &mut self.invocations,
-                        request.invocation_id,
-                        ActionAdmission::Rejected(ActionRejection::RevisionExhausted),
-                    );
+                    return rejected(request.invocation_id, ActionRejection::RevisionExhausted);
                 };
-                self.snapshot.state = state;
-                apply_logical(&mut self.snapshot, &action);
+                let mut snapshot = self.snapshot.clone();
+                snapshot.state = state;
+                apply_logical(&mut snapshot, &action);
                 let undo = request
                     .action
                     .kind()
                     .definition()
                     .undo
                     .ne(&UndoPolicy::None)
-                    .then(|| {
-                        self.undos
-                            .issue(request.action.kind().definition().undo)
-                            .ok()
-                    })
+                    .then(|| UndoLedger::prepare(request.action.kind().definition().undo).ok())
                     .flatten();
-                let committed = ActionAdmission::Committed {
-                    state,
-                    logical_result: logical_result(&action, &self.snapshot),
+                ActionPreparation::Prepared(PreparedAction {
+                    invocation_id: request.invocation_id,
+                    previous_state: self.snapshot.state,
+                    logical_result: logical_result(&action, &snapshot),
                     undo,
-                    effects: effects(&action, &self.snapshot)
+                    effects: effects(&action, &snapshot)
                         .into_iter()
                         .enumerate()
                         .map(|(ordinal, effect)| PlannedEffect {
@@ -308,18 +354,94 @@ impl CatalogState {
                             effect,
                         })
                         .collect(),
-                };
-                self.statuses
-                    .insert(request.invocation_id, InvocationStatus::Committed { state });
-                store(&mut self.invocations, request.invocation_id, committed)
+                    snapshot,
+                    confirmation,
+                })
             }
-            None => store(
-                &mut self.invocations,
+            None => rejected(
                 request.invocation_id,
-                ActionAdmission::Rejected(ActionRejection::Unavailable(
-                    Unavailability::Unauthorized,
-                )),
+                ActionRejection::Unavailable(Unavailability::Unauthorized),
             ),
+        }
+    }
+
+    pub fn commit_prepared(
+        &mut self,
+        prepared: PreparedAction,
+    ) -> Result<ActionAdmission, PreparedCommitError> {
+        if self.invocations.contains_key(&prepared.invocation_id) {
+            return Err(PreparedCommitError::InvocationAlreadyRecorded);
+        }
+        if self.snapshot.state != prepared.previous_state {
+            return Err(PreparedCommitError::StateChanged {
+                expected: prepared.previous_state,
+                actual: self.snapshot.state,
+            });
+        }
+        if let Some(confirmation) = prepared.confirmation {
+            self.confirmations.consume_validated(confirmation)?;
+        }
+        if let Some(undo) = prepared.undo {
+            self.undos.commit(undo);
+        }
+
+        let state = prepared.snapshot.state;
+        self.snapshot = prepared.snapshot;
+        let admission = ActionAdmission::Committed {
+            state,
+            logical_result: prepared.logical_result,
+            undo: prepared.undo,
+            effects: prepared.effects,
+        };
+        self.statuses.insert(
+            prepared.invocation_id,
+            InvocationStatus::Committed { state },
+        );
+        Ok(store(
+            &mut self.invocations,
+            prepared.invocation_id,
+            admission,
+        ))
+    }
+
+    pub fn admit(
+        &mut self,
+        request: InvokeAction,
+        context: &InvocationContext,
+        now: Instant,
+    ) -> ActionAdmission {
+        match self.prepare(&request, context, now) {
+            ActionPreparation::Retained(previous) => previous,
+            ActionPreparation::Rejected {
+                invocation_id,
+                source,
+            } => store(
+                &mut self.invocations,
+                invocation_id,
+                ActionAdmission::Rejected(source),
+            ),
+            ActionPreparation::Prepared(prepared) => {
+                let invocation_id = prepared.invocation_id;
+                match self.commit_prepared(prepared) {
+                    Ok(admission) => admission,
+                    Err(PreparedCommitError::StateChanged { expected, actual }) => store(
+                        &mut self.invocations,
+                        invocation_id,
+                        ActionAdmission::Rejected(ActionRejection::StaleState { expected, actual }),
+                    ),
+                    Err(PreparedCommitError::Confirmation(error)) => store(
+                        &mut self.invocations,
+                        invocation_id,
+                        ActionAdmission::Rejected(ActionRejection::Confirmation(error)),
+                    ),
+                    Err(PreparedCommitError::InvocationAlreadyRecorded) => {
+                        match self.invocations.get(&invocation_id) {
+                            Some(previous) => previous.clone(),
+                            None => unreachable!("duplicate commit requires a retained admission"),
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -355,6 +477,13 @@ fn store(
 ) -> ActionAdmission {
     invocations.insert(id, admission.clone());
     admission
+}
+
+fn rejected(invocation_id: InvocationId, source: ActionRejection) -> ActionPreparation {
+    ActionPreparation::Rejected {
+        invocation_id,
+        source,
+    }
 }
 
 #[cfg(test)]
@@ -496,6 +625,68 @@ mod tests {
             }
             _ => panic!("both admissions should be the same commit"),
         }
+    }
+
+    #[test]
+    fn preparation_is_read_only_until_explicit_commit() {
+        let mut state = live_state();
+        let id = invocation(6);
+        let before = state.snapshot().clone();
+        let request = focus_left(id, before.state);
+
+        let ActionPreparation::Prepared(prepared) =
+            state.prepare(&request, &context(), Instant::now())
+        else {
+            panic!("live action should prepare");
+        };
+
+        assert_eq!(state.snapshot(), &before);
+        assert_eq!(state.status(id), None);
+        assert_eq!(prepared.previous_state(), stamp(10));
+        assert_eq!(prepared.committed_state(), stamp(11));
+
+        let admission = state
+            .commit_prepared(prepared)
+            .expect("prepared transition should commit");
+        assert!(matches!(
+            admission,
+            ActionAdmission::Committed { state, .. } if state == stamp(11)
+        ));
+        assert_eq!(state.snapshot().state, stamp(11));
+    }
+
+    #[test]
+    fn prepared_transition_rejects_publication_after_state_advances() {
+        let mut state = live_state();
+        let first = match state.prepare(
+            &focus_left(invocation(7), stamp(10)),
+            &context(),
+            Instant::now(),
+        ) {
+            ActionPreparation::Prepared(prepared) => prepared,
+            _ => panic!("first action should prepare"),
+        };
+        let second_id = invocation(8);
+        let second = match state.prepare(
+            &focus_left(second_id, stamp(10)),
+            &context(),
+            Instant::now(),
+        ) {
+            ActionPreparation::Prepared(prepared) => prepared,
+            _ => panic!("second action should prepare"),
+        };
+
+        state
+            .commit_prepared(first)
+            .expect("first transition should commit");
+        assert_eq!(
+            state.commit_prepared(second),
+            Err(PreparedCommitError::StateChanged {
+                expected: stamp(10),
+                actual: stamp(11),
+            })
+        );
+        assert_eq!(state.status(second_id), None);
     }
 
     #[test]
