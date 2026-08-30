@@ -4,37 +4,95 @@ use thiserror::Error;
 
 const MAX_VERSION_RANGES: usize = 32;
 
-macro_rules! version_type {
-    ($name:ident) => {
-        #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
-        pub struct $name(NonZeroU16);
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub struct ProtocolMajor(NonZeroU16);
 
-        impl $name {
-            #[must_use]
-            pub const fn new(value: NonZeroU16) -> Self {
-                Self(value)
-            }
+impl ProtocolMajor {
+    #[must_use]
+    pub const fn new(value: NonZeroU16) -> Self {
+        Self(value)
+    }
 
-            #[must_use]
-            pub const fn get(self) -> u16 {
-                self.0.get()
-            }
-        }
-
-        impl TryFrom<u16> for $name {
-            type Error = VersionSetError;
-
-            fn try_from(value: u16) -> Result<Self, Self::Error> {
-                NonZeroU16::new(value)
-                    .map(Self)
-                    .ok_or(VersionSetError::ZeroVersion)
-            }
-        }
-    };
+    #[must_use]
+    pub const fn get(self) -> u16 {
+        self.0.get()
+    }
 }
 
-version_type!(ProtocolVersion);
-version_type!(CatalogSchemaVersion);
+impl TryFrom<u16> for ProtocolMajor {
+    type Error = VersionSetError;
+
+    fn try_from(value: u16) -> Result<Self, Self::Error> {
+        NonZeroU16::new(value)
+            .map(Self)
+            .ok_or(VersionSetError::ZeroVersion)
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub struct ProtocolMinor(u16);
+
+impl ProtocolMinor {
+    pub const ZERO: Self = Self(0);
+
+    #[must_use]
+    pub const fn new(value: u16) -> Self {
+        Self(value)
+    }
+
+    #[must_use]
+    pub const fn get(self) -> u16 {
+        self.0
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub struct ProtocolVersion {
+    major: ProtocolMajor,
+    minor: ProtocolMinor,
+}
+
+impl ProtocolVersion {
+    #[must_use]
+    pub const fn new(major: ProtocolMajor, minor: ProtocolMinor) -> Self {
+        Self { major, minor }
+    }
+
+    #[must_use]
+    pub const fn major(self) -> ProtocolMajor {
+        self.major
+    }
+
+    #[must_use]
+    pub const fn minor(self) -> ProtocolMinor {
+        self.minor
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub struct CatalogSchemaVersion(NonZeroU16);
+
+impl CatalogSchemaVersion {
+    #[must_use]
+    pub const fn new(value: NonZeroU16) -> Self {
+        Self(value)
+    }
+
+    #[must_use]
+    pub const fn get(self) -> u16 {
+        self.0.get()
+    }
+}
+
+impl TryFrom<u16> for CatalogSchemaVersion {
+    type Error = VersionSetError;
+
+    fn try_from(value: u16) -> Result<Self, Self::Error> {
+        NonZeroU16::new(value)
+            .map(Self)
+            .ok_or(VersionSetError::ZeroVersion)
+    }
+}
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct VersionRange<V> {
@@ -127,7 +185,7 @@ impl<V: Copy + Ord> VersionRanges<V> {
 
 #[derive(Clone, Debug, Error, Eq, PartialEq)]
 pub enum VersionSetError {
-    #[error("protocol versions begin at one")]
+    #[error("protocol and schema versions begin at one")]
     ZeroVersion,
     #[error("version range begins after it ends")]
     ReversedRange,
@@ -143,21 +201,27 @@ pub enum VersionSetError {
 mod tests {
     use super::*;
 
-    fn protocol(value: u16) -> Result<ProtocolVersion, VersionSetError> {
-        value.try_into()
+    fn protocol(major: u16, minor: u16) -> Result<ProtocolVersion, VersionSetError> {
+        Ok(ProtocolVersion::new(
+            ProtocolMajor::try_from(major)?,
+            ProtocolMinor::new(minor),
+        ))
     }
 
-    fn range(first: u16, last: u16) -> Result<VersionRange<ProtocolVersion>, VersionSetError> {
-        VersionRange::new(protocol(first)?, protocol(last)?)
+    fn range(
+        first: (u16, u16),
+        last: (u16, u16),
+    ) -> Result<VersionRange<ProtocolVersion>, VersionSetError> {
+        VersionRange::new(protocol(first.0, first.1)?, protocol(last.0, last.1)?)
     }
 
     #[test]
-    fn versions_reject_zero_and_reversed_ranges() {
+    fn versions_reject_zero_major_and_reversed_ranges() {
         assert_eq!(
-            ProtocolVersion::try_from(0),
+            ProtocolMajor::try_from(0),
             Err(VersionSetError::ZeroVersion)
         );
-        assert_eq!(range(2, 1), Err(VersionSetError::ReversedRange));
+        assert_eq!(range((2, 0), (1, 9)), Err(VersionSetError::ReversedRange));
     }
 
     #[test]
@@ -167,24 +231,24 @@ mod tests {
             Err(VersionSetError::Empty)
         );
         assert_eq!(
-            VersionRanges::new(vec![range(1, 3)?, range(3, 4)?]),
+            VersionRanges::new(vec![range((1, 0), (1, 3))?, range((1, 3), (1, 4))?]),
             Err(VersionSetError::NonCanonical)
         );
         assert_eq!(
-            VersionRanges::new(vec![range(5, 6)?, range(1, 2)?]),
+            VersionRanges::new(vec![range((5, 0), (6, 0))?, range((1, 0), (2, 0))?]),
             Err(VersionSetError::NonCanonical)
         );
         Ok(())
     }
 
     #[test]
-    fn negotiation_selects_the_highest_common_version() -> Result<(), VersionSetError> {
-        let server = VersionRanges::new(vec![range(1, 2)?, range(5, 8)?])?;
-        let client = VersionRanges::new(vec![range(2, 6)?, range(9, 10)?])?;
+    fn negotiation_selects_the_highest_common_major_and_minor() -> Result<(), VersionSetError> {
+        let server = VersionRanges::new(vec![range((1, 0), (1, 2))?, range((2, 0), (2, 8))?])?;
+        let client = VersionRanges::new(vec![range((1, 2), (2, 6))?, range((3, 0), (3, 1))?])?;
 
-        assert_eq!(server.highest_common(&client), Some(protocol(6)?));
-        assert!(server.contains(protocol(6)?));
-        assert!(client.contains(protocol(6)?));
+        assert_eq!(server.highest_common(&client), Some(protocol(2, 6)?));
+        assert!(server.contains(protocol(2, 6)?));
+        assert!(client.contains(protocol(2, 6)?));
         Ok(())
     }
 }

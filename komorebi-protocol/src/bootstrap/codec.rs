@@ -7,32 +7,30 @@ use minicbor::data::Type;
 use super::BootstrapCodec;
 use super::BootstrapCodecError;
 use super::FeatureId;
+use super::FeatureSet;
+use super::FeatureSetError;
 use super::HELLO_REQUIRED_FIELDS;
 use super::Hello;
 use super::MAX_BOOTSTRAP_FIELDS;
+use super::MAX_BOOTSTRAP_PAYLOAD_BYTES;
 use super::MAX_FEATURES;
 use super::MAX_NESTING_DEPTH;
 use super::MAX_SKIPPED_COLLECTION_ITEMS;
 use super::RoleHint;
 use crate::CatalogSchemaVersion;
+use crate::ProtocolMajor;
+use crate::ProtocolMinor;
 use crate::ProtocolVersion;
 use crate::VersionRange;
 use crate::VersionRanges;
-use crate::VersionSetError;
 
 impl BootstrapCodec {
     /// Encodes a canonical numeric-key, definite-length `Hello` payload.
     ///
     /// # Errors
     ///
-    /// Returns [`BootstrapCodecError::TooManyFeatures`] when the typed feature
-    /// set exceeds the version 1 bound, or `Encode` on an encoder failure.
+    /// Returns `Encode` on an encoder failure.
     pub fn encode_hello(hello: &Hello) -> Result<Vec<u8>, BootstrapCodecError> {
-        if hello.supported_features.len() > MAX_FEATURES {
-            return Err(BootstrapCodecError::TooManyFeatures(
-                hello.supported_features.len(),
-            ));
-        }
         let field_count = if hello.requested_role_hint.is_some() {
             4
         } else {
@@ -40,15 +38,11 @@ impl BootstrapCodec {
         };
         let mut encoder = Encoder::new(Vec::with_capacity(128));
         encoder.map(field_count)?.u8(0)?;
-        encode_ranges(&mut encoder, hello.protocol_versions.as_slice())?;
+        encode_protocol_ranges(&mut encoder, hello.protocol_versions.as_slice())?;
         encoder.u8(1)?;
-        encode_ranges(&mut encoder, hello.catalog_schemas.as_slice())?;
-        encoder
-            .u8(2)?
-            .array(usize_to_u64(hello.supported_features.len())?)?;
-        for feature in &hello.supported_features {
-            encoder.u16(feature.get())?;
-        }
+        encode_catalog_ranges(&mut encoder, hello.catalog_schemas.as_slice())?;
+        encoder.u8(2)?;
+        encode_features(&mut encoder, &hello.supported_features)?;
         if let Some(role) = hello.requested_role_hint {
             encoder.u8(3)?.u8(role as u8)?;
         }
@@ -66,6 +60,9 @@ impl BootstrapCodec {
     /// fields, missing required fields, invalid ranges or roles, duplicate
     /// features, oversized collections, malformed CBOR, or trailing bytes.
     pub fn decode_hello(bytes: &[u8]) -> Result<Hello, BootstrapCodecError> {
+        if bytes.len() > MAX_BOOTSTRAP_PAYLOAD_BYTES {
+            return Err(BootstrapCodecError::BootstrapPayloadTooLarge(bytes.len()));
+        }
         let mut decoder = Decoder::new(bytes);
         let field_count = definite_len(decoder.map()?)?;
         if field_count > MAX_BOOTSTRAP_FIELDS {
@@ -109,54 +106,61 @@ impl BootstrapCodec {
     }
 }
 
-fn encode_ranges<V>(
+fn encode_protocol_ranges(
     encoder: &mut Encoder<Vec<u8>>,
-    ranges: &[VersionRange<V>],
-) -> Result<(), BootstrapCodecError>
-where
-    V: Copy + Ord + IntoVersionNumber,
-{
+    ranges: &[VersionRange<ProtocolVersion>],
+) -> Result<(), BootstrapCodecError> {
     encoder.array(usize_to_u64(ranges.len())?)?;
     for range in ranges {
-        encoder
-            .array(2)?
-            .u16(range.first().version_number())?
-            .u16(range.last().version_number())?;
+        encoder.array(2)?;
+        encode_protocol_version(encoder, range.first())?;
+        encode_protocol_version(encoder, range.last())?;
     }
     Ok(())
 }
 
-trait IntoVersionNumber {
-    fn version_number(self) -> u16;
+pub(super) fn encode_protocol_version(
+    encoder: &mut Encoder<Vec<u8>>,
+    version: ProtocolVersion,
+) -> Result<(), BootstrapCodecError> {
+    encoder
+        .array(2)?
+        .u16(version.major().get())?
+        .u16(version.minor().get())?;
+    Ok(())
 }
 
-impl IntoVersionNumber for ProtocolVersion {
-    fn version_number(self) -> u16 {
-        self.get()
+fn encode_catalog_ranges(
+    encoder: &mut Encoder<Vec<u8>>,
+    ranges: &[VersionRange<CatalogSchemaVersion>],
+) -> Result<(), BootstrapCodecError> {
+    encoder.array(usize_to_u64(ranges.len())?)?;
+    for range in ranges {
+        encoder
+            .array(2)?
+            .u16(range.first().get())?
+            .u16(range.last().get())?;
     }
-}
-
-impl IntoVersionNumber for CatalogSchemaVersion {
-    fn version_number(self) -> u16 {
-        self.get()
-    }
+    Ok(())
 }
 
 fn decode_protocol_ranges(
     decoder: &mut Decoder<'_>,
 ) -> Result<VersionRanges<ProtocolVersion>, BootstrapCodecError> {
-    decode_ranges(decoder, ProtocolVersion::try_from)
+    decode_ranges(decoder, decode_protocol_version)
 }
 
 fn decode_catalog_ranges(
     decoder: &mut Decoder<'_>,
 ) -> Result<VersionRanges<CatalogSchemaVersion>, BootstrapCodecError> {
-    decode_ranges(decoder, CatalogSchemaVersion::try_from)
+    decode_ranges(decoder, |decoder| {
+        Ok(CatalogSchemaVersion::try_from(decoder.u16()?)?)
+    })
 }
 
 fn decode_ranges<V>(
     decoder: &mut Decoder<'_>,
-    version: impl Fn(u16) -> Result<V, VersionSetError>,
+    version: impl Fn(&mut Decoder<'_>) -> Result<V, BootstrapCodecError>,
 ) -> Result<VersionRanges<V>, BootstrapCodecError>
 where
     V: Copy + Ord,
@@ -172,39 +176,65 @@ where
         if range_len != 2 {
             return Err(BootstrapCodecError::WrongRangeLength(range_len));
         }
-        ranges.push(VersionRange::new(
-            version(decoder.u16()?)?,
-            version(decoder.u16()?)?,
-        )?);
+        ranges.push(VersionRange::new(version(decoder)?, version(decoder)?)?);
     }
     Ok(VersionRanges::new(ranges)?)
 }
 
-fn decode_features(decoder: &mut Decoder<'_>) -> Result<BTreeSet<FeatureId>, BootstrapCodecError> {
+pub(super) fn decode_protocol_version(
+    decoder: &mut Decoder<'_>,
+) -> Result<ProtocolVersion, BootstrapCodecError> {
+    let length = definite_len(decoder.array()?)?;
+    if length != 2 {
+        return Err(BootstrapCodecError::WrongProtocolVersionLength(length));
+    }
+    Ok(ProtocolVersion::new(
+        ProtocolMajor::try_from(decoder.u16()?)?,
+        ProtocolMinor::new(decoder.u16()?),
+    ))
+}
+
+pub(super) fn encode_features(
+    encoder: &mut Encoder<Vec<u8>>,
+    features: &FeatureSet,
+) -> Result<(), BootstrapCodecError> {
+    encoder.array(usize_to_u64(features.as_set().len())?)?;
+    for feature in features.as_set() {
+        encoder.u32(feature.get())?;
+    }
+    Ok(())
+}
+
+pub(super) fn decode_features(
+    decoder: &mut Decoder<'_>,
+) -> Result<FeatureSet, BootstrapCodecError> {
     let count = definite_len(decoder.array()?)?;
     let capacity = usize::try_from(count).map_err(|_| BootstrapCodecError::CollectionTooLarge)?;
     if capacity > MAX_FEATURES {
-        return Err(BootstrapCodecError::TooManyFeatures(capacity));
+        return Err(FeatureSetError::TooMany(capacity).into());
     }
     let mut features = BTreeSet::new();
     for _ in 0..count {
-        let feature = FeatureId::new(decoder.u16()?);
+        let feature = FeatureId::try_from(decoder.u32()?)?;
         if !features.insert(feature) {
             return Err(BootstrapCodecError::DuplicateFeature(feature));
         }
     }
-    Ok(features)
+    Ok(FeatureSet::new(features)?)
 }
 
-fn definite_len(length: Option<u64>) -> Result<u64, BootstrapCodecError> {
+pub(super) fn definite_len(length: Option<u64>) -> Result<u64, BootstrapCodecError> {
     length.ok_or(BootstrapCodecError::IndefiniteCollection)
 }
 
-fn usize_to_u64(value: usize) -> Result<u64, BootstrapCodecError> {
+pub(super) fn usize_to_u64(value: usize) -> Result<u64, BootstrapCodecError> {
     u64::try_from(value).map_err(|_| BootstrapCodecError::CollectionTooLarge)
 }
 
-fn skip_bounded(decoder: &mut Decoder<'_>, depth: u8) -> Result<(), BootstrapCodecError> {
+pub(super) fn skip_bounded(
+    decoder: &mut Decoder<'_>,
+    depth: u8,
+) -> Result<(), BootstrapCodecError> {
     if depth >= MAX_NESTING_DEPTH {
         return Err(BootstrapCodecError::NestingTooDeep);
     }
