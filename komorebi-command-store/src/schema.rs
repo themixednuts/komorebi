@@ -95,6 +95,7 @@ pub(crate) struct RecoveryCandidate {
     pub phase: StoredPhase,
     pub recovery_policy: Option<StoredRecoveryPolicy>,
     pub logical_revision: Option<StoredRevision>,
+    pub committed_event: Option<CommittedEventDocument>,
 }
 
 #[derive(Debug, SQLiteFromRow)]

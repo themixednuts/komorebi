@@ -62,6 +62,11 @@ impl DurableInvocationLedger {
                                     "committed invocation is missing its recovery policy".into(),
                                 )
                             })?;
+                            let committed_event = row.committed_event.ok_or_else(|| {
+                                DrizzleError::ConversionError(
+                                    "committed invocation is missing its committed event".into(),
+                                )
+                            })?;
 
                             if row.phase == StoredPhase::EffectDispatched
                                 && policy == StoredRecoveryPolicy::NeverReplay
@@ -85,6 +90,7 @@ impl DurableInvocationLedger {
                                         DispatchState::NotStarted
                                     },
                                     invocation: row.invocation,
+                                    committed_event,
                                 });
                             }
                         }

@@ -14,6 +14,7 @@ use komorebi_command_store::DurablePhase;
 use komorebi_command_store::LeaseDecision;
 use komorebi_command_store::LeaseRequest;
 use komorebi_command_store::LedgerTimestamp;
+use komorebi_command_store::LogicalCommit;
 use komorebi_command_store::MINIMUM_TERMINAL_RETENTION;
 use komorebi_command_store::NamespaceRegistration;
 use komorebi_command_store::OutcomeDocument;
@@ -187,12 +188,16 @@ fn terminal_status_survives_reopen_on_a_unicode_windows_path() -> Result<(), Box
         ReservationDecision::IdempotencyConflict
     );
 
+    let event = CommittedEventDocument::new(NonZeroU16::MIN, [5])?;
     assert_eq!(
         ledger.commit_logical(
             reservation,
-            CommittedRevision::new(NonZeroU64::MIN),
-            RecoveryPolicy::ObserveAndConverge,
-            LedgerTimestamp::from_unix_millis(2)?,
+            LogicalCommit {
+                revision: CommittedRevision::new(NonZeroU64::MIN),
+                recovery_policy: RecoveryPolicy::ObserveAndConverge,
+                committed_event: event.clone(),
+                committed_at: LedgerTimestamp::from_unix_millis(2)?,
+            },
         )?,
         TransitionDecision::Applied
     );
@@ -201,14 +206,12 @@ fn terminal_status_survives_reopen_on_a_unicode_windows_path() -> Result<(), Box
         TransitionDecision::Applied
     );
     let outcome = OutcomeDocument::new(NonZeroU16::MIN, [4])?;
-    let event = CommittedEventDocument::new(NonZeroU16::MIN, [5])?;
     assert_eq!(
         ledger.record_terminal(
             id,
             TerminalRecord {
                 kind: TerminalKind::Succeeded,
                 outcome: outcome.clone(),
-                committed_event: event.clone(),
                 recorded_at: LedgerTimestamp::from_unix_millis(4)?,
             },
         )?,
@@ -280,9 +283,12 @@ fn restart_never_blindly_replays_an_ambiguous_effect() -> Result<(), Box<dyn Err
     assert_eq!(
         ledger.commit_logical(
             logical,
-            CommittedRevision::new(NonZeroU64::MIN),
-            RecoveryPolicy::NeverReplay,
-            LedgerTimestamp::from_unix_millis(2)?,
+            LogicalCommit {
+                revision: CommittedRevision::new(NonZeroU64::MIN),
+                recovery_policy: RecoveryPolicy::NeverReplay,
+                committed_event: CommittedEventDocument::new(NonZeroU16::MIN, [6])?,
+                committed_at: LedgerTimestamp::from_unix_millis(2)?,
+            },
         )?,
         TransitionDecision::Applied
     );
@@ -299,9 +305,12 @@ fn restart_never_blindly_replays_an_ambiguous_effect() -> Result<(), Box<dyn Err
     assert_eq!(
         ledger.commit_logical(
             dispatched,
-            CommittedRevision::new(NonZeroU64::MIN),
-            RecoveryPolicy::NeverReplay,
-            LedgerTimestamp::from_unix_millis(2)?,
+            LogicalCommit {
+                revision: CommittedRevision::new(NonZeroU64::MIN),
+                recovery_policy: RecoveryPolicy::NeverReplay,
+                committed_event: CommittedEventDocument::new(NonZeroU16::MIN, [7])?,
+                committed_at: LedgerTimestamp::from_unix_millis(2)?,
+            },
         )?,
         TransitionDecision::Applied
     );
@@ -318,6 +327,7 @@ fn restart_never_blindly_replays_an_ambiguous_effect() -> Result<(), Box<dyn Err
     assert_eq!(report.reconcile.len(), 1);
     assert_eq!(report.reconcile[0].invocation_id, logical_id);
     assert_eq!(report.reconcile[0].dispatch, DispatchState::NotStarted);
+    assert_eq!(report.reconcile[0].committed_event.payload(), [6]);
     assert!(matches!(
         reopened.status(fixture.principal, reserved_id)?,
         StatusDecision::Retained(status)
@@ -327,6 +337,8 @@ fn restart_never_blindly_replays_an_ambiguous_effect() -> Result<(), Box<dyn Err
         reopened.status(fixture.principal, dispatched_id)?,
         StatusDecision::Retained(status)
             if status.terminal_kind == Some(TerminalKind::Indeterminate)
+                && status.committed_event
+                    == Some(CommittedEventDocument::new(NonZeroU16::MIN, [7])?)
     ));
     Ok(())
 }

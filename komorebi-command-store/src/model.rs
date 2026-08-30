@@ -113,6 +113,14 @@ pub enum RecoveryPolicy {
     NeverReplay,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct LogicalCommit {
+    pub revision: CommittedRevision,
+    pub recovery_policy: RecoveryPolicy,
+    pub committed_event: CommittedEventDocument,
+    pub committed_at: LedgerTimestamp,
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum DurablePhase {
     Reserved,
@@ -146,7 +154,6 @@ pub struct InvocationStatus {
 pub struct TerminalRecord {
     pub kind: TerminalKind,
     pub outcome: OutcomeDocument,
-    pub committed_event: CommittedEventDocument,
     pub recorded_at: LedgerTimestamp,
 }
 
@@ -170,6 +177,7 @@ pub struct RecoveryInvocation {
     pub policy: RecoveryPolicy,
     pub dispatch: DispatchState,
     pub invocation: InvocationDocument,
+    pub committed_event: CommittedEventDocument,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

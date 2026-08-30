@@ -21,6 +21,7 @@ pub use model::InvocationStatus;
 pub use model::LeaseDecision;
 pub use model::LeaseRequest;
 pub use model::LedgerTimestamp;
+pub use model::LogicalCommit;
 pub use model::MAX_LIVE_RECORDS_PER_NAMESPACE;
 pub use model::MINIMUM_TERMINAL_RETENTION;
 pub use model::NamespaceRegistration;

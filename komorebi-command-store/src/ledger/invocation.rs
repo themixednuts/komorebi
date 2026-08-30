@@ -13,8 +13,8 @@ use super::LedgerError;
 use super::is_missing;
 use super::status_from_row;
 use crate::document::InvocationDocument;
+use crate::model::LogicalCommit;
 use crate::model::MAX_LIVE_RECORDS_PER_NAMESPACE;
-use crate::model::RecoveryPolicy;
 use crate::model::Reservation;
 use crate::model::ReservationDecision;
 use crate::model::ReservationRequest;
@@ -30,7 +30,6 @@ use crate::schema::StoredRecoveryPolicy;
 use crate::schema::StoredTerminalKind;
 use crate::schema::UpdateInvocationNamespaces;
 use crate::schema::UpdateInvocationRecords;
-use crate::storage::CommittedRevision;
 use crate::storage::StoredDigest;
 use crate::storage::StoredNamespaceId;
 use crate::storage::StoredPrincipalId;
@@ -169,16 +168,15 @@ impl DurableInvocationLedger {
     pub fn commit_logical(
         &mut self,
         reservation: Reservation,
-        revision: CommittedRevision,
-        policy: RecoveryPolicy,
-        committed_at: crate::model::LedgerTimestamp,
+        commit: LogicalCommit,
     ) -> Result<TransitionDecision, LedgerError> {
-        let policy = StoredRecoveryPolicy::from(policy);
+        let policy = StoredRecoveryPolicy::from(commit.recovery_policy);
         let update = UpdateInvocationRecords::default()
             .with_phase(StoredPhase::LogicalCommitted)
-            .with_logical_revision(StoredRevision(revision))
+            .with_logical_revision(StoredRevision(commit.revision))
             .with_recovery_policy(policy)
-            .with_logical_committed_at_ms(committed_at.as_unix_millis());
+            .with_committed_event(commit.committed_event)
+            .with_logical_committed_at_ms(commit.committed_at.as_unix_millis());
         self.transition_from(reservation.invocation_id(), StoredPhase::Reserved, update)
     }
 
@@ -216,7 +214,7 @@ impl DurableInvocationLedger {
         self.transition_from(invocation_id, StoredPhase::LogicalCommitted, update)
     }
 
-    /// Records the terminal outcome and committed event in one transaction.
+    /// Records the terminal outcome after logical state and its event are durable.
     ///
     /// # Errors
     ///
@@ -256,7 +254,6 @@ impl DurableInvocationLedger {
                             .with_phase(StoredPhase::Terminal)
                             .with_terminal_kind(terminal_kind)
                             .with_outcome(terminal.outcome)
-                            .with_committed_event(terminal.committed_event)
                             .with_terminal_at_ms(terminal.recorded_at.as_unix_millis()),
                     )
                     .r#where(and(
