@@ -154,6 +154,12 @@ pub(super) fn directional_gap(
         | BuiltinAction::SetTransparencyEnabled { .. }
         | BuiltinAction::ToggleTransparency
         | BuiltinAction::SetTransparencyAlpha { .. }
+        | BuiltinAction::SetBorderEnabled { .. }
+        | BuiltinAction::SetBorderColour { .. }
+        | BuiltinAction::SetBorderWidth { .. }
+        | BuiltinAction::SetBorderOffset { .. }
+        | BuiltinAction::SetBorderStyle { .. }
+        | BuiltinAction::SetBorderImplementation { .. }
         | BuiltinAction::SetWorkspaceLayout { .. }
         | BuiltinAction::ToggleWindowFloat { .. }
         | BuiltinAction::CycleFocusWindow { .. }
@@ -281,13 +287,29 @@ pub(super) fn apply_logical(snapshot: &mut ActionSnapshot, action: &BuiltinActio
         BuiltinAction::SetTransparencyAlpha { alpha } => {
             snapshot.configuration.transparency.alpha = alpha;
         }
+        BuiltinAction::SetBorderEnabled { enabled } => {
+            snapshot.configuration.border.enabled = enabled;
+        }
+        BuiltinAction::SetBorderWidth { width } => {
+            snapshot.configuration.border.width = width;
+        }
+        BuiltinAction::SetBorderOffset { offset } => {
+            snapshot.configuration.border.offset = offset;
+        }
+        BuiltinAction::SetBorderStyle { style } => {
+            snapshot.configuration.border.style = style;
+        }
+        BuiltinAction::SetBorderImplementation { implementation } => {
+            snapshot.configuration.border.implementation = implementation;
+        }
         BuiltinAction::ToggleWindowFloat { .. } => {
             snapshot.focused_window_floating = !snapshot.focused_window_floating;
         }
         BuiltinAction::TogglePause => {
             snapshot.paused = !snapshot.paused;
         }
-        BuiltinAction::FocusWindow { .. }
+        BuiltinAction::SetBorderColour { .. }
+        | BuiltinAction::FocusWindow { .. }
         | BuiltinAction::MoveWindow { .. }
         | BuiltinAction::ResizeWindow { .. }
         | BuiltinAction::ResizeWindowByStep { .. }
@@ -416,6 +438,20 @@ pub(super) fn logical_result(action: &BuiltinAction, snapshot: &ActionSnapshot) 
         },
         BuiltinAction::SetTransparencyAlpha { alpha } => {
             ActionResult::TransparencyAlphaSet { alpha }
+        }
+        BuiltinAction::SetBorderEnabled { enabled } => ActionResult::BorderEnabledSet { enabled },
+        BuiltinAction::SetBorderColour {
+            window_kind,
+            colour,
+        } => ActionResult::BorderColourSet {
+            window_kind,
+            colour,
+        },
+        BuiltinAction::SetBorderWidth { width } => ActionResult::BorderWidthSet { width },
+        BuiltinAction::SetBorderOffset { offset } => ActionResult::BorderOffsetSet { offset },
+        BuiltinAction::SetBorderStyle { style } => ActionResult::BorderStyleSet { style },
+        BuiltinAction::SetBorderImplementation { implementation } => {
+            ActionResult::BorderImplementationSet { implementation }
         }
         BuiltinAction::SetWorkspaceLayout { layout, .. } => ActionResult::LayoutSet { layout },
         BuiltinAction::ToggleWindowFloat { .. } => ActionResult::FloatToggled {
@@ -709,6 +745,23 @@ pub(super) fn effects(action: &BuiltinAction, snapshot: &ActionSnapshot) -> Vec<
         }],
         BuiltinAction::SetTransparencyAlpha { alpha } => {
             vec![NativeEffect::SetTransparencyAlpha { alpha }]
+        }
+        BuiltinAction::SetBorderEnabled { enabled } => vec![NativeEffect::SetBorderEnabled {
+            enabled,
+            implementation: snapshot.configuration.border.implementation,
+        }],
+        BuiltinAction::SetBorderColour {
+            window_kind,
+            colour,
+        } => vec![NativeEffect::SetBorderColour {
+            window_kind,
+            colour,
+        }],
+        BuiltinAction::SetBorderWidth { width } => vec![NativeEffect::SetBorderWidth { width }],
+        BuiltinAction::SetBorderOffset { offset } => vec![NativeEffect::SetBorderOffset { offset }],
+        BuiltinAction::SetBorderStyle { style } => vec![NativeEffect::SetBorderStyle { style }],
+        BuiltinAction::SetBorderImplementation { implementation } => {
+            vec![NativeEffect::SetBorderImplementation { implementation }]
         }
         BuiltinAction::SetWorkspaceLayout { layout, .. } => {
             vec![NativeEffect::SetLayout { layout }]

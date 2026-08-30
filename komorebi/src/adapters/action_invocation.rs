@@ -16,7 +16,10 @@ use crate::action::MonitorIndex;
 use crate::action::StackIndex;
 use crate::action::WorkspaceIndex;
 use crate::action::id::ParameterId;
+use crate::core::BorderOffset;
+use crate::core::BorderWidth;
 use crate::core::TransparencyAlpha;
+use komorebi_themes::colour::Rgb;
 
 /// Converts an invocation from one exact authority-scoped catalog into the
 /// closed manager action domain.
@@ -166,6 +169,29 @@ fn bind_builtin(
         K::ToggleTransparency => A::ToggleTransparency,
         K::SetTransparencyAlpha => A::SetTransparencyAlpha {
             alpha: TransparencyAlpha::new(args.u8(ParameterId::ALPHA)?),
+        },
+        K::SetBorderEnabled => A::SetBorderEnabled {
+            enabled: args.boolean(ParameterId::ENABLED)?,
+        },
+        K::SetBorderColour => A::SetBorderColour {
+            window_kind: args.window_kind(ParameterId::WINDOW_KIND)?,
+            colour: Rgb::new(
+                args.u8(ParameterId::RED)?,
+                args.u8(ParameterId::GREEN)?,
+                args.u8(ParameterId::BLUE)?,
+            ),
+        },
+        K::SetBorderWidth => A::SetBorderWidth {
+            width: BorderWidth::new(args.i32(ParameterId::WIDTH)?),
+        },
+        K::SetBorderOffset => A::SetBorderOffset {
+            offset: BorderOffset::new(args.i32(ParameterId::OFFSET)?),
+        },
+        K::SetBorderStyle => A::SetBorderStyle {
+            style: args.border_style(ParameterId::STYLE)?,
+        },
+        K::SetBorderImplementation => A::SetBorderImplementation {
+            implementation: args.border_implementation(ParameterId::IMPLEMENTATION)?,
         },
         K::SetWorkspaceLayout => A::SetWorkspaceLayout {
             workspace: args.workspace_selector(ParameterId::WORKSPACE)?,

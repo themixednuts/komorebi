@@ -56,6 +56,12 @@ pub enum ParameterDomain {
     AtCount,
     ResizeStep,
     Alpha,
+    WindowKind,
+    ColourChannel,
+    BorderWidth,
+    BorderOffset,
+    BorderStyle,
+    BorderImplementation,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -587,6 +593,53 @@ const ALPHA: &[ParameterDefinition] = &[ParameterDefinition {
     cardinality: ArgumentCardinality::RequiredScalar,
 }];
 
+const BORDER_COLOUR: &[ParameterDefinition] = &[
+    ParameterDefinition {
+        id: ParameterId::WINDOW_KIND,
+        domain: ParameterDomain::WindowKind,
+        cardinality: ArgumentCardinality::RequiredScalar,
+    },
+    ParameterDefinition {
+        id: ParameterId::RED,
+        domain: ParameterDomain::ColourChannel,
+        cardinality: ArgumentCardinality::RequiredScalar,
+    },
+    ParameterDefinition {
+        id: ParameterId::GREEN,
+        domain: ParameterDomain::ColourChannel,
+        cardinality: ArgumentCardinality::RequiredScalar,
+    },
+    ParameterDefinition {
+        id: ParameterId::BLUE,
+        domain: ParameterDomain::ColourChannel,
+        cardinality: ArgumentCardinality::RequiredScalar,
+    },
+];
+
+const BORDER_WIDTH: &[ParameterDefinition] = &[ParameterDefinition {
+    id: ParameterId::WIDTH,
+    domain: ParameterDomain::BorderWidth,
+    cardinality: ArgumentCardinality::RequiredScalar,
+}];
+
+const BORDER_OFFSET: &[ParameterDefinition] = &[ParameterDefinition {
+    id: ParameterId::OFFSET,
+    domain: ParameterDomain::BorderOffset,
+    cardinality: ArgumentCardinality::RequiredScalar,
+}];
+
+const BORDER_STYLE: &[ParameterDefinition] = &[ParameterDefinition {
+    id: ParameterId::STYLE,
+    domain: ParameterDomain::BorderStyle,
+    cardinality: ArgumentCardinality::RequiredScalar,
+}];
+
+const BORDER_IMPLEMENTATION: &[ParameterDefinition] = &[ParameterDefinition {
+    id: ParameterId::IMPLEMENTATION,
+    domain: ParameterDomain::BorderImplementation,
+    cardinality: ArgumentCardinality::RequiredScalar,
+}];
+
 const fn def(
     id: ActionId,
     kind: BuiltinActionKind,
@@ -744,12 +797,18 @@ impl BuiltinActionKind {
             Self::SetTransparencyEnabled => &SET_TRANSPARENCY_ENABLED,
             Self::ToggleTransparency => &TOGGLE_TRANSPARENCY,
             Self::SetTransparencyAlpha => &SET_TRANSPARENCY_ALPHA,
+            Self::SetBorderEnabled => &SET_BORDER_ENABLED,
+            Self::SetBorderColour => &SET_BORDER_COLOUR,
+            Self::SetBorderWidth => &SET_BORDER_WIDTH,
+            Self::SetBorderOffset => &SET_BORDER_OFFSET,
+            Self::SetBorderStyle => &SET_BORDER_STYLE,
+            Self::SetBorderImplementation => &SET_BORDER_IMPLEMENTATION,
         }
     }
 }
 
 #[must_use]
-pub fn definitions() -> [&'static ActionDefinition; 119] {
+pub fn definitions() -> [&'static ActionDefinition; 125] {
     BuiltinActionKind::ALL.map(BuiltinActionKind::definition)
 }
 

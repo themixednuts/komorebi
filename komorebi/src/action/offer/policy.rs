@@ -21,6 +21,11 @@ pub(super) enum CurrentValueSource {
     Floating,
     TransparencyEnabled,
     TransparencyAlpha,
+    BorderEnabled,
+    BorderWidth,
+    BorderOffset,
+    BorderStyle,
+    BorderImplementation,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -79,6 +84,26 @@ pub(super) const fn policy(kind: BuiltinActionKind) -> OfferPolicy {
         },
         BuiltinActionKind::SetTransparencyAlpha => OfferPolicy {
             current_value: CurrentValueSource::TransparencyAlpha,
+            ..AVAILABLE
+        },
+        BuiltinActionKind::SetBorderEnabled => OfferPolicy {
+            current_value: CurrentValueSource::BorderEnabled,
+            ..AVAILABLE
+        },
+        BuiltinActionKind::SetBorderWidth => OfferPolicy {
+            current_value: CurrentValueSource::BorderWidth,
+            ..AVAILABLE
+        },
+        BuiltinActionKind::SetBorderOffset => OfferPolicy {
+            current_value: CurrentValueSource::BorderOffset,
+            ..AVAILABLE
+        },
+        BuiltinActionKind::SetBorderStyle => OfferPolicy {
+            current_value: CurrentValueSource::BorderStyle,
+            ..AVAILABLE
+        },
+        BuiltinActionKind::SetBorderImplementation => OfferPolicy {
+            current_value: CurrentValueSource::BorderImplementation,
             ..AVAILABLE
         },
         BuiltinActionKind::MoveContainerToNamedWorkspace
@@ -192,6 +217,7 @@ pub(super) const fn policy(kind: BuiltinActionKind) -> OfferPolicy {
         | BuiltinActionKind::SetCustomLayout
         | BuiltinActionKind::SetWorkspaceCustomLayout
         | BuiltinActionKind::AddWorkspaceCustomLayoutRule
-        | BuiltinActionKind::RemoveTitleBar => AVAILABLE,
+        | BuiltinActionKind::RemoveTitleBar
+        | BuiltinActionKind::SetBorderColour => AVAILABLE,
     }
 }

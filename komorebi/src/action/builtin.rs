@@ -6,6 +6,10 @@ use std::num::NonZeroUsize;
 
 use crate::core::ApplicationIdentifier;
 use crate::core::Axis;
+use crate::core::BorderImplementation;
+use crate::core::BorderOffset;
+use crate::core::BorderStyle;
+use crate::core::BorderWidth;
 use crate::core::CycleDirection;
 use crate::core::DefaultLayout;
 use crate::core::FocusFollowsMouseImplementation;
@@ -17,6 +21,8 @@ use crate::core::OperationDirection;
 use crate::core::ResizeStep;
 use crate::core::Sizing;
 use crate::core::TransparencyAlpha;
+use crate::core::WindowKind;
+use komorebi_themes::colour::Rgb;
 
 use super::id::ActionId;
 use super::index::ContainerIndex;
@@ -146,10 +152,16 @@ pub enum BuiltinActionKind {
     SetTransparencyEnabled,
     ToggleTransparency,
     SetTransparencyAlpha,
+    SetBorderEnabled,
+    SetBorderColour,
+    SetBorderWidth,
+    SetBorderOffset,
+    SetBorderStyle,
+    SetBorderImplementation,
 }
 
 impl BuiltinActionKind {
-    pub const ALL: [Self; 119] = [
+    pub const ALL: [Self; 125] = [
         Self::FocusWindow,
         Self::MoveWindow,
         Self::ResizeWindow,
@@ -269,6 +281,12 @@ impl BuiltinActionKind {
         Self::SetTransparencyEnabled,
         Self::ToggleTransparency,
         Self::SetTransparencyAlpha,
+        Self::SetBorderEnabled,
+        Self::SetBorderColour,
+        Self::SetBorderWidth,
+        Self::SetBorderOffset,
+        Self::SetBorderStyle,
+        Self::SetBorderImplementation,
     ];
 
     #[must_use]
@@ -401,6 +419,12 @@ impl BuiltinActionKind {
             Self::SetTransparencyEnabled => ActionId::SET_TRANSPARENCY_ENABLED,
             Self::ToggleTransparency => ActionId::TOGGLE_TRANSPARENCY,
             Self::SetTransparencyAlpha => ActionId::SET_TRANSPARENCY_ALPHA,
+            Self::SetBorderEnabled => ActionId::SET_BORDER_ENABLED,
+            Self::SetBorderColour => ActionId::SET_BORDER_COLOUR,
+            Self::SetBorderWidth => ActionId::SET_BORDER_WIDTH,
+            Self::SetBorderOffset => ActionId::SET_BORDER_OFFSET,
+            Self::SetBorderStyle => ActionId::SET_BORDER_STYLE,
+            Self::SetBorderImplementation => ActionId::SET_BORDER_IMPLEMENTATION,
         }
     }
 }
@@ -820,6 +844,25 @@ pub enum BuiltinAction {
     SetTransparencyAlpha {
         alpha: TransparencyAlpha,
     },
+    SetBorderEnabled {
+        enabled: bool,
+    },
+    SetBorderColour {
+        window_kind: WindowKind,
+        colour: Rgb,
+    },
+    SetBorderWidth {
+        width: BorderWidth,
+    },
+    SetBorderOffset {
+        offset: BorderOffset,
+    },
+    SetBorderStyle {
+        style: BorderStyle,
+    },
+    SetBorderImplementation {
+        implementation: BorderImplementation,
+    },
 }
 
 impl BuiltinAction {
@@ -991,6 +1034,12 @@ impl BuiltinAction {
             Self::SetTransparencyEnabled { .. } => BuiltinActionKind::SetTransparencyEnabled,
             Self::ToggleTransparency => BuiltinActionKind::ToggleTransparency,
             Self::SetTransparencyAlpha { .. } => BuiltinActionKind::SetTransparencyAlpha,
+            Self::SetBorderEnabled { .. } => BuiltinActionKind::SetBorderEnabled,
+            Self::SetBorderColour { .. } => BuiltinActionKind::SetBorderColour,
+            Self::SetBorderWidth { .. } => BuiltinActionKind::SetBorderWidth,
+            Self::SetBorderOffset { .. } => BuiltinActionKind::SetBorderOffset,
+            Self::SetBorderStyle { .. } => BuiltinActionKind::SetBorderStyle,
+            Self::SetBorderImplementation { .. } => BuiltinActionKind::SetBorderImplementation,
         }
     }
 }

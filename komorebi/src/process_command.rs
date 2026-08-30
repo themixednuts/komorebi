@@ -34,7 +34,6 @@ use crate::SESSION_FLOATING_APPLICATIONS;
 use crate::SUBSCRIBERS;
 use crate::TCP_CONNECTIONS;
 use crate::TRAY_AND_MULTI_WINDOW_IDENTIFIERS;
-use crate::WINDOWS_11;
 use crate::WORKSPACE_MATCHING_RULES;
 use crate::adapters::socket_message::SocketMessageClass;
 use crate::adapters::socket_message::adapt_action;
@@ -47,17 +46,13 @@ use crate::animation::ANIMATION_FPS;
 use crate::animation::ANIMATION_STYLE_GLOBAL;
 use crate::animation::ANIMATION_STYLE_PER_ANIMATION;
 use crate::border_manager;
-use crate::border_manager::IMPLEMENTATION;
-use crate::border_manager::STYLE;
 use crate::build;
 use crate::config_generation::WorkspaceMatchingRule;
 use crate::core::ApplicationIdentifier;
-use crate::core::BorderImplementation;
 use crate::core::Layout;
 use crate::core::Rect;
 use crate::core::SocketMessage;
 use crate::core::StateQuery;
-use crate::core::WindowKind;
 use crate::core::config_generation::IdWithIdentifier;
 use crate::core::config_generation::MatchingRule;
 use crate::core::config_generation::MatchingStrategy;
@@ -210,6 +205,12 @@ impl WindowManager {
                 | SocketMessage::Transparency(..)
                 | SocketMessage::ToggleTransparency
                 | SocketMessage::TransparencyAlpha(..)
+                | SocketMessage::Border(..)
+                | SocketMessage::BorderColour(..)
+                | SocketMessage::BorderStyle(..)
+                | SocketMessage::BorderWidth(..)
+                | SocketMessage::BorderOffset(..)
+                | SocketMessage::BorderImplementation(..)
                 | SocketMessage::MoveContainerToLastWorkspace
                 | SocketMessage::SendContainerToLastWorkspace
                 | SocketMessage::MoveContainerToMonitorNumber(..)
@@ -909,79 +910,6 @@ if (!(Get-Process komorebi-bar -ErrorAction SilentlyContinue))
                 }
                 SocketMessage::RemoveSubscriberPipe(ref subscriber) => {
                     SUBSCRIBERS.lock().remove_pipe(subscriber);
-                }
-                SocketMessage::Border(enable) => {
-                    border_manager::BORDER_ENABLED.store(enable, Ordering::SeqCst);
-                    if !enable {
-                        match IMPLEMENTATION.load() {
-                            BorderImplementation::Komorebi => {
-                                border_manager::destroy_all_borders()?;
-                            }
-                            BorderImplementation::Windows => {
-                                self.remove_all_accents()?;
-                            }
-                        }
-                    } else if matches!(IMPLEMENTATION.load(), BorderImplementation::Komorebi) {
-                        force_update_borders = true;
-                    }
-                }
-                SocketMessage::BorderImplementation(implementation) => {
-                    if !*WINDOWS_11 && matches!(implementation, BorderImplementation::Windows) {
-                        tracing::error!(
-                            "BorderImplementation::Windows is only supported on Windows 11 and above"
-                        );
-                    } else {
-                        IMPLEMENTATION.store(implementation);
-                        match IMPLEMENTATION.load() {
-                            BorderImplementation::Komorebi => {
-                                self.remove_all_accents()?;
-                                force_update_borders = true;
-                            }
-                            BorderImplementation::Windows => {
-                                border_manager::destroy_all_borders()?;
-                            }
-                        }
-                    }
-                }
-                SocketMessage::BorderColour(kind, r, g, b) => {
-                    match kind {
-                        WindowKind::Single => {
-                            border_manager::FOCUSED
-                                .store(Rgb::new(r, g, b).into(), Ordering::SeqCst);
-                        }
-                        WindowKind::Stack => {
-                            border_manager::STACK.store(Rgb::new(r, g, b).into(), Ordering::SeqCst);
-                        }
-                        WindowKind::Monocle => {
-                            border_manager::MONOCLE
-                                .store(Rgb::new(r, g, b).into(), Ordering::SeqCst);
-                        }
-                        WindowKind::Unfocused => {
-                            border_manager::UNFOCUSED
-                                .store(Rgb::new(r, g, b).into(), Ordering::SeqCst);
-                        }
-                        WindowKind::UnfocusedLocked => {
-                            border_manager::UNFOCUSED_LOCKED
-                                .store(Rgb::new(r, g, b).into(), Ordering::SeqCst);
-                        }
-                        WindowKind::Floating => {
-                            border_manager::FLOATING
-                                .store(Rgb::new(r, g, b).into(), Ordering::SeqCst);
-                        }
-                    }
-                    force_update_borders = true;
-                }
-                SocketMessage::BorderStyle(style) => {
-                    STYLE.store(style);
-                    force_update_borders = true;
-                }
-                SocketMessage::BorderWidth(width) => {
-                    border_manager::BORDER_WIDTH.store(width, Ordering::SeqCst);
-                    force_update_borders = true;
-                }
-                SocketMessage::BorderOffset(offset) => {
-                    border_manager::BORDER_OFFSET.store(offset, Ordering::SeqCst);
-                    force_update_borders = true;
                 }
                 SocketMessage::Animation(enable, prefix) => match prefix {
                     Some(prefix) => {

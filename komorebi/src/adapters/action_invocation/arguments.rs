@@ -13,6 +13,8 @@ use crate::action::definition::ArgumentCardinality;
 use crate::action::id::ParameterId;
 use crate::core::ApplicationIdentifier;
 use crate::core::Axis;
+use crate::core::BorderImplementation;
+use crate::core::BorderStyle;
 use crate::core::CycleDirection;
 use crate::core::DefaultLayout;
 use crate::core::FocusFollowsMouseImplementation;
@@ -23,6 +25,7 @@ use crate::core::OperationBehaviour;
 use crate::core::OperationDirection;
 use crate::core::ResizeStep;
 use crate::core::Sizing;
+use crate::core::WindowKind;
 
 pub(super) struct ValidatedArguments<'a> {
     values: &'a protocol::ActionArguments,
@@ -306,6 +309,41 @@ impl<'a> ValidatedArguments<'a> {
         match self.choice(id)? {
             "komorebi" => Ok(FocusFollowsMouseImplementation::Komorebi),
             "windows" => Ok(FocusFollowsMouseImplementation::Windows),
+            value => Err(unknown_choice(id, value)),
+        }
+    }
+
+    pub(super) fn window_kind(&self, id: ParameterId) -> Result<WindowKind, ArgumentBindingError> {
+        match self.choice(id)? {
+            "single" => Ok(WindowKind::Single),
+            "stack" => Ok(WindowKind::Stack),
+            "monocle" => Ok(WindowKind::Monocle),
+            "unfocused" => Ok(WindowKind::Unfocused),
+            "unfocused-locked" => Ok(WindowKind::UnfocusedLocked),
+            "floating" => Ok(WindowKind::Floating),
+            value => Err(unknown_choice(id, value)),
+        }
+    }
+
+    pub(super) fn border_style(
+        &self,
+        id: ParameterId,
+    ) -> Result<BorderStyle, ArgumentBindingError> {
+        match self.choice(id)? {
+            "system" => Ok(BorderStyle::System),
+            "rounded" => Ok(BorderStyle::Rounded),
+            "square" => Ok(BorderStyle::Square),
+            value => Err(unknown_choice(id, value)),
+        }
+    }
+
+    pub(super) fn border_implementation(
+        &self,
+        id: ParameterId,
+    ) -> Result<BorderImplementation, ArgumentBindingError> {
+        match self.choice(id)? {
+            "komorebi" => Ok(BorderImplementation::Komorebi),
+            "windows" => Ok(BorderImplementation::Windows),
             value => Err(unknown_choice(id, value)),
         }
     }

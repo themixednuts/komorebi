@@ -138,6 +138,12 @@ impl ActionId {
     pub const SET_TRANSPARENCY_ENABLED: Self = Self("set-transparency-enabled");
     pub const TOGGLE_TRANSPARENCY: Self = Self("toggle-transparency");
     pub const SET_TRANSPARENCY_ALPHA: Self = Self("set-transparency-alpha");
+    pub const SET_BORDER_ENABLED: Self = Self("set-border-enabled");
+    pub const SET_BORDER_COLOUR: Self = Self("set-border-colour");
+    pub const SET_BORDER_WIDTH: Self = Self("set-border-width");
+    pub const SET_BORDER_OFFSET: Self = Self("set-border-offset");
+    pub const SET_BORDER_STYLE: Self = Self("set-border-style");
+    pub const SET_BORDER_IMPLEMENTATION: Self = Self("set-border-implementation");
 
     #[must_use]
     pub const fn as_str(self) -> &'static str {
@@ -184,8 +190,15 @@ impl ParameterId {
     pub const AT_COUNT: Self = Self("at-count");
     pub const RESIZE_STEP: Self = Self("resize-step");
     pub const ALPHA: Self = Self("alpha");
+    pub const WINDOW_KIND: Self = Self("window-kind");
+    pub const RED: Self = Self("red");
+    pub const GREEN: Self = Self("green");
+    pub const BLUE: Self = Self("blue");
+    pub const WIDTH: Self = Self("width");
+    pub const OFFSET: Self = Self("offset");
+    pub const STYLE: Self = Self("style");
 
-    pub const ALL: [Self; 28] = [
+    pub const ALL: [Self; 35] = [
         Self::DIRECTION,
         Self::AXIS,
         Self::DELTA,
@@ -214,6 +227,13 @@ impl ParameterId {
         Self::AT_COUNT,
         Self::RESIZE_STEP,
         Self::ALPHA,
+        Self::WINDOW_KIND,
+        Self::RED,
+        Self::GREEN,
+        Self::BLUE,
+        Self::WIDTH,
+        Self::OFFSET,
+        Self::STYLE,
     ];
 
     #[must_use]

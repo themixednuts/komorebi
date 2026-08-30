@@ -54,7 +54,9 @@ use crate::border_manager::ZOrder;
 use crate::config_generation::WorkspaceMatchingRule;
 use crate::core::AnimationStyle;
 use crate::core::BorderImplementation;
+use crate::core::BorderOffset;
 use crate::core::BorderStyle;
+use crate::core::BorderWidth;
 use crate::core::DefaultLayout;
 use crate::core::FocusFollowsMouseImplementation;
 use crate::core::HidingBehaviour;
@@ -565,13 +567,13 @@ pub struct StaticConfig {
     /// Width of window borders
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(alias = "active_window_border_width")]
-    #[cfg_attr(feature = "schemars", schemars(extend("default" = border_manager::BORDER_WIDTH)))]
-    pub border_width: Option<i32>,
+    #[cfg_attr(feature = "schemars", schemars(extend("default" = BorderWidth::DEFAULT)))]
+    pub border_width: Option<BorderWidth>,
     /// Offset of window borders
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(alias = "active_window_border_offset")]
-    #[cfg_attr(feature = "schemars", schemars(extend("default" = border_manager::BORDER_OFFSET)))]
-    pub border_offset: Option<i32>,
+    #[cfg_attr(feature = "schemars", schemars(extend("default" = BorderOffset::DEFAULT)))]
+    pub border_offset: Option<BorderOffset>,
     /// Display window borders
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(alias = "active_window_border")]
@@ -912,8 +914,12 @@ impl From<&WindowManager> for StaticConfig {
             focus_follows_mouse: value.focus_follows_mouse,
             mouse_follows_focus: Option::from(value.mouse_follows_focus),
             app_specific_configuration_path: None,
-            border_width: Option::from(border_manager::BORDER_WIDTH.load(Ordering::SeqCst)),
-            border_offset: Option::from(border_manager::BORDER_OFFSET.load(Ordering::SeqCst)),
+            border_width: Option::from(BorderWidth::new(
+                border_manager::BORDER_WIDTH.load(Ordering::SeqCst),
+            )),
+            border_offset: Option::from(BorderOffset::new(
+                border_manager::BORDER_OFFSET.load(Ordering::SeqCst),
+            )),
             border: Option::from(border_manager::BORDER_ENABLED.load(Ordering::SeqCst)),
             border_colours,
             transparency: Option::from(
@@ -1074,11 +1080,11 @@ impl StaticConfig {
         }
 
         if let Some(border_width) = self.border_width {
-            border_manager::BORDER_WIDTH.store(border_width, Ordering::SeqCst);
+            border_manager::BORDER_WIDTH.store(border_width.get(), Ordering::SeqCst);
         }
 
         if let Some(border_offset) = self.border_offset {
-            border_manager::BORDER_OFFSET.store(border_offset, Ordering::SeqCst);
+            border_manager::BORDER_OFFSET.store(border_offset.get(), Ordering::SeqCst);
         }
 
         if let Some(border_enabled) = self.border {

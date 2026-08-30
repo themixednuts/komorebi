@@ -45,6 +45,10 @@ pub use komorebi_layouts::validate_ratios;
 
 // Local modules and exports
 pub use animation::AnimationStyle;
+pub use border_geometry::BorderOffset;
+pub use border_geometry::BorderOffsetError;
+pub use border_geometry::BorderWidth;
+pub use border_geometry::BorderWidthError;
 pub use pathext::PathExt;
 pub use pathext::ResolvedPathBuf;
 pub use pathext::replace_env_in_path;
@@ -61,6 +65,7 @@ pub const DEFAULT_TRANSPARENCY_ENABLED: bool = false;
 
 pub mod animation;
 pub mod asc;
+pub mod border_geometry;
 pub mod config_generation;
 pub mod pathext;
 pub mod resize_step;
@@ -208,7 +213,7 @@ pub enum SocketMessage {
     #[serde(alias = "ActiveWindowBorder")]
     Border(bool),
     #[serde(alias = "ActiveWindowBorderColour")]
-    BorderColour(WindowKind, u32, u32, u32),
+    BorderColour(WindowKind, u8, u8, u8),
     #[serde(alias = "ActiveWindowBorderStyle")]
     BorderStyle(BorderStyle),
     BorderWidth(i32),
@@ -220,9 +225,9 @@ pub enum SocketMessage {
     InvisibleBorders(Rect),
     StackbarMode(StackbarMode),
     StackbarLabel(StackbarLabel),
-    StackbarFocusedTextColour(u32, u32, u32),
-    StackbarUnfocusedTextColour(u32, u32, u32),
-    StackbarBackgroundColour(u32, u32, u32),
+    StackbarFocusedTextColour(u8, u8, u8),
+    StackbarUnfocusedTextColour(u8, u8, u8),
+    StackbarBackgroundColour(u8, u8, u8),
     StackbarHeight(i32),
     StackbarTabWidth(i32),
     StackbarFontSize(i32),

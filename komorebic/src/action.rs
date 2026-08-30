@@ -7,6 +7,8 @@ use color_eyre::eyre;
 use color_eyre::eyre::OptionExt;
 use komorebi_client::ApplicationIdentifier;
 use komorebi_client::Axis;
+use komorebi_client::BorderImplementation;
+use komorebi_client::BorderStyle;
 use komorebi_client::CycleDirection;
 use komorebi_client::DefaultLayout;
 use komorebi_client::FocusFollowsMouseImplementation;
@@ -16,11 +18,14 @@ use komorebi_client::MoveBehaviour;
 use komorebi_client::OperationBehaviour;
 use komorebi_client::OperationDirection;
 use komorebi_client::Sizing;
+use komorebi_client::WindowKind;
 use komorebi_client::command::BoundedText;
 use komorebi_client::command::BuiltInActionId;
 use komorebi_client::command::BuiltInArgument;
 use komorebi_client::command::BuiltInArguments;
 use komorebi_client::command::BuiltInAxis;
+use komorebi_client::command::BuiltInBorderImplementation;
+use komorebi_client::command::BuiltInBorderStyle;
 use komorebi_client::command::BuiltInCycle;
 use komorebi_client::command::BuiltInDirection;
 use komorebi_client::command::BuiltInHidingBehaviour;
@@ -32,6 +37,7 @@ use komorebi_client::command::BuiltInMoveBehaviour;
 use komorebi_client::command::BuiltInOperationBehaviour;
 use komorebi_client::command::BuiltInSelector;
 use komorebi_client::command::BuiltInSizing;
+use komorebi_client::command::BuiltInWindowKind;
 use komorebi_client::command::CommandClient;
 use komorebi_client::command::InvocationSubmissionReply;
 use komorebi_client::command::RoleHint;
@@ -79,6 +85,34 @@ pub(super) const fn built_in_axis(value: Axis) -> BuiltInAxis {
         Axis::Horizontal => BuiltInAxis::Horizontal,
         Axis::Vertical => BuiltInAxis::Vertical,
         Axis::HorizontalAndVertical => BuiltInAxis::HorizontalAndVertical,
+    }
+}
+
+pub(super) const fn built_in_window_kind(value: WindowKind) -> BuiltInWindowKind {
+    match value {
+        WindowKind::Single => BuiltInWindowKind::Single,
+        WindowKind::Stack => BuiltInWindowKind::Stack,
+        WindowKind::Monocle => BuiltInWindowKind::Monocle,
+        WindowKind::Unfocused => BuiltInWindowKind::Unfocused,
+        WindowKind::UnfocusedLocked => BuiltInWindowKind::UnfocusedLocked,
+        WindowKind::Floating => BuiltInWindowKind::Floating,
+    }
+}
+
+pub(super) const fn built_in_border_style(value: BorderStyle) -> BuiltInBorderStyle {
+    match value {
+        BorderStyle::System => BuiltInBorderStyle::System,
+        BorderStyle::Rounded => BuiltInBorderStyle::Rounded,
+        BorderStyle::Square => BuiltInBorderStyle::Square,
+    }
+}
+
+pub(super) const fn built_in_border_implementation(
+    value: BorderImplementation,
+) -> BuiltInBorderImplementation {
+    match value {
+        BorderImplementation::Komorebi => BuiltInBorderImplementation::Komorebi,
+        BorderImplementation::Windows => BuiltInBorderImplementation::Windows,
     }
 }
 

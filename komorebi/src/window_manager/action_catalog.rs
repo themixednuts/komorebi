@@ -2,10 +2,12 @@ use color_eyre::eyre;
 
 use crate::CrossBoundaryBehaviour;
 use crate::HIDING_BEHAVIOUR;
+use crate::WINDOWS_11;
 use crate::action::ActionAdmission;
 use crate::action::ActionGrants;
 use crate::action::ActionRejection;
 use crate::action::ActionSnapshot;
+use crate::action::BorderConfiguration;
 use crate::action::BuiltinAction;
 use crate::action::ConfigurationSnapshot;
 use crate::action::DirectionSet;
@@ -27,11 +29,15 @@ use crate::action::id::WindowId;
 use crate::adapters::action_catalog::CatalogProjectionError;
 use crate::adapters::action_catalog::reply as project_catalog_reply;
 use crate::border_manager;
+use crate::core::BorderImplementation;
+use crate::core::BorderOffset;
+use crate::core::BorderWidth;
 use crate::core::DefaultLayout;
 use crate::core::Layout;
 use crate::core::OperationDirection;
 use crate::core::Sizing;
 use crate::core::TransparencyAlpha;
+use crate::core::WindowKind;
 use crate::transparency_manager;
 use crate::workspace::WorkspaceLayer;
 use komorebi_protocol::CatalogReply;
@@ -163,6 +169,13 @@ impl WindowManager {
             current_layout,
             configuration: ConfigurationSnapshot {
                 resize_step: self.resize_step,
+                border: BorderConfiguration {
+                    enabled: border_manager::BORDER_ENABLED.load(Ordering::SeqCst),
+                    width: BorderWidth::new(border_manager::BORDER_WIDTH.load(Ordering::SeqCst)),
+                    offset: BorderOffset::new(border_manager::BORDER_OFFSET.load(Ordering::SeqCst)),
+                    style: border_manager::STYLE.load(),
+                    implementation: border_manager::IMPLEMENTATION.load(),
+                },
                 transparency: TransparencyConfiguration {
                     enabled: transparency_manager::TRANSPARENCY_ENABLED.load(Ordering::SeqCst),
                     alpha: TransparencyAlpha::new(
@@ -371,6 +384,70 @@ impl WindowManager {
             }
             NativeEffect::SetTransparencyAlpha { alpha } => {
                 transparency_manager::TRANSPARENCY_ALPHA.store(alpha.get(), Ordering::SeqCst);
+            }
+            NativeEffect::SetBorderEnabled {
+                enabled,
+                implementation,
+            } => {
+                match (enabled, implementation) {
+                    (false, BorderImplementation::Komorebi) => {
+                        border_manager::destroy_all_borders()?;
+                    }
+                    (false, BorderImplementation::Windows) => self.remove_all_accents()?,
+                    (true, BorderImplementation::Komorebi) => {
+                        border_manager::send_notification(None);
+                    }
+                    (true, BorderImplementation::Windows) => {}
+                }
+                border_manager::BORDER_ENABLED.store(enabled, Ordering::SeqCst);
+            }
+            NativeEffect::SetBorderColour {
+                window_kind,
+                colour,
+            } => {
+                let packed = colour.into();
+                match window_kind {
+                    WindowKind::Single => border_manager::FOCUSED.store(packed, Ordering::SeqCst),
+                    WindowKind::Stack => border_manager::STACK.store(packed, Ordering::SeqCst),
+                    WindowKind::Monocle => border_manager::MONOCLE.store(packed, Ordering::SeqCst),
+                    WindowKind::Unfocused => {
+                        border_manager::UNFOCUSED.store(packed, Ordering::SeqCst);
+                    }
+                    WindowKind::UnfocusedLocked => {
+                        border_manager::UNFOCUSED_LOCKED.store(packed, Ordering::SeqCst);
+                    }
+                    WindowKind::Floating => {
+                        border_manager::FLOATING.store(packed, Ordering::SeqCst);
+                    }
+                }
+                border_manager::send_notification(None);
+            }
+            NativeEffect::SetBorderWidth { width } => {
+                border_manager::BORDER_WIDTH.store(width.get(), Ordering::SeqCst);
+                border_manager::send_notification(None);
+            }
+            NativeEffect::SetBorderOffset { offset } => {
+                border_manager::BORDER_OFFSET.store(offset.get(), Ordering::SeqCst);
+                border_manager::send_notification(None);
+            }
+            NativeEffect::SetBorderStyle { style } => {
+                border_manager::STYLE.store(style);
+                border_manager::send_notification(None);
+            }
+            NativeEffect::SetBorderImplementation { implementation } => {
+                if implementation == BorderImplementation::Windows && !*WINDOWS_11 {
+                    eyre::bail!("native Windows accent borders require Windows 11");
+                }
+                match implementation {
+                    BorderImplementation::Komorebi => {
+                        self.remove_all_accents()?;
+                    }
+                    BorderImplementation::Windows => border_manager::destroy_all_borders()?,
+                }
+                border_manager::IMPLEMENTATION.store(implementation);
+                if implementation == BorderImplementation::Komorebi {
+                    border_manager::send_notification(None);
+                }
             }
             NativeEffect::CycleFocus { direction } => {
                 let focused_workspace = self.focused_workspace()?;

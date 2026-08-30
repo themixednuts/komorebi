@@ -147,6 +147,12 @@ built_in_action_ids! {
     SetTransparencyEnabled => "set-transparency-enabled",
     ToggleTransparency => "toggle-transparency",
     SetTransparencyAlpha => "set-transparency-alpha",
+    SetBorderEnabled => "set-border-enabled",
+    SetBorderColour => "set-border-colour",
+    SetBorderWidth => "set-border-width",
+    SetBorderOffset => "set-border-offset",
+    SetBorderStyle => "set-border-style",
+    SetBorderImplementation => "set-border-implementation",
 }
 
 impl fmt::Display for BuiltInActionId {

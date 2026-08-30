@@ -128,10 +128,10 @@ struct KomorebiGui {
 
 fn colour32(colour: Option<Colour>) -> Color32 {
     match colour {
-        Some(Colour::Rgb(rgb)) => Color32::from_rgb(rgb.r as u8, rgb.g as u8, rgb.b as u8),
+        Some(Colour::Rgb(rgb)) => Color32::from_rgb(rgb.r, rgb.g, rgb.b),
         Some(Colour::Hex(hex)) => {
             let rgb = Rgb::from(hex);
-            Color32::from_rgb(rgb.r as u8, rgb.g as u8, rgb.b as u8)
+            Color32::from_rgb(rgb.r, rgb.g, rgb.b)
         }
         None => Color32::from_rgb(0, 0, 0),
     }
@@ -165,8 +165,8 @@ impl KomorebiGui {
             border_enabled: global_state.border_enabled,
             border_colours,
             border_style: global_state.border_style,
-            border_offset: global_state.border_offset,
-            border_width: global_state.border_width,
+            border_offset: global_state.border_offset.get(),
+            border_width: global_state.border_width.get(),
         };
 
         let mut monitors = vec![];
@@ -341,9 +341,9 @@ impl eframe::App for KomorebiGui {
                             ) {
                                 komorebi_client::send_message(&SocketMessage::BorderColour(
                                     WindowKind::Single,
-                                    self.border_config.border_colours.single.r() as u32,
-                                    self.border_config.border_colours.single.g() as u32,
-                                    self.border_config.border_colours.single.b() as u32,
+                                    self.border_config.border_colours.single.r(),
+                                    self.border_config.border_colours.single.g(),
+                                    self.border_config.border_colours.single.b(),
                                 ))
                                 .unwrap();
                             }
@@ -357,9 +357,9 @@ impl eframe::App for KomorebiGui {
                             ) {
                                 komorebi_client::send_message(&SocketMessage::BorderColour(
                                     WindowKind::Stack,
-                                    self.border_config.border_colours.stack.r() as u32,
-                                    self.border_config.border_colours.stack.g() as u32,
-                                    self.border_config.border_colours.stack.b() as u32,
+                                    self.border_config.border_colours.stack.r(),
+                                    self.border_config.border_colours.stack.g(),
+                                    self.border_config.border_colours.stack.b(),
                                 ))
                                 .unwrap();
                             }
@@ -373,9 +373,9 @@ impl eframe::App for KomorebiGui {
                             ) {
                                 komorebi_client::send_message(&SocketMessage::BorderColour(
                                     WindowKind::Monocle,
-                                    self.border_config.border_colours.monocle.r() as u32,
-                                    self.border_config.border_colours.monocle.g() as u32,
-                                    self.border_config.border_colours.monocle.b() as u32,
+                                    self.border_config.border_colours.monocle.r(),
+                                    self.border_config.border_colours.monocle.g(),
+                                    self.border_config.border_colours.monocle.b(),
                                 ))
                                 .unwrap();
                             }
@@ -389,9 +389,9 @@ impl eframe::App for KomorebiGui {
                             ) {
                                 komorebi_client::send_message(&SocketMessage::BorderColour(
                                     WindowKind::Floating,
-                                    self.border_config.border_colours.floating.r() as u32,
-                                    self.border_config.border_colours.floating.g() as u32,
-                                    self.border_config.border_colours.floating.b() as u32,
+                                    self.border_config.border_colours.floating.r(),
+                                    self.border_config.border_colours.floating.g(),
+                                    self.border_config.border_colours.floating.b(),
                                 ))
                                 .unwrap();
                             }
@@ -405,9 +405,9 @@ impl eframe::App for KomorebiGui {
                             ) {
                                 komorebi_client::send_message(&SocketMessage::BorderColour(
                                     WindowKind::Unfocused,
-                                    self.border_config.border_colours.unfocused.r() as u32,
-                                    self.border_config.border_colours.unfocused.g() as u32,
-                                    self.border_config.border_colours.unfocused.b() as u32,
+                                    self.border_config.border_colours.unfocused.r(),
+                                    self.border_config.border_colours.unfocused.g(),
+                                    self.border_config.border_colours.unfocused.b(),
                                 ))
                                 .unwrap();
                             }
@@ -421,9 +421,9 @@ impl eframe::App for KomorebiGui {
                             ) {
                                 komorebi_client::send_message(&SocketMessage::BorderColour(
                                     WindowKind::UnfocusedLocked,
-                                    self.border_config.border_colours.unfocused_locked.r() as u32,
-                                    self.border_config.border_colours.unfocused_locked.g() as u32,
-                                    self.border_config.border_colours.unfocused_locked.b() as u32,
+                                    self.border_config.border_colours.unfocused_locked.r(),
+                                    self.border_config.border_colours.unfocused_locked.g(),
+                                    self.border_config.border_colours.unfocused_locked.b(),
                                 ))
                                 .unwrap();
                             }
@@ -537,9 +537,9 @@ impl eframe::App for KomorebiGui {
                             ) {
                                 komorebi_client::send_message(
                                     &SocketMessage::StackbarFocusedTextColour(
-                                        self.stackbar_config.focused_text_colour.r() as u32,
-                                        self.stackbar_config.focused_text_colour.g() as u32,
-                                        self.stackbar_config.focused_text_colour.b() as u32,
+                                        self.stackbar_config.focused_text_colour.r(),
+                                        self.stackbar_config.focused_text_colour.g(),
+                                        self.stackbar_config.focused_text_colour.b(),
                                     ),
                                 )
                                 .unwrap();
@@ -554,9 +554,9 @@ impl eframe::App for KomorebiGui {
                             ) {
                                 komorebi_client::send_message(
                                     &SocketMessage::StackbarUnfocusedTextColour(
-                                        self.stackbar_config.unfocused_text_colour.r() as u32,
-                                        self.stackbar_config.unfocused_text_colour.g() as u32,
-                                        self.stackbar_config.unfocused_text_colour.b() as u32,
+                                        self.stackbar_config.unfocused_text_colour.r(),
+                                        self.stackbar_config.unfocused_text_colour.g(),
+                                        self.stackbar_config.unfocused_text_colour.b(),
                                     ),
                                 )
                                 .unwrap();
@@ -571,9 +571,9 @@ impl eframe::App for KomorebiGui {
                             ) {
                                 komorebi_client::send_message(
                                     &SocketMessage::StackbarBackgroundColour(
-                                        self.stackbar_config.background_colour.r() as u32,
-                                        self.stackbar_config.background_colour.g() as u32,
-                                        self.stackbar_config.background_colour.b() as u32,
+                                        self.stackbar_config.background_colour.r(),
+                                        self.stackbar_config.background_colour.g(),
+                                        self.stackbar_config.background_colour.b(),
                                     ),
                                 )
                                 .unwrap();

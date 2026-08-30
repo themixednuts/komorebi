@@ -197,6 +197,23 @@ fn project_current_value(
         offer::ActionCurrentValue::TransparencyAlpha(alpha) => {
             Ok(protocol::ArgumentScalar::Unsigned(u64::from(alpha.get())))
         }
+        offer::ActionCurrentValue::BorderEnabled(enabled) => {
+            Ok(protocol::ArgumentScalar::Bool(enabled))
+        }
+        offer::ActionCurrentValue::BorderWidth(width) => {
+            Ok(protocol::ArgumentScalar::Signed(i64::from(width.get())))
+        }
+        offer::ActionCurrentValue::BorderOffset(offset) => {
+            Ok(protocol::ArgumentScalar::Signed(i64::from(offset.get())))
+        }
+        offer::ActionCurrentValue::BorderStyle(style) => Ok(protocol::ArgumentScalar::Choice(
+            protocol::ChoiceId::parse(border_style_name(style))?,
+        )),
+        offer::ActionCurrentValue::BorderImplementation(implementation) => {
+            Ok(protocol::ArgumentScalar::Choice(protocol::ChoiceId::parse(
+                border_implementation_name(implementation),
+            )?))
+        }
     }
 }
 
@@ -259,6 +276,14 @@ const fn project_parameter_domain(value: definition::ParameterDomain) -> protoco
         definition::ParameterDomain::AtCount => protocol::ParameterDomain::AtCount,
         definition::ParameterDomain::ResizeStep => protocol::ParameterDomain::ResizeStep,
         definition::ParameterDomain::Alpha => protocol::ParameterDomain::Alpha,
+        definition::ParameterDomain::WindowKind => protocol::ParameterDomain::WindowKind,
+        definition::ParameterDomain::ColourChannel => protocol::ParameterDomain::ColourChannel,
+        definition::ParameterDomain::BorderWidth => protocol::ParameterDomain::BorderWidth,
+        definition::ParameterDomain::BorderOffset => protocol::ParameterDomain::BorderOffset,
+        definition::ParameterDomain::BorderStyle => protocol::ParameterDomain::BorderStyle,
+        definition::ParameterDomain::BorderImplementation => {
+            protocol::ParameterDomain::BorderImplementation
+        }
     }
 }
 
@@ -291,6 +316,21 @@ const fn direction_name(value: OperationDirection) -> &'static str {
         OperationDirection::Right => "right",
         OperationDirection::Up => "up",
         OperationDirection::Down => "down",
+    }
+}
+
+const fn border_style_name(value: crate::core::BorderStyle) -> &'static str {
+    match value {
+        crate::core::BorderStyle::System => "system",
+        crate::core::BorderStyle::Rounded => "rounded",
+        crate::core::BorderStyle::Square => "square",
+    }
+}
+
+const fn border_implementation_name(value: crate::core::BorderImplementation) -> &'static str {
+    match value {
+        crate::core::BorderImplementation::Komorebi => "komorebi",
+        crate::core::BorderImplementation::Windows => "windows",
     }
 }
 

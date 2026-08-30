@@ -2,6 +2,10 @@ mod availability;
 mod choices;
 mod policy;
 
+use crate::core::BorderImplementation;
+use crate::core::BorderOffset;
+use crate::core::BorderStyle;
+use crate::core::BorderWidth;
 use crate::core::DefaultLayout;
 use crate::core::OperationDirection;
 use crate::core::TransparencyAlpha;
@@ -137,6 +141,11 @@ pub enum ActionCurrentValue {
     Floating(bool),
     TransparencyEnabled(bool),
     TransparencyAlpha(TransparencyAlpha),
+    BorderEnabled(bool),
+    BorderWidth(BorderWidth),
+    BorderOffset(BorderOffset),
+    BorderStyle(BorderStyle),
+    BorderImplementation(BorderImplementation),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -196,6 +205,21 @@ fn current_value(
         ),
         policy::CurrentValueSource::TransparencyAlpha => Some(
             ActionCurrentValue::TransparencyAlpha(snapshot.configuration.transparency.alpha),
+        ),
+        policy::CurrentValueSource::BorderEnabled => Some(ActionCurrentValue::BorderEnabled(
+            snapshot.configuration.border.enabled,
+        )),
+        policy::CurrentValueSource::BorderWidth => Some(ActionCurrentValue::BorderWidth(
+            snapshot.configuration.border.width,
+        )),
+        policy::CurrentValueSource::BorderOffset => Some(ActionCurrentValue::BorderOffset(
+            snapshot.configuration.border.offset,
+        )),
+        policy::CurrentValueSource::BorderStyle => Some(ActionCurrentValue::BorderStyle(
+            snapshot.configuration.border.style,
+        )),
+        policy::CurrentValueSource::BorderImplementation => Some(
+            ActionCurrentValue::BorderImplementation(snapshot.configuration.border.implementation),
         ),
         policy::CurrentValueSource::None => None,
     }

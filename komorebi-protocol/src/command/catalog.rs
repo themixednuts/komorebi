@@ -70,6 +70,12 @@ pub enum ParameterDomain {
     AtCount = 22,
     ResizeStep = 23,
     Alpha = 24,
+    WindowKind = 25,
+    ColourChannel = 26,
+    BorderWidth = 27,
+    BorderOffset = 28,
+    BorderStyle = 29,
+    BorderImplementation = 30,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

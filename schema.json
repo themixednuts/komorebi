@@ -3849,19 +3849,22 @@
         "b": {
           "description": "Blue",
           "type": "integer",
-          "format": "uint32",
+          "format": "uint8",
+          "maximum": 255,
           "minimum": 0
         },
         "g": {
           "description": "Green",
           "type": "integer",
-          "format": "uint32",
+          "format": "uint8",
+          "maximum": 255,
           "minimum": 0
         },
         "r": {
           "description": "Red",
           "type": "integer",
-          "format": "uint32",
+          "format": "uint8",
+          "maximum": 255,
           "minimum": 0
         }
       },

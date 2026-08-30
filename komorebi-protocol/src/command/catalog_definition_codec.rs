@@ -238,6 +238,12 @@ fn decode_domain(value: u8) -> Result<ParameterDomain, CommandCodecError> {
         22 => Ok(ParameterDomain::AtCount),
         23 => Ok(ParameterDomain::ResizeStep),
         24 => Ok(ParameterDomain::Alpha),
+        25 => Ok(ParameterDomain::WindowKind),
+        26 => Ok(ParameterDomain::ColourChannel),
+        27 => Ok(ParameterDomain::BorderWidth),
+        28 => Ok(ParameterDomain::BorderOffset),
+        29 => Ok(ParameterDomain::BorderStyle),
+        30 => Ok(ParameterDomain::BorderImplementation),
         _ => Err(CommandCodecError::UnknownParameterDomain(value)),
     }
 }

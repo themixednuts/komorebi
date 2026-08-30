@@ -17,6 +17,7 @@ pub use builtin::Pixels;
 pub use builtin::WindowSelector;
 pub use builtin::WorkspaceName;
 pub use builtin::WorkspaceSelector;
+pub use configuration::BorderConfiguration;
 pub use configuration::ConfigurationSnapshot;
 pub use configuration::TransparencyConfiguration;
 pub use confirmation::ConfirmationError;

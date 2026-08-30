@@ -2,6 +2,10 @@ use std::num::NonZeroUsize;
 
 use crate::core::ApplicationIdentifier;
 use crate::core::Axis;
+use crate::core::BorderImplementation;
+use crate::core::BorderOffset;
+use crate::core::BorderStyle;
+use crate::core::BorderWidth;
 use crate::core::CycleDirection;
 use crate::core::DefaultLayout;
 use crate::core::FocusFollowsMouseImplementation;
@@ -13,6 +17,8 @@ use crate::core::OperationDirection;
 use crate::core::ResizeStep;
 use crate::core::Sizing;
 use crate::core::TransparencyAlpha;
+use crate::core::WindowKind;
+use komorebi_themes::colour::Rgb;
 
 use super::builtin::Pixels;
 use super::builtin::WorkspaceName;
@@ -45,6 +51,25 @@ pub enum ActionResult {
     },
     TransparencyAlphaSet {
         alpha: TransparencyAlpha,
+    },
+    BorderEnabledSet {
+        enabled: bool,
+    },
+    BorderColourSet {
+        window_kind: WindowKind,
+        colour: Rgb,
+    },
+    BorderWidthSet {
+        width: BorderWidth,
+    },
+    BorderOffsetSet {
+        offset: BorderOffset,
+    },
+    BorderStyleSet {
+        style: BorderStyle,
+    },
+    BorderImplementationSet {
+        implementation: BorderImplementation,
     },
     LayoutSet {
         layout: DefaultLayout,
@@ -340,6 +365,26 @@ pub enum NativeEffect {
     },
     SetTransparencyAlpha {
         alpha: TransparencyAlpha,
+    },
+    SetBorderEnabled {
+        enabled: bool,
+        implementation: BorderImplementation,
+    },
+    SetBorderColour {
+        window_kind: WindowKind,
+        colour: Rgb,
+    },
+    SetBorderWidth {
+        width: BorderWidth,
+    },
+    SetBorderOffset {
+        offset: BorderOffset,
+    },
+    SetBorderStyle {
+        style: BorderStyle,
+    },
+    SetBorderImplementation {
+        implementation: BorderImplementation,
     },
     SetLayout {
         layout: DefaultLayout,

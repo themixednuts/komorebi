@@ -70,6 +70,13 @@ known_ids! {
     AtCount => "at-count",
     ResizeStep => "resize-step",
     Alpha => "alpha",
+    WindowKind => "window-kind",
+    Red => "red",
+    Green => "green",
+    Blue => "blue",
+    Width => "width",
+    Offset => "offset",
+    Style => "style",
 }
 
 known_ids! {
@@ -171,6 +178,29 @@ known_ids! {
 }
 
 known_ids! {
+    BuiltInWindowKind, ChoiceId,
+    Single => "single",
+    Stack => "stack",
+    Monocle => "monocle",
+    Unfocused => "unfocused",
+    UnfocusedLocked => "unfocused-locked",
+    Floating => "floating",
+}
+
+known_ids! {
+    BuiltInBorderStyle, ChoiceId,
+    System => "system",
+    Rounded => "rounded",
+    Square => "square",
+}
+
+known_ids! {
+    BuiltInBorderImplementation, ChoiceId,
+    Komorebi => "komorebi",
+    Windows => "windows",
+}
+
+known_ids! {
     BuiltInIdentifier, ChoiceId,
     Exe => "exe",
     Class => "class",
@@ -253,6 +283,14 @@ pub enum BuiltInArgument {
     AtCount(u64),
     ResizeStep(BuiltInResizeStep),
     Alpha(u8),
+    WindowKind(BuiltInWindowKind),
+    Red(u8),
+    Green(u8),
+    Blue(u8),
+    Width(i32),
+    Offset(i32),
+    BorderStyle(BuiltInBorderStyle),
+    BorderImplementation(BuiltInBorderImplementation),
 }
 
 impl BuiltInArgument {
@@ -312,8 +350,25 @@ impl BuiltInArgument {
                 BuiltInParameterId::Alpha,
                 Scalar(S::Unsigned(u64::from(value))),
             ),
+            Self::WindowKind(value) => choice(BuiltInParameterId::WindowKind, value.into_wire()),
+            Self::Red(value) => unsigned_u8(BuiltInParameterId::Red, value),
+            Self::Green(value) => unsigned_u8(BuiltInParameterId::Green, value),
+            Self::Blue(value) => unsigned_u8(BuiltInParameterId::Blue, value),
+            Self::Width(value) => signed(BuiltInParameterId::Width, value),
+            Self::Offset(value) => signed(BuiltInParameterId::Offset, value),
+            Self::BorderStyle(value) => choice(BuiltInParameterId::Style, value.into_wire()),
+            Self::BorderImplementation(value) => {
+                choice(BuiltInParameterId::Implementation, value.into_wire())
+            }
         }
     }
+}
+
+fn unsigned_u8(id: BuiltInParameterId, value: u8) -> (BuiltInParameterId, ActionArgument) {
+    (
+        id,
+        ActionArgument::Scalar(ArgumentScalar::Unsigned(u64::from(value))),
+    )
 }
 
 fn choice(id: BuiltInParameterId, value: ChoiceId) -> (BuiltInParameterId, ActionArgument) {
@@ -445,6 +500,39 @@ mod tests {
         assert!(matches!(
             arguments.values().get(&ParameterId::parse("alpha")?),
             Some(ActionArgument::Scalar(ArgumentScalar::Unsigned(200)))
+        ));
+        Ok(())
+    }
+
+    #[test]
+    fn border_arguments_preserve_signed_geometry_and_bounded_channels()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let arguments = BuiltInArguments::new([
+            BuiltInArgument::WindowKind(BuiltInWindowKind::UnfocusedLocked),
+            BuiltInArgument::Red(1),
+            BuiltInArgument::Green(2),
+            BuiltInArgument::Blue(3),
+            BuiltInArgument::Width(-50),
+            BuiltInArgument::Offset(50),
+        ])?
+        .into_action_arguments();
+
+        assert!(matches!(
+            arguments.values().get(&ParameterId::parse("window-kind")?),
+            Some(ActionArgument::Scalar(ArgumentScalar::Choice(value)))
+                if value.as_str() == "unfocused-locked"
+        ));
+        assert!(matches!(
+            arguments.values().get(&ParameterId::parse("red")?),
+            Some(ActionArgument::Scalar(ArgumentScalar::Unsigned(1)))
+        ));
+        assert!(matches!(
+            arguments.values().get(&ParameterId::parse("width")?),
+            Some(ActionArgument::Scalar(ArgumentScalar::Signed(-50)))
+        ));
+        assert!(matches!(
+            arguments.values().get(&ParameterId::parse("offset")?),
+            Some(ActionArgument::Scalar(ArgumentScalar::Signed(50)))
         ));
         Ok(())
     }

@@ -1,5 +1,7 @@
 use crate::BorderColours;
+use crate::BorderOffset;
 use crate::BorderStyle;
+use crate::BorderWidth;
 use crate::CURRENT_VIRTUAL_DESKTOP;
 use crate::CUSTOM_FFM;
 use crate::DATA_DIR;
@@ -132,8 +134,8 @@ pub struct GlobalState {
     pub border_enabled: bool,
     pub border_colours: BorderColours,
     pub border_style: BorderStyle,
-    pub border_offset: i32,
-    pub border_width: i32,
+    pub border_offset: BorderOffset,
+    pub border_width: BorderWidth,
     pub stackbar_mode: StackbarMode,
     pub stackbar_label: StackbarLabel,
     pub stackbar_focused_text_colour: Colour,
@@ -187,8 +189,8 @@ impl Default for GlobalState {
                 ))),
             },
             border_style: STYLE.load(),
-            border_offset: border_manager::BORDER_OFFSET.load(Ordering::SeqCst),
-            border_width: border_manager::BORDER_WIDTH.load(Ordering::SeqCst),
+            border_offset: BorderOffset::new(border_manager::BORDER_OFFSET.load(Ordering::SeqCst)),
+            border_width: BorderWidth::new(border_manager::BORDER_WIDTH.load(Ordering::SeqCst)),
             stackbar_mode: STACKBAR_MODE.load(),
             stackbar_label: STACKBAR_LABEL.load(),
             stackbar_focused_text_colour: Colour::Rgb(Rgb::from(

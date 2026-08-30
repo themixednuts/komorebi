@@ -103,7 +103,9 @@ fn scalar(
     Ok(match domain {
         D::Direction => protocol::ArgumentScalar::Choice(protocol::ChoiceId::parse("left")?),
         D::Axis => protocol::ArgumentScalar::Choice(protocol::ChoiceId::parse("horizontal")?),
-        D::Pixels | D::Adjustment | D::Size | D::ResizeStep => protocol::ArgumentScalar::Signed(1),
+        D::Pixels | D::Adjustment | D::Size | D::ResizeStep | D::BorderWidth | D::BorderOffset => {
+            protocol::ArgumentScalar::Signed(1)
+        }
         D::WorkspaceSelector | D::WindowSelector => {
             protocol::ArgumentScalar::Selector(protocol::SelectorId::parse("focused-at-execution")?)
         }
@@ -133,6 +135,12 @@ fn scalar(
         D::Identifier => protocol::ArgumentScalar::Choice(protocol::ChoiceId::parse("exe")?),
         D::Ratios => protocol::ArgumentScalar::Decimal(protocol::FixedDecimal::new(1, 1)?),
         D::Alpha => protocol::ArgumentScalar::Unsigned(200),
+        D::ColourChannel => protocol::ArgumentScalar::Unsigned(128),
+        D::WindowKind => protocol::ArgumentScalar::Choice(protocol::ChoiceId::parse("single")?),
+        D::BorderStyle => protocol::ArgumentScalar::Choice(protocol::ChoiceId::parse("system")?),
+        D::BorderImplementation => {
+            protocol::ArgumentScalar::Choice(protocol::ChoiceId::parse("komorebi")?)
+        }
     })
 }
 

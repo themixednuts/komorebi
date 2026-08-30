@@ -6,6 +6,8 @@ mod action;
 
 use action::built_in_arguments;
 use action::built_in_axis;
+use action::built_in_border_implementation;
+use action::built_in_border_style;
 use action::built_in_columns;
 use action::built_in_cycle;
 use action::built_in_direction;
@@ -19,6 +21,7 @@ use action::built_in_operation_behaviour;
 use action::built_in_path;
 use action::built_in_sizing;
 use action::built_in_text;
+use action::built_in_window_kind;
 use action::focused_window_arguments;
 use action::invoke_action;
 
@@ -743,11 +746,11 @@ struct BorderColour {
     #[clap(value_enum, short, long, default_value = "single")]
     window_kind: WindowKind,
     /// Red
-    r: u32,
+    r: u8,
     /// Green
-    g: u32,
+    g: u8,
     /// Blue
-    b: u32,
+    b: u8,
 }
 
 #[derive(Parser)]
@@ -3606,27 +3609,55 @@ if (Get-Command Get-CimInstance -ErrorAction SilentlyContinue) {
             .await?;
         }
         SubCommand::Border(args) => {
-            send_message(&SocketMessage::Border(args.boolean_state.into()))?;
+            invoke_action(
+                BuiltInActionId::SetBorderEnabled,
+                built_in_arguments([BuiltInArgument::Enabled(args.boolean_state.into())])?,
+            )
+            .await?;
         }
         SubCommand::BorderColour(args) => {
-            send_message(&SocketMessage::BorderColour(
-                args.window_kind,
-                args.r,
-                args.g,
-                args.b,
-            ))?;
+            invoke_action(
+                BuiltInActionId::SetBorderColour,
+                built_in_arguments([
+                    BuiltInArgument::WindowKind(built_in_window_kind(args.window_kind)),
+                    BuiltInArgument::Red(args.r),
+                    BuiltInArgument::Green(args.g),
+                    BuiltInArgument::Blue(args.b),
+                ])?,
+            )
+            .await?;
         }
         SubCommand::BorderWidth(args) => {
-            send_message(&SocketMessage::BorderWidth(args.width))?;
+            invoke_action(
+                BuiltInActionId::SetBorderWidth,
+                built_in_arguments([BuiltInArgument::Width(args.width)])?,
+            )
+            .await?;
         }
         SubCommand::BorderOffset(args) => {
-            send_message(&SocketMessage::BorderOffset(args.offset))?;
+            invoke_action(
+                BuiltInActionId::SetBorderOffset,
+                built_in_arguments([BuiltInArgument::Offset(args.offset)])?,
+            )
+            .await?;
         }
         SubCommand::BorderStyle(args) => {
-            send_message(&SocketMessage::BorderStyle(args.style))?;
+            invoke_action(
+                BuiltInActionId::SetBorderStyle,
+                built_in_arguments([BuiltInArgument::BorderStyle(built_in_border_style(
+                    args.style,
+                ))])?,
+            )
+            .await?;
         }
         SubCommand::BorderImplementation(args) => {
-            send_message(&SocketMessage::BorderImplementation(args.style))?;
+            invoke_action(
+                BuiltInActionId::SetBorderImplementation,
+                built_in_arguments([BuiltInArgument::BorderImplementation(
+                    built_in_border_implementation(args.style),
+                )])?,
+            )
+            .await?;
         }
         SubCommand::StackbarMode(args) => {
             send_message(&SocketMessage::StackbarMode(args.mode))?;
