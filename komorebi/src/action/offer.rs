@@ -16,6 +16,7 @@ use super::id::WindowId;
 use super::index::MonitorIndex;
 use super::index::WorkspaceIndex;
 use komorebi_protocol::ManagerEpoch;
+use komorebi_protocol::Revision;
 use komorebi_protocol::StateStamp;
 
 pub use choices::DynamicParameterChoice;
@@ -75,6 +76,7 @@ pub struct BindingHint {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ActionGrants {
+    revision: Revision,
     kinds: Vec<BuiltinActionKind>,
 }
 
@@ -82,13 +84,22 @@ impl ActionGrants {
     #[must_use]
     pub fn all() -> Self {
         Self {
+            revision: Revision::FIRST,
             kinds: BuiltinActionKind::ALL.to_vec(),
         }
     }
 
     #[must_use]
     pub fn none() -> Self {
-        Self { kinds: Vec::new() }
+        Self {
+            revision: Revision::FIRST,
+            kinds: Vec::new(),
+        }
+    }
+
+    #[must_use]
+    pub const fn revision(&self) -> Revision {
+        self.revision
     }
 
     #[must_use]
@@ -314,10 +325,12 @@ mod tests {
     fn an_empty_named_workspace_domain_is_explained() {
         let mut snapshot = live_snapshot();
         snapshot.named_workspaces.clear();
+        let offer = offer(&snapshot, BuiltinActionKind::FocusNamedWorkspace);
         assert_eq!(
-            offer(&snapshot, BuiltinActionKind::FocusNamedWorkspace).availability,
+            offer.availability,
             ActionAvailability::Unavailable(Unavailability::UnknownWorkspace)
         );
+        assert!(offer.dynamic_choices.is_empty());
     }
 
     #[test]

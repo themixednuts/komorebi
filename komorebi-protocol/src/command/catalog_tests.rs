@@ -3,7 +3,14 @@ use std::num::NonZeroU16;
 use proptest::prelude::*;
 
 use super::*;
+use crate::AssemblyDeadlineMs;
+use crate::ChunkPayloadLimit;
+use crate::ControlPayloadLimit;
+use crate::FramePayloadLimit;
 use crate::ManagerEpoch;
+use crate::NestingLimit;
+use crate::ReassemblyLimit;
+use crate::SessionLimits;
 
 fn epoch() -> Result<ManagerEpoch, crate::IdentifierError> {
     ManagerEpoch::new([1; 16])
@@ -178,9 +185,113 @@ fn offer_for(definition: &ActionDefinition) -> Result<ActionOffer, Box<dyn std::
     )?)
 }
 
+fn narrow_transfer_limits() -> Result<SessionLimits, Box<dyn std::error::Error>> {
+    Ok(SessionLimits::new(
+        FramePayloadLimit::new(128)?,
+        ControlPayloadLimit::new(64)?,
+        ChunkPayloadLimit::new(48)?,
+        ReassemblyLimit::new(1024 * 1024)?,
+        NestingLimit::new(32)?,
+        AssemblyDeadlineMs::new(2_000)?,
+    )?)
+}
+
+#[test]
+fn chunked_catalog_round_trip_uses_negotiated_frame_bounds()
+-> Result<(), Box<dyn std::error::Error>> {
+    let limits = narrow_transfer_limits()?;
+    let reply = CatalogReply::Snapshot(snapshot()?);
+    let chunks = encoded_chunks(&reply, limits)?;
+    assert!(chunks.len() > 1);
+    assert!(
+        chunks
+            .iter()
+            .all(|chunk| chunk.len() <= limits.chunk_payload().get() as usize)
+    );
+
+    let mut reassembler = CatalogReassembler::new(limits);
+    let mut completed = None;
+    for chunk in chunks {
+        completed = reassembler.push(&chunk)?;
+    }
+    assert_eq!(completed, Some(reply));
+    assert!(!reassembler.is_pending());
+    Ok(())
+}
+
+#[test]
+fn catalog_reassembly_rejects_gaps_and_replays() -> Result<(), Box<dyn std::error::Error>> {
+    let limits = narrow_transfer_limits()?;
+    let reply = CatalogReply::NotModified(stamp()?);
+    let chunks = encoded_chunks(&reply, limits)?;
+    assert!(chunks.len() > 1);
+
+    let mut reassembler = CatalogReassembler::new(limits);
+    assert!(matches!(
+        reassembler.push(&chunks[1]),
+        Err(CatalogTransferError::NonContiguous {
+            expected: 0,
+            actual: _
+        })
+    ));
+    assert_eq!(reassembler.push(&chunks[0])?, None);
+    assert!(matches!(
+        reassembler.push(&chunks[0]),
+        Err(CatalogTransferError::NonContiguous {
+            expected: _,
+            actual: 0
+        })
+    ));
+    Ok(())
+}
+
+#[test]
+fn catalog_reassembly_verifies_the_completed_digest() -> Result<(), Box<dyn std::error::Error>> {
+    let limits = narrow_transfer_limits()?;
+    let reply = CatalogReply::Snapshot(snapshot()?);
+    let mut chunks = encoded_chunks(&reply, limits)?
+        .into_iter()
+        .map(Vec::from)
+        .collect::<Vec<_>>();
+    let final_byte = chunks
+        .last_mut()
+        .and_then(|chunk| chunk.last_mut())
+        .ok_or("catalog test requires a final payload byte")?;
+    *final_byte ^= 1;
+
+    let mut reassembler = CatalogReassembler::new(limits);
+    let last = chunks.len().saturating_sub(1);
+    for chunk in &chunks[..last] {
+        assert_eq!(reassembler.push(chunk)?, None);
+    }
+    assert!(matches!(
+        reassembler.push(&chunks[last]),
+        Err(CatalogTransferError::DigestMismatch)
+    ));
+    Ok(())
+}
+
+fn encoded_chunks(
+    reply: &CatalogReply,
+    limits: SessionLimits,
+) -> Result<Vec<Box<[u8]>>, CatalogTransferError> {
+    let mut transfer = CatalogChunks::new(reply, limits)?;
+    let mut chunks = Vec::new();
+    while let Some(chunk) = transfer.next_chunk()? {
+        chunks.push(chunk.encode());
+    }
+    Ok(chunks)
+}
+
 proptest! {
     #[test]
     fn arbitrary_catalog_bytes_never_panic(bytes in prop::collection::vec(any::<u8>(), 0..65_536)) {
         let _ = CatalogCodec::decode_reply(&bytes);
+    }
+
+    #[test]
+    fn arbitrary_catalog_chunks_never_panic(bytes in prop::collection::vec(any::<u8>(), 0..65_536)) {
+        let mut reassembler = CatalogReassembler::new(SessionLimits::V1);
+        let _ = reassembler.push(&bytes);
     }
 }

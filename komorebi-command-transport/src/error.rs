@@ -1,6 +1,7 @@
 use std::io;
 
 use komorebi_protocol::BootstrapCodecError;
+use komorebi_protocol::CatalogTransferError;
 use komorebi_protocol::CommandCodecError;
 use komorebi_protocol::ConnectionId;
 use komorebi_protocol::FrameError;
@@ -58,6 +59,8 @@ pub enum TransportError {
     },
     #[error(transparent)]
     CommandPayload(#[from] CommandCodecError),
+    #[error(transparent)]
+    CatalogTransfer(#[from] CatalogTransferError),
     #[error(transparent)]
     Bootstrap(#[from] BootstrapCodecError),
     #[error(transparent)]

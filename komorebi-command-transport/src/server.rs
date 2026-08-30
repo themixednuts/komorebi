@@ -4,9 +4,15 @@ use komorebi_protocol::AuthoritySummary;
 use komorebi_protocol::BootstrapCodec;
 use komorebi_protocol::CANCEL_INVOCATION_FRAME_KIND;
 use komorebi_protocol::CANCEL_INVOCATION_REPLY_FRAME_KIND;
+use komorebi_protocol::CATALOG_REPLY_FRAME_KIND;
 use komorebi_protocol::CancelInvocationReply;
 use komorebi_protocol::CancelInvocationRequest;
+use komorebi_protocol::CatalogChunks;
+use komorebi_protocol::CatalogCodec;
+use komorebi_protocol::CatalogQuery;
+use komorebi_protocol::CatalogReply;
 use komorebi_protocol::ConnectionId;
+use komorebi_protocol::GET_CATALOG_FRAME_KIND;
 use komorebi_protocol::HELLO_FRAME_KIND;
 use komorebi_protocol::INVOCATION_LEASE_REPLY_FRAME_KIND;
 use komorebi_protocol::INVOCATION_STATUS_FRAME_KIND;
@@ -24,6 +30,7 @@ use komorebi_protocol::NegotiatedProtocol;
 use komorebi_protocol::PrincipalId;
 use komorebi_protocol::ProtocolNegotiator;
 use komorebi_protocol::ServerSupport;
+use komorebi_protocol::SessionLimits;
 use komorebi_protocol::StreamId;
 use komorebi_protocol::UNSUPPORTED_VERSION_FRAME_KIND;
 use komorebi_protocol::UnsupportedVersion;
@@ -164,6 +171,7 @@ impl PendingProtocolSession {
                 negotiated,
                 manager_epoch: self.context.manager_epoch,
                 connection_id: self.connection_id,
+                pending_reply: None,
                 authority: SessionAuthority {
                     principal: peer.principal_id(),
                     capabilities: self.context.authority,
@@ -183,6 +191,7 @@ pub struct EstablishedSession {
     negotiated: NegotiatedProtocol,
     manager_epoch: ManagerEpoch,
     connection_id: ConnectionId,
+    pending_reply: Option<PendingReply>,
     authority: SessionAuthority,
 }
 
@@ -192,13 +201,78 @@ pub enum SessionRequest {
     LeaseInvocationIds(InvocationLeaseRequest),
     InvocationStatus(InvocationStatusRequest),
     CancelInvocation(CancelInvocationRequest),
+    GetCatalog(CatalogQuery),
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SessionReply {
     InvocationLease(InvocationLeaseReply),
     InvocationStatus(InvocationStatusReply),
     CancelInvocation(CancelInvocationReply),
+    Catalog(CatalogReply),
+}
+
+struct PendingReply {
+    stream_id: StreamId,
+    frames: ReplyFrames,
+}
+
+enum ReplyFrames {
+    Single(Option<EncodedReplyFrame>),
+    Catalog(CatalogChunks),
+}
+
+struct EncodedReplyFrame {
+    kind: komorebi_protocol::FrameKind,
+    payload: Box<[u8]>,
+}
+
+impl PendingReply {
+    fn new(
+        stream_id: StreamId,
+        reply: SessionReply,
+        limits: SessionLimits,
+    ) -> Result<Self, TransportError> {
+        let frames = match reply {
+            SessionReply::InvocationLease(reply) => ReplyFrames::single(
+                INVOCATION_LEASE_REPLY_FRAME_KIND,
+                InvocationLeaseCodec::encode_reply(reply)?,
+            ),
+            SessionReply::InvocationStatus(reply) => ReplyFrames::single(
+                INVOCATION_STATUS_REPLY_FRAME_KIND,
+                InvocationControlCodec::encode_status_reply(reply)?,
+            ),
+            SessionReply::CancelInvocation(reply) => ReplyFrames::single(
+                CANCEL_INVOCATION_REPLY_FRAME_KIND,
+                InvocationControlCodec::encode_cancel_reply(reply)?,
+            ),
+            SessionReply::Catalog(reply) => {
+                ReplyFrames::Catalog(CatalogChunks::new(&reply, limits)?)
+            }
+        };
+        Ok(Self { stream_id, frames })
+    }
+
+    fn next_frame(&mut self) -> Result<Option<EncodedReplyFrame>, TransportError> {
+        match &mut self.frames {
+            ReplyFrames::Single(frame) => Ok(frame.take()),
+            ReplyFrames::Catalog(chunks) => {
+                Ok(chunks.next_chunk()?.map(|chunk| EncodedReplyFrame {
+                    kind: CATALOG_REPLY_FRAME_KIND,
+                    payload: chunk.encode(),
+                }))
+            }
+        }
+    }
+}
+
+impl ReplyFrames {
+    fn single(kind: komorebi_protocol::FrameKind, payload: Vec<u8>) -> Self {
+        Self::Single(Some(EncodedReplyFrame {
+            kind,
+            payload: payload.into_boxed_slice(),
+        }))
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -295,6 +369,9 @@ impl EstablishedSession {
             CANCEL_INVOCATION_FRAME_KIND => SessionRequest::CancelInvocation(
                 InvocationControlCodec::decode_cancel_request(frame.payload())?,
             ),
+            GET_CATALOG_FRAME_KIND => {
+                SessionRequest::GetCatalog(CatalogCodec::decode_query(frame.payload())?)
+            }
             kind => return Err(TransportError::UnsupportedRequestFrame(kind)),
         };
         Ok(AuthenticatedRequest {
@@ -326,23 +403,32 @@ impl EstablishedSession {
                 actual: target.connection_id,
             });
         }
-        let (kind, payload) = match reply {
-            SessionReply::InvocationLease(reply) => (
-                INVOCATION_LEASE_REPLY_FRAME_KIND,
-                InvocationLeaseCodec::encode_reply(reply)?,
-            ),
-            SessionReply::InvocationStatus(reply) => (
-                INVOCATION_STATUS_REPLY_FRAME_KIND,
-                InvocationControlCodec::encode_status_reply(reply)?,
-            ),
-            SessionReply::CancelInvocation(reply) => (
-                CANCEL_INVOCATION_REPLY_FRAME_KIND,
-                InvocationControlCodec::encode_cancel_reply(reply)?,
-            ),
-        };
-        self.connection
-            .queue_frame(kind, target.stream_id(), payload)?;
-        self.connection.flush_queued_frame().await
+        self.flush_pending_reply().await?;
+        self.pending_reply = Some(PendingReply::new(
+            target.stream_id(),
+            reply,
+            self.negotiated.limits(),
+        )?);
+        self.flush_pending_reply().await
+    }
+
+    async fn flush_pending_reply(&mut self) -> Result<(), TransportError> {
+        self.connection.flush_queued_frame().await?;
+        loop {
+            let next = match &mut self.pending_reply {
+                Some(pending) => pending
+                    .next_frame()?
+                    .map(|frame| (pending.stream_id, frame)),
+                None => return Ok(()),
+            };
+            let Some((stream_id, frame)) = next else {
+                self.pending_reply = None;
+                return Ok(());
+            };
+            self.connection
+                .queue_frame(frame.kind, stream_id, frame.payload)?;
+            self.connection.flush_queued_frame().await?;
+        }
     }
 
     #[must_use]
@@ -390,6 +476,10 @@ mod tests {
     use komorebi_protocol::ActionKey;
     use komorebi_protocol::ActionSchemaVersion;
     use komorebi_protocol::CancelInvocationRequest;
+    use komorebi_protocol::CatalogCodec;
+    use komorebi_protocol::CatalogQuery;
+    use komorebi_protocol::CatalogReassembler;
+    use komorebi_protocol::CatalogReply;
     use komorebi_protocol::CatalogSchemaVersion;
     use komorebi_protocol::CatalogStamp;
     use komorebi_protocol::FeatureSet;
@@ -573,6 +663,21 @@ mod tests {
         Ok(())
     }
 
+    async fn send_catalog_query(
+        client: &mut tokio::net::windows::named_pipe::NamedPipeClient,
+        query: CatalogQuery,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let frame = Frame::new(
+            GET_CATALOG_FRAME_KIND,
+            StreamId::client_initiated(NonZeroU32::MIN.saturating_add(8))?,
+            komorebi_protocol::DirectionSequence::try_from(6)?,
+            CatalogCodec::encode_query(query)?,
+        )?;
+        client.write_all(&frame.header().encode()).await?;
+        client.write_all(frame.payload()).await?;
+        Ok(())
+    }
+
     #[tokio::test(flavor = "current_thread")]
     #[serial_test::serial]
     async fn handshake_establishes_or_rejects_without_blocking_the_listener()
@@ -699,6 +804,30 @@ mod tests {
             InvocationControlCodec::decode_cancel_reply(reply.payload())?,
             cancel_reply
         );
+
+        let revision = Revision::try_from(11)?;
+        let catalog_stamp =
+            CatalogStamp::new(established.manager_epoch(), revision, revision, revision);
+        let catalog_query = CatalogQuery::new(Some(catalog_stamp));
+        send_catalog_query(&mut accepted_client, catalog_query).await?;
+        let request = established.receive_request().await?;
+        let catalog_reply_target = request.reply_target();
+        assert_eq!(
+            request.into_request(),
+            SessionRequest::GetCatalog(catalog_query)
+        );
+        let catalog_reply = CatalogReply::NotModified(catalog_stamp);
+        established
+            .send_reply(
+                catalog_reply_target,
+                SessionReply::Catalog(catalog_reply.clone()),
+            )
+            .await?;
+        let reply = receive_frame(&mut accepted_client).await?;
+        assert_eq!(reply.header().kind(), CATALOG_REPLY_FRAME_KIND);
+        assert_eq!(reply.header().stream_id(), catalog_reply_target.stream_id());
+        let mut reassembler = CatalogReassembler::new(established.negotiated().limits());
+        assert_eq!(reassembler.push(reply.payload())?, Some(catalog_reply));
 
         assert!(matches!(
             rejected_pending.negotiate().await?,

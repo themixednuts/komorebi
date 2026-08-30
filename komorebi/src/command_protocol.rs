@@ -179,6 +179,9 @@ async fn run_session(
             SessionRequest::CancelInvocation(request) => {
                 SessionReply::CancelInvocation(control.cancel(principal, request).await?)
             }
+            SessionRequest::GetCatalog(_) => {
+                return Err(CommandProtocolError::CatalogNotConnected);
+            }
             SessionRequest::Invoke(_) => return Err(CommandProtocolError::InvokeNotConnected),
         };
         session.send_reply(reply_target, reply).await?;
@@ -195,6 +198,8 @@ pub enum CommandProtocolError {
     Join(#[from] JoinError),
     #[error("action invocation is not connected to the manager owner yet")]
     InvokeNotConnected,
+    #[error("action catalog is not connected to the manager owner yet")]
+    CatalogNotConnected,
     #[error("command protocol server stopped before process shutdown")]
     ServerStopped,
     #[error("could not wait for the process shutdown signal: {0}")]
