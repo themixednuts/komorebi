@@ -206,6 +206,7 @@ impl WindowManager {
                 | SocketMessage::UnstackAll
                 | SocketMessage::ResizeWindowEdge(..)
                 | SocketMessage::ResizeWindowAxis(..)
+                | SocketMessage::ResizeDelta(..)
                 | SocketMessage::MoveContainerToLastWorkspace
                 | SocketMessage::SendContainerToLastWorkspace
                 | SocketMessage::MoveContainerToMonitorNumber(..)
@@ -905,9 +906,6 @@ if (!(Get-Process komorebi-bar -ErrorAction SilentlyContinue))
                 }
                 SocketMessage::RemoveSubscriberPipe(ref subscriber) => {
                     SUBSCRIBERS.lock().remove_pipe(subscriber);
-                }
-                SocketMessage::ResizeDelta(delta) => {
-                    self.resize_step = delta.try_into()?;
                 }
                 SocketMessage::Border(enable) => {
                     border_manager::BORDER_ENABLED.store(enable, Ordering::SeqCst);
@@ -1777,6 +1775,17 @@ mod tests {
         wm.process_command(SocketMessage::ToggleMouseFollowsFocus, stream)
             .unwrap();
         assert_eq!(wm.mouse_follows_focus, !before);
+    }
+
+    #[test]
+    fn live_resize_delta_uses_the_canonical_resize_step_action() {
+        let mut wm = window_manager();
+        let step = crate::core::ResizeStep::new(91).expect("test resize step is positive");
+
+        wm.process_command(SocketMessage::ResizeDelta(step.get()), Vec::new())
+            .expect("legacy request should converge on the canonical action");
+
+        assert_eq!(wm.resize_step, step);
     }
 
     #[test]

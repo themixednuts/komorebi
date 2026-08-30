@@ -65,6 +65,8 @@ pub use command::BuiltInNames;
 pub use command::BuiltInOperationBehaviour;
 pub use command::BuiltInParameterId;
 pub use command::BuiltInRatios;
+pub use command::BuiltInResizeStep;
+pub use command::BuiltInResizeStepError;
 pub use command::BuiltInSelector;
 pub use command::BuiltInSizing;
 pub use command::CANCEL_INVOCATION_FRAME_KIND;

@@ -68,6 +68,7 @@ known_ids! {
     ColumnRatios => "column-ratios",
     RowRatios => "row-ratios",
     AtCount => "at-count",
+    ResizeStep => "resize-step",
 }
 
 known_ids! {
@@ -77,6 +78,32 @@ known_ids! {
     Up => "up",
     Down => "down",
 }
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct BuiltInResizeStep(NonZeroI32);
+
+impl BuiltInResizeStep {
+    /// Creates a positive built-in resize step.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`BuiltInResizeStepError`] for zero or negative values.
+    pub const fn new(value: i32) -> Result<Self, BuiltInResizeStepError> {
+        match NonZeroI32::new(value) {
+            Some(value) if value.is_positive() => Ok(Self(value)),
+            _ => Err(BuiltInResizeStepError(value)),
+        }
+    }
+
+    #[must_use]
+    pub const fn get(self) -> i32 {
+        self.0.get()
+    }
+}
+
+#[derive(Clone, Copy, Debug, Error, Eq, PartialEq)]
+#[error("built-in resize step must be positive; received {0}")]
+pub struct BuiltInResizeStepError(i32);
 
 known_ids! {
     BuiltInAxis, ChoiceId,
@@ -223,6 +250,7 @@ pub enum BuiltInArgument {
     ColumnRatios(BuiltInRatios),
     RowRatios(BuiltInRatios),
     AtCount(u64),
+    ResizeStep(BuiltInResizeStep),
 }
 
 impl BuiltInArgument {
@@ -277,6 +305,7 @@ impl BuiltInArgument {
                 ActionArgument::Scalars(value.0),
             ),
             Self::AtCount(value) => (BuiltInParameterId::AtCount, Scalar(S::Unsigned(value))),
+            Self::ResizeStep(value) => signed(BuiltInParameterId::ResizeStep, value.get()),
         }
     }
 }
@@ -380,5 +409,25 @@ mod tests {
             BuiltInArguments::new([BuiltInArgument::Index(1), BuiltInArgument::Index(2),]),
             Err(BuiltInArgumentsError::Duplicate(BuiltInParameterId::Index))
         );
+    }
+
+    #[test]
+    fn resize_step_is_positive_and_encodes_as_its_own_signed_parameter()
+    -> Result<(), Box<dyn std::error::Error>> {
+        assert_eq!(
+            BuiltInResizeStep::new(37).map(BuiltInResizeStep::get),
+            Ok(37)
+        );
+        assert_eq!(BuiltInResizeStep::new(0), Err(BuiltInResizeStepError(0)));
+        assert_eq!(BuiltInResizeStep::new(-1), Err(BuiltInResizeStepError(-1)));
+
+        let arguments =
+            BuiltInArguments::new([BuiltInArgument::ResizeStep(BuiltInResizeStep::new(37)?)])?
+                .into_action_arguments();
+        assert!(matches!(
+            arguments.values().get(&ParameterId::parse("resize-step")?),
+            Some(ActionArgument::Scalar(ArgumentScalar::Signed(37)))
+        ));
+        Ok(())
     }
 }

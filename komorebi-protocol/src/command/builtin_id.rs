@@ -143,6 +143,7 @@ built_in_action_ids! {
     AddWorkspaceCustomLayoutRule => "add-workspace-custom-layout-rule",
     EagerFocus => "eager-focus",
     RemoveTitleBar => "remove-title-bar",
+    SetResizeStep => "set-resize-step",
 }
 
 impl fmt::Display for BuiltInActionId {

@@ -134,6 +134,7 @@ impl ActionId {
     pub const ADD_WORKSPACE_CUSTOM_LAYOUT_RULE: Self = Self("add-workspace-custom-layout-rule");
     pub const EAGER_FOCUS: Self = Self("eager-focus");
     pub const REMOVE_TITLE_BAR: Self = Self("remove-title-bar");
+    pub const SET_RESIZE_STEP: Self = Self("set-resize-step");
 
     #[must_use]
     pub const fn as_str(self) -> &'static str {
@@ -178,8 +179,9 @@ impl ParameterId {
     pub const COLUMN_RATIOS: Self = Self("column-ratios");
     pub const ROW_RATIOS: Self = Self("row-ratios");
     pub const AT_COUNT: Self = Self("at-count");
+    pub const RESIZE_STEP: Self = Self("resize-step");
 
-    pub const ALL: [Self; 26] = [
+    pub const ALL: [Self; 27] = [
         Self::DIRECTION,
         Self::AXIS,
         Self::DELTA,
@@ -206,6 +208,7 @@ impl ParameterId {
         Self::COLUMN_RATIOS,
         Self::ROW_RATIOS,
         Self::AT_COUNT,
+        Self::RESIZE_STEP,
     ];
 
     #[must_use]

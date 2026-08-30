@@ -191,6 +191,7 @@ fn decode_category(value: u8) -> Result<ActionCategory, CommandCodecError> {
     match value {
         1 => Ok(ActionCategory::Window),
         2 => Ok(ActionCategory::Workspace),
+        3 => Ok(ActionCategory::Configuration),
         _ => Err(CommandCodecError::UnknownActionCategory(value)),
     }
 }
@@ -235,6 +236,7 @@ fn decode_domain(value: u8) -> Result<ParameterDomain, CommandCodecError> {
         20 => Ok(ParameterDomain::Identifier),
         21 => Ok(ParameterDomain::Ratios),
         22 => Ok(ParameterDomain::AtCount),
+        23 => Ok(ParameterDomain::ResizeStep),
         _ => Err(CommandCodecError::UnknownParameterDomain(value)),
     }
 }

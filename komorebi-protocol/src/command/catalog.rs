@@ -23,6 +23,7 @@ pub(crate) const MAX_BINDING_HINTS: usize = 32;
 pub enum ActionCategory {
     Window = 1,
     Workspace = 2,
+    Configuration = 3,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
@@ -67,6 +68,7 @@ pub enum ParameterDomain {
     Identifier = 20,
     Ratios = 21,
     AtCount = 22,
+    ResizeStep = 23,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

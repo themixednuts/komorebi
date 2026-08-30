@@ -10,6 +10,7 @@ use crate::core::MonocleFocusBehaviour;
 use crate::core::MoveBehaviour;
 use crate::core::OperationBehaviour;
 use crate::core::OperationDirection;
+use crate::core::ResizeStep;
 use crate::core::Sizing;
 
 use super::builtin::Pixels;
@@ -31,6 +32,9 @@ pub enum ActionResult {
     Resized {
         axis: Axis,
         delta: Pixels,
+    },
+    ResizeStepSet {
+        step: ResizeStep,
     },
     LayoutSet {
         layout: DefaultLayout,
@@ -317,6 +321,9 @@ pub enum NativeEffect {
     Resize {
         axis: Axis,
         delta: Pixels,
+    },
+    SetResizeStep {
+        step: ResizeStep,
     },
     SetLayout {
         layout: DefaultLayout,

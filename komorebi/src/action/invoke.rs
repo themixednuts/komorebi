@@ -701,6 +701,41 @@ mod tests {
     }
 
     #[test]
+    fn setting_resize_step_updates_the_snapshot_and_plans_one_exact_effect() {
+        let mut state = live_state();
+        let step = ResizeStep::new(91).expect("test resize step is positive");
+        let request = InvokeAction {
+            invocation_id: invocation(13),
+            expected_state: stamp(10),
+            action: BuiltinAction::SetResizeStep { step },
+            confirmation: None,
+        };
+
+        let ActionPreparation::Prepared(prepared) =
+            state.prepare(&request, &context(), Instant::now())
+        else {
+            panic!("set-resize-step should prepare");
+        };
+
+        assert_eq!(
+            prepared.logical_result,
+            ActionResult::ResizeStepSet { step }
+        );
+        assert_eq!(
+            prepared.effects,
+            vec![PlannedEffect {
+                id: EffectId::new(0),
+                effect: NativeEffect::SetResizeStep { step },
+            }]
+        );
+
+        state
+            .commit_prepared(prepared)
+            .expect("prepared resize-step transition should commit");
+        assert_eq!(state.snapshot().resize_step, step);
+    }
+
+    #[test]
     fn prepared_transition_rejects_publication_after_state_advances() {
         let mut state = live_state();
         let first = match state.prepare(

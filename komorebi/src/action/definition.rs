@@ -9,6 +9,7 @@ use super::id::ParameterId;
 pub enum ActionCategory {
     Window,
     Workspace,
+    Configuration,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -53,6 +54,7 @@ pub enum ParameterDomain {
     Identifier,
     Ratios,
     AtCount,
+    ResizeStep,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -572,6 +574,12 @@ const RESIZE_EDGE_BY_STEP: &[ParameterDefinition] = &[
     },
 ];
 
+const RESIZE_STEP: &[ParameterDefinition] = &[ParameterDefinition {
+    id: ParameterId::RESIZE_STEP,
+    domain: ParameterDomain::ResizeStep,
+    cardinality: ArgumentCardinality::RequiredScalar,
+}];
+
 const fn def(
     id: ActionId,
     kind: BuiltinActionKind,
@@ -596,9 +604,11 @@ const fn def(
     }
 }
 
+mod configuration;
 mod window;
 mod workspace;
 
+pub use configuration::*;
 pub use window::*;
 pub use workspace::*;
 
@@ -723,12 +733,13 @@ impl BuiltinActionKind {
             Self::AddWorkspaceCustomLayoutRule => &ADD_WORKSPACE_CUSTOM_LAYOUT_RULE,
             Self::EagerFocus => &EAGER_FOCUS,
             Self::RemoveTitleBar => &REMOVE_TITLE_BAR,
+            Self::SetResizeStep => &SET_RESIZE_STEP,
         }
     }
 }
 
 #[must_use]
-pub fn definitions() -> [&'static ActionDefinition; 115] {
+pub fn definitions() -> [&'static ActionDefinition; 116] {
     BuiltinActionKind::ALL.map(BuiltinActionKind::definition)
 }
 

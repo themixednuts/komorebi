@@ -21,6 +21,7 @@ use crate::core::MonocleFocusBehaviour;
 use crate::core::MoveBehaviour;
 use crate::core::OperationBehaviour;
 use crate::core::OperationDirection;
+use crate::core::ResizeStep;
 use crate::core::Sizing;
 
 pub(super) struct ValidatedArguments<'a> {
@@ -193,6 +194,11 @@ impl<'a> ValidatedArguments<'a> {
 
     pub(super) fn pixels(&self, id: ParameterId) -> Result<Pixels, ArgumentBindingError> {
         Pixels::new(self.i32(id)?).map_err(|_| ArgumentBindingError::Zero { parameter: id })
+    }
+
+    pub(super) fn resize_step(&self, id: ParameterId) -> Result<ResizeStep, ArgumentBindingError> {
+        ResizeStep::new(self.i32(id)?)
+            .map_err(|_| ArgumentBindingError::NonPositive { parameter: id })
     }
 
     pub(super) fn workspace_name(
@@ -467,6 +473,8 @@ pub enum ArgumentBindingError {
     OutsideUsize { parameter: ParameterId },
     #[error("parameter {parameter} must be nonzero")]
     Zero { parameter: ParameterId },
+    #[error("parameter {parameter} must be positive")]
+    NonPositive { parameter: ParameterId },
     #[error("parameter {parameter} must not be empty")]
     EmptyText { parameter: ParameterId },
     #[error(

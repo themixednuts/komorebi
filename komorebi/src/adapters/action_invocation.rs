@@ -156,6 +156,9 @@ fn bind_builtin(
             axis: args.axis(ParameterId::AXIS)?,
             sizing: args.sizing(ParameterId::SIZING)?,
         },
+        K::SetResizeStep => A::SetResizeStep {
+            step: args.resize_step(ParameterId::RESIZE_STEP)?,
+        },
         K::SetWorkspaceLayout => A::SetWorkspaceLayout {
             workspace: args.workspace_selector(ParameterId::WORKSPACE)?,
             layout: args.layout(ParameterId::LAYOUT)?,

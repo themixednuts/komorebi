@@ -53,6 +53,7 @@ use komorebi_client::command::BuiltInArgument;
 use komorebi_client::command::BuiltInArguments;
 use komorebi_client::command::BuiltInNames;
 use komorebi_client::command::BuiltInRatios;
+use komorebi_client::command::BuiltInResizeStep;
 use komorebi_client::command::BuiltInSelector;
 use komorebi_client::command::FixedDecimal;
 use komorebi_client::send_message;
@@ -83,6 +84,7 @@ use komorebi_client::MoveBehaviour;
 use komorebi_client::OperationBehaviour;
 use komorebi_client::OperationDirection;
 use komorebi_client::Rect;
+use komorebi_client::ResizeStep;
 use komorebi_client::Sizing;
 use komorebi_client::SocketMessage;
 use komorebi_client::StateQuery;
@@ -418,9 +420,9 @@ struct ResizeAxis {
 }
 
 #[derive(Parser)]
-struct ResizeDelta {
-    /// The delta of pixels by which to increase or decrease window dimensions when resizing
-    pixels: i32,
+struct SetResizeStep {
+    /// Positive pixel step used by resize-edge and resize-axis
+    step: ResizeStep,
 }
 
 #[derive(Parser)]
@@ -1284,9 +1286,9 @@ enum SubCommand {
     SwapWorkspacesWithMonitor(SwapWorkspacesWithMonitor),
     /// Create and append a new workspace on the focused monitor
     NewWorkspace,
-    /// Set the resize delta (used by resize-edge and resize-axis)
+    /// Set the positive pixel step used by resize-edge and resize-axis
     #[clap(arg_required_else_help = true)]
-    ResizeDelta(ResizeDelta),
+    ResizeStep(SetResizeStep),
     /// Set the invisible border dimensions around each window
     #[clap(arg_required_else_help = true)]
     InvisibleBorders(InvisibleBorders),
@@ -3659,8 +3661,14 @@ if (Get-Command Get-CimInstance -ErrorAction SilentlyContinue) {
             ))?;
         }
 
-        SubCommand::ResizeDelta(args) => {
-            send_message(&SocketMessage::ResizeDelta(args.pixels))?;
+        SubCommand::ResizeStep(args) => {
+            invoke_action(
+                BuiltInActionId::SetResizeStep,
+                built_in_arguments([BuiltInArgument::ResizeStep(BuiltInResizeStep::new(
+                    args.step.get(),
+                )?)])?,
+            )
+            .await?;
         }
         SubCommand::ToggleWindowContainerBehaviour => {
             invoke_action(

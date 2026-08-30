@@ -198,6 +198,7 @@ const fn project_category(value: definition::ActionCategory) -> protocol::Action
     match value {
         definition::ActionCategory::Window => protocol::ActionCategory::Window,
         definition::ActionCategory::Workspace => protocol::ActionCategory::Workspace,
+        definition::ActionCategory::Configuration => protocol::ActionCategory::Configuration,
     }
 }
 
@@ -250,6 +251,7 @@ const fn project_parameter_domain(value: definition::ParameterDomain) -> protoco
         definition::ParameterDomain::Identifier => protocol::ParameterDomain::Identifier,
         definition::ParameterDomain::Ratios => protocol::ParameterDomain::Ratios,
         definition::ParameterDomain::AtCount => protocol::ParameterDomain::AtCount,
+        definition::ParameterDomain::ResizeStep => protocol::ParameterDomain::ResizeStep,
     }
 }
 

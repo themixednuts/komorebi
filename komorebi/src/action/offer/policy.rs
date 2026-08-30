@@ -153,6 +153,7 @@ pub(super) const fn policy(kind: BuiltinActionKind) -> OfferPolicy {
         | BuiltinActionKind::ToggleCrossMonitorMoveBehaviour
         | BuiltinActionKind::ToggleMonocleFocusBehaviour
         | BuiltinActionKind::TogglePause
+        | BuiltinActionKind::SetResizeStep
         | BuiltinActionKind::SetFocusedContainerPadding
         | BuiltinActionKind::SetFocusedWorkspacePadding
         | BuiltinActionKind::SetContainerPadding

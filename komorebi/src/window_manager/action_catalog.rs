@@ -350,6 +350,9 @@ impl WindowManager {
                 };
                 self.resize_window_on_axis(axis, sizing, delta.get().unsigned_abs() as i32)?;
             }
+            NativeEffect::SetResizeStep { step } => {
+                self.resize_step = step;
+            }
             NativeEffect::CycleFocus { direction } => {
                 let focused_workspace = self.focused_workspace()?;
                 match focused_workspace.layer {

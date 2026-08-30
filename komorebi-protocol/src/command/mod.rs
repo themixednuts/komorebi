@@ -69,6 +69,8 @@ pub use builtin_argument::BuiltInNames;
 pub use builtin_argument::BuiltInOperationBehaviour;
 pub use builtin_argument::BuiltInParameterId;
 pub use builtin_argument::BuiltInRatios;
+pub use builtin_argument::BuiltInResizeStep;
+pub use builtin_argument::BuiltInResizeStepError;
 pub use builtin_argument::BuiltInSelector;
 pub use builtin_argument::BuiltInSizing;
 pub use builtin_id::BuiltInActionId;

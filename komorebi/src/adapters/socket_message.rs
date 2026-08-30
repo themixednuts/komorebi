@@ -7,6 +7,7 @@ use crate::action::WindowsPath;
 use crate::action::WorkspaceIndex;
 use crate::action::WorkspaceName;
 use crate::action::WorkspaceSelector;
+use crate::core::ResizeStep;
 use crate::core::SocketMessage;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -47,6 +48,7 @@ pub fn classify(message: &SocketMessage) -> SocketMessageClass {
         | UnstackAll
         | ResizeWindowEdge(_, _)
         | ResizeWindowAxis(_, _)
+        | ResizeDelta(_)
         | MoveContainerToLastWorkspace
         | SendContainerToLastWorkspace
         | MoveContainerToMonitorNumber(_)
@@ -191,7 +193,6 @@ pub fn classify(message: &SocketMessage) -> SocketMessageClass {
         | MonitorWorkAreaOffset(_, _)
         | WorkspaceWorkAreaOffset(_, _, _)
         | ToggleWindowBasedWorkAreaOffset
-        | ResizeDelta(_)
         | InitialWorkspaceRule(_, _, _, _)
         | InitialNamedWorkspaceRule(_, _, _)
         | WorkspaceRule(_, _, _, _)
@@ -242,6 +243,9 @@ pub fn to_builtin_action(message: &SocketMessage) -> Option<BuiltinAction> {
         SocketMessage::ResizeWindowAxis(axis, sizing) => Some(BuiltinAction::ResizeWindowByStep {
             axis: *axis,
             sizing: *sizing,
+        }),
+        SocketMessage::ResizeDelta(step) => Some(BuiltinAction::SetResizeStep {
+            step: ResizeStep::new(*step).ok()?,
         }),
         SocketMessage::CycleFocusWindow(direction) => Some(BuiltinAction::CycleFocusWindow {
             direction: *direction,
@@ -693,7 +697,8 @@ mod tests {
     }
 
     #[test]
-    fn migrated_socket_messages_become_the_same_builtin_action() {
+    fn migrated_socket_messages_become_the_same_builtin_action()
+    -> Result<(), Box<dyn std::error::Error>> {
         assert_eq!(
             to_builtin_action(&SocketMessage::FocusWindow(OperationDirection::Left)),
             Some(BuiltinAction::FocusWindow {
@@ -731,6 +736,12 @@ mod tests {
             Some(BuiltinAction::ResizeWindowByStep {
                 axis: crate::core::Axis::Horizontal,
                 sizing: crate::core::Sizing::Decrease,
+            })
+        );
+        assert_eq!(
+            to_builtin_action(&SocketMessage::ResizeDelta(37)),
+            Some(BuiltinAction::SetResizeStep {
+                step: ResizeStep::new(37)?,
             })
         );
         assert_eq!(
@@ -813,6 +824,7 @@ mod tests {
                 behaviour: crate::core::MoveBehaviour::Insert,
             })
         );
+        Ok(())
     }
 
     #[test]
@@ -880,6 +892,14 @@ mod tests {
         assert_eq!(adapt_action(&SocketMessage::State), Ok(None));
         assert_eq!(
             adapt_action(&SocketMessage::FocusNamedWorkspace(String::new())),
+            Err(SocketActionAdapterError::InvalidParameters)
+        );
+        assert_eq!(
+            adapt_action(&SocketMessage::ResizeDelta(0)),
+            Err(SocketActionAdapterError::InvalidParameters)
+        );
+        assert_eq!(
+            adapt_action(&SocketMessage::ResizeDelta(-1)),
             Err(SocketActionAdapterError::InvalidParameters)
         );
     }

@@ -103,7 +103,7 @@ fn scalar(
     Ok(match domain {
         D::Direction => protocol::ArgumentScalar::Choice(protocol::ChoiceId::parse("left")?),
         D::Axis => protocol::ArgumentScalar::Choice(protocol::ChoiceId::parse("horizontal")?),
-        D::Pixels | D::Adjustment | D::Size => protocol::ArgumentScalar::Signed(1),
+        D::Pixels | D::Adjustment | D::Size | D::ResizeStep => protocol::ArgumentScalar::Signed(1),
         D::WorkspaceSelector | D::WindowSelector => {
             protocol::ArgumentScalar::Selector(protocol::SelectorId::parse("focused-at-execution")?)
         }

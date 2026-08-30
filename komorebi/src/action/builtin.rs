@@ -141,10 +141,11 @@ pub enum BuiltinActionKind {
     AddWorkspaceCustomLayoutRule,
     EagerFocus,
     RemoveTitleBar,
+    SetResizeStep,
 }
 
 impl BuiltinActionKind {
-    pub const ALL: [Self; 115] = [
+    pub const ALL: [Self; 116] = [
         Self::FocusWindow,
         Self::MoveWindow,
         Self::ResizeWindow,
@@ -260,6 +261,7 @@ impl BuiltinActionKind {
         Self::AddWorkspaceCustomLayoutRule,
         Self::EagerFocus,
         Self::RemoveTitleBar,
+        Self::SetResizeStep,
     ];
 
     #[must_use]
@@ -388,6 +390,7 @@ impl BuiltinActionKind {
             Self::AddWorkspaceCustomLayoutRule => ActionId::ADD_WORKSPACE_CUSTOM_LAYOUT_RULE,
             Self::EagerFocus => ActionId::EAGER_FOCUS,
             Self::RemoveTitleBar => ActionId::REMOVE_TITLE_BAR,
+            Self::SetResizeStep => ActionId::SET_RESIZE_STEP,
         }
     }
 }
@@ -797,6 +800,9 @@ pub enum BuiltinAction {
         identifier: ApplicationIdentifier,
         id: String,
     },
+    SetResizeStep {
+        step: ResizeStep,
+    },
 }
 
 impl BuiltinAction {
@@ -964,6 +970,7 @@ impl BuiltinAction {
             }
             Self::EagerFocus { .. } => BuiltinActionKind::EagerFocus,
             Self::RemoveTitleBar { .. } => BuiltinActionKind::RemoveTitleBar,
+            Self::SetResizeStep { .. } => BuiltinActionKind::SetResizeStep,
         }
     }
 }

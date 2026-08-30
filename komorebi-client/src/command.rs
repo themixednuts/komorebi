@@ -23,6 +23,8 @@ pub use komorebi_protocol::BuiltInNames;
 pub use komorebi_protocol::BuiltInOperationBehaviour;
 pub use komorebi_protocol::BuiltInParameterId;
 pub use komorebi_protocol::BuiltInRatios;
+pub use komorebi_protocol::BuiltInResizeStep;
+pub use komorebi_protocol::BuiltInResizeStepError;
 pub use komorebi_protocol::BuiltInSelector;
 pub use komorebi_protocol::BuiltInSizing;
 use komorebi_protocol::CatalogQuery;

@@ -144,6 +144,7 @@ pub(super) fn directional_gap(
         }
         BuiltinAction::ResizeWindow { .. }
         | BuiltinAction::ResizeWindowByStep { .. }
+        | BuiltinAction::SetResizeStep { .. }
         | BuiltinAction::SetWorkspaceLayout { .. }
         | BuiltinAction::ToggleWindowFloat { .. }
         | BuiltinAction::CycleFocusWindow { .. }
@@ -260,6 +261,7 @@ pub(super) fn directional_gap(
 pub(super) fn apply_logical(snapshot: &mut ActionSnapshot, action: &BuiltinAction) {
     match action.clone() {
         BuiltinAction::SetWorkspaceLayout { layout, .. } => snapshot.current_layout = layout,
+        BuiltinAction::SetResizeStep { step } => snapshot.resize_step = step,
         BuiltinAction::ToggleWindowFloat { .. } => {
             snapshot.focused_window_floating = !snapshot.focused_window_floating;
         }
@@ -386,6 +388,7 @@ pub(super) fn logical_result(action: &BuiltinAction, snapshot: &ActionSnapshot) 
         BuiltinAction::FocusWindow { direction } => ActionResult::Focused { direction },
         BuiltinAction::MoveWindow { direction } => ActionResult::Moved { direction },
         BuiltinAction::ResizeWindow { axis, delta } => ActionResult::Resized { axis, delta },
+        BuiltinAction::SetResizeStep { step } => ActionResult::ResizeStepSet { step },
         BuiltinAction::SetWorkspaceLayout { layout, .. } => ActionResult::LayoutSet { layout },
         BuiltinAction::ToggleWindowFloat { .. } => ActionResult::FloatToggled {
             floating: snapshot.focused_window_floating,
@@ -669,6 +672,7 @@ pub(super) fn effects(action: &BuiltinAction, snapshot: &ActionSnapshot) -> Vec<
         BuiltinAction::ResizeWindow { axis, delta } => {
             vec![NativeEffect::Resize { axis, delta }]
         }
+        BuiltinAction::SetResizeStep { step } => vec![NativeEffect::SetResizeStep { step }],
         BuiltinAction::SetWorkspaceLayout { layout, .. } => {
             vec![NativeEffect::SetLayout { layout }]
         }
