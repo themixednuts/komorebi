@@ -18,10 +18,10 @@ pub use super::outcome::NativeEffect;
 pub use super::outcome::NativeEffectFailure;
 pub use super::outcome::PlannedEffect;
 use super::transition::apply_logical;
-use super::transition::bind_named_targets;
 use super::transition::directional_gap;
 use super::transition::effects;
 use super::transition::logical_result;
+use super::transition::resolve_contextual_inputs;
 use super::undo::UndoLedger;
 use super::undo::UndoRecord;
 use komorebi_protocol::InvocationIdentityError;
@@ -315,7 +315,7 @@ impl CatalogState {
                 rejected(request.invocation_id, ActionRejection::Unavailable(reason))
             }
             Some(ActionAvailability::Available) => {
-                let action = match bind_named_targets(&self.snapshot, &request.action) {
+                let action = match resolve_contextual_inputs(&self.snapshot, &request.action) {
                     Ok(action) => action,
                     Err(reason) => {
                         return rejected(
@@ -489,9 +489,13 @@ fn rejected(invocation_id: InvocationId, source: ActionRejection) -> ActionPrepa
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::action::Pixels;
     use crate::action::id::WindowId;
+    use crate::core::Axis;
     use crate::core::DefaultLayout;
     use crate::core::OperationDirection;
+    use crate::core::ResizeStep;
+    use crate::core::Sizing;
 
     fn invocation(sequence: u64) -> InvocationId {
         InvocationId::new(
@@ -522,6 +526,7 @@ mod tests {
             focused_window: Some(WindowId::new(1)),
             directional_targets: [OperationDirection::Left].into(),
             current_layout: DefaultLayout::BSP,
+            resize_step: crate::DEFAULT_RESIZE_STEP,
             focused_window_floating: false,
             named_workspaces: Vec::new(),
             bindings: Vec::new(),
@@ -653,6 +658,46 @@ mod tests {
             ActionAdmission::Committed { state, .. } if state == stamp(11)
         ));
         assert_eq!(state.snapshot().state, stamp(11));
+    }
+
+    #[test]
+    fn configured_resize_step_resolves_to_one_exact_effect() {
+        let mut state = live_state();
+        state.snapshot.resize_step = ResizeStep::new(73).expect("test step is positive");
+        let request = InvokeAction {
+            invocation_id: invocation(12),
+            expected_state: stamp(10),
+            action: BuiltinAction::ResizeWindowByStep {
+                axis: Axis::Horizontal,
+                sizing: Sizing::Decrease,
+            },
+            confirmation: None,
+        };
+
+        let ActionPreparation::Prepared(prepared) =
+            state.prepare(&request, &context(), Instant::now())
+        else {
+            panic!("live resize action should prepare");
+        };
+        let expected = Pixels::new(-73).expect("resolved delta is nonzero");
+
+        assert_eq!(
+            prepared.logical_result,
+            ActionResult::Resized {
+                axis: Axis::Horizontal,
+                delta: expected,
+            }
+        );
+        assert_eq!(
+            prepared.effects,
+            vec![PlannedEffect {
+                id: EffectId::new(0),
+                effect: NativeEffect::Resize {
+                    axis: Axis::Horizontal,
+                    delta: expected,
+                },
+            }]
+        );
     }
 
     #[test]

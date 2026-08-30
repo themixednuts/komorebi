@@ -49,6 +49,8 @@ pub use pathext::PathExt;
 pub use pathext::ResolvedPathBuf;
 pub use pathext::replace_env_in_path;
 pub use pathext::resolve_option_hashmap_usize_path;
+pub use resize_step::ResizeStep;
+pub use resize_step::ResizeStepError;
 pub use subscriber::SubscriberName;
 pub use subscriber::SubscriberNameError;
 pub use subscriber::SubscriberRegistry;
@@ -57,6 +59,7 @@ pub mod animation;
 pub mod asc;
 pub mod config_generation;
 pub mod pathext;
+pub mod resize_step;
 pub mod subscriber;
 
 // serde_as must be before derive

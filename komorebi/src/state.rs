@@ -19,6 +19,7 @@ use crate::OBJECT_NAME_CHANGE_ON_LAUNCH;
 use crate::OperationBehaviour;
 use crate::REMOVE_TITLEBARS;
 use crate::Rect;
+use crate::ResizeStep;
 use crate::StackbarLabel;
 use crate::StackbarMode;
 use crate::TRANSPARENCY_BLACKLIST;
@@ -58,7 +59,7 @@ pub struct State {
     pub monitors: Ring<Monitor>,
     pub monitor_usr_idx_map: HashMap<usize, usize>,
     pub is_paused: bool,
-    pub resize_delta: i32,
+    pub resize_step: ResizeStep,
     pub new_window_behaviour: WindowContainerBehaviour,
     pub float_override: bool,
     pub cross_monitor_move_behaviour: MoveBehaviour,
@@ -306,7 +307,7 @@ impl From<&WindowManager> for State {
             monitor_usr_idx_map: wm.monitor_usr_idx_map.clone(),
             is_paused: wm.is_paused,
             work_area_offset: wm.work_area_offset,
-            resize_delta: wm.resize_delta,
+            resize_step: wm.resize_step,
             new_window_behaviour: wm.window_management_behaviour.current_behaviour,
             float_override: wm.window_management_behaviour.float_override,
             cross_monitor_move_behaviour: wm.cross_monitor_move_behaviour,

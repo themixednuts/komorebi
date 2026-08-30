@@ -42,6 +42,20 @@ pub const RESIZE_WINDOW: ActionDefinition = ActionDefinition {
     undo: UndoPolicy::None,
 };
 
+pub const RESIZE_WINDOW_BY_STEP: ActionDefinition = ActionDefinition {
+    id: ActionId::RESIZE_WINDOW_BY_STEP,
+    schema_version: ActionSchemaVersion::V1,
+    kind: BuiltinActionKind::ResizeWindowByStep,
+    category: ActionCategory::Window,
+    title: "Resize window by configured step",
+    description: "Resize the focused window along one axis by the configured step",
+    keywords: &["resize", "window", "axis", "step"],
+    parameters: RESIZE_BY_STEP,
+    permitted_uses: BOTH_USES,
+    confirmation: ConfirmationPolicy::None,
+    undo: UndoPolicy::None,
+};
+
 pub const TOGGLE_WINDOW_FLOAT: ActionDefinition = ActionDefinition {
     id: ActionId::TOGGLE_WINDOW_FLOAT,
     schema_version: ActionSchemaVersion::V1,
@@ -498,6 +512,16 @@ pub const RESIZE_WINDOW_EDGE: ActionDefinition = def(
     "Resize the focused window from one edge",
     &["resize", "edge"],
     RESIZE_EDGE,
+);
+
+pub const RESIZE_WINDOW_EDGE_BY_STEP: ActionDefinition = def(
+    ActionId::RESIZE_WINDOW_EDGE_BY_STEP,
+    BuiltinActionKind::ResizeWindowEdgeByStep,
+    ActionCategory::Window,
+    "Resize window edge by configured step",
+    "Resize the focused window from one edge by the configured step",
+    &["resize", "edge", "step"],
+    RESIZE_EDGE_BY_STEP,
 );
 
 pub const SET_WINDOW_HIDING_BEHAVIOUR: ActionDefinition = def(

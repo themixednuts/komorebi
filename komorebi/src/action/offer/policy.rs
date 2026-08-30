@@ -83,6 +83,7 @@ pub(super) const fn policy(kind: BuiltinActionKind) -> OfferPolicy {
         | BuiltinActionKind::AddNamedWorkspaceCustomLayoutRule
         | BuiltinActionKind::ClearNamedWorkspaceLayoutRules => EXISTING_NAMED_WORKSPACE,
         BuiltinActionKind::ResizeWindow
+        | BuiltinActionKind::ResizeWindowByStep
         | BuiltinActionKind::CycleFocusWindow
         | BuiltinActionKind::CycleMoveWindow
         | BuiltinActionKind::ToggleWindowMonocle
@@ -115,6 +116,7 @@ pub(super) const fn policy(kind: BuiltinActionKind) -> OfferPolicy {
         | BuiltinActionKind::UnmanageFocusedWindow
         | BuiltinActionKind::AddSessionFloatRule
         | BuiltinActionKind::ResizeWindowEdge
+        | BuiltinActionKind::ResizeWindowEdgeByStep
         | BuiltinActionKind::EagerFocus => FOCUSED,
         BuiltinActionKind::StackAll
         | BuiltinActionKind::UnstackAll

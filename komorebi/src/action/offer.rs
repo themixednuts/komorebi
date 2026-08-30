@@ -2,8 +2,10 @@ mod availability;
 mod choices;
 mod policy;
 
+use crate::DEFAULT_RESIZE_STEP;
 use crate::core::DefaultLayout;
 use crate::core::OperationDirection;
+use crate::core::ResizeStep;
 
 use super::DirectionSet;
 use super::builtin::BuiltinActionKind;
@@ -35,6 +37,7 @@ pub struct ActionSnapshot {
     pub focused_window: Option<WindowId>,
     pub directional_targets: DirectionSet,
     pub current_layout: DefaultLayout,
+    pub resize_step: ResizeStep,
     pub focused_window_floating: bool,
     pub named_workspaces: Vec<NamedWorkspaceTarget>,
     pub bindings: Vec<BindingHint>,
@@ -49,6 +52,7 @@ impl ActionSnapshot {
             focused_window: None,
             directional_targets: DirectionSet::empty(),
             current_layout: DefaultLayout::BSP,
+            resize_step: DEFAULT_RESIZE_STEP,
             focused_window_floating: false,
             named_workspaces: Vec::new(),
             bindings: Vec::new(),
@@ -219,6 +223,7 @@ mod tests {
             focused_window: Some(WindowId::new(1)),
             directional_targets: [OperationDirection::Left].into(),
             current_layout: DefaultLayout::BSP,
+            resize_step: DEFAULT_RESIZE_STEP,
             focused_window_floating: false,
             named_workspaces: vec![NamedWorkspaceTarget {
                 name: WorkspaceName::parse("chat").unwrap(),

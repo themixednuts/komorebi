@@ -187,7 +187,7 @@ impl WindowManager {
         let initial_state = State::from(self.as_ref());
 
         let mut force_update_borders = false;
-        if let Some(action) = adapt_action(&message, self.resize_delta)? {
+        if let Some(action) = adapt_action(&message)? {
             self.admit_socket_action(action)?;
         } else {
             match message {
@@ -907,7 +907,7 @@ if (!(Get-Process komorebi-bar -ErrorAction SilentlyContinue))
                     SUBSCRIBERS.lock().remove_pipe(subscriber);
                 }
                 SocketMessage::ResizeDelta(delta) => {
-                    self.resize_delta = delta;
+                    self.resize_step = delta.try_into()?;
                 }
                 SocketMessage::Border(enable) => {
                     border_manager::BORDER_ENABLED.store(enable, Ordering::SeqCst);

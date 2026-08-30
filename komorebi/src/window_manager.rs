@@ -38,6 +38,7 @@ use crate::core::MoveBehaviour;
 use crate::core::OperationBehaviour;
 use crate::core::OperationDirection;
 use crate::core::Rect;
+use crate::core::ResizeStep;
 use crate::core::ScrollingLayoutOptions;
 use crate::core::Sizing;
 use crate::core::WindowContainerBehaviour;
@@ -50,6 +51,7 @@ use crate::core::validate_ratios;
 use crate::CUSTOM_FFM;
 use crate::CrossBoundaryBehaviour;
 use crate::DATA_DIR;
+use crate::DEFAULT_RESIZE_STEP;
 use crate::FLOATING_APPLICATIONS;
 use crate::HOME_DIR;
 use crate::NO_TITLEBAR;
@@ -93,7 +95,7 @@ pub struct WindowManager {
     pub monitor_usr_idx_map: HashMap<usize, usize>,
     pub is_paused: bool,
     pub work_area_offset: Option<Rect>,
-    pub resize_delta: i32,
+    pub resize_step: ResizeStep,
     pub window_management_behaviour: WindowManagementBehaviour,
     pub cross_monitor_move_behaviour: MoveBehaviour,
     pub cross_boundary_behaviour: CrossBoundaryBehaviour,
@@ -159,7 +161,7 @@ impl WindowManager {
             cross_boundary_behaviour: CrossBoundaryBehaviour::Monitor,
             monocle_focus_behaviour: MonocleFocusBehaviour::default(),
             unmanaged_window_operation_behaviour: OperationBehaviour::Op,
-            resize_delta: 50,
+            resize_step: DEFAULT_RESIZE_STEP,
             focus_follows_mouse: None,
             mouse_follows_focus: true,
             hotwatch: Hotwatch::new()?,
@@ -3060,7 +3062,7 @@ impl WindowManager {
         focused_monitor_work_area.bottom -= border_width * 2;
 
         let focused_workspace = self.focused_workspace()?;
-        let delta = self.resize_delta;
+        let delta = self.resize_step.get();
 
         let focused_hwnd = WindowsApi::foreground_window()?;
         for window in focused_workspace.floating_windows().iter() {

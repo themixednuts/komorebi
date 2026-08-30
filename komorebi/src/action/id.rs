@@ -15,6 +15,7 @@ impl ActionId {
     pub const FOCUS_WINDOW: Self = Self("focus-window");
     pub const MOVE_WINDOW: Self = Self("move-window");
     pub const RESIZE_WINDOW: Self = Self("resize-window");
+    pub const RESIZE_WINDOW_BY_STEP: Self = Self("resize-window-by-step");
     pub const SET_WORKSPACE_LAYOUT: Self = Self("set-workspace-layout");
     pub const TOGGLE_WINDOW_FLOAT: Self = Self("toggle-window-float");
     pub const CYCLE_FOCUS_WINDOW: Self = Self("cycle-focus-window");
@@ -103,6 +104,7 @@ impl ActionId {
     pub const ADD_SESSION_FLOAT_RULE: Self = Self("add-session-float-rule");
     pub const CLEAR_SESSION_FLOAT_RULES: Self = Self("clear-session-float-rules");
     pub const RESIZE_WINDOW_EDGE: Self = Self("resize-window-edge");
+    pub const RESIZE_WINDOW_EDGE_BY_STEP: Self = Self("resize-window-edge-by-step");
     pub const SET_WINDOW_HIDING_BEHAVIOUR: Self = Self("set-window-hiding-behaviour");
     pub const SET_CROSS_MONITOR_MOVE_BEHAVIOUR: Self = Self("set-cross-monitor-move-behaviour");
     pub const SET_MONOCLE_FOCUS_BEHAVIOUR: Self = Self("set-monocle-focus-behaviour");

@@ -5,11 +5,21 @@ use super::offer::neighbor_in;
 use super::outcome::ActionResult;
 use super::outcome::NativeEffect;
 
-pub(super) fn bind_named_targets(
+pub(super) fn resolve_contextual_inputs(
     snapshot: &ActionSnapshot,
     action: &BuiltinAction,
 ) -> Result<BuiltinAction, Unavailability> {
     match action {
+        BuiltinAction::ResizeWindowByStep { axis, sizing } => Ok(BuiltinAction::ResizeWindow {
+            axis: *axis,
+            delta: super::builtin::Pixels::from_resize_step(snapshot.resize_step, *sizing),
+        }),
+        BuiltinAction::ResizeWindowEdgeByStep { direction, sizing } => {
+            Ok(BuiltinAction::ResizeWindowEdge {
+                direction: *direction,
+                delta: super::builtin::Pixels::from_resize_step(snapshot.resize_step, *sizing),
+            })
+        }
         BuiltinAction::FocusNamedWorkspace { name } => {
             let (monitor, workspace) = snapshot
                 .workspace_by_name(name)
@@ -133,6 +143,7 @@ pub(super) fn directional_gap(
             }
         }
         BuiltinAction::ResizeWindow { .. }
+        | BuiltinAction::ResizeWindowByStep { .. }
         | BuiltinAction::SetWorkspaceLayout { .. }
         | BuiltinAction::ToggleWindowFloat { .. }
         | BuiltinAction::CycleFocusWindow { .. }
@@ -216,6 +227,7 @@ pub(super) fn directional_gap(
         | BuiltinAction::AddSessionFloatRule
         | BuiltinAction::ClearSessionFloatRules
         | BuiltinAction::ResizeWindowEdge { .. }
+        | BuiltinAction::ResizeWindowEdgeByStep { .. }
         | BuiltinAction::SetWindowHidingBehaviour { .. }
         | BuiltinAction::SetCrossMonitorMoveBehaviour { .. }
         | BuiltinAction::SetMonocleFocusBehaviour { .. }
@@ -257,6 +269,7 @@ pub(super) fn apply_logical(snapshot: &mut ActionSnapshot, action: &BuiltinActio
         BuiltinAction::FocusWindow { .. }
         | BuiltinAction::MoveWindow { .. }
         | BuiltinAction::ResizeWindow { .. }
+        | BuiltinAction::ResizeWindowByStep { .. }
         | BuiltinAction::CycleFocusWindow { .. }
         | BuiltinAction::CycleMoveWindow { .. }
         | BuiltinAction::ToggleWindowMonocle { .. }
@@ -338,6 +351,7 @@ pub(super) fn apply_logical(snapshot: &mut ActionSnapshot, action: &BuiltinActio
         | BuiltinAction::AddSessionFloatRule
         | BuiltinAction::ClearSessionFloatRules
         | BuiltinAction::ResizeWindowEdge { .. }
+        | BuiltinAction::ResizeWindowEdgeByStep { .. }
         | BuiltinAction::SetWindowHidingBehaviour { .. }
         | BuiltinAction::SetCrossMonitorMoveBehaviour { .. }
         | BuiltinAction::SetMonocleFocusBehaviour { .. }
@@ -603,7 +617,9 @@ pub(super) fn logical_result(action: &BuiltinAction, snapshot: &ActionSnapshot) 
             at_container_count,
             layout,
         },
-        BuiltinAction::FocusNamedWorkspace { .. }
+        BuiltinAction::ResizeWindowByStep { .. }
+        | BuiltinAction::ResizeWindowEdgeByStep { .. }
+        | BuiltinAction::FocusNamedWorkspace { .. }
         | BuiltinAction::MoveContainerToNamedWorkspace { .. }
         | BuiltinAction::SendContainerToNamedWorkspace { .. }
         | BuiltinAction::SetNamedWorkspaceContainerPadding { .. }
@@ -614,7 +630,7 @@ pub(super) fn logical_result(action: &BuiltinAction, snapshot: &ActionSnapshot) 
         | BuiltinAction::AddNamedWorkspaceLayoutRule { .. }
         | BuiltinAction::AddNamedWorkspaceCustomLayoutRule { .. }
         | BuiltinAction::ClearNamedWorkspaceLayoutRules { .. } => {
-            unreachable!("named workspace actions bind before logical result")
+            unreachable!("contextual actions resolve before logical result")
         }
         BuiltinAction::EnsureNamedWorkspaces { monitor, .. } => {
             ActionResult::NamedWorkspacesEnsured { monitor }
@@ -904,7 +920,9 @@ pub(super) fn effects(action: &BuiltinAction, snapshot: &ActionSnapshot) -> Vec<
             at_container_count,
             layout,
         }],
-        BuiltinAction::FocusNamedWorkspace { .. }
+        BuiltinAction::ResizeWindowByStep { .. }
+        | BuiltinAction::ResizeWindowEdgeByStep { .. }
+        | BuiltinAction::FocusNamedWorkspace { .. }
         | BuiltinAction::MoveContainerToNamedWorkspace { .. }
         | BuiltinAction::SendContainerToNamedWorkspace { .. }
         | BuiltinAction::SetNamedWorkspaceContainerPadding { .. }
@@ -915,7 +933,7 @@ pub(super) fn effects(action: &BuiltinAction, snapshot: &ActionSnapshot) -> Vec<
         | BuiltinAction::AddNamedWorkspaceLayoutRule { .. }
         | BuiltinAction::AddNamedWorkspaceCustomLayoutRule { .. }
         | BuiltinAction::ClearNamedWorkspaceLayoutRules { .. } => {
-            unreachable!("named workspace actions bind before effects")
+            unreachable!("contextual actions resolve before effects")
         }
         BuiltinAction::EnsureNamedWorkspaces { monitor, names } => {
             vec![NativeEffect::EnsureNamedWorkspaces { monitor, names }]

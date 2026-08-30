@@ -156,6 +156,7 @@ impl WindowManager {
             .filter(|direction| self.can_focus_in_direction(*direction))
             .collect::<DirectionSet>(),
             current_layout,
+            resize_step: self.resize_step,
             focused_window_floating,
             named_workspaces: self.named_workspaces_for_catalog(),
             bindings: Vec::new(),

@@ -152,6 +152,10 @@ fn bind_builtin(
             axis: args.axis(ParameterId::AXIS)?,
             delta: args.pixels(ParameterId::DELTA)?,
         },
+        K::ResizeWindowByStep => A::ResizeWindowByStep {
+            axis: args.axis(ParameterId::AXIS)?,
+            sizing: args.sizing(ParameterId::SIZING)?,
+        },
         K::SetWorkspaceLayout => A::SetWorkspaceLayout {
             workspace: args.workspace_selector(ParameterId::WORKSPACE)?,
             layout: args.layout(ParameterId::LAYOUT)?,
@@ -364,6 +368,10 @@ fn bind_builtin(
         K::ResizeWindowEdge => A::ResizeWindowEdge {
             direction: args.direction(ParameterId::DIRECTION)?,
             delta: args.pixels(ParameterId::DELTA)?,
+        },
+        K::ResizeWindowEdgeByStep => A::ResizeWindowEdgeByStep {
+            direction: args.direction(ParameterId::DIRECTION)?,
+            sizing: args.sizing(ParameterId::SIZING)?,
         },
         K::SetWindowHidingBehaviour => A::SetWindowHidingBehaviour {
             behaviour: args.hiding_behaviour(ParameterId::BEHAVIOUR)?,

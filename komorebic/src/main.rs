@@ -1071,7 +1071,7 @@ struct Splash {
 #[clap(author, about, version = build::CLAP_LONG_VERSION)]
 struct Opts {
     #[clap(subcommand)]
-    subcmd: SubCommand,
+    subcmd: Box<SubCommand>,
 }
 
 #[derive(Parser)]
@@ -1651,12 +1651,15 @@ fn startup_dir() -> eyre::Result<PathBuf> {
 async fn main() -> eyre::Result<()> {
     let opts: Opts = Opts::parse();
 
-    match opts.subcmd {
+    match opts.subcmd.as_ref() {
         SubCommand::Docgen(args) => {
             let mut cli = Opts::command();
             let subcommands = cli.get_subcommands_mut();
 
-            let output_dir = args.output.unwrap_or_else(|| PathBuf::from("docs/cli"));
+            let output_dir = args
+                .output
+                .clone()
+                .unwrap_or_else(|| PathBuf::from("docs/cli"));
             std::fs::create_dir_all(&output_dir)?;
 
             let ignore = [
@@ -1686,7 +1689,7 @@ async fn main() -> eyre::Result<()> {
             }
         }
         SubCommand::Splash(args) => {
-            let informative_text = match args.mdm_server {
+            let informative_text = match &args.mdm_server {
                 None => {
                     "It looks like you are using a corporate device enrolled in mobile device management\n\n\
                          The Komorebi License does not permit any kind of commercial use\n\n\
@@ -1864,7 +1867,7 @@ async fn main() -> eyre::Result<()> {
 
             let mut arguments = String::from("start");
 
-            if let Some(config) = args.config {
+            if let Some(config) = &args.config {
                 arguments.push_str(" --config ");
                 arguments.push_str(&config.to_string_lossy());
             }
@@ -1926,11 +1929,11 @@ async fn main() -> eyre::Result<()> {
 
             println!("Looking for configuration files in {home_display}\n");
 
-            let static_config = if let Some(static_config) = args.komorebi_config {
+            let static_config = if let Some(static_config) = &args.komorebi_config {
                 println!(
                     "Using an arbitrary configuration file passed to --komorebi-config flag\n"
                 );
-                static_config
+                static_config.clone()
             } else {
                 HOME_DIR.join("komorebi.json")
             };
@@ -2181,7 +2184,7 @@ async fn main() -> eyre::Result<()> {
         SubCommand::EagerFocus(args) => {
             invoke_action(
                 BuiltInActionId::EagerFocus,
-                built_in_arguments([BuiltInArgument::Exe(built_in_text(args.exe)?)])?,
+                built_in_arguments([BuiltInArgument::Exe(built_in_text(args.exe.as_str())?)])?,
             )
             .await?;
         }
@@ -2209,7 +2212,9 @@ async fn main() -> eyre::Result<()> {
         SubCommand::MoveToNamedWorkspace(args) => {
             invoke_action(
                 BuiltInActionId::MoveContainerToNamedWorkspace,
-                built_in_arguments([BuiltInArgument::Name(built_in_text(args.workspace)?)])?,
+                built_in_arguments([BuiltInArgument::Name(built_in_text(
+                    args.workspace.as_str(),
+                )?)])?,
             )
             .await?;
         }
@@ -2244,7 +2249,9 @@ async fn main() -> eyre::Result<()> {
         SubCommand::SendToNamedWorkspace(args) => {
             invoke_action(
                 BuiltInActionId::SendContainerToNamedWorkspace,
-                built_in_arguments([BuiltInArgument::Name(built_in_text(args.workspace)?)])?,
+                built_in_arguments([BuiltInArgument::Name(built_in_text(
+                    args.workspace.as_str(),
+                )?)])?,
             )
             .await?;
         }
@@ -2369,7 +2376,7 @@ async fn main() -> eyre::Result<()> {
             invoke_action(
                 BuiltInActionId::SetNamedWorkspaceContainerPadding,
                 built_in_arguments([
-                    BuiltInArgument::Name(built_in_text(args.workspace)?),
+                    BuiltInArgument::Name(built_in_text(args.workspace.as_str())?),
                     BuiltInArgument::Size(args.size),
                 ])?,
             )
@@ -2390,7 +2397,7 @@ async fn main() -> eyre::Result<()> {
             invoke_action(
                 BuiltInActionId::SetNamedWorkspacePadding,
                 built_in_arguments([
-                    BuiltInArgument::Name(built_in_text(args.workspace)?),
+                    BuiltInArgument::Name(built_in_text(args.workspace.as_str())?),
                     BuiltInArgument::Size(args.size),
                 ])?,
             )
@@ -2485,7 +2492,7 @@ async fn main() -> eyre::Result<()> {
             invoke_action(
                 BuiltInActionId::SetNamedWorkspaceLayout,
                 built_in_arguments([
-                    BuiltInArgument::Name(built_in_text(args.workspace)?),
+                    BuiltInArgument::Name(built_in_text(args.workspace.as_str())?),
                     BuiltInArgument::Layout(built_in_layout(args.value)),
                 ])?,
             )
@@ -2506,7 +2513,7 @@ async fn main() -> eyre::Result<()> {
             invoke_action(
                 BuiltInActionId::SetNamedWorkspaceCustomLayout,
                 built_in_arguments([
-                    BuiltInArgument::Name(built_in_text(args.workspace)?),
+                    BuiltInArgument::Name(built_in_text(args.workspace.as_str())?),
                     BuiltInArgument::Path(built_in_path(&args.path)?),
                 ])?,
             )
@@ -2528,7 +2535,7 @@ async fn main() -> eyre::Result<()> {
             invoke_action(
                 BuiltInActionId::AddNamedWorkspaceLayoutRule,
                 built_in_arguments([
-                    BuiltInArgument::Name(built_in_text(args.workspace)?),
+                    BuiltInArgument::Name(built_in_text(args.workspace.as_str())?),
                     BuiltInArgument::AtCount(args.at_container_count.try_into()?),
                     BuiltInArgument::Layout(built_in_layout(args.layout)),
                 ])?,
@@ -2551,7 +2558,7 @@ async fn main() -> eyre::Result<()> {
             invoke_action(
                 BuiltInActionId::AddNamedWorkspaceCustomLayoutRule,
                 built_in_arguments([
-                    BuiltInArgument::Name(built_in_text(args.workspace)?),
+                    BuiltInArgument::Name(built_in_text(args.workspace.as_str())?),
                     BuiltInArgument::AtCount(args.at_container_count.try_into()?),
                     BuiltInArgument::Path(built_in_path(&args.path)?),
                 ])?,
@@ -2571,7 +2578,9 @@ async fn main() -> eyre::Result<()> {
         SubCommand::ClearNamedWorkspaceLayoutRules(args) => {
             invoke_action(
                 BuiltInActionId::ClearNamedWorkspaceLayoutRules,
-                built_in_arguments([BuiltInArgument::Name(built_in_text(args.workspace)?)])?,
+                built_in_arguments([BuiltInArgument::Name(built_in_text(
+                    args.workspace.as_str(),
+                )?)])?,
             )
             .await?;
         }
@@ -2590,7 +2599,7 @@ async fn main() -> eyre::Result<()> {
             invoke_action(
                 BuiltInActionId::SetNamedWorkspaceTiling,
                 built_in_arguments([
-                    BuiltInArgument::Name(built_in_text(args.workspace)?),
+                    BuiltInArgument::Name(built_in_text(args.workspace.as_str())?),
                     BuiltInArgument::Enabled(args.value.into()),
                 ])?,
             )
@@ -2726,7 +2735,7 @@ async fn main() -> eyre::Result<()> {
 
             if !running {
                 println!("\nRunning komorebi.exe directly for detailed error output\n");
-                if let Some(config) = args.config {
+                if let Some(config) = &args.config {
                     if let Ok(output) = Command::new("komorebi.exe")
                         .arg(format!("'--config=\"{}\"'", config.display()))
                         .output()
@@ -2873,7 +2882,7 @@ if (!(Get-Process masir -ErrorAction SilentlyContinue))
                 "* Read the docs https://lgug2z.github.io/komorebi - Quickly search through all komorebic commands"
             );
 
-            let bar_config = args.config.or_else(|| {
+            let bar_config = args.config.clone().or_else(|| {
                 let bar_json = HOME_DIR.join("komorebi.bar.json");
                 bar_json.is_file().then_some(bar_json)
             });
@@ -3125,15 +3134,15 @@ if (Get-Command Get-CimInstance -ErrorAction SilentlyContinue) {
             .await?;
         }
         SubCommand::IgnoreRule(args) => {
-            send_message(&SocketMessage::IgnoreRule(args.identifier, args.id))?;
+            send_message(&SocketMessage::IgnoreRule(args.identifier, args.id.clone()))?;
         }
         SubCommand::ManageRule(args) => {
-            send_message(&SocketMessage::ManageRule(args.identifier, args.id))?;
+            send_message(&SocketMessage::ManageRule(args.identifier, args.id.clone()))?;
         }
         SubCommand::InitialWorkspaceRule(args) => {
             send_message(&SocketMessage::InitialWorkspaceRule(
                 args.identifier,
-                args.id,
+                args.id.clone(),
                 args.monitor,
                 args.workspace,
             ))?;
@@ -3141,14 +3150,14 @@ if (Get-Command Get-CimInstance -ErrorAction SilentlyContinue) {
         SubCommand::InitialNamedWorkspaceRule(args) => {
             send_message(&SocketMessage::InitialNamedWorkspaceRule(
                 args.identifier,
-                args.id,
-                args.workspace,
+                args.id.clone(),
+                args.workspace.clone(),
             ))?;
         }
         SubCommand::WorkspaceRule(args) => {
             send_message(&SocketMessage::WorkspaceRule(
                 args.identifier,
-                args.id,
+                args.id.clone(),
                 args.monitor,
                 args.workspace,
             ))?;
@@ -3156,8 +3165,8 @@ if (Get-Command Get-CimInstance -ErrorAction SilentlyContinue) {
         SubCommand::NamedWorkspaceRule(args) => {
             send_message(&SocketMessage::NamedWorkspaceRule(
                 args.identifier,
-                args.id,
-                args.workspace,
+                args.id.clone(),
+                args.workspace.clone(),
             ))?;
         }
         SubCommand::ClearWorkspaceRules(args) => {
@@ -3167,7 +3176,9 @@ if (Get-Command Get-CimInstance -ErrorAction SilentlyContinue) {
             ))?;
         }
         SubCommand::ClearNamedWorkspaceRules(args) => {
-            send_message(&SocketMessage::ClearNamedWorkspaceRules(args.workspace))?;
+            send_message(&SocketMessage::ClearNamedWorkspaceRules(
+                args.workspace.clone(),
+            ))?;
         }
         SubCommand::ClearAllWorkspaceRules => {
             send_message(&SocketMessage::ClearAllWorkspaceRules)?;
@@ -3249,11 +3260,15 @@ if (Get-Command Get-CimInstance -ErrorAction SilentlyContinue) {
                 );
             } else {
                 let mut arguments = Vec::with_capacity(2);
-                if let Some(columns) = args.columns {
-                    arguments.push(BuiltInArgument::ColumnRatios(BuiltInRatios::new(columns)?));
+                if let Some(columns) = &args.columns {
+                    arguments.push(BuiltInArgument::ColumnRatios(BuiltInRatios::new(
+                        columns.iter().copied(),
+                    )?));
                 }
-                if let Some(rows) = args.rows {
-                    arguments.push(BuiltInArgument::RowRatios(BuiltInRatios::new(rows)?));
+                if let Some(rows) = &args.rows {
+                    arguments.push(BuiltInArgument::RowRatios(BuiltInRatios::new(
+                        rows.iter().copied(),
+                    )?));
                 }
                 invoke_action(
                     BuiltInActionId::SetLayoutRatios,
@@ -3324,7 +3339,9 @@ if (Get-Command Get-CimInstance -ErrorAction SilentlyContinue) {
         SubCommand::FocusNamedWorkspace(args) => {
             invoke_action(
                 BuiltInActionId::FocusNamedWorkspace,
-                built_in_arguments([BuiltInArgument::Name(built_in_text(args.workspace)?)])?,
+                built_in_arguments([BuiltInArgument::Name(built_in_text(
+                    args.workspace.as_str(),
+                )?)])?,
             )
             .await?;
         }
@@ -3361,7 +3378,7 @@ if (Get-Command Get-CimInstance -ErrorAction SilentlyContinue) {
                 built_in_arguments([
                     BuiltInArgument::Monitor(name.monitor.try_into()?),
                     BuiltInArgument::Index(name.workspace.try_into()?),
-                    BuiltInArgument::Name(built_in_text(name.value)?),
+                    BuiltInArgument::Name(built_in_text(name.value.as_str())?),
                 ])?,
             )
             .await?;
@@ -3378,7 +3395,7 @@ if (Get-Command Get-CimInstance -ErrorAction SilentlyContinue) {
         SubCommand::DisplayIndexPreference(args) => {
             send_message(&SocketMessage::DisplayIndexPreference(
                 args.index_preference,
-                args.display,
+                args.display.clone(),
             ))?;
         }
         SubCommand::EnsureWorkspaces(workspaces) => {
@@ -3394,7 +3411,8 @@ if (Get-Command Get-CimInstance -ErrorAction SilentlyContinue) {
         SubCommand::EnsureNamedWorkspaces(args) => {
             let names = args
                 .names
-                .into_iter()
+                .iter()
+                .map(String::as_str)
                 .map(built_in_text)
                 .collect::<eyre::Result<Vec<_>>>()?;
             invoke_action(
@@ -3445,10 +3463,24 @@ if (Get-Command Get-CimInstance -ErrorAction SilentlyContinue) {
             }
         }
         SubCommand::ResizeEdge(resize) => {
-            send_message(&SocketMessage::ResizeWindowEdge(resize.edge, resize.sizing))?;
+            invoke_action(
+                BuiltInActionId::ResizeWindowEdgeByStep,
+                built_in_arguments([
+                    BuiltInArgument::Direction(built_in_direction(resize.edge)),
+                    BuiltInArgument::Sizing(built_in_sizing(resize.sizing)),
+                ])?,
+            )
+            .await?;
         }
         SubCommand::ResizeAxis(args) => {
-            send_message(&SocketMessage::ResizeWindowAxis(args.axis, args.sizing))?;
+            invoke_action(
+                BuiltInActionId::ResizeWindowByStep,
+                built_in_arguments([
+                    BuiltInArgument::Axis(built_in_axis(args.axis)),
+                    BuiltInArgument::Sizing(built_in_sizing(args.sizing)),
+                ])?,
+            )
+            .await?;
         }
         SubCommand::FocusFollowsMouse(args) => {
             invoke_action(
@@ -3461,7 +3493,7 @@ if (Get-Command Get-CimInstance -ErrorAction SilentlyContinue) {
             .await?;
         }
         SubCommand::ReplaceConfiguration(args) => {
-            send_message(&SocketMessage::ReplaceConfiguration(args.path))?;
+            send_message(&SocketMessage::ReplaceConfiguration(args.path.clone()))?;
         }
         SubCommand::ReloadConfiguration => {
             send_message(&SocketMessage::ReloadConfiguration)?;
@@ -3477,19 +3509,19 @@ if (Get-Command Get-CimInstance -ErrorAction SilentlyContinue) {
         SubCommand::IdentifyObjectNameChangeApplication(target) => {
             send_message(&SocketMessage::IdentifyObjectNameChangeApplication(
                 target.identifier,
-                target.id,
+                target.id.clone(),
             ))?;
         }
         SubCommand::IdentifyTrayApplication(target) => {
             send_message(&SocketMessage::IdentifyTrayApplication(
                 target.identifier,
-                target.id,
+                target.id.clone(),
             ))?;
         }
         SubCommand::IdentifyLayeredApplication(target) => {
             send_message(&SocketMessage::IdentifyLayeredApplication(
                 target.identifier,
-                target.id,
+                target.id.clone(),
             ))?;
         }
         SubCommand::RemoveTitleBar(target) => {
@@ -3504,7 +3536,7 @@ if (Get-Command Get-CimInstance -ErrorAction SilentlyContinue) {
                 BuiltInActionId::RemoveTitleBar,
                 built_in_arguments([
                     BuiltInArgument::Identifier(built_in_identifier(target.identifier)),
-                    BuiltInArgument::Exe(built_in_text(target.id)?),
+                    BuiltInArgument::Exe(built_in_text(target.id.as_str())?),
                 ])?,
             )
             .await?;
@@ -3537,22 +3569,24 @@ if (Get-Command Get-CimInstance -ErrorAction SilentlyContinue) {
             send_message(&SocketMessage::QuickLoad)?;
         }
         SubCommand::SaveResize(args) => {
-            send_message(&SocketMessage::Save(args.path))?;
+            send_message(&SocketMessage::Save(args.path.clone()))?;
         }
         SubCommand::LoadResize(args) => {
-            send_message(&SocketMessage::Load(args.path))?;
+            send_message(&SocketMessage::Load(args.path.clone()))?;
         }
         SubCommand::SubscribeSocket(args) => {
-            send_message(&SocketMessage::AddSubscriberSocket(args.socket))?;
+            send_message(&SocketMessage::AddSubscriberSocket(args.socket.clone()))?;
         }
         SubCommand::UnsubscribeSocket(args) => {
-            send_message(&SocketMessage::RemoveSubscriberSocket(args.socket))?;
+            send_message(&SocketMessage::RemoveSubscriberSocket(args.socket.clone()))?;
         }
         SubCommand::SubscribePipe(args) => {
-            send_message(&SocketMessage::AddSubscriberPipe(args.named_pipe))?;
+            send_message(&SocketMessage::AddSubscriberPipe(args.named_pipe.clone()))?;
         }
         SubCommand::UnsubscribePipe(args) => {
-            send_message(&SocketMessage::RemoveSubscriberPipe(args.named_pipe))?;
+            send_message(&SocketMessage::RemoveSubscriberPipe(
+                args.named_pipe.clone(),
+            ))?;
         }
         SubCommand::ToggleMouseFollowsFocus => {
             invoke_action(
@@ -3714,8 +3748,8 @@ if (Get-Command Get-CimInstance -ErrorAction SilentlyContinue) {
             .await?;
         }
         SubCommand::AhkAppSpecificConfiguration(args) => {
-            let content = std::fs::read_to_string(args.path)?;
-            let lines = if let Some(override_path) = args.override_path {
+            let content = std::fs::read_to_string(&args.path)?;
+            let lines = if let Some(override_path) = &args.override_path {
                 let override_content = std::fs::read_to_string(override_path)?;
 
                 ApplicationConfigurationGenerator::generate_ahk(
@@ -3741,8 +3775,8 @@ if (Get-Command Get-CimInstance -ErrorAction SilentlyContinue) {
             );
         }
         SubCommand::PwshAppSpecificConfiguration(args) => {
-            let content = std::fs::read_to_string(args.path)?;
-            let lines = if let Some(override_path) = args.override_path {
+            let content = std::fs::read_to_string(&args.path)?;
+            let lines = if let Some(override_path) = &args.override_path {
                 let override_content = std::fs::read_to_string(override_path)?;
 
                 ApplicationConfigurationGenerator::generate_pwsh(
@@ -3768,7 +3802,7 @@ if (Get-Command Get-CimInstance -ErrorAction SilentlyContinue) {
             );
         }
         SubCommand::ConvertAppSpecificConfiguration(args) => {
-            let content = std::fs::read_to_string(args.path)?;
+            let content = std::fs::read_to_string(&args.path)?;
             let mut asc = ApplicationConfigurationGenerator::load(&content)?;
             asc.sort_by(|a, b| a.name.cmp(&b.name));
             let v2 = ApplicationSpecificConfiguration::from(asc);
@@ -3782,7 +3816,7 @@ if (Get-Command Get-CimInstance -ErrorAction SilentlyContinue) {
                 .write(true)
                 .create(true)
                 .truncate(true)
-                .open(args.path)?;
+                .open(&args.path)?;
 
             file.write_all(formatted_content.as_bytes())?;
 
@@ -3839,8 +3873,10 @@ if (Get-Command Get-CimInstance -ErrorAction SilentlyContinue) {
         SubCommand::StaticConfigSchema => {
             #[cfg(feature = "schemars")]
             {
-                let static_config = schemars::schema_for!(StaticConfig);
-                let schema = serde_json::to_string_pretty(&static_config)?;
+                let schema = tokio::task::spawn_blocking(|| {
+                    serde_json::to_string_pretty(&schemars::schema_for!(StaticConfig))
+                })
+                .await??;
                 println!("{schema}");
             }
         }

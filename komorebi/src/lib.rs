@@ -243,7 +243,10 @@ lazy_static! {
 
 pub static DEFAULT_WORKSPACE_PADDING: AtomicI32 = AtomicI32::new(10);
 pub static DEFAULT_CONTAINER_PADDING: AtomicI32 = AtomicI32::new(10);
-pub static DEFAULT_RESIZE_DELTA: i32 = 50;
+pub const DEFAULT_RESIZE_STEP: ResizeStep = match ResizeStep::new(50) {
+    Ok(step) => step,
+    Err(_) => panic!("default resize step must be positive"),
+};
 
 pub static DEFAULT_MOUSE_FOLLOWS_FOCUS: bool = true;
 pub static INITIAL_CONFIGURATION_LOADED: AtomicBool = AtomicBool::new(false);

@@ -14,6 +14,7 @@ use crate::core::MonocleFocusBehaviour;
 use crate::core::MoveBehaviour;
 use crate::core::OperationBehaviour;
 use crate::core::OperationDirection;
+use crate::core::ResizeStep;
 use crate::core::Sizing;
 
 use super::id::ActionId;
@@ -28,6 +29,7 @@ pub enum BuiltinActionKind {
     FocusWindow,
     MoveWindow,
     ResizeWindow,
+    ResizeWindowByStep,
     SetWorkspaceLayout,
     ToggleWindowFloat,
     CycleFocusWindow,
@@ -112,6 +114,7 @@ pub enum BuiltinActionKind {
     AddSessionFloatRule,
     ClearSessionFloatRules,
     ResizeWindowEdge,
+    ResizeWindowEdgeByStep,
     SetWindowHidingBehaviour,
     SetCrossMonitorMoveBehaviour,
     SetMonocleFocusBehaviour,
@@ -141,10 +144,11 @@ pub enum BuiltinActionKind {
 }
 
 impl BuiltinActionKind {
-    pub const ALL: [Self; 113] = [
+    pub const ALL: [Self; 115] = [
         Self::FocusWindow,
         Self::MoveWindow,
         Self::ResizeWindow,
+        Self::ResizeWindowByStep,
         Self::SetWorkspaceLayout,
         Self::ToggleWindowFloat,
         Self::CycleFocusWindow,
@@ -229,6 +233,7 @@ impl BuiltinActionKind {
         Self::AddSessionFloatRule,
         Self::ClearSessionFloatRules,
         Self::ResizeWindowEdge,
+        Self::ResizeWindowEdgeByStep,
         Self::SetWindowHidingBehaviour,
         Self::SetCrossMonitorMoveBehaviour,
         Self::SetMonocleFocusBehaviour,
@@ -263,6 +268,7 @@ impl BuiltinActionKind {
             Self::FocusWindow => ActionId::FOCUS_WINDOW,
             Self::MoveWindow => ActionId::MOVE_WINDOW,
             Self::ResizeWindow => ActionId::RESIZE_WINDOW,
+            Self::ResizeWindowByStep => ActionId::RESIZE_WINDOW_BY_STEP,
             Self::SetWorkspaceLayout => ActionId::SET_WORKSPACE_LAYOUT,
             Self::ToggleWindowFloat => ActionId::TOGGLE_WINDOW_FLOAT,
             Self::CycleFocusWindow => ActionId::CYCLE_FOCUS_WINDOW,
@@ -349,6 +355,7 @@ impl BuiltinActionKind {
             Self::AddSessionFloatRule => ActionId::ADD_SESSION_FLOAT_RULE,
             Self::ClearSessionFloatRules => ActionId::CLEAR_SESSION_FLOAT_RULES,
             Self::ResizeWindowEdge => ActionId::RESIZE_WINDOW_EDGE,
+            Self::ResizeWindowEdgeByStep => ActionId::RESIZE_WINDOW_EDGE_BY_STEP,
             Self::SetWindowHidingBehaviour => ActionId::SET_WINDOW_HIDING_BEHAVIOUR,
             Self::SetCrossMonitorMoveBehaviour => ActionId::SET_CROSS_MONITOR_MOVE_BEHAVIOUR,
             Self::SetMonocleFocusBehaviour => ActionId::SET_MONOCLE_FOCUS_BEHAVIOUR,
@@ -411,6 +418,14 @@ impl Pixels {
     pub const fn get(self) -> i32 {
         self.0
     }
+
+    #[must_use]
+    pub const fn from_resize_step(step: ResizeStep, sizing: Sizing) -> Self {
+        match sizing {
+            Sizing::Increase => Self(step.get()),
+            Sizing::Decrease => Self(step.negative()),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Error)]
@@ -459,6 +474,10 @@ pub enum BuiltinAction {
     ResizeWindow {
         axis: Axis,
         delta: Pixels,
+    },
+    ResizeWindowByStep {
+        axis: Axis,
+        sizing: Sizing,
     },
     SetWorkspaceLayout {
         workspace: WorkspaceSelector,
@@ -673,6 +692,10 @@ pub enum BuiltinAction {
         direction: OperationDirection,
         delta: Pixels,
     },
+    ResizeWindowEdgeByStep {
+        direction: OperationDirection,
+        sizing: Sizing,
+    },
     SetWindowHidingBehaviour {
         behaviour: HidingBehaviour,
     },
@@ -783,6 +806,7 @@ impl BuiltinAction {
             Self::FocusWindow { .. } => BuiltinActionKind::FocusWindow,
             Self::MoveWindow { .. } => BuiltinActionKind::MoveWindow,
             Self::ResizeWindow { .. } => BuiltinActionKind::ResizeWindow,
+            Self::ResizeWindowByStep { .. } => BuiltinActionKind::ResizeWindowByStep,
             Self::SetWorkspaceLayout { .. } => BuiltinActionKind::SetWorkspaceLayout,
             Self::ToggleWindowFloat { .. } => BuiltinActionKind::ToggleWindowFloat,
             Self::CycleFocusWindow { .. } => BuiltinActionKind::CycleFocusWindow,
@@ -893,6 +917,7 @@ impl BuiltinAction {
             Self::AddSessionFloatRule => BuiltinActionKind::AddSessionFloatRule,
             Self::ClearSessionFloatRules => BuiltinActionKind::ClearSessionFloatRules,
             Self::ResizeWindowEdge { .. } => BuiltinActionKind::ResizeWindowEdge,
+            Self::ResizeWindowEdgeByStep { .. } => BuiltinActionKind::ResizeWindowEdgeByStep,
             Self::SetWindowHidingBehaviour { .. } => BuiltinActionKind::SetWindowHidingBehaviour,
             Self::SetCrossMonitorMoveBehaviour { .. } => {
                 BuiltinActionKind::SetCrossMonitorMoveBehaviour

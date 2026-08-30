@@ -113,6 +113,19 @@ const RESIZE: &[ParameterDefinition] = &[
     },
 ];
 
+const RESIZE_BY_STEP: &[ParameterDefinition] = &[
+    ParameterDefinition {
+        id: ParameterId::AXIS,
+        domain: ParameterDomain::Axis,
+        cardinality: ArgumentCardinality::RequiredScalar,
+    },
+    ParameterDefinition {
+        id: ParameterId::SIZING,
+        domain: ParameterDomain::Sizing,
+        cardinality: ArgumentCardinality::RequiredScalar,
+    },
+];
+
 const LAYOUT: &[ParameterDefinition] = &[
     ParameterDefinition {
         id: ParameterId::WORKSPACE,
@@ -546,6 +559,19 @@ const RESIZE_EDGE: &[ParameterDefinition] = &[
     },
 ];
 
+const RESIZE_EDGE_BY_STEP: &[ParameterDefinition] = &[
+    ParameterDefinition {
+        id: ParameterId::DIRECTION,
+        domain: ParameterDomain::Direction,
+        cardinality: ArgumentCardinality::RequiredScalar,
+    },
+    ParameterDefinition {
+        id: ParameterId::SIZING,
+        domain: ParameterDomain::Sizing,
+        cardinality: ArgumentCardinality::RequiredScalar,
+    },
+];
+
 const fn def(
     id: ActionId,
     kind: BuiltinActionKind,
@@ -583,6 +609,7 @@ impl BuiltinActionKind {
             Self::FocusWindow => &FOCUS_WINDOW,
             Self::MoveWindow => &MOVE_WINDOW,
             Self::ResizeWindow => &RESIZE_WINDOW,
+            Self::ResizeWindowByStep => &RESIZE_WINDOW_BY_STEP,
             Self::SetWorkspaceLayout => &SET_WORKSPACE_LAYOUT,
             Self::ToggleWindowFloat => &TOGGLE_WINDOW_FLOAT,
             Self::CycleFocusWindow => &CYCLE_FOCUS_WINDOW,
@@ -669,6 +696,7 @@ impl BuiltinActionKind {
             Self::AddSessionFloatRule => &ADD_SESSION_FLOAT_RULE,
             Self::ClearSessionFloatRules => &CLEAR_SESSION_FLOAT_RULES,
             Self::ResizeWindowEdge => &RESIZE_WINDOW_EDGE,
+            Self::ResizeWindowEdgeByStep => &RESIZE_WINDOW_EDGE_BY_STEP,
             Self::SetWindowHidingBehaviour => &SET_WINDOW_HIDING_BEHAVIOUR,
             Self::SetCrossMonitorMoveBehaviour => &SET_CROSS_MONITOR_MOVE_BEHAVIOUR,
             Self::SetMonocleFocusBehaviour => &SET_MONOCLE_FOCUS_BEHAVIOUR,
@@ -700,7 +728,7 @@ impl BuiltinActionKind {
 }
 
 #[must_use]
-pub fn definitions() -> [&'static ActionDefinition; 113] {
+pub fn definitions() -> [&'static ActionDefinition; 115] {
     BuiltinActionKind::ALL.map(BuiltinActionKind::definition)
 }
 

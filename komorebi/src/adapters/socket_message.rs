@@ -1,14 +1,12 @@
 use crate::action::BuiltinAction;
 use crate::action::ContainerIndex;
 use crate::action::MonitorIndex;
-use crate::action::Pixels;
 use crate::action::StackIndex;
 use crate::action::WindowSelector;
 use crate::action::WindowsPath;
 use crate::action::WorkspaceIndex;
 use crate::action::WorkspaceName;
 use crate::action::WorkspaceSelector;
-use crate::core::Sizing;
 use crate::core::SocketMessage;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -226,7 +224,7 @@ pub fn classify(message: &SocketMessage) -> SocketMessageClass {
 }
 
 #[must_use]
-pub fn to_builtin_action(message: &SocketMessage, resize_delta: i32) -> Option<BuiltinAction> {
+pub fn to_builtin_action(message: &SocketMessage) -> Option<BuiltinAction> {
     match message {
         SocketMessage::FocusWindow(direction) => Some(BuiltinAction::FocusWindow {
             direction: *direction,
@@ -241,16 +239,10 @@ pub fn to_builtin_action(message: &SocketMessage, resize_delta: i32) -> Option<B
         SocketMessage::ToggleFloat => Some(BuiltinAction::ToggleWindowFloat {
             window: WindowSelector::FocusedAtExecution,
         }),
-        SocketMessage::ResizeWindowAxis(axis, sizing) => {
-            let signed = match sizing {
-                Sizing::Increase => resize_delta,
-                Sizing::Decrease => -resize_delta,
-            };
-            Some(BuiltinAction::ResizeWindow {
-                axis: *axis,
-                delta: Pixels::new(signed).ok()?,
-            })
-        }
+        SocketMessage::ResizeWindowAxis(axis, sizing) => Some(BuiltinAction::ResizeWindowByStep {
+            axis: *axis,
+            sizing: *sizing,
+        }),
         SocketMessage::CycleFocusWindow(direction) => Some(BuiltinAction::CycleFocusWindow {
             direction: *direction,
         }),
@@ -518,13 +510,9 @@ pub fn to_builtin_action(message: &SocketMessage, resize_delta: i32) -> Option<B
         SocketMessage::SessionFloatRule => Some(BuiltinAction::AddSessionFloatRule),
         SocketMessage::ClearSessionFloatRules => Some(BuiltinAction::ClearSessionFloatRules),
         SocketMessage::ResizeWindowEdge(direction, sizing) => {
-            let signed = match sizing {
-                Sizing::Increase => resize_delta,
-                Sizing::Decrease => -resize_delta,
-            };
-            Some(BuiltinAction::ResizeWindowEdge {
+            Some(BuiltinAction::ResizeWindowEdgeByStep {
                 direction: *direction,
-                delta: Pixels::new(signed).ok()?,
+                sizing: *sizing,
             })
         }
         SocketMessage::WindowHidingBehaviour(behaviour) => {
@@ -679,10 +667,9 @@ pub fn to_builtin_action(message: &SocketMessage, resize_delta: i32) -> Option<B
 
 pub fn adapt_action(
     message: &SocketMessage,
-    resize_delta: i32,
 ) -> Result<Option<BuiltinAction>, SocketActionAdapterError> {
     let classification = classify(message);
-    match (classification, to_builtin_action(message, resize_delta)) {
+    match (classification, to_builtin_action(message)) {
         (SocketMessageClass::Action, Some(action)) => Ok(Some(action)),
         (SocketMessageClass::Action, None) => Err(SocketActionAdapterError::InvalidParameters),
         (classification, Some(_)) => {
@@ -708,7 +695,7 @@ mod tests {
     #[test]
     fn migrated_socket_messages_become_the_same_builtin_action() {
         assert_eq!(
-            to_builtin_action(&SocketMessage::FocusWindow(OperationDirection::Left), 50),
+            to_builtin_action(&SocketMessage::FocusWindow(OperationDirection::Left)),
             Some(BuiltinAction::FocusWindow {
                 direction: OperationDirection::Left,
             })
@@ -718,85 +705,70 @@ mod tests {
             SocketMessageClass::Action
         );
         assert_eq!(
-            to_builtin_action(&SocketMessage::MoveWindow(OperationDirection::Right), 50),
+            to_builtin_action(&SocketMessage::MoveWindow(OperationDirection::Right)),
             Some(BuiltinAction::MoveWindow {
                 direction: OperationDirection::Right,
             })
         );
         assert_eq!(
-            to_builtin_action(&SocketMessage::ChangeLayout(DefaultLayout::Columns), 50),
+            to_builtin_action(&SocketMessage::ChangeLayout(DefaultLayout::Columns)),
             Some(BuiltinAction::SetWorkspaceLayout {
                 workspace: WorkspaceSelector::FocusedAtExecution,
                 layout: DefaultLayout::Columns,
             })
         );
         assert_eq!(
-            to_builtin_action(&SocketMessage::ToggleFloat, 50),
+            to_builtin_action(&SocketMessage::ToggleFloat),
             Some(BuiltinAction::ToggleWindowFloat {
                 window: WindowSelector::FocusedAtExecution,
             })
         );
         assert_eq!(
-            to_builtin_action(
-                &SocketMessage::ResizeWindowAxis(
-                    crate::core::Axis::Horizontal,
-                    crate::core::Sizing::Decrease
-                ),
-                50
-            ),
-            Some(BuiltinAction::ResizeWindow {
+            to_builtin_action(&SocketMessage::ResizeWindowAxis(
+                crate::core::Axis::Horizontal,
+                crate::core::Sizing::Decrease
+            )),
+            Some(BuiltinAction::ResizeWindowByStep {
                 axis: crate::core::Axis::Horizontal,
-                delta: crate::action::Pixels::new(-50).unwrap(),
+                sizing: crate::core::Sizing::Decrease,
             })
         );
         assert_eq!(
-            to_builtin_action(
-                &SocketMessage::ResizeWindowAxis(
-                    crate::core::Axis::Horizontal,
-                    crate::core::Sizing::Increase
-                ),
-                0
-            ),
-            None
-        );
-        assert_eq!(
-            to_builtin_action(
-                &SocketMessage::CycleFocusWindow(crate::core::CycleDirection::Next),
-                50
-            ),
+            to_builtin_action(&SocketMessage::CycleFocusWindow(
+                crate::core::CycleDirection::Next
+            )),
             Some(BuiltinAction::CycleFocusWindow {
                 direction: crate::core::CycleDirection::Next,
             })
         );
         assert_eq!(
-            to_builtin_action(&SocketMessage::ToggleMonocle, 50),
+            to_builtin_action(&SocketMessage::ToggleMonocle),
             Some(BuiltinAction::ToggleWindowMonocle {
                 window: WindowSelector::FocusedAtExecution,
             })
         );
         assert_eq!(
-            to_builtin_action(
-                &SocketMessage::CycleFocusWorkspace(crate::core::CycleDirection::Next),
-                50
-            ),
+            to_builtin_action(&SocketMessage::CycleFocusWorkspace(
+                crate::core::CycleDirection::Next
+            )),
             Some(BuiltinAction::CycleFocusWorkspace {
                 direction: crate::core::CycleDirection::Next,
             })
         );
         assert_eq!(
-            to_builtin_action(&SocketMessage::FocusMonitorNumber(2), 50),
+            to_builtin_action(&SocketMessage::FocusMonitorNumber(2)),
             Some(BuiltinAction::FocusMonitor {
                 index: MonitorIndex::new(2),
             })
         );
         assert_eq!(
-            to_builtin_action(&SocketMessage::FocusWorkspaceNumbers(3), 50),
+            to_builtin_action(&SocketMessage::FocusWorkspaceNumbers(3)),
             Some(BuiltinAction::FocusWorkspaceOnAllMonitors {
                 index: WorkspaceIndex::new(3),
             })
         );
         assert_eq!(
-            to_builtin_action(&SocketMessage::FocusMonitorWorkspaceNumber(1, 4), 50),
+            to_builtin_action(&SocketMessage::FocusMonitorWorkspaceNumber(1, 4)),
             Some(BuiltinAction::FocusMonitorWorkspace {
                 monitor: MonitorIndex::new(1),
                 workspace: WorkspaceIndex::new(4),
@@ -814,33 +786,29 @@ mod tests {
             SocketMessageClass::SchemaDebugAdmin
         );
         assert_eq!(
-            to_builtin_action(
-                &SocketMessage::ResizeWindowEdge(
-                    OperationDirection::Right,
-                    crate::core::Sizing::Increase
-                ),
-                50
-            ),
-            Some(BuiltinAction::ResizeWindowEdge {
+            to_builtin_action(&SocketMessage::ResizeWindowEdge(
+                OperationDirection::Right,
+                crate::core::Sizing::Increase
+            )),
+            Some(BuiltinAction::ResizeWindowEdgeByStep {
                 direction: OperationDirection::Right,
-                delta: crate::action::Pixels::new(50).unwrap(),
+                sizing: crate::core::Sizing::Increase,
             })
         );
         assert_eq!(
-            to_builtin_action(&SocketMessage::FocusNamedWorkspace("chat".into()), 50),
+            to_builtin_action(&SocketMessage::FocusNamedWorkspace("chat".into())),
             Some(BuiltinAction::FocusNamedWorkspace {
                 name: crate::action::WorkspaceName::parse("chat").unwrap(),
             })
         );
         assert_eq!(
-            to_builtin_action(&SocketMessage::FocusNamedWorkspace("".into()), 50),
+            to_builtin_action(&SocketMessage::FocusNamedWorkspace("".into())),
             None
         );
         assert_eq!(
-            to_builtin_action(
-                &SocketMessage::CrossMonitorMoveBehaviour(crate::core::MoveBehaviour::Insert),
-                50
-            ),
+            to_builtin_action(&SocketMessage::CrossMonitorMoveBehaviour(
+                crate::core::MoveBehaviour::Insert
+            )),
             Some(BuiltinAction::SetCrossMonitorMoveBehaviour {
                 behaviour: crate::core::MoveBehaviour::Insert,
             })
@@ -875,13 +843,14 @@ mod tests {
         use std::time::Instant;
 
         let message = SocketMessage::FocusWindow(OperationDirection::Left);
-        let action = to_builtin_action(&message, 50).expect("focus-window is migrated");
+        let action = to_builtin_action(&message).expect("focus-window is migrated");
         let mut state = CatalogState::new(ActionSnapshot {
             state: stamp(1),
             paused: false,
             focused_window: Some(WindowId::new(9)),
             directional_targets: [OperationDirection::Left].into(),
             current_layout: DefaultLayout::BSP,
+            resize_step: crate::DEFAULT_RESIZE_STEP,
             focused_window_floating: false,
             named_workspaces: Vec::new(),
             bindings: Vec::new(),
@@ -908,9 +877,9 @@ mod tests {
 
     #[test]
     fn adapter_separates_non_actions_from_invalid_actions() {
-        assert_eq!(adapt_action(&SocketMessage::State, 50), Ok(None));
+        assert_eq!(adapt_action(&SocketMessage::State), Ok(None));
         assert_eq!(
-            adapt_action(&SocketMessage::FocusNamedWorkspace(String::new()), 50),
+            adapt_action(&SocketMessage::FocusNamedWorkspace(String::new())),
             Err(SocketActionAdapterError::InvalidParameters)
         );
     }
@@ -924,7 +893,7 @@ mod tests {
 
         let path = PathBuf::from(OsString::from_wide(&[b'C' as u16, 0, b'x' as u16]));
         assert_eq!(
-            adapt_action(&SocketMessage::ChangeLayoutCustom(path), 50),
+            adapt_action(&SocketMessage::ChangeLayoutCustom(path)),
             Err(SocketActionAdapterError::InvalidParameters)
         );
     }

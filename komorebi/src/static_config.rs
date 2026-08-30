@@ -4,7 +4,7 @@ use crate::CrossBoundaryBehaviour;
 use crate::DATA_DIR;
 use crate::DEFAULT_CONTAINER_PADDING;
 use crate::DEFAULT_MOUSE_FOLLOWS_FOCUS;
-use crate::DEFAULT_RESIZE_DELTA;
+use crate::DEFAULT_RESIZE_STEP;
 use crate::DEFAULT_WORKSPACE_PADDING;
 use crate::DISPLAY_INDEX_PREFERENCES;
 use crate::FLOATING_APPLICATIONS;
@@ -22,6 +22,7 @@ use crate::OBJECT_NAME_CHANGE_TITLE_IGNORE_LIST;
 use crate::Placement;
 use crate::PredefinedAspectRatio;
 use crate::REGEX_IDENTIFIERS;
+use crate::ResizeStep;
 use crate::ResolvedPathBuf;
 use crate::SLOW_APPLICATION_COMPENSATION_TIME;
 use crate::SLOW_APPLICATION_IDENTIFIERS;
@@ -496,10 +497,13 @@ pub struct StaticConfig {
     /// DISCOURAGED: Minimum height for a window to be eligible for tiling
     #[serde(skip_serializing_if = "Option::is_none")]
     pub minimum_window_height: Option<i32>,
-    /// Delta to resize windows by
+    /// Positive step to resize windows by
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "schemars", schemars(extend("default" = DEFAULT_RESIZE_DELTA)))]
-    pub resize_delta: Option<i32>,
+    #[cfg_attr(
+        feature = "schemars",
+        schemars(extend("default" = DEFAULT_RESIZE_STEP.get()))
+    )]
+    pub resize_step: Option<ResizeStep>,
     /// Determine what happens when a new window is opened
     #[serde(skip_serializing_if = "Option::is_none")]
     #[cfg_attr(feature = "schemars", schemars(extend("default" = WindowContainerBehaviour::Create)))]
@@ -875,7 +879,7 @@ impl From<&WindowManager> for StaticConfig {
         Self {
             #[allow(deprecated)]
             invisible_borders: None,
-            resize_delta: Option::from(value.resize_delta),
+            resize_step: Option::from(value.resize_step),
             window_container_behaviour: Option::from(
                 value.window_management_behaviour.current_behaviour,
             ),
@@ -1339,7 +1343,7 @@ impl StaticConfig {
             unmanaged_window_operation_behaviour: value
                 .unmanaged_window_operation_behaviour
                 .unwrap_or(OperationBehaviour::Op),
-            resize_delta: value.resize_delta.unwrap_or(DEFAULT_RESIZE_DELTA),
+            resize_step: value.resize_step.unwrap_or(DEFAULT_RESIZE_STEP),
             #[allow(deprecated)]
             focus_follows_mouse: value.focus_follows_mouse,
             mouse_follows_focus: value
@@ -1741,7 +1745,7 @@ impl StaticConfig {
         wm.unmanaged_window_operation_behaviour = value
             .unmanaged_window_operation_behaviour
             .unwrap_or_default();
-        wm.resize_delta = value.resize_delta.unwrap_or(DEFAULT_RESIZE_DELTA);
+        wm.resize_step = value.resize_step.unwrap_or(DEFAULT_RESIZE_STEP);
         wm.mouse_follows_focus = value
             .mouse_follows_focus
             .unwrap_or(DEFAULT_MOUSE_FOLLOWS_FOCUS);
