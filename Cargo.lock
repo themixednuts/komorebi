@@ -3680,6 +3680,7 @@ version = "0.1.42"
 dependencies = [
  "minicbor",
  "proptest",
+ "sha2 0.10.9",
  "thiserror 2.0.20",
 ]
 

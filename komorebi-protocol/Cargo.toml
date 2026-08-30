@@ -6,6 +6,7 @@ publish = false
 
 [dependencies]
 minicbor = { version = "=2.3.0", features = ["std"] }
+sha2 = "0.10"
 thiserror = "2"
 
 [dev-dependencies]
