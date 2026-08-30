@@ -42,6 +42,7 @@ fn definition() -> Result<ActionDefinition, Box<dyn std::error::Error>> {
         parameters: vec![ActionParameter::new(
             ParameterId::parse("direction")?,
             ParameterDomain::Direction,
+            ArgumentCardinality::RequiredScalar,
         )],
         permitted_uses: vec![PermittedUse::Automation, PermittedUse::Interactive],
         confirmation: ConfirmationPolicy::None,
@@ -91,7 +92,15 @@ fn full_catalog_round_trip_preserves_definition_offer_and_dynamic_values()
 -> Result<(), Box<dyn std::error::Error>> {
     let reply = CatalogReply::Snapshot(snapshot()?);
     let encoded = CatalogCodec::encode_reply(&reply)?;
-    assert_eq!(CatalogCodec::decode_reply(&encoded)?, reply);
+    let decoded = CatalogCodec::decode_reply(&encoded)?;
+    assert_eq!(decoded, reply);
+    let CatalogReply::Snapshot(snapshot) = decoded else {
+        return Err("snapshot reply changed variant".into());
+    };
+    assert_eq!(
+        snapshot.definitions()[0].parameters()[0].cardinality(),
+        ArgumentCardinality::RequiredScalar
+    );
     Ok(())
 }
 

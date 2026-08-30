@@ -56,9 +56,25 @@ pub enum ParameterDomain {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ArgumentCardinality {
+    RequiredScalar,
+    RequiredList,
+    OptionalScalar,
+    OptionalList,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ParameterDefinition {
     pub id: ParameterId,
     pub domain: ParameterDomain,
+    pub cardinality: ArgumentCardinality,
+}
+
+impl ParameterDefinition {
+    #[must_use]
+    pub const fn cardinality(self) -> ArgumentCardinality {
+        self.cardinality
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -81,16 +97,19 @@ const BOTH_USES: &[PermittedUse] = &[PermittedUse::Interactive, PermittedUse::Au
 const DIRECTION: &[ParameterDefinition] = &[ParameterDefinition {
     id: ParameterId::DIRECTION,
     domain: ParameterDomain::Direction,
+    cardinality: ArgumentCardinality::RequiredScalar,
 }];
 
 const RESIZE: &[ParameterDefinition] = &[
     ParameterDefinition {
         id: ParameterId::AXIS,
         domain: ParameterDomain::Axis,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
     ParameterDefinition {
         id: ParameterId::DELTA,
         domain: ParameterDomain::Pixels,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
 ];
 
@@ -98,36 +117,43 @@ const LAYOUT: &[ParameterDefinition] = &[
     ParameterDefinition {
         id: ParameterId::WORKSPACE,
         domain: ParameterDomain::WorkspaceSelector,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
     ParameterDefinition {
         id: ParameterId::LAYOUT,
         domain: ParameterDomain::Layout,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
 ];
 
 const WINDOW: &[ParameterDefinition] = &[ParameterDefinition {
     id: ParameterId::WINDOW,
     domain: ParameterDomain::WindowSelector,
+    cardinality: ArgumentCardinality::RequiredScalar,
 }];
 
 const CYCLE: &[ParameterDefinition] = &[ParameterDefinition {
     id: ParameterId::CYCLE,
     domain: ParameterDomain::Cycle,
+    cardinality: ArgumentCardinality::RequiredScalar,
 }];
 
 const INDEX: &[ParameterDefinition] = &[ParameterDefinition {
     id: ParameterId::INDEX,
     domain: ParameterDomain::Index,
+    cardinality: ArgumentCardinality::RequiredScalar,
 }];
 
 const MONITOR_WORKSPACE: &[ParameterDefinition] = &[
     ParameterDefinition {
         id: ParameterId::MONITOR,
         domain: ParameterDomain::Index,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
     ParameterDefinition {
         id: ParameterId::INDEX,
         domain: ParameterDomain::Index,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
 ];
 
@@ -136,42 +162,50 @@ const NONE: &[ParameterDefinition] = &[];
 const AXIS: &[ParameterDefinition] = &[ParameterDefinition {
     id: ParameterId::AXIS,
     domain: ParameterDomain::Axis,
+    cardinality: ArgumentCardinality::RequiredScalar,
 }];
 
 const PADDING: &[ParameterDefinition] = &[
     ParameterDefinition {
         id: ParameterId::SIZING,
         domain: ParameterDomain::Sizing,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
     ParameterDefinition {
         id: ParameterId::ADJUSTMENT,
         domain: ParameterDomain::Adjustment,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
 ];
 
 const FLAG: &[ParameterDefinition] = &[ParameterDefinition {
     id: ParameterId::ENABLED,
     domain: ParameterDomain::Flag,
+    cardinality: ArgumentCardinality::RequiredScalar,
 }];
 
 const SIZE: &[ParameterDefinition] = &[ParameterDefinition {
     id: ParameterId::SIZE,
     domain: ParameterDomain::Size,
+    cardinality: ArgumentCardinality::RequiredScalar,
 }];
 
 const COLUMNS: &[ParameterDefinition] = &[ParameterDefinition {
     id: ParameterId::COLUMNS,
     domain: ParameterDomain::Columns,
+    cardinality: ArgumentCardinality::RequiredScalar,
 }];
 
 const MONITOR_COUNT: &[ParameterDefinition] = &[
     ParameterDefinition {
         id: ParameterId::MONITOR,
         domain: ParameterDomain::Index,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
     ParameterDefinition {
         id: ParameterId::COUNT,
         domain: ParameterDomain::Count,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
 ];
 
@@ -179,14 +213,17 @@ const MONITOR_WORKSPACE_SIZE: &[ParameterDefinition] = &[
     ParameterDefinition {
         id: ParameterId::MONITOR,
         domain: ParameterDomain::Index,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
     ParameterDefinition {
         id: ParameterId::INDEX,
         domain: ParameterDomain::Index,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
     ParameterDefinition {
         id: ParameterId::SIZE,
         domain: ParameterDomain::Size,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
 ];
 
@@ -194,14 +231,17 @@ const MONITOR_WORKSPACE_FLAG: &[ParameterDefinition] = &[
     ParameterDefinition {
         id: ParameterId::MONITOR,
         domain: ParameterDomain::Index,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
     ParameterDefinition {
         id: ParameterId::INDEX,
         domain: ParameterDomain::Index,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
     ParameterDefinition {
         id: ParameterId::ENABLED,
         domain: ParameterDomain::Flag,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
 ];
 
@@ -209,14 +249,17 @@ const MONITOR_WORKSPACE_LAYOUT: &[ParameterDefinition] = &[
     ParameterDefinition {
         id: ParameterId::MONITOR,
         domain: ParameterDomain::Index,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
     ParameterDefinition {
         id: ParameterId::INDEX,
         domain: ParameterDomain::Index,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
     ParameterDefinition {
         id: ParameterId::LAYOUT,
         domain: ParameterDomain::Layout,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
 ];
 
@@ -224,61 +267,73 @@ const MONITOR_WORKSPACE_CONTAINER: &[ParameterDefinition] = &[
     ParameterDefinition {
         id: ParameterId::MONITOR,
         domain: ParameterDomain::Index,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
     ParameterDefinition {
         id: ParameterId::INDEX,
         domain: ParameterDomain::Index,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
     ParameterDefinition {
         id: ParameterId::CONTAINER,
         domain: ParameterDomain::Index,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
 ];
 
 const NAME: &[ParameterDefinition] = &[ParameterDefinition {
     id: ParameterId::NAME,
     domain: ParameterDomain::Name,
+    cardinality: ArgumentCardinality::RequiredScalar,
 }];
 
 const BEHAVIOUR: &[ParameterDefinition] = &[ParameterDefinition {
     id: ParameterId::BEHAVIOUR,
     domain: ParameterDomain::Behaviour,
+    cardinality: ArgumentCardinality::RequiredScalar,
 }];
 
 const IMPLEMENTATION: &[ParameterDefinition] = &[ParameterDefinition {
     id: ParameterId::IMPLEMENTATION,
     domain: ParameterDomain::Implementation,
+    cardinality: ArgumentCardinality::RequiredScalar,
 }];
 
 const IMPLEMENTATION_FLAG: &[ParameterDefinition] = &[
     ParameterDefinition {
         id: ParameterId::IMPLEMENTATION,
         domain: ParameterDomain::Implementation,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
     ParameterDefinition {
         id: ParameterId::ENABLED,
         domain: ParameterDomain::Flag,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
 ];
 
 const PATH: &[ParameterDefinition] = &[ParameterDefinition {
     id: ParameterId::PATH,
     domain: ParameterDomain::Path,
+    cardinality: ArgumentCardinality::RequiredScalar,
 }];
 
 const EXE: &[ParameterDefinition] = &[ParameterDefinition {
     id: ParameterId::EXE,
     domain: ParameterDomain::Exe,
+    cardinality: ArgumentCardinality::RequiredScalar,
 }];
 
 const TITLE_BAR: &[ParameterDefinition] = &[
     ParameterDefinition {
         id: ParameterId::IDENTIFIER,
         domain: ParameterDomain::Identifier,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
     ParameterDefinition {
         id: ParameterId::EXE,
         domain: ParameterDomain::Exe,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
 ];
 
@@ -286,10 +341,12 @@ const NAME_SIZE: &[ParameterDefinition] = &[
     ParameterDefinition {
         id: ParameterId::NAME,
         domain: ParameterDomain::Name,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
     ParameterDefinition {
         id: ParameterId::SIZE,
         domain: ParameterDomain::Size,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
 ];
 
@@ -297,10 +354,12 @@ const NAME_FLAG: &[ParameterDefinition] = &[
     ParameterDefinition {
         id: ParameterId::NAME,
         domain: ParameterDomain::Name,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
     ParameterDefinition {
         id: ParameterId::ENABLED,
         domain: ParameterDomain::Flag,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
 ];
 
@@ -308,10 +367,12 @@ const NAME_LAYOUT: &[ParameterDefinition] = &[
     ParameterDefinition {
         id: ParameterId::NAME,
         domain: ParameterDomain::Name,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
     ParameterDefinition {
         id: ParameterId::LAYOUT,
         domain: ParameterDomain::Layout,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
 ];
 
@@ -319,10 +380,12 @@ const NAME_PATH: &[ParameterDefinition] = &[
     ParameterDefinition {
         id: ParameterId::NAME,
         domain: ParameterDomain::Name,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
     ParameterDefinition {
         id: ParameterId::PATH,
         domain: ParameterDomain::Path,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
 ];
 
@@ -330,18 +393,22 @@ const LAYOUT_RULE: &[ParameterDefinition] = &[
     ParameterDefinition {
         id: ParameterId::MONITOR,
         domain: ParameterDomain::Index,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
     ParameterDefinition {
         id: ParameterId::INDEX,
         domain: ParameterDomain::Index,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
     ParameterDefinition {
         id: ParameterId::AT_COUNT,
         domain: ParameterDomain::AtCount,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
     ParameterDefinition {
         id: ParameterId::LAYOUT,
         domain: ParameterDomain::Layout,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
 ];
 
@@ -349,18 +416,22 @@ const CUSTOM_LAYOUT_RULE: &[ParameterDefinition] = &[
     ParameterDefinition {
         id: ParameterId::MONITOR,
         domain: ParameterDomain::Index,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
     ParameterDefinition {
         id: ParameterId::INDEX,
         domain: ParameterDomain::Index,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
     ParameterDefinition {
         id: ParameterId::AT_COUNT,
         domain: ParameterDomain::AtCount,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
     ParameterDefinition {
         id: ParameterId::PATH,
         domain: ParameterDomain::Path,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
 ];
 
@@ -368,14 +439,17 @@ const NAME_LAYOUT_RULE: &[ParameterDefinition] = &[
     ParameterDefinition {
         id: ParameterId::NAME,
         domain: ParameterDomain::Name,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
     ParameterDefinition {
         id: ParameterId::AT_COUNT,
         domain: ParameterDomain::AtCount,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
     ParameterDefinition {
         id: ParameterId::LAYOUT,
         domain: ParameterDomain::Layout,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
 ];
 
@@ -383,14 +457,17 @@ const NAME_CUSTOM_LAYOUT_RULE: &[ParameterDefinition] = &[
     ParameterDefinition {
         id: ParameterId::NAME,
         domain: ParameterDomain::Name,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
     ParameterDefinition {
         id: ParameterId::AT_COUNT,
         domain: ParameterDomain::AtCount,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
     ParameterDefinition {
         id: ParameterId::PATH,
         domain: ParameterDomain::Path,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
 ];
 
@@ -398,10 +475,12 @@ const MONITOR_NAMES: &[ParameterDefinition] = &[
     ParameterDefinition {
         id: ParameterId::MONITOR,
         domain: ParameterDomain::Index,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
     ParameterDefinition {
-        id: ParameterId::NAME,
+        id: ParameterId::NAMES,
         domain: ParameterDomain::Name,
+        cardinality: ArgumentCardinality::RequiredList,
     },
 ];
 
@@ -409,14 +488,17 @@ const MONITOR_WORKSPACE_NAME: &[ParameterDefinition] = &[
     ParameterDefinition {
         id: ParameterId::MONITOR,
         domain: ParameterDomain::Index,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
     ParameterDefinition {
         id: ParameterId::INDEX,
         domain: ParameterDomain::Index,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
     ParameterDefinition {
         id: ParameterId::NAME,
         domain: ParameterDomain::Name,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
 ];
 
@@ -424,30 +506,43 @@ const MONITOR_WORKSPACE_PATH: &[ParameterDefinition] = &[
     ParameterDefinition {
         id: ParameterId::MONITOR,
         domain: ParameterDomain::Index,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
     ParameterDefinition {
         id: ParameterId::INDEX,
         domain: ParameterDomain::Index,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
     ParameterDefinition {
         id: ParameterId::PATH,
         domain: ParameterDomain::Path,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
 ];
 
-const RATIOS: &[ParameterDefinition] = &[ParameterDefinition {
-    id: ParameterId::RATIOS,
-    domain: ParameterDomain::Ratios,
-}];
+const RATIOS: &[ParameterDefinition] = &[
+    ParameterDefinition {
+        id: ParameterId::COLUMN_RATIOS,
+        domain: ParameterDomain::Ratios,
+        cardinality: ArgumentCardinality::OptionalList,
+    },
+    ParameterDefinition {
+        id: ParameterId::ROW_RATIOS,
+        domain: ParameterDomain::Ratios,
+        cardinality: ArgumentCardinality::OptionalList,
+    },
+];
 
 const RESIZE_EDGE: &[ParameterDefinition] = &[
     ParameterDefinition {
         id: ParameterId::DIRECTION,
         domain: ParameterDomain::Direction,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
     ParameterDefinition {
         id: ParameterId::DELTA,
         domain: ParameterDomain::Pixels,
+        cardinality: ArgumentCardinality::RequiredScalar,
     },
 ];
 
@@ -641,6 +736,24 @@ mod tests {
                 "{kind:?} must not advertise undo until it captures an executable inverse"
             );
         }
+    }
+
+    #[test]
+    fn collection_cardinality_is_part_of_the_parameter_contract() {
+        let ensure_names = BuiltinActionKind::EnsureNamedWorkspaces.definition();
+        assert!(ensure_names.parameters.iter().any(|parameter| {
+            parameter.id == ParameterId::NAMES
+                && parameter.cardinality() == ArgumentCardinality::RequiredList
+        }));
+
+        let ratios = BuiltinActionKind::SetLayoutRatios.definition();
+        assert_eq!(ratios.parameters.len(), 2);
+        assert!(ratios.parameters.iter().all(|parameter| {
+            matches!(
+                parameter.id,
+                ParameterId::COLUMN_RATIOS | ParameterId::ROW_RATIOS
+            ) && parameter.cardinality() == ArgumentCardinality::OptionalList
+        }));
     }
 
     #[test]

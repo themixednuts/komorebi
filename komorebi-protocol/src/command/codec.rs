@@ -759,6 +759,8 @@ pub enum CommandCodecError {
     UnknownUndoPolicy(u8),
     #[error("unknown parameter domain {0}")]
     UnknownParameterDomain(u8),
+    #[error("unknown argument cardinality {0}")]
+    UnknownArgumentCardinality(u8),
     #[error("unknown catalog availability tag {0}")]
     UnknownCatalogAvailabilityTag(u8),
     #[error("catalog availability tag {tag} has array length {length}")]

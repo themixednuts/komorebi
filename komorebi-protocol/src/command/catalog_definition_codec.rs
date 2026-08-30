@@ -8,6 +8,7 @@ use super::ActionContractFingerprint;
 use super::ActionDefinition;
 use super::ActionDefinitionSpec;
 use super::ActionParameter;
+use super::ArgumentCardinality;
 use super::BoundedText;
 use super::CommandCodecError;
 use super::ConfirmationPolicy;
@@ -60,9 +61,10 @@ pub(super) fn encode_definition(
         .array(to_u64(definition.parameters().len())?)?;
     for parameter in definition.parameters() {
         encoder
-            .array(2)?
+            .array(3)?
             .str(parameter.id().as_str())?
-            .u8(parameter.domain() as u8)?;
+            .u8(parameter.domain() as u8)?
+            .u8(parameter.cardinality() as u8)?;
     }
     encoder
         .u8(6)?
@@ -133,18 +135,29 @@ fn decode_parameters(decoder: &mut Decoder<'_>) -> Result<Vec<ActionParameter>, 
     let mut parameters = Vec::with_capacity(count);
     for _ in 0..count {
         let actual = definite(decoder.array()?)?;
-        if actual != 2 {
+        if actual != 3 {
             return Err(CommandCodecError::WrongArrayLength {
-                expected: 2,
+                expected: 3,
                 actual,
             });
         }
         parameters.push(ActionParameter::new(
             ParameterId::parse(decoder.str()?)?,
             decode_domain(decoder.u8()?)?,
+            decode_cardinality(decoder.u8()?)?,
         ));
     }
     Ok(parameters)
+}
+
+fn decode_cardinality(value: u8) -> Result<ArgumentCardinality, CommandCodecError> {
+    match value {
+        1 => Ok(ArgumentCardinality::RequiredScalar),
+        2 => Ok(ArgumentCardinality::RequiredList),
+        3 => Ok(ArgumentCardinality::OptionalScalar),
+        4 => Ok(ArgumentCardinality::OptionalList),
+        _ => Err(CommandCodecError::UnknownArgumentCardinality(value)),
+    }
 }
 
 fn decode_permitted_uses(
@@ -223,5 +236,22 @@ fn decode_domain(value: u8) -> Result<ParameterDomain, CommandCodecError> {
         21 => Ok(ParameterDomain::Ratios),
         22 => Ok(ParameterDomain::AtCount),
         _ => Err(CommandCodecError::UnknownParameterDomain(value)),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn cardinality_codes_are_closed() {
+        assert!(matches!(
+            decode_cardinality(1),
+            Ok(ArgumentCardinality::RequiredScalar)
+        ));
+        assert!(matches!(
+            decode_cardinality(u8::MAX),
+            Err(CommandCodecError::UnknownArgumentCardinality(u8::MAX))
+        ));
     }
 }

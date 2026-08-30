@@ -172,7 +172,9 @@ impl ParameterId {
     pub const IMPLEMENTATION: Self = Self("implementation");
     pub const EXE: Self = Self("exe");
     pub const IDENTIFIER: Self = Self("identifier");
-    pub const RATIOS: Self = Self("ratios");
+    pub const NAMES: Self = Self("names");
+    pub const COLUMN_RATIOS: Self = Self("column-ratios");
+    pub const ROW_RATIOS: Self = Self("row-ratios");
     pub const AT_COUNT: Self = Self("at-count");
 
     #[must_use]

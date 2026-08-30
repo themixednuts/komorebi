@@ -43,6 +43,7 @@ pub use command::ActionOffer;
 pub use command::ActionParameter;
 pub use command::ActionSchemaVersion;
 pub use command::ActionUnavailability;
+pub use command::ArgumentCardinality;
 pub use command::ArgumentError;
 pub use command::ArgumentScalar;
 pub use command::ArgumentScalars;

@@ -96,6 +96,7 @@ fn project_definition(
                     Ok(protocol::ActionParameter::new(
                         protocol::ParameterId::parse(parameter.id.as_str())?,
                         project_parameter_domain(parameter.domain),
+                        project_argument_cardinality(parameter.cardinality()),
                     ))
                 })
                 .collect::<Result<_, protocol::StableIdError>>()?,
@@ -109,6 +110,25 @@ fn project_definition(
             undo: project_undo(value.undo),
         },
     )?)
+}
+
+fn project_argument_cardinality(
+    value: definition::ArgumentCardinality,
+) -> protocol::ArgumentCardinality {
+    match value {
+        definition::ArgumentCardinality::RequiredScalar => {
+            protocol::ArgumentCardinality::RequiredScalar
+        }
+        definition::ArgumentCardinality::RequiredList => {
+            protocol::ArgumentCardinality::RequiredList
+        }
+        definition::ArgumentCardinality::OptionalScalar => {
+            protocol::ArgumentCardinality::OptionalScalar
+        }
+        definition::ArgumentCardinality::OptionalList => {
+            protocol::ArgumentCardinality::OptionalList
+        }
+    }
 }
 
 fn project_offer(

@@ -69,16 +69,34 @@ pub enum ParameterDomain {
     AtCount = 22,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[repr(u8)]
+pub enum ArgumentCardinality {
+    RequiredScalar = 1,
+    RequiredList = 2,
+    OptionalScalar = 3,
+    OptionalList = 4,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ActionParameter {
     id: ParameterId,
     domain: ParameterDomain,
+    cardinality: ArgumentCardinality,
 }
 
 impl ActionParameter {
     #[must_use]
-    pub const fn new(id: ParameterId, domain: ParameterDomain) -> Self {
-        Self { id, domain }
+    pub const fn new(
+        id: ParameterId,
+        domain: ParameterDomain,
+        cardinality: ArgumentCardinality,
+    ) -> Self {
+        Self {
+            id,
+            domain,
+            cardinality,
+        }
     }
 
     #[must_use]
@@ -89,6 +107,11 @@ impl ActionParameter {
     #[must_use]
     pub const fn domain(&self) -> ParameterDomain {
         self.domain
+    }
+
+    #[must_use]
+    pub const fn cardinality(&self) -> ArgumentCardinality {
+        self.cardinality
     }
 }
 

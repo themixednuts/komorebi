@@ -58,6 +58,7 @@ pub use catalog::ActionDefinitionSpec;
 pub use catalog::ActionOffer;
 pub use catalog::ActionParameter;
 pub use catalog::ActionUnavailability;
+pub use catalog::ArgumentCardinality;
 pub use catalog::CatalogSnapshot;
 pub use catalog::ConfirmationPolicy;
 pub use catalog::DynamicParameterChoices;
