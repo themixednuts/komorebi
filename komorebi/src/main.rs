@@ -198,7 +198,8 @@ struct Opts {
 
 #[tracing::instrument]
 #[allow(clippy::cognitive_complexity)]
-fn main() -> eyre::Result<()> {
+#[tokio::main]
+async fn main() -> eyre::Result<()> {
     let opts: Opts = Opts::parse();
     CUSTOM_FFM.store(opts.focus_follows_mouse, Ordering::SeqCst);
 
@@ -351,16 +352,7 @@ fn main() -> eyre::Result<()> {
         listen_for_movements(wm.clone());
     }
 
-    let (ctrlc_sender, ctrlc_receiver) = crossbeam_channel::bounded(1);
-    ctrlc::set_handler(move || {
-        ctrlc_sender
-            .send(())
-            .expect("could not send signal on ctrl-c channel");
-    })?;
-
-    ctrlc_receiver
-        .recv()
-        .expect("could not receive signal on ctrl-c channel");
+    tokio::signal::ctrl_c().await?;
 
     tracing::error!("received ctrl-c, restoring all hidden windows and terminating process");
 

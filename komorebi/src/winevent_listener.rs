@@ -1,5 +1,4 @@
 use std::sync::OnceLock;
-use std::time::Duration;
 
 use crossbeam_channel::Receiver;
 use crossbeam_channel::Sender;
@@ -48,8 +47,6 @@ pub fn start() {
                     let _ = TranslateMessage(&msg);
                     DispatchMessageW(&msg);
                 }
-
-                std::thread::sleep(Duration::from_millis(10))
             }
         })
     });

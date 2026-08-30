@@ -19,7 +19,6 @@ chrono = { workspace = true }
 color-eyre = { workspace = true }
 crossbeam-channel = { workspace = true }
 crossbeam-utils = { workspace = true }
-ctrlc = { version = "3", features = ["termination"] }
 dirs = { workspace = true }
 ed25519-dalek = "2"
 hotwatch = { workspace = true }
@@ -41,6 +40,7 @@ shadow-rs = { workspace = true }
 strum = { workspace = true }
 sysinfo = { workspace = true }
 thiserror = "2"
+tokio = { version = "=1.53.1", features = ["macros", "rt-multi-thread", "signal"] }
 tracing = { workspace = true }
 tracing-appender = { workspace = true }
 tracing-subscriber = { workspace = true }

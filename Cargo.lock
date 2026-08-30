@@ -1404,17 +1404,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ctrlc"
-version = "3.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e0b1fab2ae45819af2d0731d60f2afe17227ebb1a1538a236da84c93e9a60162"
-dependencies = [
- "dispatch2",
- "nix",
- "windows-sys 0.61.2",
-]
-
-[[package]]
 name = "ctutils"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3526,7 +3515,6 @@ dependencies = [
  "color-eyre",
  "crossbeam-channel",
  "crossbeam-utils",
- "ctrlc",
  "dirs 6.0.0",
  "ed25519-dalek",
  "hotwatch",
@@ -3552,6 +3540,7 @@ dependencies = [
  "strum",
  "sysinfo 0.39.6",
  "thiserror 2.0.20",
+ "tokio",
  "tracing",
  "tracing-appender",
  "tracing-subscriber",
