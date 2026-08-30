@@ -3363,6 +3363,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "komorebi-command-transport"
+version = "0.1.42"
+dependencies = [
+ "komorebi-protocol",
+ "thiserror 2.0.20",
+ "tokio",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
 name = "komorebi-gui"
 version = "0.1.42"
 dependencies = [

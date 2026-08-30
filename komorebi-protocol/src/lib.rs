@@ -15,6 +15,8 @@ pub use bootstrap::RoleHint;
 pub use error::FrameError;
 pub use frame::Frame;
 pub use frame::FrameHeader;
+pub use frame::HEADER_BYTES;
+pub use frame::MAX_FRAME_PAYLOAD_BYTES;
 pub use identity::DirectionSequence;
 pub use identity::FrameKind;
 pub use identity::ProtocolPreface;
