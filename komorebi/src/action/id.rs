@@ -177,6 +177,35 @@ impl ParameterId {
     pub const ROW_RATIOS: Self = Self("row-ratios");
     pub const AT_COUNT: Self = Self("at-count");
 
+    pub const ALL: [Self; 26] = [
+        Self::DIRECTION,
+        Self::AXIS,
+        Self::DELTA,
+        Self::WORKSPACE,
+        Self::LAYOUT,
+        Self::WINDOW,
+        Self::CYCLE,
+        Self::INDEX,
+        Self::MONITOR,
+        Self::SIZING,
+        Self::ADJUSTMENT,
+        Self::ENABLED,
+        Self::SIZE,
+        Self::COUNT,
+        Self::CONTAINER,
+        Self::COLUMNS,
+        Self::NAME,
+        Self::PATH,
+        Self::BEHAVIOUR,
+        Self::IMPLEMENTATION,
+        Self::EXE,
+        Self::IDENTIFIER,
+        Self::NAMES,
+        Self::COLUMN_RATIOS,
+        Self::ROW_RATIOS,
+        Self::AT_COUNT,
+    ];
+
     #[must_use]
     pub const fn as_str(self) -> &'static str {
         self.0
@@ -349,5 +378,18 @@ mod tests {
             ActionId::TOGGLE_WORKSPACE_LAYER.as_str(),
             "toggle-workspace-layer"
         );
+    }
+
+    #[test]
+    fn parameter_ids_match_the_protocol_vocabulary() {
+        let internal = ParameterId::ALL
+            .iter()
+            .map(|id| id.as_str())
+            .collect::<std::collections::BTreeSet<_>>();
+        let protocol = komorebi_protocol::BuiltInParameterId::ALL
+            .iter()
+            .map(|id| id.as_str())
+            .collect::<std::collections::BTreeSet<_>>();
+        assert_eq!(internal, protocol);
     }
 }

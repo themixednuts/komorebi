@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::str::FromStr;
 
 use thiserror::Error;
 
@@ -39,6 +40,24 @@ stable_id!(ChoiceId, "choice ID");
 stable_id!(EntityKind, "entity kind");
 stable_id!(EntityId, "entity ID");
 stable_id!(SelectorId, "selector ID");
+
+impl ParameterId {
+    pub(super) fn from_known(value: &'static str) -> Self {
+        Self(value.into())
+    }
+}
+
+impl ChoiceId {
+    pub(super) fn from_known(value: &'static str) -> Self {
+        Self(value.into())
+    }
+}
+
+impl SelectorId {
+    pub(super) fn from_known(value: &'static str) -> Self {
+        Self(value.into())
+    }
+}
 
 pub(crate) fn validate_stable_id(value: &str, label: &'static str) -> Result<(), StableIdError> {
     if value.is_empty() {
@@ -153,6 +172,47 @@ impl FixedDecimal {
     #[must_use]
     pub const fn scale(self) -> u8 {
         self.scale
+    }
+}
+
+impl FromStr for FixedDecimal {
+    type Err = ArgumentError;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        let (negative, unsigned) = value
+            .strip_prefix('-')
+            .map_or((false, value), |value| (true, value));
+        let mut parts = unsigned.split('.');
+        let integer = parts.next().ok_or(ArgumentError::InvalidDecimalText)?;
+        let fraction = parts.next();
+        if parts.next().is_some()
+            || integer.is_empty()
+            || fraction.is_some_and(str::is_empty)
+            || !integer.bytes().all(|byte| byte.is_ascii_digit())
+            || fraction.is_some_and(|digits| !digits.bytes().all(|byte| byte.is_ascii_digit()))
+        {
+            return Err(ArgumentError::InvalidDecimalText);
+        }
+        let scale = fraction.map_or(0, str::len);
+        if scale > usize::from(MAX_DECIMAL_SCALE) {
+            return Err(ArgumentError::DecimalTextScaleTooLarge(scale));
+        }
+        let mut coefficient = 0_i128;
+        for digit in integer.bytes().chain(fraction.unwrap_or("").bytes()) {
+            coefficient = coefficient
+                .checked_mul(10)
+                .and_then(|value| value.checked_add(i128::from(digit - b'0')))
+                .ok_or(ArgumentError::DecimalCoefficientOutOfRange)?;
+        }
+        if negative {
+            coefficient = -coefficient;
+        }
+        let coefficient =
+            i64::try_from(coefficient).map_err(|_| ArgumentError::DecimalCoefficientOutOfRange)?;
+        Self::new(
+            coefficient,
+            u8::try_from(scale).map_err(|_| ArgumentError::DecimalTextScaleTooLarge(scale))?,
+        )
     }
 }
 
@@ -318,6 +378,12 @@ pub enum ArgumentError {
     PathContainsNul,
     #[error("decimal scale {0} exceeds {MAX_DECIMAL_SCALE}")]
     DecimalScaleTooLarge(u8),
+    #[error("decimal text must contain an optional '-' and base-10 digits with one optional point")]
+    InvalidDecimalText,
+    #[error("decimal text has {0} fractional digits; maximum is {MAX_DECIMAL_SCALE}")]
+    DecimalTextScaleTooLarge(usize),
+    #[error("decimal coefficient does not fit a signed 64-bit value")]
+    DecimalCoefficientOutOfRange,
     #[error("unknown unit ID {0}")]
     UnknownUnit(u8),
     #[error("scalar lists must not be empty")]
@@ -326,4 +392,25 @@ pub enum ArgumentError {
     TooManyListItems(usize),
     #[error("action has {0} arguments; maximum is {MAX_ARGUMENTS}")]
     TooManyArguments(usize),
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn decimal_text_parsing_is_exact_and_bounded() -> Result<(), ArgumentError> {
+        let value = "0.125".parse::<FixedDecimal>()?;
+        assert_eq!(value.coefficient(), 125);
+        assert_eq!(value.scale(), 3);
+        assert_eq!(
+            "1.2.3".parse::<FixedDecimal>(),
+            Err(ArgumentError::InvalidDecimalText)
+        );
+        assert_eq!(
+            "0.1234567890123456789".parse::<FixedDecimal>(),
+            Err(ArgumentError::DecimalTextScaleTooLarge(19))
+        );
+        Ok(())
+    }
 }

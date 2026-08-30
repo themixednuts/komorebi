@@ -1,0 +1,384 @@
+use std::collections::BTreeMap;
+use std::num::NonZeroI32;
+use std::num::NonZeroU64;
+
+use thiserror::Error;
+
+use super::ActionArgument;
+use super::ActionArguments;
+use super::ArgumentError;
+use super::ArgumentScalar;
+use super::ArgumentScalars;
+use super::BoundedText;
+use super::ChoiceId;
+use super::FixedDecimal;
+use super::ParameterId;
+use super::SelectorId;
+use super::WindowsPathInput;
+
+macro_rules! known_ids {
+    ($name:ident, $target:ident, $($variant:ident => $value:literal),+ $(,)?) => {
+        #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+        pub enum $name {
+            $($variant),+
+        }
+
+        impl $name {
+            pub const ALL: &'static [Self] = &[$(Self::$variant),+];
+
+            #[must_use]
+            pub const fn as_str(self) -> &'static str {
+                match self {
+                    $(Self::$variant => $value),+
+                }
+            }
+
+            fn into_wire(self) -> $target {
+                $target::from_known(self.as_str())
+            }
+        }
+    };
+}
+
+known_ids! {
+    BuiltInParameterId, ParameterId,
+    Direction => "direction",
+    Axis => "axis",
+    Delta => "delta",
+    Workspace => "workspace",
+    Layout => "layout",
+    Window => "window",
+    Cycle => "cycle",
+    Index => "index",
+    Monitor => "monitor",
+    Sizing => "sizing",
+    Adjustment => "adjustment",
+    Enabled => "enabled",
+    Size => "size",
+    Count => "count",
+    Container => "container",
+    Columns => "columns",
+    Name => "name",
+    Path => "path",
+    Behaviour => "behaviour",
+    Implementation => "implementation",
+    Exe => "exe",
+    Identifier => "identifier",
+    Names => "names",
+    ColumnRatios => "column-ratios",
+    RowRatios => "row-ratios",
+    AtCount => "at-count",
+}
+
+known_ids! {
+    BuiltInDirection, ChoiceId,
+    Left => "left",
+    Right => "right",
+    Up => "up",
+    Down => "down",
+}
+
+known_ids! {
+    BuiltInAxis, ChoiceId,
+    Horizontal => "horizontal",
+    Vertical => "vertical",
+    HorizontalAndVertical => "horizontal-and-vertical",
+}
+
+known_ids! {
+    BuiltInCycle, ChoiceId,
+    Previous => "previous",
+    Next => "next",
+}
+
+known_ids! {
+    BuiltInLayout, ChoiceId,
+    Bsp => "bsp",
+    Columns => "columns",
+    Rows => "rows",
+    VerticalStack => "vertical-stack",
+    HorizontalStack => "horizontal-stack",
+    UltrawideVerticalStack => "ultrawide-vertical-stack",
+    Grid => "grid",
+    RightMainVerticalStack => "right-main-vertical-stack",
+    Scrolling => "scrolling",
+}
+
+known_ids! {
+    BuiltInSizing, ChoiceId,
+    Increase => "increase",
+    Decrease => "decrease",
+}
+
+known_ids! {
+    BuiltInHidingBehaviour, ChoiceId,
+    Hide => "hide",
+    Minimize => "minimize",
+    Cloak => "cloak",
+}
+
+known_ids! {
+    BuiltInMoveBehaviour, ChoiceId,
+    Swap => "swap",
+    Insert => "insert",
+    NoOp => "no-op",
+}
+
+known_ids! {
+    BuiltInMonocleBehaviour, ChoiceId,
+    Cycle => "cycle",
+    NoOp => "no-op",
+}
+
+known_ids! {
+    BuiltInOperationBehaviour, ChoiceId,
+    Op => "op",
+    NoOp => "no-op",
+}
+
+known_ids! {
+    BuiltInImplementation, ChoiceId,
+    Komorebi => "komorebi",
+    Windows => "windows",
+}
+
+known_ids! {
+    BuiltInIdentifier, ChoiceId,
+    Exe => "exe",
+    Class => "class",
+    Title => "title",
+    Path => "path",
+}
+
+known_ids! {
+    BuiltInSelector, SelectorId,
+    FocusedAtExecution => "focused-at-execution",
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct BuiltInNames(ArgumentScalars);
+
+impl BuiltInNames {
+    /// Creates a nonempty bounded list of workspace names.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ArgumentError`] when the list violates protocol bounds.
+    pub fn new(values: impl IntoIterator<Item = BoundedText>) -> Result<Self, ArgumentError> {
+        let values = values
+            .into_iter()
+            .map(ArgumentScalar::Text)
+            .collect::<Vec<_>>();
+        Ok(Self(ArgumentScalars::new(values)?))
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct BuiltInRatios(ArgumentScalars);
+
+impl BuiltInRatios {
+    /// Creates a nonempty bounded list of exact decimal ratios.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ArgumentError`] when the list violates protocol bounds.
+    pub fn new(values: impl IntoIterator<Item = FixedDecimal>) -> Result<Self, ArgumentError> {
+        let values = values
+            .into_iter()
+            .map(ArgumentScalar::Decimal)
+            .collect::<Vec<_>>();
+        Ok(Self(ArgumentScalars::new(values)?))
+    }
+}
+
+/// One manager-owned parameter paired with its only valid wire scalar shape.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum BuiltInArgument {
+    Direction(BuiltInDirection),
+    Axis(BuiltInAxis),
+    Delta(NonZeroI32),
+    Workspace(BuiltInSelector),
+    Layout(BuiltInLayout),
+    Window(BuiltInSelector),
+    Cycle(BuiltInCycle),
+    Index(u64),
+    Monitor(u64),
+    Sizing(BuiltInSizing),
+    Adjustment(i32),
+    Enabled(bool),
+    Size(i32),
+    Count(u64),
+    Container(u64),
+    Columns(NonZeroU64),
+    Name(BoundedText),
+    Path(WindowsPathInput),
+    HidingBehaviour(BuiltInHidingBehaviour),
+    MoveBehaviour(BuiltInMoveBehaviour),
+    MonocleBehaviour(BuiltInMonocleBehaviour),
+    OperationBehaviour(BuiltInOperationBehaviour),
+    Implementation(BuiltInImplementation),
+    Exe(BoundedText),
+    Identifier(BuiltInIdentifier),
+    Names(BuiltInNames),
+    ColumnRatios(BuiltInRatios),
+    RowRatios(BuiltInRatios),
+    AtCount(u64),
+}
+
+impl BuiltInArgument {
+    fn encode(self) -> (BuiltInParameterId, ActionArgument) {
+        use ActionArgument::Scalar;
+        use ArgumentScalar as S;
+
+        match self {
+            Self::Direction(value) => choice(BuiltInParameterId::Direction, value.into_wire()),
+            Self::Axis(value) => choice(BuiltInParameterId::Axis, value.into_wire()),
+            Self::Delta(value) => signed(BuiltInParameterId::Delta, value.get()),
+            Self::Workspace(value) => selector(BuiltInParameterId::Workspace, value.into_wire()),
+            Self::Layout(value) => choice(BuiltInParameterId::Layout, value.into_wire()),
+            Self::Window(value) => selector(BuiltInParameterId::Window, value.into_wire()),
+            Self::Cycle(value) => choice(BuiltInParameterId::Cycle, value.into_wire()),
+            Self::Index(value) => (BuiltInParameterId::Index, Scalar(S::Unsigned(value))),
+            Self::Monitor(value) => (BuiltInParameterId::Monitor, Scalar(S::Unsigned(value))),
+            Self::Sizing(value) => choice(BuiltInParameterId::Sizing, value.into_wire()),
+            Self::Adjustment(value) => signed(BuiltInParameterId::Adjustment, value),
+            Self::Enabled(value) => (BuiltInParameterId::Enabled, Scalar(S::Bool(value))),
+            Self::Size(value) => signed(BuiltInParameterId::Size, value),
+            Self::Count(value) => (BuiltInParameterId::Count, Scalar(S::Unsigned(value))),
+            Self::Container(value) => (BuiltInParameterId::Container, Scalar(S::Unsigned(value))),
+            Self::Columns(value) => (
+                BuiltInParameterId::Columns,
+                Scalar(S::Unsigned(value.get())),
+            ),
+            Self::Name(value) => (BuiltInParameterId::Name, Scalar(S::Text(value))),
+            Self::Path(value) => (BuiltInParameterId::Path, Scalar(S::WindowsPath(value))),
+            Self::HidingBehaviour(value) => {
+                choice(BuiltInParameterId::Behaviour, value.into_wire())
+            }
+            Self::MoveBehaviour(value) => choice(BuiltInParameterId::Behaviour, value.into_wire()),
+            Self::MonocleBehaviour(value) => {
+                choice(BuiltInParameterId::Behaviour, value.into_wire())
+            }
+            Self::OperationBehaviour(value) => {
+                choice(BuiltInParameterId::Behaviour, value.into_wire())
+            }
+            Self::Implementation(value) => {
+                choice(BuiltInParameterId::Implementation, value.into_wire())
+            }
+            Self::Exe(value) => (BuiltInParameterId::Exe, Scalar(S::Text(value))),
+            Self::Identifier(value) => choice(BuiltInParameterId::Identifier, value.into_wire()),
+            Self::Names(value) => (BuiltInParameterId::Names, ActionArgument::Scalars(value.0)),
+            Self::ColumnRatios(value) => (
+                BuiltInParameterId::ColumnRatios,
+                ActionArgument::Scalars(value.0),
+            ),
+            Self::RowRatios(value) => (
+                BuiltInParameterId::RowRatios,
+                ActionArgument::Scalars(value.0),
+            ),
+            Self::AtCount(value) => (BuiltInParameterId::AtCount, Scalar(S::Unsigned(value))),
+        }
+    }
+}
+
+fn choice(id: BuiltInParameterId, value: ChoiceId) -> (BuiltInParameterId, ActionArgument) {
+    (id, ActionArgument::Scalar(ArgumentScalar::Choice(value)))
+}
+
+fn selector(id: BuiltInParameterId, value: SelectorId) -> (BuiltInParameterId, ActionArgument) {
+    (id, ActionArgument::Scalar(ArgumentScalar::Selector(value)))
+}
+
+fn signed(id: BuiltInParameterId, value: i32) -> (BuiltInParameterId, ActionArgument) {
+    (
+        id,
+        ActionArgument::Scalar(ArgumentScalar::Signed(i64::from(value))),
+    )
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct BuiltInArguments(ActionArguments);
+
+impl BuiltInArguments {
+    /// Creates a canonical built-in argument map without duplicate parameters.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`BuiltInArgumentsError`] for duplicate parameters or protocol
+    /// bound violations.
+    pub fn new(
+        arguments: impl IntoIterator<Item = BuiltInArgument>,
+    ) -> Result<Self, BuiltInArgumentsError> {
+        let mut values = BTreeMap::new();
+        for argument in arguments {
+            let (id, value) = argument.encode();
+            if values.insert(id.into_wire(), value).is_some() {
+                return Err(BuiltInArgumentsError::Duplicate(id));
+            }
+        }
+        Ok(Self(ActionArguments::new(values)?))
+    }
+
+    #[must_use]
+    pub fn into_action_arguments(self) -> ActionArguments {
+        self.0
+    }
+}
+
+#[derive(Clone, Debug, Error, Eq, PartialEq)]
+pub enum BuiltInArgumentsError {
+    #[error("built-in parameter {0:?} was supplied more than once")]
+    Duplicate(BuiltInParameterId),
+    #[error("built-in arguments violate protocol bounds: {0}")]
+    Protocol(#[from] ArgumentError),
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::BTreeSet;
+
+    use super::*;
+
+    #[test]
+    fn every_parameter_identity_is_unique_and_valid() {
+        let identities = BuiltInParameterId::ALL
+            .iter()
+            .map(|id| id.as_str())
+            .collect::<BTreeSet<_>>();
+        assert_eq!(identities.len(), BuiltInParameterId::ALL.len());
+        for id in BuiltInParameterId::ALL {
+            assert_eq!(id.into_wire().as_str(), id.as_str());
+        }
+    }
+
+    #[test]
+    fn argument_identity_and_scalar_shape_are_coupled() -> Result<(), Box<dyn std::error::Error>> {
+        let arguments = BuiltInArguments::new([
+            BuiltInArgument::Direction(BuiltInDirection::Left),
+            BuiltInArgument::Delta(NonZeroI32::new(1).ok_or("nonzero test delta")?),
+        ])?
+        .into_action_arguments();
+
+        assert_eq!(arguments.values().len(), 2);
+        assert!(matches!(
+            arguments
+                .values()
+                .get(&ParameterId::parse("direction")?),
+            Some(ActionArgument::Scalar(ArgumentScalar::Choice(value)))
+                if value.as_str() == "left"
+        ));
+        assert!(matches!(
+            arguments.values().get(&ParameterId::parse("delta")?),
+            Some(ActionArgument::Scalar(ArgumentScalar::Signed(1)))
+        ));
+        Ok(())
+    }
+
+    #[test]
+    fn duplicate_parameter_is_rejected() {
+        assert_eq!(
+            BuiltInArguments::new([BuiltInArgument::Index(1), BuiltInArgument::Index(2),]),
+            Err(BuiltInArgumentsError::Duplicate(BuiltInParameterId::Index))
+        );
+    }
+}

@@ -2,6 +2,26 @@
 #![allow(clippy::missing_errors_doc, clippy::doc_markdown)]
 #![allow(unused_assignments)] // false positives for the error reporter
 
+mod action;
+
+use action::built_in_arguments;
+use action::built_in_axis;
+use action::built_in_columns;
+use action::built_in_cycle;
+use action::built_in_direction;
+use action::built_in_hiding_behaviour;
+use action::built_in_identifier;
+use action::built_in_implementation;
+use action::built_in_layout;
+use action::built_in_monocle_behaviour;
+use action::built_in_move_behaviour;
+use action::built_in_operation_behaviour;
+use action::built_in_path;
+use action::built_in_sizing;
+use action::built_in_text;
+use action::focused_window_arguments;
+use action::invoke_action;
+
 use chrono::Utc;
 use komorebi_client::PathExt;
 use komorebi_client::replace_env_in_path;
@@ -28,12 +48,13 @@ use color_eyre::eyre::bail;
 use fs_tail::TailedFile;
 use komorebi_client::AppSpecificConfigurationPath;
 use komorebi_client::ApplicationSpecificConfiguration;
-use komorebi_client::command::ActionArguments;
 use komorebi_client::command::BuiltInActionId;
-use komorebi_client::command::CommandClient;
-use komorebi_client::command::InvocationSubmissionReply;
-use komorebi_client::command::RoleHint;
-use komorebi_client::command::SessionLifetime;
+use komorebi_client::command::BuiltInArgument;
+use komorebi_client::command::BuiltInArguments;
+use komorebi_client::command::BuiltInNames;
+use komorebi_client::command::BuiltInRatios;
+use komorebi_client::command::BuiltInSelector;
+use komorebi_client::command::FixedDecimal;
 use komorebi_client::send_message;
 use komorebi_client::send_query;
 use lazy_static::lazy_static;
@@ -1029,10 +1050,10 @@ struct ScrollingLayoutColumns {
 struct LayoutRatios {
     /// Column width ratios (space-separated values between 0.1 and 0.9)
     #[clap(short, long, num_args = 1..)]
-    columns: Option<Vec<f32>>,
+    columns: Option<Vec<FixedDecimal>>,
     /// Row height ratios (space-separated values between 0.1 and 0.9)
     #[clap(short, long, num_args = 1..)]
-    rows: Option<Vec<f32>>,
+    rows: Option<Vec<FixedDecimal>>,
 }
 
 #[derive(Parser)]
@@ -1625,17 +1646,6 @@ fn startup_dir() -> eyre::Result<PathBuf> {
     Ok(startup)
 }
 
-async fn invoke_action(action: BuiltInActionId, arguments: ActionArguments) -> eyre::Result<()> {
-    let mut client =
-        CommandClient::connect(RoleHint::OwnerControl, SessionLifetime::OneShot).await?;
-    match client.invoke_builtin(action, arguments).await? {
-        InvocationSubmissionReply::Accepted(_) | InvocationSubmissionReply::Retained(_) => Ok(()),
-        InvocationSubmissionReply::Rejected(reason) => {
-            Err(eyre::eyre!("command was rejected: {reason:?}"))
-        }
-    }
-}
-
 #[allow(clippy::too_many_lines, clippy::cognitive_complexity)]
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
@@ -2080,139 +2090,225 @@ async fn main() -> eyre::Result<()> {
             }
         }
         SubCommand::Focus(args) => {
-            send_message(&SocketMessage::FocusWindow(args.operation_direction))?;
+            invoke_action(
+                BuiltInActionId::FocusWindow,
+                built_in_arguments([BuiltInArgument::Direction(built_in_direction(
+                    args.operation_direction,
+                ))])?,
+            )
+            .await?;
         }
         SubCommand::ForceFocus => {
-            invoke_action(BuiltInActionId::ForceFocus, ActionArguments::default()).await?;
+            invoke_action(BuiltInActionId::ForceFocus, focused_window_arguments()?).await?;
         }
         SubCommand::Close => {
-            invoke_action(BuiltInActionId::CloseWindow, ActionArguments::default()).await?;
+            invoke_action(BuiltInActionId::CloseWindow, focused_window_arguments()?).await?;
         }
         SubCommand::Minimize => {
-            invoke_action(BuiltInActionId::MinimizeWindow, ActionArguments::default()).await?;
+            invoke_action(BuiltInActionId::MinimizeWindow, focused_window_arguments()?).await?;
         }
         SubCommand::Promote => {
             invoke_action(
                 BuiltInActionId::PromoteContainer,
-                ActionArguments::default(),
+                BuiltInArguments::default(),
             )
             .await?;
         }
         SubCommand::PromoteSwap => {
             invoke_action(
                 BuiltInActionId::PromoteContainerSwap,
-                ActionArguments::default(),
+                BuiltInArguments::default(),
             )
             .await?;
         }
         SubCommand::PromoteFocus => {
-            invoke_action(BuiltInActionId::PromoteFocus, ActionArguments::default()).await?;
+            invoke_action(BuiltInActionId::PromoteFocus, BuiltInArguments::default()).await?;
         }
         SubCommand::PromoteWindow(args) => {
-            send_message(&SocketMessage::PromoteWindow(args.operation_direction))?;
+            invoke_action(
+                BuiltInActionId::PromoteWindow,
+                built_in_arguments([BuiltInArgument::Direction(built_in_direction(
+                    args.operation_direction,
+                ))])?,
+            )
+            .await?;
         }
         SubCommand::TogglePause => {
-            invoke_action(BuiltInActionId::TogglePause, ActionArguments::default()).await?;
+            invoke_action(BuiltInActionId::TogglePause, BuiltInArguments::default()).await?;
         }
         SubCommand::Retile => {
-            invoke_action(BuiltInActionId::Retile, ActionArguments::default()).await?;
+            invoke_action(BuiltInActionId::Retile, BuiltInArguments::default()).await?;
         }
         SubCommand::Move(args) => {
-            send_message(&SocketMessage::MoveWindow(args.operation_direction))?;
+            invoke_action(
+                BuiltInActionId::MoveWindow,
+                built_in_arguments([BuiltInArgument::Direction(built_in_direction(
+                    args.operation_direction,
+                ))])?,
+            )
+            .await?;
         }
         SubCommand::PreselectDirection(args) => {
-            send_message(&SocketMessage::PreselectDirection(args.operation_direction))?;
+            invoke_action(
+                BuiltInActionId::PreselectDirection,
+                built_in_arguments([BuiltInArgument::Direction(built_in_direction(
+                    args.operation_direction,
+                ))])?,
+            )
+            .await?;
         }
         SubCommand::CancelPreselect => {
-            invoke_action(BuiltInActionId::CancelPreselect, ActionArguments::default()).await?;
+            invoke_action(
+                BuiltInActionId::CancelPreselect,
+                BuiltInArguments::default(),
+            )
+            .await?;
         }
         SubCommand::CycleFocus(args) => {
-            send_message(&SocketMessage::CycleFocusWindow(args.cycle_direction))?;
+            invoke_action(
+                BuiltInActionId::CycleFocusWindow,
+                built_in_arguments([BuiltInArgument::Cycle(built_in_cycle(args.cycle_direction))])?,
+            )
+            .await?;
         }
         SubCommand::CycleMove(args) => {
-            send_message(&SocketMessage::CycleMoveWindow(args.cycle_direction))?;
+            invoke_action(
+                BuiltInActionId::CycleMoveWindow,
+                built_in_arguments([BuiltInArgument::Cycle(built_in_cycle(args.cycle_direction))])?,
+            )
+            .await?;
         }
         SubCommand::EagerFocus(args) => {
-            send_message(&SocketMessage::EagerFocus(args.exe))?;
+            invoke_action(
+                BuiltInActionId::EagerFocus,
+                built_in_arguments([BuiltInArgument::Exe(built_in_text(args.exe)?)])?,
+            )
+            .await?;
         }
         SubCommand::MoveToMonitor(args) => {
-            send_message(&SocketMessage::MoveContainerToMonitorNumber(args.target))?;
+            invoke_action(
+                BuiltInActionId::MoveContainerToMonitor,
+                built_in_arguments([BuiltInArgument::Index(args.target.try_into()?)])?,
+            )
+            .await?;
         }
         SubCommand::CycleMoveToMonitor(args) => {
-            send_message(&SocketMessage::CycleMoveContainerToMonitor(
-                args.cycle_direction,
-            ))?;
+            invoke_action(
+                BuiltInActionId::CycleMoveContainerToMonitor,
+                built_in_arguments([BuiltInArgument::Cycle(built_in_cycle(args.cycle_direction))])?,
+            )
+            .await?;
         }
         SubCommand::MoveToWorkspace(args) => {
-            send_message(&SocketMessage::MoveContainerToWorkspaceNumber(args.target))?;
+            invoke_action(
+                BuiltInActionId::MoveContainerToWorkspace,
+                built_in_arguments([BuiltInArgument::Index(args.target.try_into()?)])?,
+            )
+            .await?;
         }
         SubCommand::MoveToNamedWorkspace(args) => {
-            send_message(&SocketMessage::MoveContainerToNamedWorkspace(
-                args.workspace,
-            ))?;
+            invoke_action(
+                BuiltInActionId::MoveContainerToNamedWorkspace,
+                built_in_arguments([BuiltInArgument::Name(built_in_text(args.workspace)?)])?,
+            )
+            .await?;
         }
         SubCommand::CycleMoveToWorkspace(args) => {
-            send_message(&SocketMessage::CycleMoveContainerToWorkspace(
-                args.cycle_direction,
-            ))?;
+            invoke_action(
+                BuiltInActionId::CycleMoveContainerToWorkspace,
+                built_in_arguments([BuiltInArgument::Cycle(built_in_cycle(args.cycle_direction))])?,
+            )
+            .await?;
         }
         SubCommand::SendToMonitor(args) => {
-            send_message(&SocketMessage::SendContainerToMonitorNumber(args.target))?;
+            invoke_action(
+                BuiltInActionId::SendContainerToMonitor,
+                built_in_arguments([BuiltInArgument::Index(args.target.try_into()?)])?,
+            )
+            .await?;
         }
         SubCommand::CycleSendToMonitor(args) => {
-            send_message(&SocketMessage::CycleSendContainerToMonitor(
-                args.cycle_direction,
-            ))?;
+            invoke_action(
+                BuiltInActionId::CycleSendContainerToMonitor,
+                built_in_arguments([BuiltInArgument::Cycle(built_in_cycle(args.cycle_direction))])?,
+            )
+            .await?;
         }
         SubCommand::SendToWorkspace(args) => {
-            send_message(&SocketMessage::SendContainerToWorkspaceNumber(args.target))?;
+            invoke_action(
+                BuiltInActionId::SendContainerToWorkspace,
+                built_in_arguments([BuiltInArgument::Index(args.target.try_into()?)])?,
+            )
+            .await?;
         }
         SubCommand::SendToNamedWorkspace(args) => {
-            send_message(&SocketMessage::SendContainerToNamedWorkspace(
-                args.workspace,
-            ))?;
+            invoke_action(
+                BuiltInActionId::SendContainerToNamedWorkspace,
+                built_in_arguments([BuiltInArgument::Name(built_in_text(args.workspace)?)])?,
+            )
+            .await?;
         }
         SubCommand::CycleSendToWorkspace(args) => {
-            send_message(&SocketMessage::CycleSendContainerToWorkspace(
-                args.cycle_direction,
-            ))?;
+            invoke_action(
+                BuiltInActionId::CycleSendContainerToWorkspace,
+                built_in_arguments([BuiltInArgument::Cycle(built_in_cycle(args.cycle_direction))])?,
+            )
+            .await?;
         }
         SubCommand::SendToMonitorWorkspace(args) => {
-            send_message(&SocketMessage::SendContainerToMonitorWorkspaceNumber(
-                args.target_monitor,
-                args.target_workspace,
-            ))?;
+            invoke_action(
+                BuiltInActionId::SendContainerToMonitorWorkspace,
+                built_in_arguments([
+                    BuiltInArgument::Monitor(args.target_monitor.try_into()?),
+                    BuiltInArgument::Index(args.target_workspace.try_into()?),
+                ])?,
+            )
+            .await?;
         }
         SubCommand::MoveToMonitorWorkspace(args) => {
-            send_message(&SocketMessage::MoveContainerToMonitorWorkspaceNumber(
-                args.target_monitor,
-                args.target_workspace,
-            ))?;
+            invoke_action(
+                BuiltInActionId::MoveContainerToMonitorWorkspace,
+                built_in_arguments([
+                    BuiltInArgument::Monitor(args.target_monitor.try_into()?),
+                    BuiltInArgument::Index(args.target_workspace.try_into()?),
+                ])?,
+            )
+            .await?;
         }
         SubCommand::MoveWorkspaceToMonitor(args) => {
-            send_message(&SocketMessage::MoveWorkspaceToMonitorNumber(args.target))?;
+            invoke_action(
+                BuiltInActionId::MoveWorkspaceToMonitor,
+                built_in_arguments([BuiltInArgument::Index(args.target.try_into()?)])?,
+            )
+            .await?;
         }
         SubCommand::CycleMoveWorkspaceToMonitor(args) => {
-            send_message(&SocketMessage::CycleMoveWorkspaceToMonitor(
-                args.cycle_direction,
-            ))?;
+            invoke_action(
+                BuiltInActionId::CycleMoveWorkspaceToMonitor,
+                built_in_arguments([BuiltInArgument::Cycle(built_in_cycle(args.cycle_direction))])?,
+            )
+            .await?;
         }
         SubCommand::MoveToLastWorkspace => {
             invoke_action(
                 BuiltInActionId::MoveContainerToLastWorkspace,
-                ActionArguments::default(),
+                BuiltInArguments::default(),
             )
             .await?;
         }
         SubCommand::SendToLastWorkspace => {
             invoke_action(
                 BuiltInActionId::SendContainerToLastWorkspace,
-                ActionArguments::default(),
+                BuiltInArguments::default(),
             )
             .await?;
         }
         SubCommand::SwapWorkspacesWithMonitor(args) => {
-            send_message(&SocketMessage::SwapWorkspacesToMonitorNumber(args.target))?;
+            invoke_action(
+                BuiltInActionId::SwapWorkspacesToMonitor,
+                built_in_arguments([BuiltInArgument::Index(args.target.try_into()?)])?,
+            )
+            .await?;
         }
         SubCommand::InvisibleBorders(args) => {
             send_message(&SocketMessage::InvisibleBorders(Rect {
@@ -2259,162 +2355,246 @@ async fn main() -> eyre::Result<()> {
             send_message(&SocketMessage::ToggleWindowBasedWorkAreaOffset)?;
         }
         SubCommand::ContainerPadding(args) => {
-            send_message(&SocketMessage::ContainerPadding(
-                args.monitor,
-                args.workspace,
-                args.size,
-            ))?;
+            invoke_action(
+                BuiltInActionId::SetContainerPadding,
+                built_in_arguments([
+                    BuiltInArgument::Monitor(args.monitor.try_into()?),
+                    BuiltInArgument::Index(args.workspace.try_into()?),
+                    BuiltInArgument::Size(args.size),
+                ])?,
+            )
+            .await?;
         }
         SubCommand::NamedWorkspaceContainerPadding(args) => {
-            send_message(&SocketMessage::NamedWorkspaceContainerPadding(
-                args.workspace,
-                args.size,
-            ))?;
+            invoke_action(
+                BuiltInActionId::SetNamedWorkspaceContainerPadding,
+                built_in_arguments([
+                    BuiltInArgument::Name(built_in_text(args.workspace)?),
+                    BuiltInArgument::Size(args.size),
+                ])?,
+            )
+            .await?;
         }
         SubCommand::WorkspacePadding(args) => {
-            send_message(&SocketMessage::WorkspacePadding(
-                args.monitor,
-                args.workspace,
-                args.size,
-            ))?;
+            invoke_action(
+                BuiltInActionId::SetWorkspacePadding,
+                built_in_arguments([
+                    BuiltInArgument::Monitor(args.monitor.try_into()?),
+                    BuiltInArgument::Index(args.workspace.try_into()?),
+                    BuiltInArgument::Size(args.size),
+                ])?,
+            )
+            .await?;
         }
         SubCommand::NamedWorkspacePadding(args) => {
-            send_message(&SocketMessage::NamedWorkspacePadding(
-                args.workspace,
-                args.size,
-            ))?;
+            invoke_action(
+                BuiltInActionId::SetNamedWorkspacePadding,
+                built_in_arguments([
+                    BuiltInArgument::Name(built_in_text(args.workspace)?),
+                    BuiltInArgument::Size(args.size),
+                ])?,
+            )
+            .await?;
         }
         SubCommand::FocusedWorkspacePadding(args) => {
-            send_message(&SocketMessage::FocusedWorkspacePadding(args.size))?;
+            invoke_action(
+                BuiltInActionId::SetFocusedWorkspacePadding,
+                built_in_arguments([BuiltInArgument::Size(args.size)])?,
+            )
+            .await?;
         }
         SubCommand::FocusedWorkspaceContainerPadding(args) => {
-            send_message(&SocketMessage::FocusedWorkspaceContainerPadding(args.size))?;
+            invoke_action(
+                BuiltInActionId::SetFocusedContainerPadding,
+                built_in_arguments([BuiltInArgument::Size(args.size)])?,
+            )
+            .await?;
         }
         SubCommand::AdjustWorkspacePadding(args) => {
-            send_message(&SocketMessage::AdjustWorkspacePadding(
-                args.sizing,
-                args.adjustment,
-            ))?;
+            invoke_action(
+                BuiltInActionId::AdjustWorkspacePadding,
+                built_in_arguments([
+                    BuiltInArgument::Sizing(built_in_sizing(args.sizing)),
+                    BuiltInArgument::Adjustment(args.adjustment),
+                ])?,
+            )
+            .await?;
         }
         SubCommand::AdjustContainerPadding(args) => {
-            send_message(&SocketMessage::AdjustContainerPadding(
-                args.sizing,
-                args.adjustment,
-            ))?;
+            invoke_action(
+                BuiltInActionId::AdjustContainerPadding,
+                built_in_arguments([
+                    BuiltInArgument::Sizing(built_in_sizing(args.sizing)),
+                    BuiltInArgument::Adjustment(args.adjustment),
+                ])?,
+            )
+            .await?;
         }
         SubCommand::ToggleFocusFollowsMouse(args) => {
-            send_message(&SocketMessage::ToggleFocusFollowsMouse(args.implementation))?;
+            invoke_action(
+                BuiltInActionId::ToggleFocusFollowsMouse,
+                built_in_arguments([BuiltInArgument::Implementation(built_in_implementation(
+                    args.implementation,
+                ))])?,
+            )
+            .await?;
         }
         SubCommand::ToggleTiling => {
-            invoke_action(BuiltInActionId::ToggleTiling, ActionArguments::default()).await?;
+            invoke_action(BuiltInActionId::ToggleTiling, BuiltInArguments::default()).await?;
         }
         SubCommand::ToggleFloat => {
             invoke_action(
                 BuiltInActionId::ToggleWindowFloat,
-                ActionArguments::default(),
+                focused_window_arguments()?,
             )
             .await?;
         }
         SubCommand::ToggleMonocle => {
             invoke_action(
                 BuiltInActionId::ToggleWindowMonocle,
-                ActionArguments::default(),
+                focused_window_arguments()?,
             )
             .await?;
         }
         SubCommand::ToggleMaximize => {
             invoke_action(
                 BuiltInActionId::ToggleWindowMaximize,
-                ActionArguments::default(),
+                focused_window_arguments()?,
             )
             .await?;
         }
         SubCommand::ToggleLock => {
             invoke_action(
                 BuiltInActionId::ToggleContainerLock,
-                ActionArguments::default(),
+                focused_window_arguments()?,
             )
             .await?;
         }
         SubCommand::WorkspaceLayout(args) => {
-            send_message(&SocketMessage::WorkspaceLayout(
-                args.monitor,
-                args.workspace,
-                args.value,
-            ))?;
+            invoke_action(
+                BuiltInActionId::SetMonitorWorkspaceLayout,
+                built_in_arguments([
+                    BuiltInArgument::Monitor(args.monitor.try_into()?),
+                    BuiltInArgument::Index(args.workspace.try_into()?),
+                    BuiltInArgument::Layout(built_in_layout(args.value)),
+                ])?,
+            )
+            .await?;
         }
         SubCommand::NamedWorkspaceLayout(args) => {
-            send_message(&SocketMessage::NamedWorkspaceLayout(
-                args.workspace,
-                args.value,
-            ))?;
+            invoke_action(
+                BuiltInActionId::SetNamedWorkspaceLayout,
+                built_in_arguments([
+                    BuiltInArgument::Name(built_in_text(args.workspace)?),
+                    BuiltInArgument::Layout(built_in_layout(args.value)),
+                ])?,
+            )
+            .await?;
         }
         SubCommand::WorkspaceCustomLayout(args) => {
-            send_message(&SocketMessage::WorkspaceLayoutCustom(
-                args.monitor,
-                args.workspace,
-                args.path,
-            ))?;
+            invoke_action(
+                BuiltInActionId::SetWorkspaceCustomLayout,
+                built_in_arguments([
+                    BuiltInArgument::Monitor(args.monitor.try_into()?),
+                    BuiltInArgument::Index(args.workspace.try_into()?),
+                    BuiltInArgument::Path(built_in_path(&args.path)?),
+                ])?,
+            )
+            .await?;
         }
         SubCommand::NamedWorkspaceCustomLayout(args) => {
-            send_message(&SocketMessage::NamedWorkspaceLayoutCustom(
-                args.workspace,
-                args.path,
-            ))?;
+            invoke_action(
+                BuiltInActionId::SetNamedWorkspaceCustomLayout,
+                built_in_arguments([
+                    BuiltInArgument::Name(built_in_text(args.workspace)?),
+                    BuiltInArgument::Path(built_in_path(&args.path)?),
+                ])?,
+            )
+            .await?;
         }
         SubCommand::WorkspaceLayoutRule(args) => {
-            send_message(&SocketMessage::WorkspaceLayoutRule(
-                args.monitor,
-                args.workspace,
-                args.at_container_count,
-                args.layout,
-            ))?;
+            invoke_action(
+                BuiltInActionId::AddWorkspaceLayoutRule,
+                built_in_arguments([
+                    BuiltInArgument::Monitor(args.monitor.try_into()?),
+                    BuiltInArgument::Index(args.workspace.try_into()?),
+                    BuiltInArgument::AtCount(args.at_container_count.try_into()?),
+                    BuiltInArgument::Layout(built_in_layout(args.layout)),
+                ])?,
+            )
+            .await?;
         }
         SubCommand::NamedWorkspaceLayoutRule(args) => {
-            send_message(&SocketMessage::NamedWorkspaceLayoutRule(
-                args.workspace,
-                args.at_container_count,
-                args.layout,
-            ))?;
+            invoke_action(
+                BuiltInActionId::AddNamedWorkspaceLayoutRule,
+                built_in_arguments([
+                    BuiltInArgument::Name(built_in_text(args.workspace)?),
+                    BuiltInArgument::AtCount(args.at_container_count.try_into()?),
+                    BuiltInArgument::Layout(built_in_layout(args.layout)),
+                ])?,
+            )
+            .await?;
         }
         SubCommand::WorkspaceCustomLayoutRule(args) => {
-            send_message(&SocketMessage::WorkspaceLayoutCustomRule(
-                args.monitor,
-                args.workspace,
-                args.at_container_count,
-                args.path,
-            ))?;
+            invoke_action(
+                BuiltInActionId::AddWorkspaceCustomLayoutRule,
+                built_in_arguments([
+                    BuiltInArgument::Monitor(args.monitor.try_into()?),
+                    BuiltInArgument::Index(args.workspace.try_into()?),
+                    BuiltInArgument::AtCount(args.at_container_count.try_into()?),
+                    BuiltInArgument::Path(built_in_path(&args.path)?),
+                ])?,
+            )
+            .await?;
         }
         SubCommand::NamedWorkspaceCustomLayoutRule(args) => {
-            send_message(&SocketMessage::NamedWorkspaceLayoutCustomRule(
-                args.workspace,
-                args.at_container_count,
-                args.path,
-            ))?;
+            invoke_action(
+                BuiltInActionId::AddNamedWorkspaceCustomLayoutRule,
+                built_in_arguments([
+                    BuiltInArgument::Name(built_in_text(args.workspace)?),
+                    BuiltInArgument::AtCount(args.at_container_count.try_into()?),
+                    BuiltInArgument::Path(built_in_path(&args.path)?),
+                ])?,
+            )
+            .await?;
         }
         SubCommand::ClearWorkspaceLayoutRules(args) => {
-            send_message(&SocketMessage::ClearWorkspaceLayoutRules(
-                args.monitor,
-                args.workspace,
-            ))?;
+            invoke_action(
+                BuiltInActionId::ClearWorkspaceLayoutRules,
+                built_in_arguments([
+                    BuiltInArgument::Monitor(args.monitor.try_into()?),
+                    BuiltInArgument::Index(args.workspace.try_into()?),
+                ])?,
+            )
+            .await?;
         }
         SubCommand::ClearNamedWorkspaceLayoutRules(args) => {
-            send_message(&SocketMessage::ClearNamedWorkspaceLayoutRules(
-                args.workspace,
-            ))?;
+            invoke_action(
+                BuiltInActionId::ClearNamedWorkspaceLayoutRules,
+                built_in_arguments([BuiltInArgument::Name(built_in_text(args.workspace)?)])?,
+            )
+            .await?;
         }
         SubCommand::WorkspaceTiling(args) => {
-            send_message(&SocketMessage::WorkspaceTiling(
-                args.monitor,
-                args.workspace,
-                args.value.into(),
-            ))?;
+            invoke_action(
+                BuiltInActionId::SetWorkspaceTiling,
+                built_in_arguments([
+                    BuiltInArgument::Monitor(args.monitor.try_into()?),
+                    BuiltInArgument::Index(args.workspace.try_into()?),
+                    BuiltInArgument::Enabled(args.value.into()),
+                ])?,
+            )
+            .await?;
         }
         SubCommand::NamedWorkspaceTiling(args) => {
-            send_message(&SocketMessage::NamedWorkspaceTiling(
-                args.workspace,
-                args.value.into(),
-            ))?;
+            invoke_action(
+                BuiltInActionId::SetNamedWorkspaceTiling,
+                built_in_arguments([
+                    BuiltInArgument::Name(built_in_text(args.workspace)?),
+                    BuiltInArgument::Enabled(args.value.into()),
+                ])?,
+            )
+            .await?;
         }
         SubCommand::Start(args) => {
             if args.ahk {
@@ -2930,7 +3110,7 @@ if (Get-Command Get-CimInstance -ErrorAction SilentlyContinue) {
         SubCommand::SessionFloatRule => {
             invoke_action(
                 BuiltInActionId::AddSessionFloatRule,
-                ActionArguments::default(),
+                BuiltInArguments::default(),
             )
             .await?;
         }
@@ -2940,7 +3120,7 @@ if (Get-Command Get-CimInstance -ErrorAction SilentlyContinue) {
         SubCommand::ClearSessionFloatRules => {
             invoke_action(
                 BuiltInActionId::ClearSessionFloatRules,
-                ActionArguments::default(),
+                BuiltInArguments::default(),
             )
             .await?;
         }
@@ -2995,39 +3175,72 @@ if (Get-Command Get-CimInstance -ErrorAction SilentlyContinue) {
         SubCommand::EnforceWorkspaceRules => {
             invoke_action(
                 BuiltInActionId::EnforceWorkspaceRules,
-                ActionArguments::default(),
+                BuiltInArguments::default(),
             )
             .await?;
         }
         SubCommand::Stack(args) => {
-            send_message(&SocketMessage::StackWindow(args.operation_direction))?;
+            invoke_action(
+                BuiltInActionId::StackWindow,
+                built_in_arguments([BuiltInArgument::Direction(built_in_direction(
+                    args.operation_direction,
+                ))])?,
+            )
+            .await?;
         }
         SubCommand::StackAll => {
-            invoke_action(BuiltInActionId::StackAll, ActionArguments::default()).await?;
+            invoke_action(BuiltInActionId::StackAll, BuiltInArguments::default()).await?;
         }
         SubCommand::Unstack => {
-            invoke_action(BuiltInActionId::UnstackWindow, ActionArguments::default()).await?;
+            invoke_action(BuiltInActionId::UnstackWindow, focused_window_arguments()?).await?;
         }
         SubCommand::UnstackAll => {
-            invoke_action(BuiltInActionId::UnstackAll, ActionArguments::default()).await?;
+            invoke_action(BuiltInActionId::UnstackAll, BuiltInArguments::default()).await?;
         }
         SubCommand::FocusStackWindow(args) => {
-            send_message(&SocketMessage::FocusStackWindow(args.target))?;
+            invoke_action(
+                BuiltInActionId::FocusStackWindow,
+                built_in_arguments([BuiltInArgument::Index(args.target.try_into()?)])?,
+            )
+            .await?;
         }
         SubCommand::CycleStack(args) => {
-            send_message(&SocketMessage::CycleStack(args.cycle_direction))?;
+            invoke_action(
+                BuiltInActionId::CycleStack,
+                built_in_arguments([BuiltInArgument::Cycle(built_in_cycle(args.cycle_direction))])?,
+            )
+            .await?;
         }
         SubCommand::CycleStackIndex(args) => {
-            send_message(&SocketMessage::CycleStackIndex(args.cycle_direction))?;
+            invoke_action(
+                BuiltInActionId::CycleStackIndex,
+                built_in_arguments([BuiltInArgument::Cycle(built_in_cycle(args.cycle_direction))])?,
+            )
+            .await?;
         }
         SubCommand::ChangeLayout(args) => {
-            send_message(&SocketMessage::ChangeLayout(args.default_layout))?;
+            invoke_action(
+                BuiltInActionId::SetWorkspaceLayout,
+                built_in_arguments([
+                    BuiltInArgument::Workspace(BuiltInSelector::FocusedAtExecution),
+                    BuiltInArgument::Layout(built_in_layout(args.default_layout)),
+                ])?,
+            )
+            .await?;
         }
         SubCommand::CycleLayout(args) => {
-            send_message(&SocketMessage::CycleLayout(args.cycle_direction))?;
+            invoke_action(
+                BuiltInActionId::CycleLayout,
+                built_in_arguments([BuiltInArgument::Cycle(built_in_cycle(args.cycle_direction))])?,
+            )
+            .await?;
         }
         SubCommand::ScrollingLayoutColumns(args) => {
-            send_message(&SocketMessage::ScrollingLayoutColumns(args.count))?;
+            invoke_action(
+                BuiltInActionId::SetScrollingColumns,
+                built_in_arguments([BuiltInArgument::Columns(built_in_columns(args.count)?)])?,
+            )
+            .await?;
         }
         SubCommand::LayoutRatios(args) => {
             if args.columns.is_none() && args.rows.is_none() {
@@ -3035,70 +3248,123 @@ if (Get-Command Get-CimInstance -ErrorAction SilentlyContinue) {
                     "No ratios provided, nothing to change. Use --columns or --rows to specify ratios."
                 );
             } else {
-                send_message(&SocketMessage::LayoutRatios(args.columns, args.rows))?;
+                let mut arguments = Vec::with_capacity(2);
+                if let Some(columns) = args.columns {
+                    arguments.push(BuiltInArgument::ColumnRatios(BuiltInRatios::new(columns)?));
+                }
+                if let Some(rows) = args.rows {
+                    arguments.push(BuiltInArgument::RowRatios(BuiltInRatios::new(rows)?));
+                }
+                invoke_action(
+                    BuiltInActionId::SetLayoutRatios,
+                    BuiltInArguments::new(arguments)?,
+                )
+                .await?;
             }
         }
         SubCommand::LoadCustomLayout(args) => {
-            send_message(&SocketMessage::ChangeLayoutCustom(args.path))?;
+            invoke_action(
+                BuiltInActionId::SetCustomLayout,
+                built_in_arguments([BuiltInArgument::Path(built_in_path(&args.path)?)])?,
+            )
+            .await?;
         }
         SubCommand::FlipLayout(args) => {
-            send_message(&SocketMessage::FlipLayout(args.axis))?;
+            invoke_action(
+                BuiltInActionId::FlipLayout,
+                built_in_arguments([BuiltInArgument::Axis(built_in_axis(args.axis))])?,
+            )
+            .await?;
         }
         SubCommand::FocusMonitor(args) => {
-            send_message(&SocketMessage::FocusMonitorNumber(args.target))?;
+            invoke_action(
+                BuiltInActionId::FocusMonitor,
+                built_in_arguments([BuiltInArgument::Index(args.target.try_into()?)])?,
+            )
+            .await?;
         }
         SubCommand::FocusMonitorAtCursor => {
             invoke_action(
                 BuiltInActionId::FocusMonitorAtCursor,
-                ActionArguments::default(),
+                BuiltInArguments::default(),
             )
             .await?;
         }
         SubCommand::FocusLastWorkspace => {
             invoke_action(
                 BuiltInActionId::FocusLastWorkspace,
-                ActionArguments::default(),
+                BuiltInArguments::default(),
             )
             .await?;
         }
         SubCommand::FocusWorkspace(args) => {
-            send_message(&SocketMessage::FocusWorkspaceNumber(args.target))?;
+            invoke_action(
+                BuiltInActionId::FocusWorkspace,
+                built_in_arguments([BuiltInArgument::Index(args.target.try_into()?)])?,
+            )
+            .await?;
         }
         SubCommand::FocusWorkspaces(args) => {
-            send_message(&SocketMessage::FocusWorkspaceNumbers(args.target))?;
+            invoke_action(
+                BuiltInActionId::FocusWorkspaceOnAllMonitors,
+                built_in_arguments([BuiltInArgument::Index(args.target.try_into()?)])?,
+            )
+            .await?;
         }
         SubCommand::FocusMonitorWorkspace(args) => {
-            send_message(&SocketMessage::FocusMonitorWorkspaceNumber(
-                args.target_monitor,
-                args.target_workspace,
-            ))?;
+            invoke_action(
+                BuiltInActionId::FocusMonitorWorkspace,
+                built_in_arguments([
+                    BuiltInArgument::Monitor(args.target_monitor.try_into()?),
+                    BuiltInArgument::Index(args.target_workspace.try_into()?),
+                ])?,
+            )
+            .await?;
         }
         SubCommand::FocusNamedWorkspace(args) => {
-            send_message(&SocketMessage::FocusNamedWorkspace(args.workspace))?;
+            invoke_action(
+                BuiltInActionId::FocusNamedWorkspace,
+                built_in_arguments([BuiltInArgument::Name(built_in_text(args.workspace)?)])?,
+            )
+            .await?;
         }
         SubCommand::CloseWorkspace => {
-            invoke_action(BuiltInActionId::CloseWorkspace, ActionArguments::default()).await?;
+            invoke_action(BuiltInActionId::CloseWorkspace, BuiltInArguments::default()).await?;
         }
         SubCommand::CycleMonitor(args) => {
-            send_message(&SocketMessage::CycleFocusMonitor(args.cycle_direction))?;
+            invoke_action(
+                BuiltInActionId::CycleFocusMonitor,
+                built_in_arguments([BuiltInArgument::Cycle(built_in_cycle(args.cycle_direction))])?,
+            )
+            .await?;
         }
         SubCommand::CycleWorkspace(args) => {
-            send_message(&SocketMessage::CycleFocusWorkspace(args.cycle_direction))?;
+            invoke_action(
+                BuiltInActionId::CycleFocusWorkspace,
+                built_in_arguments([BuiltInArgument::Cycle(built_in_cycle(args.cycle_direction))])?,
+            )
+            .await?;
         }
         SubCommand::CycleEmptyWorkspace(args) => {
-            send_message(&SocketMessage::CycleFocusEmptyWorkspace(
-                args.cycle_direction,
-            ))?;
+            invoke_action(
+                BuiltInActionId::CycleFocusEmptyWorkspace,
+                built_in_arguments([BuiltInArgument::Cycle(built_in_cycle(args.cycle_direction))])?,
+            )
+            .await?;
         }
         SubCommand::NewWorkspace => {
-            invoke_action(BuiltInActionId::NewWorkspace, ActionArguments::default()).await?;
+            invoke_action(BuiltInActionId::NewWorkspace, BuiltInArguments::default()).await?;
         }
         SubCommand::WorkspaceName(name) => {
-            send_message(&SocketMessage::WorkspaceName(
-                name.monitor,
-                name.workspace,
-                name.value,
-            ))?;
+            invoke_action(
+                BuiltInActionId::SetWorkspaceName,
+                built_in_arguments([
+                    BuiltInArgument::Monitor(name.monitor.try_into()?),
+                    BuiltInArgument::Index(name.workspace.try_into()?),
+                    BuiltInArgument::Name(built_in_text(name.value)?),
+                ])?,
+            )
+            .await?;
         }
         SubCommand::MonitorIndexPreference(args) => {
             send_message(&SocketMessage::MonitorIndexPreference(
@@ -3116,16 +3382,29 @@ if (Get-Command Get-CimInstance -ErrorAction SilentlyContinue) {
             ))?;
         }
         SubCommand::EnsureWorkspaces(workspaces) => {
-            send_message(&SocketMessage::EnsureWorkspaces(
-                workspaces.monitor,
-                workspaces.workspace_count,
-            ))?;
+            invoke_action(
+                BuiltInActionId::EnsureWorkspaces,
+                built_in_arguments([
+                    BuiltInArgument::Monitor(workspaces.monitor.try_into()?),
+                    BuiltInArgument::Count(workspaces.workspace_count.try_into()?),
+                ])?,
+            )
+            .await?;
         }
         SubCommand::EnsureNamedWorkspaces(args) => {
-            send_message(&SocketMessage::EnsureNamedWorkspaces(
-                args.monitor,
-                args.names,
-            ))?;
+            let names = args
+                .names
+                .into_iter()
+                .map(built_in_text)
+                .collect::<eyre::Result<Vec<_>>>()?;
+            invoke_action(
+                BuiltInActionId::EnsureNamedWorkspaces,
+                built_in_arguments([
+                    BuiltInArgument::Monitor(args.monitor.try_into()?),
+                    BuiltInArgument::Names(BuiltInNames::new(names)?),
+                ])?,
+            )
+            .await?;
         }
         SubCommand::State => {
             print_query(&SocketMessage::State);
@@ -3172,10 +3451,14 @@ if (Get-Command Get-CimInstance -ErrorAction SilentlyContinue) {
             send_message(&SocketMessage::ResizeWindowAxis(args.axis, args.sizing))?;
         }
         SubCommand::FocusFollowsMouse(args) => {
-            send_message(&SocketMessage::FocusFollowsMouse(
-                args.implementation,
-                args.boolean_state.into(),
-            ))?;
+            invoke_action(
+                BuiltInActionId::SetFocusFollowsMouse,
+                built_in_arguments([
+                    BuiltInArgument::Implementation(built_in_implementation(args.implementation)),
+                    BuiltInArgument::Enabled(args.boolean_state.into()),
+                ])?,
+            )
+            .await?;
         }
         SubCommand::ReplaceConfiguration(args) => {
             send_message(&SocketMessage::ReplaceConfiguration(args.path))?;
@@ -3217,22 +3500,33 @@ if (Get-Command Get-CimInstance -ErrorAction SilentlyContinue) {
                 }
             }
 
-            send_message(&SocketMessage::RemoveTitleBar(target.identifier, target.id))?;
+            invoke_action(
+                BuiltInActionId::RemoveTitleBar,
+                built_in_arguments([
+                    BuiltInArgument::Identifier(built_in_identifier(target.identifier)),
+                    BuiltInArgument::Exe(built_in_text(target.id)?),
+                ])?,
+            )
+            .await?;
         }
         SubCommand::ToggleTitleBars => {
-            invoke_action(BuiltInActionId::ToggleTitleBars, ActionArguments::default()).await?;
+            invoke_action(
+                BuiltInActionId::ToggleTitleBars,
+                BuiltInArguments::default(),
+            )
+            .await?;
         }
         SubCommand::Manage => {
             invoke_action(
                 BuiltInActionId::ManageFocusedWindow,
-                ActionArguments::default(),
+                BuiltInArguments::default(),
             )
             .await?;
         }
         SubCommand::Unmanage => {
             invoke_action(
                 BuiltInActionId::UnmanageFocusedWindow,
-                ActionArguments::default(),
+                BuiltInArguments::default(),
             )
             .await?;
         }
@@ -3263,12 +3557,16 @@ if (Get-Command Get-CimInstance -ErrorAction SilentlyContinue) {
         SubCommand::ToggleMouseFollowsFocus => {
             invoke_action(
                 BuiltInActionId::ToggleMouseFollowsFocus,
-                ActionArguments::default(),
+                BuiltInArguments::default(),
             )
             .await?;
         }
         SubCommand::MouseFollowsFocus(args) => {
-            send_message(&SocketMessage::MouseFollowsFocus(args.boolean_state.into()))?;
+            invoke_action(
+                BuiltInActionId::SetMouseFollowsFocus,
+                built_in_arguments([BuiltInArgument::Enabled(args.boolean_state.into())])?,
+            )
+            .await?;
         }
         SubCommand::Border(args) => {
             send_message(&SocketMessage::Border(args.boolean_state.into()))?;
@@ -3333,67 +3631,87 @@ if (Get-Command Get-CimInstance -ErrorAction SilentlyContinue) {
         SubCommand::ToggleWindowContainerBehaviour => {
             invoke_action(
                 BuiltInActionId::ToggleWindowContainerBehaviour,
-                ActionArguments::default(),
+                BuiltInArguments::default(),
             )
             .await?;
         }
         SubCommand::ToggleFloatOverride => {
             invoke_action(
                 BuiltInActionId::ToggleFloatOverride,
-                ActionArguments::default(),
+                BuiltInArguments::default(),
             )
             .await?;
         }
         SubCommand::ToggleWorkspaceWindowContainerBehaviour => {
             invoke_action(
                 BuiltInActionId::ToggleWorkspaceWindowContainerBehaviour,
-                ActionArguments::default(),
+                BuiltInArguments::default(),
             )
             .await?;
         }
         SubCommand::ToggleWorkspaceFloatOverride => {
             invoke_action(
                 BuiltInActionId::ToggleWorkspaceFloatOverride,
-                ActionArguments::default(),
+                BuiltInArguments::default(),
             )
             .await?;
         }
         SubCommand::ToggleWorkspaceLayer => {
             invoke_action(
                 BuiltInActionId::ToggleWorkspaceLayer,
-                ActionArguments::default(),
+                BuiltInArguments::default(),
             )
             .await?;
         }
         SubCommand::WindowHidingBehaviour(args) => {
-            send_message(&SocketMessage::WindowHidingBehaviour(args.hiding_behaviour))?;
+            invoke_action(
+                BuiltInActionId::SetWindowHidingBehaviour,
+                built_in_arguments([BuiltInArgument::HidingBehaviour(built_in_hiding_behaviour(
+                    args.hiding_behaviour,
+                ))])?,
+            )
+            .await?;
         }
         SubCommand::CrossMonitorMoveBehaviour(args) => {
-            send_message(&SocketMessage::CrossMonitorMoveBehaviour(
-                args.move_behaviour,
-            ))?;
+            invoke_action(
+                BuiltInActionId::SetCrossMonitorMoveBehaviour,
+                built_in_arguments([BuiltInArgument::MoveBehaviour(built_in_move_behaviour(
+                    args.move_behaviour,
+                ))])?,
+            )
+            .await?;
         }
         SubCommand::ToggleCrossMonitorMoveBehaviour => {
             invoke_action(
                 BuiltInActionId::ToggleCrossMonitorMoveBehaviour,
-                ActionArguments::default(),
+                BuiltInArguments::default(),
             )
             .await?;
         }
         SubCommand::MonocleFocusBehaviour(args) => {
-            send_message(&SocketMessage::MonocleFocusBehaviour(args.behaviour))?;
+            invoke_action(
+                BuiltInActionId::SetMonocleFocusBehaviour,
+                built_in_arguments([BuiltInArgument::MonocleBehaviour(
+                    built_in_monocle_behaviour(args.behaviour),
+                )])?,
+            )
+            .await?;
         }
         SubCommand::ToggleMonocleFocusBehaviour => {
             invoke_action(
                 BuiltInActionId::ToggleMonocleFocusBehaviour,
-                ActionArguments::default(),
+                BuiltInArguments::default(),
             )
             .await?;
         }
         SubCommand::UnmanagedWindowOperationBehaviour(args) => {
-            send_message(&SocketMessage::UnmanagedWindowOperationBehaviour(
-                args.operation_behaviour,
-            ))?;
+            invoke_action(
+                BuiltInActionId::SetUnmanagedWindowOperationBehaviour,
+                built_in_arguments([BuiltInArgument::OperationBehaviour(
+                    built_in_operation_behaviour(args.operation_behaviour),
+                )])?,
+            )
+            .await?;
         }
         SubCommand::AhkAppSpecificConfiguration(args) => {
             let content = std::fs::read_to_string(args.path)?;
