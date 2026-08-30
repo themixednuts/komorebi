@@ -1,5 +1,6 @@
 use std::io;
 
+use komorebi_protocol::ActionInvocationCodecError;
 use komorebi_protocol::BootstrapCodecError;
 use komorebi_protocol::FrameError;
 use komorebi_protocol::FrameKind;
@@ -45,6 +46,12 @@ pub enum TransportError {
         expected: FrameKind,
         actual: FrameKind,
     },
+    #[error("requests must use a client-initiated stream, received {0:?}")]
+    RequestMustUseClientStream(StreamId),
+    #[error("unsupported request frame kind {0:?}")]
+    UnsupportedRequestFrame(FrameKind),
+    #[error(transparent)]
+    ActionInvocation(#[from] ActionInvocationCodecError),
     #[error(transparent)]
     Bootstrap(#[from] BootstrapCodecError),
     #[error(transparent)]

@@ -50,6 +50,7 @@ pub use command::EntityId;
 pub use command::EntityKind;
 pub use command::EntityReference;
 pub use command::FixedDecimal;
+pub use command::INVOKE_ACTION_FRAME_KIND;
 pub use command::OfferRef;
 pub use command::ParameterId;
 pub use command::Revision;

@@ -5,6 +5,10 @@ mod contract;
 #[cfg(test)]
 mod tests;
 
+use crate::FrameKind;
+
+pub const INVOKE_ACTION_FRAME_KIND: FrameKind = FrameKind::new(16);
+
 pub use argument::ActionArgument;
 pub use argument::ActionArguments;
 pub use argument::ArgumentError;

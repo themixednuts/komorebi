@@ -1,9 +1,13 @@
+use komorebi_protocol::ActionInvocation;
+use komorebi_protocol::ActionInvocationCodec;
 use komorebi_protocol::AuthoritySummary;
 use komorebi_protocol::BootstrapCodec;
 use komorebi_protocol::ConnectionId;
 use komorebi_protocol::HELLO_FRAME_KIND;
+use komorebi_protocol::INVOKE_ACTION_FRAME_KIND;
 use komorebi_protocol::ManagerEpoch;
 use komorebi_protocol::NegotiatedProtocol;
+use komorebi_protocol::PrincipalId;
 use komorebi_protocol::ProtocolNegotiator;
 use komorebi_protocol::ServerSupport;
 use komorebi_protocol::StreamId;
@@ -135,7 +139,7 @@ impl PendingProtocolSession {
             negotiated.clone(),
             self.context.manager_epoch,
             self.connection_id,
-            self.context.authority,
+            self.context.authority.clone(),
         );
         let payload = BootstrapCodec::encode_welcome(&welcome)?;
         connection.queue_frame(WELCOME_FRAME_KIND, StreamId::Control, payload)?;
@@ -146,6 +150,10 @@ impl PendingProtocolSession {
                 negotiated,
                 manager_epoch: self.context.manager_epoch,
                 connection_id: self.connection_id,
+                authority: SessionAuthority {
+                    principal: peer.principal_id(),
+                    capabilities: self.context.authority,
+                },
             },
         )))
     }
@@ -161,9 +169,90 @@ pub struct EstablishedSession {
     negotiated: NegotiatedProtocol,
     manager_epoch: ManagerEpoch,
     connection_id: ConnectionId,
+    authority: SessionAuthority,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub enum SessionRequest {
+    Invoke(ActionInvocation),
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct AuthenticatedRequest {
+    authority: SessionAuthority,
+    stream_id: StreamId,
+    request: SessionRequest,
+}
+
+impl AuthenticatedRequest {
+    #[must_use]
+    pub const fn authority(&self) -> &SessionAuthority {
+        &self.authority
+    }
+
+    #[must_use]
+    pub const fn stream_id(&self) -> StreamId {
+        self.stream_id
+    }
+
+    #[must_use]
+    pub const fn request(&self) -> &SessionRequest {
+        &self.request
+    }
+
+    #[must_use]
+    pub fn into_request(self) -> SessionRequest {
+        self.request
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SessionAuthority {
+    principal: PrincipalId,
+    capabilities: AuthoritySummary,
+}
+
+impl SessionAuthority {
+    #[must_use]
+    pub const fn principal(&self) -> PrincipalId {
+        self.principal
+    }
+
+    #[must_use]
+    pub const fn capabilities(&self) -> &AuthoritySummary {
+        &self.capabilities
+    }
 }
 
 impl EstablishedSession {
+    /// Receives and validates one authenticated client request.
+    ///
+    /// Pipe I/O and untrusted decoding end here. The returned value owns all
+    /// data needed to cross a bounded channel to the manager state owner.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TransportError`] for framing, sequence, stream ownership,
+    /// unsupported kinds, or malformed request payloads.
+    pub async fn receive_request(&mut self) -> Result<AuthenticatedRequest, TransportError> {
+        let frame = self.connection.receive_frame().await?;
+        let stream_id = frame.header().stream_id();
+        if !matches!(stream_id, StreamId::ClientInitiated(_)) {
+            return Err(TransportError::RequestMustUseClientStream(stream_id));
+        }
+        let request = match frame.header().kind() {
+            INVOKE_ACTION_FRAME_KIND => {
+                SessionRequest::Invoke(ActionInvocationCodec::decode(frame.payload())?)
+            }
+            kind => return Err(TransportError::UnsupportedRequestFrame(kind)),
+        };
+        Ok(AuthenticatedRequest {
+            authority: self.authority.clone(),
+            stream_id,
+            request,
+        })
+    }
+
     #[must_use]
     pub const fn peer(&self) -> &PeerIdentity {
         self.connection.peer()
@@ -185,6 +274,11 @@ impl EstablishedSession {
     }
 
     #[must_use]
+    pub const fn authority(&self) -> &SessionAuthority {
+        &self.authority
+    }
+
+    #[must_use]
     pub fn into_connection(self) -> ProtocolConnection {
         self.connection
     }
@@ -193,17 +287,33 @@ impl EstablishedSession {
 #[cfg(test)]
 mod tests {
     use std::num::NonZeroU16;
+    use std::num::NonZeroU32;
+    use std::num::NonZeroU64;
 
+    use komorebi_protocol::ActionArguments;
+    use komorebi_protocol::ActionContractFingerprint;
+    use komorebi_protocol::ActionId;
+    use komorebi_protocol::ActionInvocation;
+    use komorebi_protocol::ActionInvocationCodec;
+    use komorebi_protocol::ActionKey;
+    use komorebi_protocol::ActionSchemaVersion;
     use komorebi_protocol::CatalogSchemaVersion;
+    use komorebi_protocol::CatalogStamp;
     use komorebi_protocol::FeatureSet;
     use komorebi_protocol::Frame;
     use komorebi_protocol::FrameHeader;
     use komorebi_protocol::HEADER_BYTES;
+    use komorebi_protocol::InvocationId;
+    use komorebi_protocol::InvocationNamespaceId;
+    use komorebi_protocol::InvocationSequence;
+    use komorebi_protocol::OfferRef;
     use komorebi_protocol::ProtocolMajor;
     use komorebi_protocol::ProtocolMinor;
     use komorebi_protocol::ProtocolPreface;
     use komorebi_protocol::ProtocolVersion;
+    use komorebi_protocol::Revision;
     use komorebi_protocol::SessionLimits;
+    use komorebi_protocol::StateStamp;
     use komorebi_protocol::VersionRange;
     use komorebi_protocol::VersionRanges;
     use tokio::io::AsyncReadExt;
@@ -270,6 +380,42 @@ mod tests {
         Ok(Frame::from_received_parts(header, payload)?)
     }
 
+    fn invocation(epoch: ManagerEpoch) -> Result<ActionInvocation, Box<dyn std::error::Error>> {
+        let revision = Revision::try_from(1)?;
+        Ok(ActionInvocation::new(
+            InvocationId::new(
+                InvocationNamespaceId::new([2; 16])?,
+                InvocationSequence::new(NonZeroU64::MIN),
+            ),
+            OfferRef::new(
+                ActionKey::new(
+                    ActionId::parse("focus-window")?,
+                    ActionSchemaVersion::new(NonZeroU16::MIN),
+                ),
+                ActionContractFingerprint::new([3; 32]),
+                CatalogStamp::new(epoch, revision, revision, revision),
+            ),
+            StateStamp::new(epoch, revision),
+            ActionArguments::default(),
+            None,
+        ))
+    }
+
+    async fn send_invocation(
+        client: &mut tokio::net::windows::named_pipe::NamedPipeClient,
+        invocation: &ActionInvocation,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let frame = Frame::new(
+            INVOKE_ACTION_FRAME_KIND,
+            StreamId::client_initiated(NonZeroU32::MIN)?,
+            komorebi_protocol::DirectionSequence::try_from(2)?,
+            ActionInvocationCodec::encode(invocation)?,
+        )?;
+        client.write_all(&frame.header().encode()).await?;
+        client.write_all(frame.payload()).await?;
+        Ok(())
+    }
+
     #[tokio::test(flavor = "current_thread")]
     #[serial_test::serial]
     async fn handshake_establishes_or_rejects_without_blocking_the_listener()
@@ -285,7 +431,7 @@ mod tests {
         let rejected_pending = server.accept().await?;
         send_hello(&mut rejected_client, &hello(1)?).await?;
 
-        let SessionAcceptance::Established(established) = accepted_pending.negotiate().await?
+        let SessionAcceptance::Established(mut established) = accepted_pending.negotiate().await?
         else {
             return Err("matching client was rejected".into());
         };
@@ -295,6 +441,18 @@ mod tests {
         assert_eq!(
             BootstrapCodec::decode_welcome(welcome.payload())?.connection_id(),
             established.connection_id()
+        );
+        let expected_invocation = invocation(established.manager_epoch())?;
+        send_invocation(&mut accepted_client, &expected_invocation).await?;
+        let request = established.receive_request().await?;
+        assert_eq!(
+            request.authority().principal(),
+            established.peer().principal_id()
+        );
+        assert!(matches!(request.stream_id(), StreamId::ClientInitiated(_)));
+        assert_eq!(
+            request.into_request(),
+            SessionRequest::Invoke(expected_invocation)
         );
 
         assert!(matches!(
