@@ -1,6 +1,7 @@
 use std::io;
 
 use komorebi_protocol::FrameError;
+use komorebi_protocol::SequenceError;
 use thiserror::Error;
 
 use crate::LogonSid;
@@ -34,6 +35,8 @@ pub enum TransportError {
     WriteInProgress,
     #[error(transparent)]
     Frame(#[from] FrameError),
+    #[error(transparent)]
+    Sequence(#[from] SequenceError),
     #[error(transparent)]
     Io(#[from] io::Error),
 }

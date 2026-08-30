@@ -73,7 +73,7 @@ impl FrameHeader {
             return Err(FrameError::UnknownFlags(flags));
         }
         let stream_id = StreamId::decode(u32::from_be_bytes(field(bytes, 8)?));
-        let sequence = DirectionSequence::new(u64::from_be_bytes(field(bytes, 12)?));
+        let sequence = DirectionSequence::try_from(u64::from_be_bytes(field(bytes, 12)?))?;
         let reserved = u32::from_be_bytes(field(bytes, 20)?);
         if reserved != 0 {
             return Err(FrameError::ReservedField(reserved));
@@ -205,13 +205,13 @@ mod tests {
             payload_len in 0_usize..=MAX_FRAME_PAYLOAD_BYTES,
             kind in any::<u16>(),
             stream in any::<u32>(),
-            sequence in any::<u64>(),
+            sequence in 1_u64..=u64::MAX,
         ) {
             let header = FrameHeader::for_payload(
                 payload_len,
                 FrameKind::new(kind),
                 StreamId::decode(stream),
-                DirectionSequence::new(sequence),
+                DirectionSequence::try_from(sequence)?,
             )?;
             prop_assert_eq!(FrameHeader::decode(&header.encode())?, header);
         }
@@ -223,7 +223,7 @@ mod tests {
         let frame = Frame::new(
             FrameKind::new(7),
             StreamId::client_initiated(value)?,
-            DirectionSequence::new(11),
+            DirectionSequence::try_from(11)?,
             vec![1, 2, 3],
         )?;
 
@@ -238,7 +238,7 @@ mod tests {
             4,
             FrameKind::new(1),
             StreamId::Control,
-            DirectionSequence::new(0),
+            DirectionSequence::try_from(1)?,
         )?;
         assert_eq!(
             Frame::from_received_parts(header, vec![1, 2, 3]),
@@ -260,10 +260,19 @@ mod tests {
         );
 
         let mut reserved = [0; HEADER_BYTES];
+        reserved[19] = 1;
         reserved[23] = 1;
         assert_eq!(
             FrameHeader::decode(&reserved),
             Err(FrameError::ReservedField(1))
+        );
+    }
+
+    #[test]
+    fn version_one_rejects_zero_direction_sequence() {
+        assert_eq!(
+            FrameHeader::decode(&[0; HEADER_BYTES]),
+            Err(FrameError::ZeroDirectionSequence)
         );
     }
 

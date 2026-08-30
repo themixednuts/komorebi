@@ -1,4 +1,5 @@
 use std::num::NonZeroU32;
+use std::num::NonZeroU64;
 
 use crate::FrameError;
 
@@ -44,17 +45,27 @@ impl FrameKind {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
-pub struct DirectionSequence(u64);
+pub struct DirectionSequence(NonZeroU64);
 
 impl DirectionSequence {
     #[must_use]
-    pub const fn new(value: u64) -> Self {
+    pub const fn new(value: NonZeroU64) -> Self {
         Self(value)
     }
 
     #[must_use]
     pub const fn get(self) -> u64 {
-        self.0
+        self.0.get()
+    }
+}
+
+impl TryFrom<u64> for DirectionSequence {
+    type Error = FrameError;
+
+    fn try_from(value: u64) -> Result<Self, Self::Error> {
+        NonZeroU64::new(value)
+            .map(Self)
+            .ok_or(FrameError::ZeroDirectionSequence)
     }
 }
 

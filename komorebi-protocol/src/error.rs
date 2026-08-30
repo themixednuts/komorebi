@@ -19,6 +19,8 @@ pub enum FrameError {
     UnknownFlags(u16),
     #[error("frame reserved field must be zero, received {0:#010x}")]
     ReservedField(u32),
+    #[error("direction sequence numbers begin at one")]
+    ZeroDirectionSequence,
     #[error("client-initiated stream ID must be odd and nonzero, received {0}")]
     InvalidClientStream(u32),
     #[error("server-initiated stream ID must be even and nonzero, received {0}")]

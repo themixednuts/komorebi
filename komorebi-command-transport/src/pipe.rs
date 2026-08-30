@@ -3,8 +3,13 @@ use std::mem;
 
 use komorebi_protocol::Frame;
 use komorebi_protocol::FrameHeader;
+use komorebi_protocol::FrameKind;
 use komorebi_protocol::HEADER_BYTES;
+use komorebi_protocol::InboundSequence;
+use komorebi_protocol::OutboundSequence;
 use komorebi_protocol::ProtocolPreface;
+use komorebi_protocol::SequenceError;
+use komorebi_protocol::StreamId;
 use tokio::io::AsyncReadExt;
 use tokio::io::AsyncWriteExt;
 use tokio::net::windows::named_pipe::NamedPipeServer;
@@ -41,7 +46,7 @@ impl CommandPipeListener {
         let endpoint = CommandPipeEndpoint::for_session(session_id);
         let logon_sid = LogonSid::current()?;
         let security = PipeSecurityDescriptor::for_logon(&logon_sid)?;
-        let pending = create_instance(&endpoint, &security, true)?;
+        let pending = create_instance(&endpoint, &security, InstanceOwnership::Claim)?;
         Ok(Self {
             endpoint,
             session_id,
@@ -66,7 +71,11 @@ impl CommandPipeListener {
             .connect()
             .await
             .map_err(|error| TransportError::io("ConnectNamedPipe", error))?;
-        let next = create_instance(&self.endpoint, &self.security, false)?;
+        let next = create_instance(
+            &self.endpoint,
+            &self.security,
+            InstanceOwnership::Additional,
+        )?;
         let connected = mem::replace(&mut self.pending, next);
         let peer = PeerIdentity::authenticate(&connected, &self.logon_sid, self.session_id)?;
         Ok(AuthenticatedPipe {
@@ -84,12 +93,12 @@ impl CommandPipeListener {
 fn create_instance(
     endpoint: &CommandPipeEndpoint,
     security: &PipeSecurityDescriptor,
-    first: bool,
+    ownership: InstanceOwnership,
 ) -> Result<NamedPipeServer, TransportError> {
     let mut attributes = security.attributes()?;
     let mut options = ServerOptions::new();
     options
-        .first_pipe_instance(first)
+        .first_pipe_instance(matches!(ownership, InstanceOwnership::Claim))
         .pipe_mode(PipeMode::Byte)
         .reject_remote_clients(true)
         .in_buffer_size(PIPE_BUFFER_BYTES)
@@ -104,6 +113,12 @@ fn create_instance(
         )
     }
     .map_err(|error| TransportError::io("CreateNamedPipeW", error))
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum InstanceOwnership {
+    Claim,
+    Additional,
 }
 
 pub struct AuthenticatedPipe {
@@ -128,8 +143,10 @@ impl AuthenticatedPipe {
             pipe: self.pipe,
             peer: self.peer,
             read: FrameReadState::default(),
+            inbound_sequence: InboundSequence::default(),
             write: None,
-            outbound_preface_pending: true,
+            outbound_sequence: OutboundSequence::default(),
+            outbound_preface: OutboundPreface::Pending,
         })
     }
 
@@ -143,8 +160,10 @@ pub struct ProtocolConnection {
     pipe: NamedPipeServer,
     peer: PeerIdentity,
     read: FrameReadState,
+    inbound_sequence: InboundSequence,
     write: Option<PendingWrite>,
-    outbound_preface_pending: bool,
+    outbound_sequence: OutboundSequence,
+    outbound_preface: OutboundPreface,
 }
 
 impl ProtocolConnection {
@@ -173,7 +192,9 @@ impl ProtocolConnection {
                         let payload = vec![0; header.payload_len()];
                         if payload.is_empty() {
                             *state = FrameReadState::default();
-                            return Ok(Frame::from_received_parts(header, payload)?);
+                            let frame = Frame::from_received_parts(header, payload)?;
+                            self.inbound_sequence.accept(frame.header().sequence())?;
+                            return Ok(frame);
                         }
                         *state = FrameReadState::Payload {
                             header,
@@ -192,26 +213,36 @@ impl ProtocolConnection {
                         let header = *header;
                         let payload = mem::take(bytes);
                         *state = FrameReadState::default();
-                        return Ok(Frame::from_received_parts(header, payload)?);
+                        let frame = Frame::from_received_parts(header, payload)?;
+                        self.inbound_sequence.accept(frame.header().sequence())?;
+                        return Ok(frame);
                     }
                 }
             }
         }
     }
 
-    /// Queues exactly one frame for a cancellation-safe flush.
+    /// Creates and queues exactly one correctly sequenced frame.
     ///
     /// # Errors
     ///
     /// Returns [`TransportError::WriteInProgress`] when a previous frame has
-    /// not finished flushing.
-    pub fn queue_frame(&mut self, frame: &Frame) -> Result<(), TransportError> {
+    /// not finished flushing, or a framing/sequence error at its boundary.
+    pub fn queue_frame(
+        &mut self,
+        kind: FrameKind,
+        stream_id: StreamId,
+        payload: impl Into<Box<[u8]>>,
+    ) -> Result<komorebi_protocol::DirectionSequence, TransportError> {
         if self.write.is_some() {
             return Err(TransportError::WriteInProgress);
         }
-        let preface = self
-            .outbound_preface_pending
-            .then(|| ProtocolPreface.encode());
+        let sequence = self
+            .outbound_sequence
+            .next()
+            .ok_or(SequenceError::Exhausted)?;
+        let frame = Frame::new(kind, stream_id, sequence, payload)?;
+        let preface = self.outbound_preface.take();
         let capacity =
             preface.as_ref().map_or(0, |bytes| bytes.len()) + HEADER_BYTES + frame.payload().len();
         let mut bytes = Vec::with_capacity(capacity);
@@ -221,8 +252,9 @@ impl ProtocolConnection {
         bytes.extend_from_slice(&frame.header().encode());
         bytes.extend_from_slice(frame.payload());
         self.write = Some(PendingWrite { bytes, written: 0 });
-        self.outbound_preface_pending = false;
-        Ok(())
+        let issued = self.outbound_sequence.issue()?;
+        debug_assert_eq!(issued, sequence);
+        Ok(sequence)
     }
 
     /// Flushes the queued frame and retains its offset if cancelled.
@@ -274,6 +306,24 @@ impl Default for FrameReadState {
 struct PendingWrite {
     bytes: Vec<u8>,
     written: usize,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum OutboundPreface {
+    Pending,
+    Sent,
+}
+
+impl OutboundPreface {
+    fn take(&mut self) -> Option<[u8; PREFACE_BYTES]> {
+        match self {
+            Self::Pending => {
+                *self = Self::Sent;
+                Some(ProtocolPreface.encode())
+            }
+            Self::Sent => None,
+        }
+    }
 }
 
 async fn read_complete(pipe: &mut NamedPipeServer, bytes: &mut [u8]) -> Result<(), TransportError> {
@@ -332,7 +382,7 @@ mod tests {
         let request = Frame::new(
             FrameKind::new(11),
             StreamId::client_initiated(NonZeroU32::MIN)?,
-            DirectionSequence::new(1),
+            DirectionSequence::try_from(1)?,
             &b"request"[..],
         )?;
         client.write_all(&ProtocolPreface.encode()).await?;
@@ -350,13 +400,25 @@ mod tests {
         client.write_all(request.payload()).await?;
         assert_eq!(protocol.receive_frame().await?, request);
 
+        client.write_all(&request_header).await?;
+        client.write_all(request.payload()).await?;
+        assert!(matches!(
+            protocol.receive_frame().await,
+            Err(TransportError::Sequence(
+                komorebi_protocol::SequenceError::Replay { .. }
+            ))
+        ));
+
+        let response_stream =
+            StreamId::server_initiated(NonZeroU32::new(2).ok_or(TransportError::MalformedToken)?)?;
+        let response_sequence =
+            protocol.queue_frame(FrameKind::new(12), response_stream, &b"response"[..])?;
         let response = Frame::new(
             FrameKind::new(12),
-            StreamId::server_initiated(NonZeroU32::new(2).ok_or(TransportError::MalformedToken)?)?,
-            DirectionSequence::new(1),
+            response_stream,
+            response_sequence,
             &b"response"[..],
         )?;
-        protocol.queue_frame(&response)?;
         protocol.flush_queued_frame().await?;
 
         let mut received = vec![0; PREFACE_BYTES + HEADER_BYTES + response.payload().len()];
