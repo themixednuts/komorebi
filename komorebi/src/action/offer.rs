@@ -11,7 +11,6 @@ use super::builtin::WorkspaceName;
 use super::definition::ActionDefinition;
 use super::definition::layout_name;
 use super::id::ActionId;
-use super::id::PrincipalId;
 use super::id::WindowId;
 use super::index::MonitorIndex;
 use super::index::WorkspaceIndex;
@@ -110,7 +109,6 @@ impl ActionGrants {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ActionAuthority {
-    pub principal: PrincipalId,
     pub grants: ActionGrants,
 }
 
@@ -236,7 +234,6 @@ mod tests {
 
     fn all_authority() -> ActionAuthority {
         ActionAuthority {
-            principal: PrincipalId::new(1),
             grants: ActionGrants::all(),
         }
     }

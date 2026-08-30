@@ -191,7 +191,6 @@ impl CatalogState {
         let availability = super::offer::offers(
             &self.snapshot,
             &super::offer::ActionAuthority {
-                principal: context.principal,
                 grants: context.grants.clone(),
             },
         )

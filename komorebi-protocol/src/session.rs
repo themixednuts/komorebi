@@ -7,6 +7,7 @@ mod negotiation;
 pub use authority::AuthorityCapabilityId;
 pub use authority::AuthoritySummary;
 pub use authority::AuthoritySummaryError;
+pub use authority::CommandCapability;
 pub use limits::AssemblyDeadlineMs;
 pub use limits::ChunkPayloadLimit;
 pub use limits::ControlPayloadLimit;

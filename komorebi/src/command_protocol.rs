@@ -41,7 +41,7 @@ impl CommandProtocol {
         let server = CommandProtocolServer::bind_current(
             manager_epoch,
             ServerSupport::v1(),
-            AuthoritySummary::default(),
+            AuthoritySummary::command_owner(),
         )?;
         tracing::info!(endpoint = ?server.endpoint(), "bound authenticated command protocol");
         let (control, control_owner) = CommandControlPlane::start(ledger_path).await?;

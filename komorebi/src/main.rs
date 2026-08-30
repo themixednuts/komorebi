@@ -278,21 +278,21 @@ async fn main() -> eyre::Result<()> {
     std::fs::create_dir_all(&*DATA_DIR)?;
     let manager_epoch = ManagerEpoch::new(*Uuid::new_v4().as_bytes())?;
 
-    let wm = if let Some(config) = &static_config {
+    let mut wm = if let Some(config) = &static_config {
         tracing::info!(
             "creating window manager from static configuration file: {}",
             config.display()
         );
 
-        Arc::new(Mutex::new(StaticConfig::preload(config, manager_epoch)?))
+        StaticConfig::preload(config, manager_epoch)?
     } else {
-        Arc::new(Mutex::new(WindowManager::new(manager_epoch)?))
+        WindowManager::new(manager_epoch)?
     };
 
-    wm.lock().init()?;
+    wm.init()?;
 
     if let Some(config) = &static_config {
-        StaticConfig::postload(config, &wm)?;
+        StaticConfig::postload(config, &mut wm)?;
     }
 
     if !opts.await_configuration && !INITIAL_CONFIGURATION_LOADED.load(Ordering::SeqCst) {
@@ -314,7 +314,7 @@ async fn main() -> eyre::Result<()> {
 
     if !opts.clean_state && dumped_state.is_file() {
         if let Ok(state) = serde_json::from_str(&std::fs::read_to_string(&dumped_state)?) {
-            wm.lock().apply_state(state);
+            wm.apply_state(state);
         } else {
             tracing::warn!(
                 "cannot apply state from {}; state struct is not up to date",
@@ -323,13 +323,16 @@ async fn main() -> eyre::Result<()> {
         }
     }
 
-    wm.lock().retile_all(false)?;
+    wm.retile_all(false)?;
+
+    let initial_known_hwnds = wm.known_hwnds.clone();
+    let wm = Arc::new(Mutex::new(wm));
 
     border_manager::listen_for_notifications(wm.clone());
     stackbar_manager::listen_for_notifications(wm.clone());
     transparency_manager::listen_for_notifications(wm.clone());
     monitor_reconciliator::listen_for_notifications(wm.clone())?;
-    reaper::listen_for_notifications(wm.clone(), wm.lock().known_hwnds.clone());
+    reaper::listen_for_notifications(wm.clone(), initial_known_hwnds);
     focus_manager::listen_for_notifications(wm.clone());
     theme_manager::listen_for_notifications();
 

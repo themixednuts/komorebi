@@ -8,6 +8,15 @@ use crate::action::definition;
 use crate::action::offer;
 use crate::core::OperationDirection;
 
+#[must_use]
+pub fn action_grants(authority: &protocol::AuthoritySummary) -> action::ActionGrants {
+    if authority.permits(protocol::CommandCapability::InvokeActions) {
+        action::ActionGrants::all()
+    } else {
+        action::ActionGrants::none()
+    }
+}
+
 /// Projects the manager's typed action model into one immutable wire catalog.
 ///
 /// # Errors
@@ -275,7 +284,6 @@ mod tests {
     use super::*;
     use crate::action::ActionGrants;
     use crate::action::ActionSnapshot;
-    use crate::action::PrincipalId;
     use komorebi_protocol::ManagerEpoch;
 
     #[test]
@@ -284,7 +292,6 @@ mod tests {
         let epoch = ManagerEpoch::new([4; 16])?;
         let observation = ActionSnapshot::empty(epoch);
         let authority = action::ActionAuthority {
-            principal: PrincipalId::new(1),
             grants: ActionGrants::all(),
         };
         let projected = snapshot(&observation, &authority)?;
@@ -315,7 +322,6 @@ mod tests {
     fn exact_known_stamp_returns_not_modified() -> Result<(), Box<dyn std::error::Error>> {
         let observation = ActionSnapshot::empty(ManagerEpoch::new([5; 16])?);
         let authority = action::ActionAuthority {
-            principal: PrincipalId::new(1),
             grants: ActionGrants::none(),
         };
         let current = snapshot(&observation, &authority)?;
@@ -324,5 +330,17 @@ mod tests {
             protocol::CatalogReply::NotModified(current.stamp())
         );
         Ok(())
+    }
+
+    #[test]
+    fn protocol_authority_maps_to_grants_without_client_identity_translation() {
+        assert!(
+            action_grants(&protocol::AuthoritySummary::command_owner())
+                .contains(action::BuiltinActionKind::FocusWindow)
+        );
+        assert!(
+            !action_grants(&protocol::AuthoritySummary::default())
+                .contains(action::BuiltinActionKind::FocusWindow)
+        );
     }
 }

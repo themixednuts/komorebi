@@ -21,12 +21,16 @@ use crate::action::PrincipalId;
 use crate::action::WorkspaceIndex;
 use crate::action::WorkspaceName;
 use crate::action::id::WindowId;
+use crate::adapters::action_catalog::CatalogProjectionError;
+use crate::adapters::action_catalog::reply as project_catalog_reply;
 use crate::border_manager;
 use crate::core::DefaultLayout;
 use crate::core::Layout;
 use crate::core::OperationDirection;
 use crate::core::Sizing;
 use crate::workspace::WorkspaceLayer;
+use komorebi_protocol::CatalogReply;
+use komorebi_protocol::CatalogStamp;
 
 use super::WindowManager;
 
@@ -72,6 +76,26 @@ impl WindowManager {
     pub fn refresh_catalog_observation(&mut self) {
         let snapshot = self.observe_action_snapshot();
         self.catalog.replace_observation(snapshot);
+    }
+
+    /// Observes current action state and returns an authority-scoped wire
+    /// catalog with exact cache semantics.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`CatalogProjectionError`] if the internal catalog violates a
+    /// bounded public protocol invariant.
+    pub fn action_catalog_reply(
+        &mut self,
+        grants: ActionGrants,
+        known: Option<CatalogStamp>,
+    ) -> Result<CatalogReply, CatalogProjectionError> {
+        self.refresh_catalog_observation();
+        project_catalog_reply(
+            self.catalog.snapshot(),
+            &crate::action::ActionAuthority { grants },
+            known,
+        )
     }
 
     #[must_use]

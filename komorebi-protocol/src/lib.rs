@@ -141,6 +141,7 @@ pub use session::AuthorityCapabilityId;
 pub use session::AuthoritySummary;
 pub use session::AuthoritySummaryError;
 pub use session::ChunkPayloadLimit;
+pub use session::CommandCapability;
 pub use session::ConnectionId;
 pub use session::ControlPayloadLimit;
 pub use session::FramePayloadLimit;

@@ -163,3 +163,13 @@ fn identities_reject_nil_and_authority_is_bounded() -> Result<(), Box<dyn std::e
     );
     Ok(())
 }
+
+#[test]
+fn command_owner_authority_uses_the_closed_capability_vocabulary() {
+    let authority = AuthoritySummary::command_owner();
+    assert_eq!(authority.capabilities().len(), CommandCapability::ALL.len());
+    for capability in CommandCapability::ALL {
+        assert!(authority.permits(capability));
+    }
+    assert!(!AuthoritySummary::default().permits(CommandCapability::InvokeActions));
+}
