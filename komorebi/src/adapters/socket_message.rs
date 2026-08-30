@@ -854,6 +854,19 @@ mod tests {
         use crate::action::CatalogState;
         use crate::action::InvocationContext;
         use crate::action::InvocationId;
+        use komorebi_protocol::InvocationNamespaceId;
+        use komorebi_protocol::InvocationSequence;
+
+        fn invocation() -> InvocationId {
+            InvocationId::new(
+                InvocationNamespaceId::new([9; 16]).expect("test namespace is nonzero"),
+                InvocationSequence::try_from(1).expect("test sequence is nonzero"),
+            )
+        }
+
+        fn principal() -> PrincipalId {
+            PrincipalId::new([1; 32]).expect("test principal is nonzero")
+        }
         use crate::action::InvocationOrigin;
         use crate::action::InvokeAction;
         use crate::action::PrincipalId;
@@ -875,13 +888,13 @@ mod tests {
         });
         let admission = state.admit(
             InvokeAction {
-                invocation_id: InvocationId::new(),
+                invocation_id: invocation(),
                 expected_state: stamp(1),
                 action,
                 confirmation: None,
             },
             &InvocationContext {
-                principal: PrincipalId::new(1),
+                principal: principal(),
                 origin: InvocationOrigin::Cli,
                 grants: ActionGrants::all(),
             },

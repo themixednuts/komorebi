@@ -32,13 +32,14 @@ use crate::core::Sizing;
 use crate::workspace::WorkspaceLayer;
 use komorebi_protocol::CatalogReply;
 use komorebi_protocol::CatalogStamp;
+use komorebi_protocol::InvocationIdentityError;
 
 use super::WindowManager;
 
-const LEGACY_SOCKET_PRINCIPAL: PrincipalId = PrincipalId::new(0);
-
 #[derive(Debug, thiserror::Error)]
 pub enum CatalogActionError {
+    #[error("could not issue a local invocation identity: {0}")]
+    Identity(#[from] InvocationIdentityError),
     #[error("manager observation failed for invocation {invocation_id:?}: {source}")]
     Observation {
         invocation_id: InvocationId,
@@ -70,11 +71,12 @@ struct NativeEffectExecutionError {
 
 impl CatalogActionError {
     #[must_use]
-    pub const fn invocation_id(&self) -> InvocationId {
+    pub const fn invocation_id(&self) -> Option<InvocationId> {
         match self {
+            Self::Identity(_) => None,
             Self::Observation { invocation_id, .. }
             | Self::Rejected { invocation_id, .. }
-            | Self::NativeEffects { invocation_id, .. } => *invocation_id,
+            | Self::NativeEffects { invocation_id, .. } => Some(*invocation_id),
         }
     }
 }
@@ -244,7 +246,7 @@ impl WindowManager {
         &mut self,
         action: BuiltinAction,
     ) -> Result<InvocationId, CatalogActionError> {
-        let invocation_id = InvocationId::new();
+        let invocation_id = self.catalog.issue_local_invocation_id()?;
         self.refresh_catalog_observation()
             .map_err(|source| CatalogActionError::Observation {
                 invocation_id,
@@ -259,7 +261,7 @@ impl WindowManager {
         self.invoke_catalog_action(
             request,
             &InvocationContext {
-                principal: LEGACY_SOCKET_PRINCIPAL,
+                principal: PrincipalId::new([u8::MAX; 32])?,
                 origin: InvocationOrigin::Ipc,
                 grants: ActionGrants::all(),
             },
@@ -696,6 +698,8 @@ impl WindowManager {
 
 #[cfg(test)]
 mod tests {
+    use komorebi_protocol::InvocationNamespaceId;
+    use komorebi_protocol::InvocationSequence;
     use komorebi_protocol::ManagerEpoch;
     use komorebi_protocol::Revision;
     use komorebi_protocol::StateStamp;
@@ -704,6 +708,17 @@ mod tests {
     use crate::action::WorkspaceSelector;
     use crate::action::invoke::InvocationStatus;
     use crate::action::outcome::ActionResult;
+
+    fn invocation(sequence: u64) -> InvocationId {
+        InvocationId::new(
+            InvocationNamespaceId::new([9; 16]).expect("test namespace is nonzero"),
+            InvocationSequence::try_from(sequence).expect("test sequence is nonzero"),
+        )
+    }
+
+    fn principal(byte: u8) -> PrincipalId {
+        PrincipalId::new([byte; 32]).expect("test principal is nonzero")
+    }
 
     fn empty_manager() -> WindowManager {
         WindowManager::new(ManagerEpoch::new([1; 16]).expect("test epoch is non-nil"))
@@ -738,10 +753,14 @@ mod tests {
                 layout: DefaultLayout::Columns,
             })
             .expect_err("layout application without a monitor should fail");
-        let invocation_id = error.invocation_id();
+        let invocation_id = error
+            .invocation_id()
+            .expect("native-effect failure has an invocation identity");
         let failure = match error {
             CatalogActionError::NativeEffects { failure, .. } => failure,
-            CatalogActionError::Observation { .. } | CatalogActionError::Rejected { .. } => {
+            CatalogActionError::Identity(_)
+            | CatalogActionError::Observation { .. }
+            | CatalogActionError::Rejected { .. } => {
                 panic!("expected native-effect failure")
             }
         };
@@ -759,9 +778,9 @@ mod tests {
     #[test]
     fn canonical_entrypoint_preserves_caller_identity_on_rejection() {
         let mut manager = empty_manager();
-        let invocation_id = InvocationId::new();
+        let invocation_id = invocation(1);
         let context = InvocationContext {
-            principal: PrincipalId::new(42),
+            principal: principal(42),
             origin: InvocationOrigin::Palette,
             grants: ActionGrants::all(),
         };
@@ -781,7 +800,7 @@ mod tests {
             )
             .expect_err("a stale caller revision should be rejected");
 
-        assert_eq!(error.invocation_id(), invocation_id);
+        assert_eq!(error.invocation_id(), Some(invocation_id));
         assert!(matches!(
             error,
             CatalogActionError::Rejected {

@@ -23,6 +23,9 @@ use super::transition::effects;
 use super::transition::logical_result;
 use super::undo::UndoLedger;
 use super::undo::UndoRecord;
+use komorebi_protocol::InvocationIdentityError;
+use komorebi_protocol::InvocationNamespaceId;
+use komorebi_protocol::InvocationSequence;
 use komorebi_protocol::StateStamp;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -115,6 +118,8 @@ pub enum InvocationStatus {
 #[derive(Clone, Debug)]
 pub struct CatalogState {
     snapshot: ActionSnapshot,
+    local_namespace: InvocationNamespaceId,
+    next_local_sequence: InvocationSequence,
     invocations: HashMap<InvocationId, ActionAdmission>,
     statuses: HashMap<InvocationId, InvocationStatus>,
     confirmations: ConfirmationLedger,
@@ -124,8 +129,15 @@ pub struct CatalogState {
 impl CatalogState {
     #[must_use]
     pub fn new(snapshot: ActionSnapshot) -> Self {
+        let local_namespace = match InvocationNamespaceId::new(snapshot.state.epoch().into_bytes())
+        {
+            Ok(namespace) => namespace,
+            Err(_) => unreachable!("a validated manager epoch is a nonzero invocation namespace"),
+        };
         Self {
             snapshot,
+            local_namespace,
+            next_local_sequence: InvocationSequence::new(std::num::NonZeroU64::MIN),
             invocations: HashMap::new(),
             statuses: HashMap::new(),
             confirmations: ConfirmationLedger::new(),
@@ -168,6 +180,18 @@ impl CatalogState {
 
     pub fn confirmations_mut(&mut self) -> &mut ConfirmationLedger {
         &mut self.confirmations
+    }
+
+    /// Issues an identity for an invocation originating inside the manager.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`InvocationIdentityError::SequenceExhausted`] without issuing
+    /// an identity when the process-lifetime local sequence is exhausted.
+    pub fn issue_local_invocation_id(&mut self) -> Result<InvocationId, InvocationIdentityError> {
+        let sequence = self.next_local_sequence;
+        self.next_local_sequence = sequence.next()?;
+        Ok(InvocationId::new(self.local_namespace, sequence))
     }
 
     pub fn admit(
@@ -340,6 +364,17 @@ mod tests {
     use crate::core::DefaultLayout;
     use crate::core::OperationDirection;
 
+    fn invocation(sequence: u64) -> InvocationId {
+        InvocationId::new(
+            InvocationNamespaceId::new([9; 16]).expect("test namespace is nonzero"),
+            InvocationSequence::try_from(sequence).expect("test sequence is nonzero"),
+        )
+    }
+
+    fn principal(byte: u8) -> PrincipalId {
+        PrincipalId::new([byte; 32]).expect("test principal is nonzero")
+    }
+
     fn stamp_in(epoch: u8, revision: u64) -> StateStamp {
         StateStamp::new(
             komorebi_protocol::ManagerEpoch::new([epoch; 16]).expect("test epoch is non-nil"),
@@ -366,7 +401,7 @@ mod tests {
 
     fn context() -> InvocationContext {
         InvocationContext {
-            principal: PrincipalId::new(1),
+            principal: principal(1),
             origin: InvocationOrigin::Cli,
             grants: ActionGrants::all(),
         }
@@ -387,7 +422,7 @@ mod tests {
     fn stale_state_is_rejected() {
         let mut state = live_state();
         let admission = state.admit(
-            focus_left(InvocationId::new(), stamp_in(2, 10)),
+            focus_left(invocation(1), stamp_in(2, 10)),
             &context(),
             Instant::now(),
         );
@@ -401,7 +436,7 @@ mod tests {
     fn exhausted_revision_rejects_without_mutating_logical_state() {
         let mut state = live_state();
         state.snapshot.state = stamp(u64::MAX);
-        let invocation_id = InvocationId::new();
+        let invocation_id = invocation(2);
 
         let admission = state.admit(
             focus_left(invocation_id, stamp(u64::MAX)),
@@ -422,7 +457,7 @@ mod tests {
         let mut state = live_state();
         let admission = state.admit(
             InvokeAction {
-                invocation_id: InvocationId::new(),
+                invocation_id: invocation(3),
                 expected_state: stamp(10),
                 action: BuiltinAction::FocusWindow {
                     direction: OperationDirection::Right,
@@ -443,7 +478,7 @@ mod tests {
     #[test]
     fn one_invocation_id_commits_once() {
         let mut state = live_state();
-        let id = InvocationId::new();
+        let id = invocation(4);
         let first = state.admit(focus_left(id, stamp(10)), &context(), Instant::now());
         let second = state.admit(focus_left(id, stamp(10)), &context(), Instant::now());
         match (first, second) {
@@ -474,6 +509,26 @@ mod tests {
 
         assert_eq!(change, ObservationChange::Unchanged { state: stamp(10) });
         assert_eq!(state.snapshot().state, stamp(10));
+    }
+
+    #[test]
+    fn manager_local_invocation_ids_are_namespaced_and_contiguous() {
+        let mut state = live_state();
+
+        let first = state
+            .issue_local_invocation_id()
+            .expect("first local identity should issue");
+        let second = state
+            .issue_local_invocation_id()
+            .expect("second local identity should issue");
+
+        assert_eq!(first.namespace(), second.namespace());
+        assert_eq!(first.sequence().get(), 1);
+        assert_eq!(second.sequence().get(), 2);
+        assert_eq!(
+            first.namespace().into_bytes(),
+            stamp(10).epoch().into_bytes()
+        );
     }
 
     #[test]
@@ -526,7 +581,7 @@ mod tests {
     #[test]
     fn injected_outcomes_produce_settled_degraded_superseded_and_reconcile() {
         let mut state = live_state();
-        let id = InvocationId::new();
+        let id = invocation(5);
         let admission = state.admit(focus_left(id, stamp(10)), &context(), Instant::now());
         let ActionAdmission::Committed {
             state: committed_state,

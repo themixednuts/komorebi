@@ -114,6 +114,10 @@ fn token_bytes(token: &ConfirmationToken) -> [u8; 16] {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn test_principal(byte: u8) -> PrincipalId {
+        PrincipalId::new([byte; 32]).expect("test principal is nonzero")
+    }
     use crate::action::WindowsPath;
     use crate::core::OperationDirection;
     use std::time::Duration;
@@ -145,7 +149,7 @@ mod tests {
     fn confirmation_rejects_changed_args_principal_state_expiry_and_replay() {
         let mut ledger = ConfirmationLedger::new();
         let token = ConfirmationToken::from_bytes([9; 16]);
-        let principal = PrincipalId::new(7);
+        let principal = test_principal(7);
         let state = stamp(4);
         let now = Instant::now();
         ledger.issue(
@@ -157,7 +161,7 @@ mod tests {
         );
 
         assert_eq!(
-            ledger.consume(token, PrincipalId::new(8), &focus_left(), state, now),
+            ledger.consume(token, test_principal(8), &focus_left(), state, now),
             Err(ConfirmationError::PrincipalMismatch)
         );
         assert_eq!(
@@ -204,7 +208,7 @@ mod tests {
         };
         let mut ledger = ConfirmationLedger::new();
         let token = ConfirmationToken::from_bytes([3; 16]);
-        let principal = PrincipalId::new(11);
+        let principal = test_principal(11);
         let state = stamp(7);
         let now = Instant::now();
         ledger.issue(

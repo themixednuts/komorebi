@@ -4,6 +4,9 @@ use serde::Deserialize;
 use serde::Serialize;
 use uuid::Uuid;
 
+pub use komorebi_protocol::InvocationId;
+pub use komorebi_protocol::PrincipalId;
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, Serialize)]
 #[serde(transparent)]
 pub struct ActionId(&'static str);
@@ -188,39 +191,6 @@ impl ActionSchemaVersion {
     #[must_use]
     pub const fn get(self) -> u16 {
         self.0
-    }
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
-#[serde(transparent)]
-pub struct InvocationId(Uuid);
-
-impl InvocationId {
-    #[must_use]
-    pub fn new() -> Self {
-        Self(Uuid::new_v4())
-    }
-
-    #[must_use]
-    pub const fn from_uuid(id: Uuid) -> Self {
-        Self(id)
-    }
-}
-
-impl Default for InvocationId {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
-#[serde(transparent)]
-pub struct PrincipalId(u64);
-
-impl PrincipalId {
-    #[must_use]
-    pub const fn new(value: u64) -> Self {
-        Self(value)
     }
 }
 
