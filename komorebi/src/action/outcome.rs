@@ -12,6 +12,7 @@ use crate::core::OperationBehaviour;
 use crate::core::OperationDirection;
 use crate::core::ResizeStep;
 use crate::core::Sizing;
+use crate::core::TransparencyAlpha;
 
 use super::builtin::Pixels;
 use super::builtin::WorkspaceName;
@@ -35,6 +36,15 @@ pub enum ActionResult {
     },
     ResizeStepSet {
         step: ResizeStep,
+    },
+    TransparencyEnabledSet {
+        enabled: bool,
+    },
+    TransparencyToggled {
+        enabled: bool,
+    },
+    TransparencyAlphaSet {
+        alpha: TransparencyAlpha,
     },
     LayoutSet {
         layout: DefaultLayout,
@@ -324,6 +334,12 @@ pub enum NativeEffect {
     },
     SetResizeStep {
         step: ResizeStep,
+    },
+    SetTransparencyEnabled {
+        enabled: bool,
+    },
+    SetTransparencyAlpha {
+        alpha: TransparencyAlpha,
     },
     SetLayout {
         layout: DefaultLayout,

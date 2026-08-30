@@ -1,4 +1,5 @@
 pub mod builtin;
+pub mod configuration;
 pub mod confirmation;
 pub mod definition;
 pub mod id;
@@ -16,6 +17,8 @@ pub use builtin::Pixels;
 pub use builtin::WindowSelector;
 pub use builtin::WorkspaceName;
 pub use builtin::WorkspaceSelector;
+pub use configuration::ConfigurationSnapshot;
+pub use configuration::TransparencyConfiguration;
 pub use confirmation::ConfirmationError;
 pub use confirmation::ConfirmationLedger;
 pub use definition::ActionDefinition;

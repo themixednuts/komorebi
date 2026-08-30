@@ -90,6 +90,7 @@ use komorebi_client::SocketMessage;
 use komorebi_client::StateQuery;
 use komorebi_client::StaticConfig;
 use komorebi_client::SubscriberName;
+use komorebi_client::TransparencyAlpha;
 use komorebi_client::WindowKind;
 use komorebi_client::splash::ValidationFeedback;
 
@@ -732,9 +733,9 @@ struct Transparency {
 }
 
 #[derive(Parser)]
-struct TransparencyAlpha {
-    /// Alpha
-    alpha: u8,
+struct SetTransparencyAlpha {
+    /// Alpha from 0 (transparent) through 255 (opaque)
+    alpha: TransparencyAlpha,
 }
 
 #[derive(Parser)]
@@ -1556,7 +1557,7 @@ enum SubCommand {
     Transparency(Transparency),
     /// Set the alpha value for unfocused window transparency
     #[clap(arg_required_else_help = true)]
-    TransparencyAlpha(TransparencyAlpha),
+    TransparencyAlpha(SetTransparencyAlpha),
     /// Toggle transparency for unfocused windows
     ToggleTransparency,
     /// Enable or disable movement animations
@@ -3631,13 +3632,25 @@ if (Get-Command Get-CimInstance -ErrorAction SilentlyContinue) {
             send_message(&SocketMessage::StackbarMode(args.mode))?;
         }
         SubCommand::Transparency(args) => {
-            send_message(&SocketMessage::Transparency(args.boolean_state.into()))?;
+            invoke_action(
+                BuiltInActionId::SetTransparencyEnabled,
+                built_in_arguments([BuiltInArgument::Enabled(args.boolean_state.into())])?,
+            )
+            .await?;
         }
         SubCommand::TransparencyAlpha(args) => {
-            send_message(&SocketMessage::TransparencyAlpha(args.alpha))?;
+            invoke_action(
+                BuiltInActionId::SetTransparencyAlpha,
+                built_in_arguments([BuiltInArgument::Alpha(args.alpha.get())])?,
+            )
+            .await?;
         }
         SubCommand::ToggleTransparency => {
-            send_message(&SocketMessage::ToggleTransparency)?;
+            invoke_action(
+                BuiltInActionId::ToggleTransparency,
+                BuiltInArguments::default(),
+            )
+            .await?;
         }
         SubCommand::Animation(args) => {
             send_message(&SocketMessage::Animation(

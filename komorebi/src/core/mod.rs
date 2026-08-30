@@ -54,6 +54,10 @@ pub use resize_step::ResizeStepError;
 pub use subscriber::SubscriberName;
 pub use subscriber::SubscriberNameError;
 pub use subscriber::SubscriberRegistry;
+pub use transparency_alpha::TransparencyAlpha;
+pub use transparency_alpha::TransparencyAlphaError;
+
+pub const DEFAULT_TRANSPARENCY_ENABLED: bool = false;
 
 pub mod animation;
 pub mod asc;
@@ -61,6 +65,7 @@ pub mod config_generation;
 pub mod pathext;
 pub mod resize_step;
 pub mod subscriber;
+pub mod transparency_alpha;
 
 // serde_as must be before derive
 #[serde_with::serde_as]

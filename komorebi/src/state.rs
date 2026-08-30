@@ -24,6 +24,7 @@ use crate::StackbarLabel;
 use crate::StackbarMode;
 use crate::TRANSPARENCY_BLACKLIST;
 use crate::TRAY_AND_MULTI_WINDOW_IDENTIFIERS;
+use crate::TransparencyAlpha;
 use crate::WORKSPACE_MATCHING_RULES;
 use crate::WindowContainerBehaviour;
 use crate::WindowManager;
@@ -141,7 +142,7 @@ pub struct GlobalState {
     pub stackbar_tab_width: i32,
     pub stackbar_height: i32,
     pub transparency_enabled: bool,
-    pub transparency_alpha: u8,
+    pub transparency_alpha: TransparencyAlpha,
     pub transparency_blacklist: Vec<MatchingRule>,
     pub remove_titlebars: bool,
     #[serde(alias = "float_identifiers")]
@@ -202,7 +203,7 @@ impl Default for GlobalState {
             stackbar_tab_width: STACKBAR_TAB_WIDTH.load(Ordering::SeqCst),
             stackbar_height: STACKBAR_TAB_HEIGHT.load(Ordering::SeqCst),
             transparency_enabled: TRANSPARENCY_ENABLED.load(Ordering::SeqCst),
-            transparency_alpha: TRANSPARENCY_ALPHA.load(Ordering::SeqCst),
+            transparency_alpha: TransparencyAlpha::new(TRANSPARENCY_ALPHA.load(Ordering::SeqCst)),
             transparency_blacklist: TRANSPARENCY_BLACKLIST.lock().clone(),
             remove_titlebars: REMOVE_TITLEBARS.load(Ordering::SeqCst),
             ignore_identifiers: IGNORE_IDENTIFIERS.lock().clone(),

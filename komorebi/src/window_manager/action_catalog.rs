@@ -7,6 +7,7 @@ use crate::action::ActionGrants;
 use crate::action::ActionRejection;
 use crate::action::ActionSnapshot;
 use crate::action::BuiltinAction;
+use crate::action::ConfigurationSnapshot;
 use crate::action::DirectionSet;
 use crate::action::InvocationContext;
 use crate::action::InvocationId;
@@ -19,6 +20,7 @@ use crate::action::NativeEffectFailure;
 use crate::action::ObservationChange;
 use crate::action::PlannedEffect;
 use crate::action::PrincipalId;
+use crate::action::TransparencyConfiguration;
 use crate::action::WorkspaceIndex;
 use crate::action::WorkspaceName;
 use crate::action::id::WindowId;
@@ -29,11 +31,14 @@ use crate::core::DefaultLayout;
 use crate::core::Layout;
 use crate::core::OperationDirection;
 use crate::core::Sizing;
+use crate::core::TransparencyAlpha;
+use crate::transparency_manager;
 use crate::workspace::WorkspaceLayer;
 use komorebi_protocol::CatalogReply;
 use komorebi_protocol::CatalogStamp;
 use komorebi_protocol::InvocationIdentityError;
 use komorebi_protocol::SettledInvocationKind;
+use std::sync::atomic::Ordering;
 
 use super::WindowManager;
 
@@ -156,7 +161,15 @@ impl WindowManager {
             .filter(|direction| self.can_focus_in_direction(*direction))
             .collect::<DirectionSet>(),
             current_layout,
-            resize_step: self.resize_step,
+            configuration: ConfigurationSnapshot {
+                resize_step: self.resize_step,
+                transparency: TransparencyConfiguration {
+                    enabled: transparency_manager::TRANSPARENCY_ENABLED.load(Ordering::SeqCst),
+                    alpha: TransparencyAlpha::new(
+                        transparency_manager::TRANSPARENCY_ALPHA.load(Ordering::SeqCst),
+                    ),
+                },
+            },
             focused_window_floating,
             named_workspaces: self.named_workspaces_for_catalog(),
             bindings: Vec::new(),
@@ -352,6 +365,12 @@ impl WindowManager {
             }
             NativeEffect::SetResizeStep { step } => {
                 self.resize_step = step;
+            }
+            NativeEffect::SetTransparencyEnabled { enabled } => {
+                transparency_manager::TRANSPARENCY_ENABLED.store(enabled, Ordering::SeqCst);
+            }
+            NativeEffect::SetTransparencyAlpha { alpha } => {
+                transparency_manager::TRANSPARENCY_ALPHA.store(alpha.get(), Ordering::SeqCst);
             }
             NativeEffect::CycleFocus { direction } => {
                 let focused_workspace = self.focused_workspace()?;

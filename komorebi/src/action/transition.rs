@@ -12,12 +12,18 @@ pub(super) fn resolve_contextual_inputs(
     match action {
         BuiltinAction::ResizeWindowByStep { axis, sizing } => Ok(BuiltinAction::ResizeWindow {
             axis: *axis,
-            delta: super::builtin::Pixels::from_resize_step(snapshot.resize_step, *sizing),
+            delta: super::builtin::Pixels::from_resize_step(
+                snapshot.configuration.resize_step,
+                *sizing,
+            ),
         }),
         BuiltinAction::ResizeWindowEdgeByStep { direction, sizing } => {
             Ok(BuiltinAction::ResizeWindowEdge {
                 direction: *direction,
-                delta: super::builtin::Pixels::from_resize_step(snapshot.resize_step, *sizing),
+                delta: super::builtin::Pixels::from_resize_step(
+                    snapshot.configuration.resize_step,
+                    *sizing,
+                ),
             })
         }
         BuiltinAction::FocusNamedWorkspace { name } => {
@@ -145,6 +151,9 @@ pub(super) fn directional_gap(
         BuiltinAction::ResizeWindow { .. }
         | BuiltinAction::ResizeWindowByStep { .. }
         | BuiltinAction::SetResizeStep { .. }
+        | BuiltinAction::SetTransparencyEnabled { .. }
+        | BuiltinAction::ToggleTransparency
+        | BuiltinAction::SetTransparencyAlpha { .. }
         | BuiltinAction::SetWorkspaceLayout { .. }
         | BuiltinAction::ToggleWindowFloat { .. }
         | BuiltinAction::CycleFocusWindow { .. }
@@ -261,7 +270,17 @@ pub(super) fn directional_gap(
 pub(super) fn apply_logical(snapshot: &mut ActionSnapshot, action: &BuiltinAction) {
     match action.clone() {
         BuiltinAction::SetWorkspaceLayout { layout, .. } => snapshot.current_layout = layout,
-        BuiltinAction::SetResizeStep { step } => snapshot.resize_step = step,
+        BuiltinAction::SetResizeStep { step } => snapshot.configuration.resize_step = step,
+        BuiltinAction::SetTransparencyEnabled { enabled } => {
+            snapshot.configuration.transparency.enabled = enabled;
+        }
+        BuiltinAction::ToggleTransparency => {
+            snapshot.configuration.transparency.enabled =
+                !snapshot.configuration.transparency.enabled;
+        }
+        BuiltinAction::SetTransparencyAlpha { alpha } => {
+            snapshot.configuration.transparency.alpha = alpha;
+        }
         BuiltinAction::ToggleWindowFloat { .. } => {
             snapshot.focused_window_floating = !snapshot.focused_window_floating;
         }
@@ -389,6 +408,15 @@ pub(super) fn logical_result(action: &BuiltinAction, snapshot: &ActionSnapshot) 
         BuiltinAction::MoveWindow { direction } => ActionResult::Moved { direction },
         BuiltinAction::ResizeWindow { axis, delta } => ActionResult::Resized { axis, delta },
         BuiltinAction::SetResizeStep { step } => ActionResult::ResizeStepSet { step },
+        BuiltinAction::SetTransparencyEnabled { enabled } => {
+            ActionResult::TransparencyEnabledSet { enabled }
+        }
+        BuiltinAction::ToggleTransparency => ActionResult::TransparencyToggled {
+            enabled: snapshot.configuration.transparency.enabled,
+        },
+        BuiltinAction::SetTransparencyAlpha { alpha } => {
+            ActionResult::TransparencyAlphaSet { alpha }
+        }
         BuiltinAction::SetWorkspaceLayout { layout, .. } => ActionResult::LayoutSet { layout },
         BuiltinAction::ToggleWindowFloat { .. } => ActionResult::FloatToggled {
             floating: snapshot.focused_window_floating,
@@ -673,6 +701,15 @@ pub(super) fn effects(action: &BuiltinAction, snapshot: &ActionSnapshot) -> Vec<
             vec![NativeEffect::Resize { axis, delta }]
         }
         BuiltinAction::SetResizeStep { step } => vec![NativeEffect::SetResizeStep { step }],
+        BuiltinAction::SetTransparencyEnabled { enabled } => {
+            vec![NativeEffect::SetTransparencyEnabled { enabled }]
+        }
+        BuiltinAction::ToggleTransparency => vec![NativeEffect::SetTransparencyEnabled {
+            enabled: snapshot.configuration.transparency.enabled,
+        }],
+        BuiltinAction::SetTransparencyAlpha { alpha } => {
+            vec![NativeEffect::SetTransparencyAlpha { alpha }]
+        }
         BuiltinAction::SetWorkspaceLayout { layout, .. } => {
             vec![NativeEffect::SetLayout { layout }]
         }

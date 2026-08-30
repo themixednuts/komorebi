@@ -73,6 +73,7 @@ pub use komorebi::core::StackbarMode;
 pub use komorebi::core::StateQuery;
 pub use komorebi::core::SubscriberName;
 pub use komorebi::core::SubscriberNameError;
+pub use komorebi::core::TransparencyAlpha;
 pub use komorebi::core::WindowKind;
 pub use komorebi::core::config_generation::ApplicationConfigurationGenerator;
 pub use komorebi::core::replace_env_in_path;

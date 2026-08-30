@@ -144,6 +144,9 @@ built_in_action_ids! {
     EagerFocus => "eager-focus",
     RemoveTitleBar => "remove-title-bar",
     SetResizeStep => "set-resize-step",
+    SetTransparencyEnabled => "set-transparency-enabled",
+    ToggleTransparency => "toggle-transparency",
+    SetTransparencyAlpha => "set-transparency-alpha",
 }
 
 impl fmt::Display for BuiltInActionId {

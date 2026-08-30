@@ -16,6 +16,7 @@ use crate::core::OperationBehaviour;
 use crate::core::OperationDirection;
 use crate::core::ResizeStep;
 use crate::core::Sizing;
+use crate::core::TransparencyAlpha;
 
 use super::id::ActionId;
 use super::index::ContainerIndex;
@@ -142,10 +143,13 @@ pub enum BuiltinActionKind {
     EagerFocus,
     RemoveTitleBar,
     SetResizeStep,
+    SetTransparencyEnabled,
+    ToggleTransparency,
+    SetTransparencyAlpha,
 }
 
 impl BuiltinActionKind {
-    pub const ALL: [Self; 116] = [
+    pub const ALL: [Self; 119] = [
         Self::FocusWindow,
         Self::MoveWindow,
         Self::ResizeWindow,
@@ -262,6 +266,9 @@ impl BuiltinActionKind {
         Self::EagerFocus,
         Self::RemoveTitleBar,
         Self::SetResizeStep,
+        Self::SetTransparencyEnabled,
+        Self::ToggleTransparency,
+        Self::SetTransparencyAlpha,
     ];
 
     #[must_use]
@@ -391,6 +398,9 @@ impl BuiltinActionKind {
             Self::EagerFocus => ActionId::EAGER_FOCUS,
             Self::RemoveTitleBar => ActionId::REMOVE_TITLE_BAR,
             Self::SetResizeStep => ActionId::SET_RESIZE_STEP,
+            Self::SetTransparencyEnabled => ActionId::SET_TRANSPARENCY_ENABLED,
+            Self::ToggleTransparency => ActionId::TOGGLE_TRANSPARENCY,
+            Self::SetTransparencyAlpha => ActionId::SET_TRANSPARENCY_ALPHA,
         }
     }
 }
@@ -803,6 +813,13 @@ pub enum BuiltinAction {
     SetResizeStep {
         step: ResizeStep,
     },
+    SetTransparencyEnabled {
+        enabled: bool,
+    },
+    ToggleTransparency,
+    SetTransparencyAlpha {
+        alpha: TransparencyAlpha,
+    },
 }
 
 impl BuiltinAction {
@@ -971,6 +988,9 @@ impl BuiltinAction {
             Self::EagerFocus { .. } => BuiltinActionKind::EagerFocus,
             Self::RemoveTitleBar { .. } => BuiltinActionKind::RemoveTitleBar,
             Self::SetResizeStep { .. } => BuiltinActionKind::SetResizeStep,
+            Self::SetTransparencyEnabled { .. } => BuiltinActionKind::SetTransparencyEnabled,
+            Self::ToggleTransparency => BuiltinActionKind::ToggleTransparency,
+            Self::SetTransparencyAlpha { .. } => BuiltinActionKind::SetTransparencyAlpha,
         }
     }
 }

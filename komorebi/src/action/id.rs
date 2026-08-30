@@ -135,6 +135,9 @@ impl ActionId {
     pub const EAGER_FOCUS: Self = Self("eager-focus");
     pub const REMOVE_TITLE_BAR: Self = Self("remove-title-bar");
     pub const SET_RESIZE_STEP: Self = Self("set-resize-step");
+    pub const SET_TRANSPARENCY_ENABLED: Self = Self("set-transparency-enabled");
+    pub const TOGGLE_TRANSPARENCY: Self = Self("toggle-transparency");
+    pub const SET_TRANSPARENCY_ALPHA: Self = Self("set-transparency-alpha");
 
     #[must_use]
     pub const fn as_str(self) -> &'static str {
@@ -180,8 +183,9 @@ impl ParameterId {
     pub const ROW_RATIOS: Self = Self("row-ratios");
     pub const AT_COUNT: Self = Self("at-count");
     pub const RESIZE_STEP: Self = Self("resize-step");
+    pub const ALPHA: Self = Self("alpha");
 
-    pub const ALL: [Self; 27] = [
+    pub const ALL: [Self; 28] = [
         Self::DIRECTION,
         Self::AXIS,
         Self::DELTA,
@@ -209,6 +213,7 @@ impl ParameterId {
         Self::ROW_RATIOS,
         Self::AT_COUNT,
         Self::RESIZE_STEP,
+        Self::ALPHA,
     ];
 
     #[must_use]

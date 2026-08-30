@@ -11,13 +11,15 @@ use std::sync::atomic::AtomicU8;
 
 use crate::REGEX_IDENTIFIERS;
 use crate::TRANSPARENCY_BLACKLIST;
+use crate::TransparencyAlpha;
 use crate::Window;
 use crate::WindowManager;
 use crate::WindowsApi;
+use crate::core::DEFAULT_TRANSPARENCY_ENABLED;
 use crate::should_act;
 
-pub static TRANSPARENCY_ENABLED: AtomicBool = AtomicBool::new(false);
-pub static TRANSPARENCY_ALPHA: AtomicU8 = AtomicU8::new(200);
+pub static TRANSPARENCY_ENABLED: AtomicBool = AtomicBool::new(DEFAULT_TRANSPARENCY_ENABLED);
+pub static TRANSPARENCY_ALPHA: AtomicU8 = AtomicU8::new(TransparencyAlpha::DEFAULT.get());
 
 static KNOWN_HWNDS: OnceLock<Mutex<Vec<isize>>> = OnceLock::new();
 

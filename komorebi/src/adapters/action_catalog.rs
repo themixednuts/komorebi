@@ -191,6 +191,12 @@ fn project_current_value(
         offer::ActionCurrentValue::Floating(floating) => {
             Ok(protocol::ArgumentScalar::Bool(floating))
         }
+        offer::ActionCurrentValue::TransparencyEnabled(enabled) => {
+            Ok(protocol::ArgumentScalar::Bool(enabled))
+        }
+        offer::ActionCurrentValue::TransparencyAlpha(alpha) => {
+            Ok(protocol::ArgumentScalar::Unsigned(u64::from(alpha.get())))
+        }
     }
 }
 
@@ -252,6 +258,7 @@ const fn project_parameter_domain(value: definition::ParameterDomain) -> protoco
         definition::ParameterDomain::Ratios => protocol::ParameterDomain::Ratios,
         definition::ParameterDomain::AtCount => protocol::ParameterDomain::AtCount,
         definition::ParameterDomain::ResizeStep => protocol::ParameterDomain::ResizeStep,
+        definition::ParameterDomain::Alpha => protocol::ParameterDomain::Alpha,
     }
 }
 

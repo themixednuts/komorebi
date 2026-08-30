@@ -55,6 +55,7 @@ pub enum ParameterDomain {
     Ratios,
     AtCount,
     ResizeStep,
+    Alpha,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -580,6 +581,12 @@ const RESIZE_STEP: &[ParameterDefinition] = &[ParameterDefinition {
     cardinality: ArgumentCardinality::RequiredScalar,
 }];
 
+const ALPHA: &[ParameterDefinition] = &[ParameterDefinition {
+    id: ParameterId::ALPHA,
+    domain: ParameterDomain::Alpha,
+    cardinality: ArgumentCardinality::RequiredScalar,
+}];
+
 const fn def(
     id: ActionId,
     kind: BuiltinActionKind,
@@ -734,12 +741,15 @@ impl BuiltinActionKind {
             Self::EagerFocus => &EAGER_FOCUS,
             Self::RemoveTitleBar => &REMOVE_TITLE_BAR,
             Self::SetResizeStep => &SET_RESIZE_STEP,
+            Self::SetTransparencyEnabled => &SET_TRANSPARENCY_ENABLED,
+            Self::ToggleTransparency => &TOGGLE_TRANSPARENCY,
+            Self::SetTransparencyAlpha => &SET_TRANSPARENCY_ALPHA,
         }
     }
 }
 
 #[must_use]
-pub fn definitions() -> [&'static ActionDefinition; 116] {
+pub fn definitions() -> [&'static ActionDefinition; 119] {
     BuiltinActionKind::ALL.map(BuiltinActionKind::definition)
 }
 

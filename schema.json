@@ -489,14 +489,15 @@
     },
     "transparency_alpha": {
       "description": "Alpha value for unfocused window transparency [[0-255]]",
-      "type": [
-        "integer",
-        "null"
+      "anyOf": [
+        {
+          "$ref": "#/$defs/TransparencyAlpha"
+        },
+        {
+          "type": "null"
+        }
       ],
-      "format": "uint8",
-      "default": 200,
-      "maximum": 255,
-      "minimum": 0
+      "default": 200
     },
     "transparency_ignore_rules": {
       "description": "Individual window transparency ignore rules",
@@ -4189,6 +4190,13 @@
           "const": "Light"
         }
       ]
+    },
+    "TransparencyAlpha": {
+      "description": "An unfocused-window alpha value, where zero is transparent and 255 is opaque.",
+      "type": "integer",
+      "format": "uint8",
+      "maximum": 255,
+      "minimum": 0
     },
     "Wallpaper": {
       "description": "Wallpaper configuration",

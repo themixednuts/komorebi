@@ -69,6 +69,7 @@ pub enum ParameterDomain {
     Ratios = 21,
     AtCount = 22,
     ResizeStep = 23,
+    Alpha = 24,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

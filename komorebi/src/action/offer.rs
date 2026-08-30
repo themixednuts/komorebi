@@ -2,14 +2,14 @@ mod availability;
 mod choices;
 mod policy;
 
-use crate::DEFAULT_RESIZE_STEP;
 use crate::core::DefaultLayout;
 use crate::core::OperationDirection;
-use crate::core::ResizeStep;
+use crate::core::TransparencyAlpha;
 
 use super::DirectionSet;
 use super::builtin::BuiltinActionKind;
 use super::builtin::WorkspaceName;
+use super::configuration::ConfigurationSnapshot;
 use super::definition::ActionDefinition;
 use super::definition::layout_name;
 use super::id::ActionId;
@@ -37,7 +37,7 @@ pub struct ActionSnapshot {
     pub focused_window: Option<WindowId>,
     pub directional_targets: DirectionSet,
     pub current_layout: DefaultLayout,
-    pub resize_step: ResizeStep,
+    pub configuration: ConfigurationSnapshot,
     pub focused_window_floating: bool,
     pub named_workspaces: Vec<NamedWorkspaceTarget>,
     pub bindings: Vec<BindingHint>,
@@ -52,7 +52,7 @@ impl ActionSnapshot {
             focused_window: None,
             directional_targets: DirectionSet::empty(),
             current_layout: DefaultLayout::BSP,
-            resize_step: DEFAULT_RESIZE_STEP,
+            configuration: ConfigurationSnapshot::default(),
             focused_window_floating: false,
             named_workspaces: Vec::new(),
             bindings: Vec::new(),
@@ -135,6 +135,8 @@ pub enum ActionAvailability {
 pub enum ActionCurrentValue {
     Layout(DefaultLayout),
     Floating(bool),
+    TransparencyEnabled(bool),
+    TransparencyAlpha(TransparencyAlpha),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -189,6 +191,12 @@ fn current_value(
         policy::CurrentValueSource::Floating => Some(ActionCurrentValue::Floating(
             snapshot.focused_window_floating,
         )),
+        policy::CurrentValueSource::TransparencyEnabled => Some(
+            ActionCurrentValue::TransparencyEnabled(snapshot.configuration.transparency.enabled),
+        ),
+        policy::CurrentValueSource::TransparencyAlpha => Some(
+            ActionCurrentValue::TransparencyAlpha(snapshot.configuration.transparency.alpha),
+        ),
         policy::CurrentValueSource::None => None,
     }
 }
@@ -208,6 +216,7 @@ mod tests {
     use super::*;
     use crate::action::ParameterId;
     use crate::action::definition::ParameterDomain;
+    use crate::core::TransparencyAlpha;
 
     fn stamp(revision: u64) -> StateStamp {
         StateStamp::new(
@@ -223,7 +232,7 @@ mod tests {
             focused_window: Some(WindowId::new(1)),
             directional_targets: [OperationDirection::Left].into(),
             current_layout: DefaultLayout::BSP,
-            resize_step: DEFAULT_RESIZE_STEP,
+            configuration: ConfigurationSnapshot::default(),
             focused_window_floating: false,
             named_workspaces: vec![NamedWorkspaceTarget {
                 name: WorkspaceName::parse("chat").unwrap(),
@@ -285,6 +294,24 @@ mod tests {
         );
         assert_eq!(current_layout_name(&snapshot), "bsp");
         assert_eq!(layout.state, stamp(3));
+    }
+
+    #[test]
+    fn transparency_setters_expose_their_typed_current_values() {
+        let mut snapshot = live_snapshot();
+        snapshot.configuration.transparency.enabled = true;
+        snapshot.configuration.transparency.alpha = TransparencyAlpha::new(177);
+
+        assert_eq!(
+            offer(&snapshot, BuiltinActionKind::SetTransparencyEnabled).current_value,
+            Some(ActionCurrentValue::TransparencyEnabled(true))
+        );
+        assert_eq!(
+            offer(&snapshot, BuiltinActionKind::SetTransparencyAlpha).current_value,
+            Some(ActionCurrentValue::TransparencyAlpha(
+                TransparencyAlpha::new(177)
+            ))
+        );
     }
 
     #[test]

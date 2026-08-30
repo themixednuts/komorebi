@@ -16,6 +16,7 @@ use crate::action::MonitorIndex;
 use crate::action::StackIndex;
 use crate::action::WorkspaceIndex;
 use crate::action::id::ParameterId;
+use crate::core::TransparencyAlpha;
 
 /// Converts an invocation from one exact authority-scoped catalog into the
 /// closed manager action domain.
@@ -158,6 +159,13 @@ fn bind_builtin(
         },
         K::SetResizeStep => A::SetResizeStep {
             step: args.resize_step(ParameterId::RESIZE_STEP)?,
+        },
+        K::SetTransparencyEnabled => A::SetTransparencyEnabled {
+            enabled: args.boolean(ParameterId::ENABLED)?,
+        },
+        K::ToggleTransparency => A::ToggleTransparency,
+        K::SetTransparencyAlpha => A::SetTransparencyAlpha {
+            alpha: TransparencyAlpha::new(args.u8(ParameterId::ALPHA)?),
         },
         K::SetWorkspaceLayout => A::SetWorkspaceLayout {
             workspace: args.workspace_selector(ParameterId::WORKSPACE)?,

@@ -132,6 +132,7 @@ fn scalar(
         }
         D::Identifier => protocol::ArgumentScalar::Choice(protocol::ChoiceId::parse("exe")?),
         D::Ratios => protocol::ArgumentScalar::Decimal(protocol::FixedDecimal::new(1, 1)?),
+        D::Alpha => protocol::ArgumentScalar::Unsigned(200),
     })
 }
 
@@ -181,6 +182,25 @@ fn exact_cardinality_and_unknown_arguments_fail_closed() -> Result<(), Box<dyn s
     assert!(matches!(
         action_invocation::bind(&catalog, &request),
         Err(InvocationBindingError::Arguments(_))
+    ));
+    Ok(())
+}
+
+#[test]
+fn transparency_alpha_rejects_unsigned_values_outside_the_byte_domain()
+-> Result<(), Box<dyn std::error::Error>> {
+    let catalog = catalog()?;
+    let arguments = protocol::ActionArguments::new(BTreeMap::from([(
+        protocol::ParameterId::parse("alpha")?,
+        protocol::ActionArgument::Scalar(protocol::ArgumentScalar::Unsigned(256)),
+    )]))?;
+    let request = invocation(&catalog, BuiltinActionKind::SetTransparencyAlpha, arguments)?;
+
+    assert!(matches!(
+        action_invocation::bind(&catalog, &request),
+        Err(InvocationBindingError::Arguments(
+            action_invocation::ArgumentBindingError::OutsideU8 { .. }
+        ))
     ));
     Ok(())
 }

@@ -91,6 +91,15 @@ impl<'a> ValidatedArguments<'a> {
         }
     }
 
+    pub(super) fn u8(&self, id: ParameterId) -> Result<u8, ArgumentBindingError> {
+        match self.scalar(id)? {
+            protocol::ArgumentScalar::Unsigned(value) => {
+                u8::try_from(*value).map_err(|_| ArgumentBindingError::OutsideU8 { parameter: id })
+            }
+            _ => Err(wrong_scalar(id, ScalarKind::Unsigned)),
+        }
+    }
+
     pub(super) fn nonzero_usize(
         &self,
         id: ParameterId,
@@ -471,6 +480,8 @@ pub enum ArgumentBindingError {
     OutsideI32 { parameter: ParameterId },
     #[error("parameter {parameter} does not fit this process address space")]
     OutsideUsize { parameter: ParameterId },
+    #[error("parameter {parameter} does not fit an unsigned 8-bit value")]
+    OutsideU8 { parameter: ParameterId },
     #[error("parameter {parameter} must be nonzero")]
     Zero { parameter: ParameterId },
     #[error("parameter {parameter} must be positive")]

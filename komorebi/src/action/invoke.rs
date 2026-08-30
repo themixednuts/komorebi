@@ -496,6 +496,7 @@ mod tests {
     use crate::core::OperationDirection;
     use crate::core::ResizeStep;
     use crate::core::Sizing;
+    use crate::core::TransparencyAlpha;
 
     fn invocation(sequence: u64) -> InvocationId {
         InvocationId::new(
@@ -526,7 +527,7 @@ mod tests {
             focused_window: Some(WindowId::new(1)),
             directional_targets: [OperationDirection::Left].into(),
             current_layout: DefaultLayout::BSP,
-            resize_step: crate::DEFAULT_RESIZE_STEP,
+            configuration: crate::action::ConfigurationSnapshot::default(),
             focused_window_floating: false,
             named_workspaces: Vec::new(),
             bindings: Vec::new(),
@@ -663,7 +664,8 @@ mod tests {
     #[test]
     fn configured_resize_step_resolves_to_one_exact_effect() {
         let mut state = live_state();
-        state.snapshot.resize_step = ResizeStep::new(73).expect("test step is positive");
+        state.snapshot.configuration.resize_step =
+            ResizeStep::new(73).expect("test step is positive");
         let request = InvokeAction {
             invocation_id: invocation(12),
             expected_state: stamp(10),
@@ -732,7 +734,66 @@ mod tests {
         state
             .commit_prepared(prepared)
             .expect("prepared resize-step transition should commit");
-        assert_eq!(state.snapshot().resize_step, step);
+        assert_eq!(state.snapshot().configuration.resize_step, step);
+    }
+
+    #[test]
+    fn transparency_toggle_and_alpha_resolve_to_exact_configuration_effects() {
+        let mut state = live_state();
+        let toggle = InvokeAction {
+            invocation_id: invocation(14),
+            expected_state: stamp(10),
+            action: BuiltinAction::ToggleTransparency,
+            confirmation: None,
+        };
+        let ActionPreparation::Prepared(prepared) =
+            state.prepare(&toggle, &context(), Instant::now())
+        else {
+            panic!("toggle-transparency should prepare");
+        };
+        assert_eq!(
+            prepared.logical_result,
+            ActionResult::TransparencyToggled { enabled: true }
+        );
+        assert_eq!(
+            prepared.effects,
+            vec![PlannedEffect {
+                id: EffectId::new(0),
+                effect: NativeEffect::SetTransparencyEnabled { enabled: true },
+            }]
+        );
+        state
+            .commit_prepared(prepared)
+            .expect("prepared transparency toggle should commit");
+        assert!(state.snapshot().configuration.transparency.enabled);
+
+        let alpha = TransparencyAlpha::new(177);
+        let set_alpha = InvokeAction {
+            invocation_id: invocation(15),
+            expected_state: stamp(11),
+            action: BuiltinAction::SetTransparencyAlpha { alpha },
+            confirmation: None,
+        };
+        let ActionPreparation::Prepared(prepared) =
+            state.prepare(&set_alpha, &context(), Instant::now())
+        else {
+            panic!("set-transparency-alpha should prepare");
+        };
+        assert_eq!(
+            prepared.logical_result,
+            ActionResult::TransparencyAlphaSet { alpha }
+        );
+        assert_eq!(
+            prepared.effects,
+            vec![PlannedEffect {
+                id: EffectId::new(0),
+                effect: NativeEffect::SetTransparencyAlpha { alpha },
+            }]
+        );
+        state
+            .commit_prepared(prepared)
+            .expect("prepared transparency alpha should commit");
+        assert_eq!(state.snapshot().configuration.transparency.alpha, alpha);
     }
 
     #[test]

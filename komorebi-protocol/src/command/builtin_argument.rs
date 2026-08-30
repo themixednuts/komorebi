@@ -69,6 +69,7 @@ known_ids! {
     RowRatios => "row-ratios",
     AtCount => "at-count",
     ResizeStep => "resize-step",
+    Alpha => "alpha",
 }
 
 known_ids! {
@@ -251,6 +252,7 @@ pub enum BuiltInArgument {
     RowRatios(BuiltInRatios),
     AtCount(u64),
     ResizeStep(BuiltInResizeStep),
+    Alpha(u8),
 }
 
 impl BuiltInArgument {
@@ -306,6 +308,10 @@ impl BuiltInArgument {
             ),
             Self::AtCount(value) => (BuiltInParameterId::AtCount, Scalar(S::Unsigned(value))),
             Self::ResizeStep(value) => signed(BuiltInParameterId::ResizeStep, value.get()),
+            Self::Alpha(value) => (
+                BuiltInParameterId::Alpha,
+                Scalar(S::Unsigned(u64::from(value))),
+            ),
         }
     }
 }
@@ -427,6 +433,18 @@ mod tests {
         assert!(matches!(
             arguments.values().get(&ParameterId::parse("resize-step")?),
             Some(ActionArgument::Scalar(ArgumentScalar::Signed(37)))
+        ));
+        Ok(())
+    }
+
+    #[test]
+    fn transparency_alpha_encodes_as_a_bounded_unsigned_parameter()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let arguments =
+            BuiltInArguments::new([BuiltInArgument::Alpha(200)])?.into_action_arguments();
+        assert!(matches!(
+            arguments.values().get(&ParameterId::parse("alpha")?),
+            Some(ActionArgument::Scalar(ArgumentScalar::Unsigned(200)))
         ));
         Ok(())
     }

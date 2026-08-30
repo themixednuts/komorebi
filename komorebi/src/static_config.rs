@@ -69,6 +69,7 @@ use crate::core::Rect;
 use crate::core::SocketMessage;
 use crate::core::StackbarLabel;
 use crate::core::StackbarMode;
+use crate::core::TransparencyAlpha;
 use crate::core::WindowContainerBehaviour;
 use crate::core::WindowManagementBehaviour;
 use crate::core::config_generation::ApplicationConfiguration;
@@ -599,8 +600,8 @@ pub struct StaticConfig {
     pub transparency: Option<bool>,
     /// Alpha value for unfocused window transparency [[0-255]]
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "schemars", schemars(extend("default" = transparency_manager::TRANSPARENCY_ALPHA)))]
-    pub transparency_alpha: Option<u8>,
+    #[cfg_attr(feature = "schemars", schemars(extend("default" = TransparencyAlpha::DEFAULT)))]
+    pub transparency_alpha: Option<TransparencyAlpha>,
     /// Individual window transparency ignore rules
     #[serde(skip_serializing_if = "Option::is_none")]
     pub transparency_ignore_rules: Option<Vec<MatchingRule>>,
@@ -918,9 +919,9 @@ impl From<&WindowManager> for StaticConfig {
             transparency: Option::from(
                 transparency_manager::TRANSPARENCY_ENABLED.load(Ordering::SeqCst),
             ),
-            transparency_alpha: Option::from(
+            transparency_alpha: Option::from(TransparencyAlpha::new(
                 transparency_manager::TRANSPARENCY_ALPHA.load(Ordering::SeqCst),
-            ),
+            )),
             transparency_ignore_rules: None,
             border_style: Option::from(STYLE.load()),
             #[allow(deprecated)]
@@ -1142,7 +1143,8 @@ impl StaticConfig {
         }
 
         if let Some(transparency_alpha) = self.transparency_alpha {
-            transparency_manager::TRANSPARENCY_ALPHA.store(transparency_alpha, Ordering::SeqCst);
+            transparency_manager::TRANSPARENCY_ALPHA
+                .store(transparency_alpha.get(), Ordering::SeqCst);
         }
 
         let mut ignore_identifiers = IGNORE_IDENTIFIERS.lock();

@@ -19,6 +19,8 @@ pub(super) enum CurrentValueSource {
     None,
     Layout,
     Floating,
+    TransparencyEnabled,
+    TransparencyAlpha,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -69,6 +71,14 @@ pub(super) const fn policy(kind: BuiltinActionKind) -> OfferPolicy {
         },
         BuiltinActionKind::SetWorkspaceLayout => OfferPolicy {
             current_value: CurrentValueSource::Layout,
+            ..AVAILABLE
+        },
+        BuiltinActionKind::SetTransparencyEnabled => OfferPolicy {
+            current_value: CurrentValueSource::TransparencyEnabled,
+            ..AVAILABLE
+        },
+        BuiltinActionKind::SetTransparencyAlpha => OfferPolicy {
+            current_value: CurrentValueSource::TransparencyAlpha,
             ..AVAILABLE
         },
         BuiltinActionKind::MoveContainerToNamedWorkspace
@@ -154,6 +164,7 @@ pub(super) const fn policy(kind: BuiltinActionKind) -> OfferPolicy {
         | BuiltinActionKind::ToggleMonocleFocusBehaviour
         | BuiltinActionKind::TogglePause
         | BuiltinActionKind::SetResizeStep
+        | BuiltinActionKind::ToggleTransparency
         | BuiltinActionKind::SetFocusedContainerPadding
         | BuiltinActionKind::SetFocusedWorkspacePadding
         | BuiltinActionKind::SetContainerPadding

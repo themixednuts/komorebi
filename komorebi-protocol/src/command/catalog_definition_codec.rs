@@ -237,6 +237,7 @@ fn decode_domain(value: u8) -> Result<ParameterDomain, CommandCodecError> {
         21 => Ok(ParameterDomain::Ratios),
         22 => Ok(ParameterDomain::AtCount),
         23 => Ok(ParameterDomain::ResizeStep),
+        24 => Ok(ParameterDomain::Alpha),
         _ => Err(CommandCodecError::UnknownParameterDomain(value)),
     }
 }

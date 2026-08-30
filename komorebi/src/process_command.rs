@@ -207,6 +207,9 @@ impl WindowManager {
                 | SocketMessage::ResizeWindowEdge(..)
                 | SocketMessage::ResizeWindowAxis(..)
                 | SocketMessage::ResizeDelta(..)
+                | SocketMessage::Transparency(..)
+                | SocketMessage::ToggleTransparency
+                | SocketMessage::TransparencyAlpha(..)
                 | SocketMessage::MoveContainerToLastWorkspace
                 | SocketMessage::SendContainerToLastWorkspace
                 | SocketMessage::MoveContainerToMonitorNumber(..)
@@ -1015,16 +1018,6 @@ if (!(Get-Process komorebi-bar -ErrorAction SilentlyContinue))
                         ANIMATION_STYLE_PER_ANIMATION.lock().clear();
                     }
                 },
-                SocketMessage::ToggleTransparency => {
-                    let current = transparency_manager::TRANSPARENCY_ENABLED.load(Ordering::SeqCst);
-                    transparency_manager::TRANSPARENCY_ENABLED.store(!current, Ordering::SeqCst);
-                }
-                SocketMessage::Transparency(enable) => {
-                    transparency_manager::TRANSPARENCY_ENABLED.store(enable, Ordering::SeqCst);
-                }
-                SocketMessage::TransparencyAlpha(alpha) => {
-                    transparency_manager::TRANSPARENCY_ALPHA.store(alpha, Ordering::SeqCst);
-                }
                 SocketMessage::StackbarMode(mode) => {
                     STACKBAR_MODE.store(mode);
                     self.retile_all(true)?;

@@ -9,6 +9,7 @@ use crate::action::WorkspaceName;
 use crate::action::WorkspaceSelector;
 use crate::core::ResizeStep;
 use crate::core::SocketMessage;
+use crate::core::TransparencyAlpha;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum SocketMessageClass {
@@ -49,6 +50,9 @@ pub fn classify(message: &SocketMessage) -> SocketMessageClass {
         | ResizeWindowEdge(_, _)
         | ResizeWindowAxis(_, _)
         | ResizeDelta(_)
+        | Transparency(_)
+        | ToggleTransparency
+        | TransparencyAlpha(_)
         | MoveContainerToLastWorkspace
         | SendContainerToLastWorkspace
         | MoveContainerToMonitorNumber(_)
@@ -176,9 +180,6 @@ pub fn classify(message: &SocketMessage) -> SocketMessageClass {
         | BorderWidth(_)
         | BorderOffset(_)
         | BorderImplementation(_)
-        | Transparency(_)
-        | ToggleTransparency
-        | TransparencyAlpha(_)
         | InvisibleBorders(_)
         | StackbarMode(_)
         | StackbarLabel(_)
@@ -246,6 +247,13 @@ pub fn to_builtin_action(message: &SocketMessage) -> Option<BuiltinAction> {
         }),
         SocketMessage::ResizeDelta(step) => Some(BuiltinAction::SetResizeStep {
             step: ResizeStep::new(*step).ok()?,
+        }),
+        SocketMessage::Transparency(enabled) => {
+            Some(BuiltinAction::SetTransparencyEnabled { enabled: *enabled })
+        }
+        SocketMessage::ToggleTransparency => Some(BuiltinAction::ToggleTransparency),
+        SocketMessage::TransparencyAlpha(alpha) => Some(BuiltinAction::SetTransparencyAlpha {
+            alpha: TransparencyAlpha::new(*alpha),
         }),
         SocketMessage::CycleFocusWindow(direction) => Some(BuiltinAction::CycleFocusWindow {
             direction: *direction,
@@ -745,6 +753,20 @@ mod tests {
             })
         );
         assert_eq!(
+            to_builtin_action(&SocketMessage::Transparency(true)),
+            Some(BuiltinAction::SetTransparencyEnabled { enabled: true })
+        );
+        assert_eq!(
+            to_builtin_action(&SocketMessage::ToggleTransparency),
+            Some(BuiltinAction::ToggleTransparency)
+        );
+        assert_eq!(
+            to_builtin_action(&SocketMessage::TransparencyAlpha(177)),
+            Some(BuiltinAction::SetTransparencyAlpha {
+                alpha: TransparencyAlpha::new(177),
+            })
+        );
+        assert_eq!(
             to_builtin_action(&SocketMessage::CycleFocusWindow(
                 crate::core::CycleDirection::Next
             )),
@@ -862,7 +884,7 @@ mod tests {
             focused_window: Some(WindowId::new(9)),
             directional_targets: [OperationDirection::Left].into(),
             current_layout: DefaultLayout::BSP,
-            resize_step: crate::DEFAULT_RESIZE_STEP,
+            configuration: crate::action::ConfigurationSnapshot::default(),
             focused_window_floating: false,
             named_workspaces: Vec::new(),
             bindings: Vec::new(),
