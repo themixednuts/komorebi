@@ -1,0 +1,302 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "id": "e57067ca-9795-40d9-9a96-8de28240bde0",
+  "prevIds": [
+    "00000000-0000-0000-0000-000000000000"
+  ],
+  "ddl": [
+    {
+      "entityType": "tables",
+      "name": "invocation_namespaces",
+      "strict": true
+    },
+    {
+      "entityType": "columns",
+      "table": "invocation_namespaces",
+      "name": "namespace",
+      "type": "BLOB",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "invocation_namespaces",
+      "name": "principal",
+      "type": "BLOB",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "invocation_namespaces",
+      "name": "next_sequence",
+      "type": "BLOB",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "invocation_namespaces",
+      "name": "minimum_accepted",
+      "type": "BLOB",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "invocation_namespaces",
+      "name": "record_count",
+      "type": "INTEGER",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "checks",
+      "table": "invocation_namespaces",
+      "name": "invocation_namespaces_record_count_check",
+      "value": "record_count >= 0 AND record_count <= 65536"
+    },
+    {
+      "entityType": "pks",
+      "table": "invocation_namespaces",
+      "name": "invocation_namespaces_pk",
+      "columns": [
+        "namespace"
+      ],
+      "nameExplicit": false
+    },
+    {
+      "entityType": "tables",
+      "name": "invocation_records",
+      "strict": true
+    },
+    {
+      "entityType": "columns",
+      "table": "invocation_records",
+      "name": "namespace",
+      "type": "BLOB",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "invocation_records",
+      "name": "sequence",
+      "type": "BLOB",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "invocation_records",
+      "name": "principal",
+      "type": "BLOB",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "invocation_records",
+      "name": "digest",
+      "type": "BLOB",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "invocation_records",
+      "name": "parameters",
+      "type": "BLOB",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "invocation_records",
+      "name": "phase",
+      "type": "INTEGER",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "invocation_records",
+      "name": "recovery_policy",
+      "type": "INTEGER",
+      "notNull": false,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "invocation_records",
+      "name": "logical_revision",
+      "type": "BLOB",
+      "notNull": false,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "invocation_records",
+      "name": "terminal_kind",
+      "type": "INTEGER",
+      "notNull": false,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "invocation_records",
+      "name": "outcome",
+      "type": "BLOB",
+      "notNull": false,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "invocation_records",
+      "name": "committed_event",
+      "type": "BLOB",
+      "notNull": false,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "invocation_records",
+      "name": "reserved_at_ms",
+      "type": "INTEGER",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "checks",
+      "table": "invocation_records",
+      "name": "invocation_records_reserved_at_ms_check",
+      "value": "reserved_at_ms >= 0"
+    },
+    {
+      "entityType": "columns",
+      "table": "invocation_records",
+      "name": "logical_committed_at_ms",
+      "type": "INTEGER",
+      "notNull": false,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "invocation_records",
+      "name": "effect_dispatched_at_ms",
+      "type": "INTEGER",
+      "notNull": false,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "invocation_records",
+      "name": "terminal_at_ms",
+      "type": "INTEGER",
+      "notNull": false,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "pks",
+      "table": "invocation_records",
+      "name": "invocation_records_pk",
+      "columns": [
+        "namespace",
+        "sequence"
+      ],
+      "nameExplicit": false
+    },
+    {
+      "entityType": "indexes",
+      "table": "invocation_records",
+      "name": "invocation_recovery_idx",
+      "columns": [
+        {
+          "value": "phase",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "origin": "manual"
+    },
+    {
+      "entityType": "indexes",
+      "table": "invocation_records",
+      "name": "invocation_compaction_idx",
+      "columns": [
+        {
+          "value": "namespace",
+          "isExpression": false
+        },
+        {
+          "value": "terminal_at_ms",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "origin": "manual"
+    }
+  ],
+  "renames": []
+}
