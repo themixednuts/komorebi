@@ -25,6 +25,7 @@ pub use model::LogicalCommit;
 pub use model::MAX_LIVE_RECORDS_PER_NAMESPACE;
 pub use model::MINIMUM_TERMINAL_RETENTION;
 pub use model::NamespaceRegistration;
+pub use model::NewLeaseDecision;
 pub use model::RecoveryInvocation;
 pub use model::RecoveryPolicy;
 pub use model::RecoveryReport;

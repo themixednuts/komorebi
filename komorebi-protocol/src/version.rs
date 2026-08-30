@@ -53,6 +53,8 @@ pub struct ProtocolVersion {
 }
 
 impl ProtocolVersion {
+    pub const V1_0: Self = Self::new(ProtocolMajor::new(NonZeroU16::MIN), ProtocolMinor::ZERO);
+
     #[must_use]
     pub const fn new(major: ProtocolMajor, minor: ProtocolMinor) -> Self {
         Self { major, minor }
@@ -73,6 +75,8 @@ impl ProtocolVersion {
 pub struct CatalogSchemaVersion(NonZeroU16);
 
 impl CatalogSchemaVersion {
+    pub const V1: Self = Self::new(NonZeroU16::MIN);
+
     #[must_use]
     pub const fn new(value: NonZeroU16) -> Self {
         Self(value)
@@ -140,6 +144,17 @@ impl<V: Copy + Ord> VersionRange<V> {
 pub struct VersionRanges<V>(Box<[VersionRange<V>]>);
 
 impl<V: Copy + Ord> VersionRanges<V> {
+    #[must_use]
+    pub fn single(version: V) -> Self {
+        Self(
+            vec![VersionRange {
+                first: version,
+                last: version,
+            }]
+            .into_boxed_slice(),
+        )
+    }
+
     /// Creates a bounded, nonempty set of ascending, nonoverlapping ranges.
     ///
     /// # Errors
@@ -200,6 +215,17 @@ pub enum VersionSetError {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn v1_versions_have_infallible_singleton_ranges() {
+        let protocols = VersionRanges::single(ProtocolVersion::V1_0);
+        let catalogs = VersionRanges::single(CatalogSchemaVersion::V1);
+
+        assert_eq!(protocols.as_slice().len(), 1);
+        assert!(protocols.contains(ProtocolVersion::V1_0));
+        assert_eq!(catalogs.as_slice().len(), 1);
+        assert!(catalogs.contains(CatalogSchemaVersion::V1));
+    }
 
     fn protocol(major: u16, minor: u16) -> Result<ProtocolVersion, VersionSetError> {
         Ok(ProtocolVersion::new(

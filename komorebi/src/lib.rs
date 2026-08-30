@@ -5,6 +5,8 @@ pub mod adapters;
 pub mod animation;
 pub mod border_manager;
 pub mod com;
+mod command_control;
+pub mod command_protocol;
 #[macro_use]
 pub mod ring;
 pub mod container;

@@ -14,6 +14,7 @@ use komorebi_command_store::LedgerTimestamp;
 use komorebi_command_store::LogicalCommit;
 use komorebi_command_store::MINIMUM_TERMINAL_RETENTION;
 use komorebi_command_store::NamespaceRegistration;
+use komorebi_command_store::NewLeaseDecision;
 use komorebi_command_store::OutcomeDocument;
 use komorebi_command_store::RecoveryPolicy;
 use komorebi_command_store::ReservationDecision;
@@ -128,6 +129,42 @@ fn lease_one(
         })?,
         LeaseDecision::Issued(_)
     ));
+    Ok(())
+}
+
+#[test]
+fn new_namespace_registration_and_first_lease_are_one_transaction() -> Result<(), Box<dyn Error>> {
+    let directory = tempfile::tempdir()?;
+    let path = directory.path().join("new-lease.sqlite");
+    let fixture = IdentityFixture::new()?;
+    let request = LeaseRequest {
+        namespace: fixture.namespace,
+        principal: fixture.principal,
+        count: NonZeroU32::new(2).ok_or("nonzero count")?,
+    };
+    let mut ledger = DurableInvocationLedger::open(&path)?;
+
+    let first = match ledger.lease_new(request)? {
+        NewLeaseDecision::Issued(lease) => lease,
+        NewLeaseDecision::NamespaceCollision => return Err("fresh namespace collided".into()),
+    };
+    assert!(first.contains(fixture.id(1)?));
+    assert!(first.contains(fixture.id(2)?));
+    assert_eq!(
+        ledger.lease_new(request)?,
+        NewLeaseDecision::NamespaceCollision
+    );
+
+    drop(ledger);
+    let mut reopened = DurableInvocationLedger::open(&path)?;
+    let next = match reopened.lease(LeaseRequest {
+        count: NonZeroU32::MIN,
+        ..request
+    })? {
+        LeaseDecision::Issued(lease) => lease,
+        other => return Err(format!("existing namespace lease failed: {other:?}").into()),
+    };
+    assert_eq!(next.first(), InvocationSequence::try_from(3)?);
     Ok(())
 }
 

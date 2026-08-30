@@ -1,5 +1,7 @@
 use std::num::NonZeroU32;
 use std::time::Duration;
+use std::time::SystemTime;
+use std::time::UNIX_EPOCH;
 
 use komorebi_protocol::InvocationDigest;
 use komorebi_protocol::InvocationId;
@@ -25,6 +27,16 @@ pub const MINIMUM_TERMINAL_RETENTION: Duration = Duration::from_hours(24);
 pub struct LedgerTimestamp(i64);
 
 impl LedgerTimestamp {
+    /// Reads the current wall-clock time as a ledger timestamp.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TimeError`] when the platform clock is outside the ledger's
+    /// nonnegative signed-millisecond range.
+    pub fn now() -> Result<Self, TimeError> {
+        Self::try_from(SystemTime::now())
+    }
+
     /// Creates a nonnegative Unix millisecond timestamp.
     ///
     /// # Errors
@@ -44,10 +56,24 @@ impl LedgerTimestamp {
     }
 }
 
+impl TryFrom<SystemTime> for LedgerTimestamp {
+    type Error = TimeError;
+
+    fn try_from(value: SystemTime) -> Result<Self, Self::Error> {
+        let duration = value
+            .duration_since(UNIX_EPOCH)
+            .map_err(|_| TimeError::BeforeUnixEpoch)?;
+        let millis = i64::try_from(duration.as_millis()).map_err(|_| TimeError::OutOfRange)?;
+        Ok(Self(millis))
+    }
+}
+
 #[derive(Clone, Copy, Debug, Error, Eq, PartialEq)]
 pub enum TimeError {
     #[error("ledger timestamps must not precede the Unix epoch")]
     BeforeUnixEpoch,
+    #[error("ledger timestamps must fit a signed 64-bit millisecond clock")]
+    OutOfRange,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -64,6 +90,12 @@ pub enum LeaseDecision {
     PrincipalConflict,
     CapacityFull,
     SequenceExhausted,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum NewLeaseDecision {
+    Issued(InvocationLease),
+    NamespaceCollision,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -245,6 +277,27 @@ pub enum CompactionDecision {
     UnknownNamespace,
     PrincipalConflict,
     SequenceExhausted,
+}
+
+#[cfg(test)]
+mod timestamp_tests {
+    use super::*;
+
+    #[test]
+    fn system_time_conversion_preserves_epoch_and_rejects_pre_epoch() -> Result<(), TimeError> {
+        assert_eq!(
+            LedgerTimestamp::try_from(UNIX_EPOCH),
+            Ok(LedgerTimestamp::from_unix_millis(0)?)
+        );
+        let before_epoch = UNIX_EPOCH
+            .checked_sub(Duration::from_millis(1))
+            .ok_or(TimeError::OutOfRange)?;
+        assert_eq!(
+            LedgerTimestamp::try_from(before_epoch),
+            Err(TimeError::BeforeUnixEpoch)
+        );
+        Ok(())
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

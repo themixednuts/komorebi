@@ -18,6 +18,16 @@ pub struct ServerSupport {
 
 impl ServerSupport {
     #[must_use]
+    pub fn v1() -> Self {
+        Self::new(
+            VersionRanges::single(ProtocolVersion::V1_0),
+            VersionRanges::single(CatalogSchemaVersion::V1),
+            FeatureSet::default(),
+            SessionLimits::V1,
+        )
+    }
+
+    #[must_use]
     pub fn new(
         protocol_versions: VersionRanges<ProtocolVersion>,
         catalog_schemas: VersionRanges<CatalogSchemaVersion>,

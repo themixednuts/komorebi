@@ -43,6 +43,7 @@ use komorebi::HOME_DIR;
 use komorebi::INITIAL_CONFIGURATION_LOADED;
 use komorebi::SESSION_ID;
 use komorebi::border_manager;
+use komorebi::command_protocol::CommandProtocol;
 use komorebi::focus_manager;
 use komorebi::load_configuration;
 use komorebi::monitor_reconciliator;
@@ -352,7 +353,10 @@ async fn main() -> eyre::Result<()> {
         listen_for_movements(wm.clone());
     }
 
-    tokio::signal::ctrl_c().await?;
+    let command_protocol =
+        CommandProtocol::start(manager_epoch, DATA_DIR.join("komorebi.commands.sqlite")).await?;
+
+    command_protocol.run_until_ctrl_c().await?;
 
     tracing::error!("received ctrl-c, restoring all hidden windows and terminating process");
 

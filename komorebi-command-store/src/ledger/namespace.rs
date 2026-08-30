@@ -12,6 +12,7 @@ use crate::model::LeaseDecision;
 use crate::model::LeaseRequest;
 use crate::model::MAX_LIVE_RECORDS_PER_NAMESPACE;
 use crate::model::NamespaceRegistration;
+use crate::model::NewLeaseDecision;
 use crate::schema::InsertInvocationLeases;
 use crate::schema::SelectInvocationLeases;
 use crate::schema::UpdateInvocationLeases;
@@ -20,6 +21,57 @@ use crate::storage::StoredPrincipalId;
 use crate::storage::StoredSequence;
 
 impl DurableInvocationLedger {
+    /// Atomically registers a caller-generated namespace and leases its first
+    /// contiguous sequence range.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`LedgerError`] if the typed durable transaction fails.
+    pub fn lease_new(&mut self, request: LeaseRequest) -> Result<NewLeaseDecision, LedgerError> {
+        let table = self.schema.leases;
+        let namespace = StoredNamespaceId(request.namespace);
+        let principal = StoredPrincipalId(request.principal);
+
+        self.db
+            .transaction(SQLiteTransactionType::Immediate, |transaction| {
+                let existing: Result<SelectInvocationLeases, DrizzleError> = transaction
+                    .select(())
+                    .from(table)
+                    .r#where(eq(table.namespace_id, namespace))
+                    .get();
+                match existing {
+                    Ok(_) => return Ok(NewLeaseDecision::NamespaceCollision),
+                    Err(error) if is_missing(&error) => {}
+                    Err(error) => return Err(error),
+                }
+
+                let first = komorebi_protocol::InvocationSequence::try_from(1)
+                    .map_err(|error| DrizzleError::ConversionError(error.to_string().into()))?;
+                let next = first
+                    .advance(request.count)
+                    .map_err(|error| DrizzleError::ConversionError(error.to_string().into()))?;
+                transaction
+                    .insert(table)
+                    .values([InsertInvocationLeases::new(
+                        namespace,
+                        principal,
+                        StoredSequence(next),
+                        StoredSequence(first),
+                        0,
+                    )])
+                    .execute()?;
+                Ok(NewLeaseDecision::Issued(
+                    komorebi_protocol::InvocationLease::new(
+                        request.namespace,
+                        first,
+                        request.count,
+                        first,
+                    ),
+                ))
+            })
+            .map_err(Into::into)
+    }
+
     /// Registers a manager-issued namespace for exactly one principal.
     ///
     /// # Errors
