@@ -16,6 +16,7 @@ use crate::action::MonitorIndex;
 use crate::action::NamedWorkspaceTarget;
 use crate::action::NativeEffect;
 use crate::action::NativeEffectFailure;
+use crate::action::ObservationChange;
 use crate::action::PlannedEffect;
 use crate::action::PrincipalId;
 use crate::action::WorkspaceIndex;
@@ -38,6 +39,12 @@ const LEGACY_SOCKET_PRINCIPAL: PrincipalId = PrincipalId::new(0);
 
 #[derive(Debug, thiserror::Error)]
 pub enum CatalogActionError {
+    #[error("manager observation failed for invocation {invocation_id:?}: {source}")]
+    Observation {
+        invocation_id: InvocationId,
+        #[source]
+        source: komorebi_protocol::ActionContractError,
+    },
     #[error("invocation {invocation_id:?} was rejected: {source}")]
     Rejected {
         invocation_id: InvocationId,
@@ -65,17 +72,33 @@ impl CatalogActionError {
     #[must_use]
     pub const fn invocation_id(&self) -> InvocationId {
         match self {
-            Self::Rejected { invocation_id, .. } | Self::NativeEffects { invocation_id, .. } => {
-                *invocation_id
-            }
+            Self::Observation { invocation_id, .. }
+            | Self::Rejected { invocation_id, .. }
+            | Self::NativeEffects { invocation_id, .. } => *invocation_id,
         }
     }
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum CatalogReplyError {
+    #[error("manager observation failed: {0}")]
+    Observation(#[from] komorebi_protocol::ActionContractError),
+    #[error(transparent)]
+    Projection(#[from] CatalogProjectionError),
+}
+
 impl WindowManager {
-    pub fn refresh_catalog_observation(&mut self) {
+    /// Reconciles the manager's current semantic state with the action catalog.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error without changing the catalog if its revision is
+    /// exhausted and the observation changed.
+    pub fn refresh_catalog_observation(
+        &mut self,
+    ) -> Result<ObservationChange, komorebi_protocol::ActionContractError> {
         let snapshot = self.observe_action_snapshot();
-        self.catalog.replace_observation(snapshot);
+        self.catalog.reconcile_observation(snapshot)
     }
 
     /// Observes current action state and returns an authority-scoped wire
@@ -83,19 +106,19 @@ impl WindowManager {
     ///
     /// # Errors
     ///
-    /// Returns [`CatalogProjectionError`] if the internal catalog violates a
-    /// bounded public protocol invariant.
+    /// Returns [`CatalogReplyError`] if observation revisioning is exhausted or
+    /// the internal catalog violates a bounded public protocol invariant.
     pub fn action_catalog_reply(
         &mut self,
         grants: ActionGrants,
         known: Option<CatalogStamp>,
-    ) -> Result<CatalogReply, CatalogProjectionError> {
-        self.refresh_catalog_observation();
-        project_catalog_reply(
+    ) -> Result<CatalogReply, CatalogReplyError> {
+        self.refresh_catalog_observation()?;
+        Ok(project_catalog_reply(
             self.catalog.snapshot(),
             &crate::action::ActionAuthority { grants },
             known,
-        )
+        )?)
     }
 
     #[must_use]
@@ -181,8 +204,12 @@ impl WindowManager {
         request: InvokeAction,
         context: &InvocationContext,
     ) -> Result<InvocationId, CatalogActionError> {
-        self.refresh_catalog_observation();
         let invocation_id = request.invocation_id;
+        self.refresh_catalog_observation()
+            .map_err(|source| CatalogActionError::Observation {
+                invocation_id,
+                source,
+            })?;
         let admission = self
             .catalog
             .admit(request, context, std::time::Instant::now());
@@ -708,7 +735,9 @@ mod tests {
         let invocation_id = error.invocation_id();
         let failure = match error {
             CatalogActionError::NativeEffects { failure, .. } => failure,
-            CatalogActionError::Rejected { .. } => panic!("expected native-effect failure"),
+            CatalogActionError::Observation { .. } | CatalogActionError::Rejected { .. } => {
+                panic!("expected native-effect failure")
+            }
         };
         assert_eq!(failure.effect_id.ordinal(), 0);
 

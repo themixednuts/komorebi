@@ -26,6 +26,17 @@ use super::undo::UndoRecord;
 use komorebi_protocol::StateStamp;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ObservationChange {
+    Unchanged {
+        state: StateStamp,
+    },
+    Advanced {
+        previous: StateStamp,
+        current: StateStamp,
+    },
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum InvocationOrigin {
     Palette,
     Input,
@@ -127,9 +138,27 @@ impl CatalogState {
         &self.snapshot
     }
 
-    pub fn replace_observation(&mut self, mut snapshot: ActionSnapshot) {
-        snapshot.state = self.snapshot.state;
+    /// Reconciles a fresh manager observation with the catalog's logical state.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`komorebi_protocol::ActionContractError::RevisionExhausted`]
+    /// without changing the catalog if a semantic change cannot be assigned a
+    /// new revision.
+    pub fn reconcile_observation(
+        &mut self,
+        mut snapshot: ActionSnapshot,
+    ) -> Result<ObservationChange, komorebi_protocol::ActionContractError> {
+        let previous = self.snapshot.state;
+        snapshot.state = previous;
+        if snapshot == self.snapshot {
+            return Ok(ObservationChange::Unchanged { state: previous });
+        }
+
+        let current = previous.next()?;
+        snapshot.state = current;
         self.snapshot = snapshot;
+        Ok(ObservationChange::Advanced { previous, current })
     }
 
     #[must_use]
@@ -432,6 +461,66 @@ mod tests {
             }
             _ => panic!("both admissions should be the same commit"),
         }
+    }
+
+    #[test]
+    fn identical_observation_preserves_the_exact_revision() {
+        let mut state = live_state();
+        let observation = state.snapshot().clone();
+
+        let change = state
+            .reconcile_observation(observation)
+            .expect("unchanged observation should reconcile");
+
+        assert_eq!(change, ObservationChange::Unchanged { state: stamp(10) });
+        assert_eq!(state.snapshot().state, stamp(10));
+    }
+
+    #[test]
+    fn semantic_observation_change_advances_exactly_once() {
+        let mut state = live_state();
+        let mut observation = state.snapshot().clone();
+        observation.paused = true;
+        observation.state = stamp_in(2, 99);
+
+        let change = state
+            .reconcile_observation(observation.clone())
+            .expect("changed observation should reconcile");
+
+        assert_eq!(
+            change,
+            ObservationChange::Advanced {
+                previous: stamp(10),
+                current: stamp(11),
+            }
+        );
+        assert!(state.snapshot().paused);
+        assert_eq!(state.snapshot().state, stamp(11));
+        assert_eq!(
+            state
+                .reconcile_observation(observation)
+                .expect("repeated observation should reconcile"),
+            ObservationChange::Unchanged { state: stamp(11) }
+        );
+    }
+
+    #[test]
+    fn exhausted_observation_revision_does_not_mutate_catalog() {
+        let mut state = live_state();
+        state.snapshot.state = stamp(u64::MAX);
+        let before = state.snapshot().clone();
+        let mut observation = before.clone();
+        observation.paused = true;
+
+        let error = state
+            .reconcile_observation(observation)
+            .expect_err("exhausted revision must reject a semantic change");
+
+        assert_eq!(
+            error,
+            komorebi_protocol::ActionContractError::RevisionExhausted
+        );
+        assert_eq!(state.snapshot(), &before);
     }
 
     #[test]

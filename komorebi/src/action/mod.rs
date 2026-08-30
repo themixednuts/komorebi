@@ -37,6 +37,7 @@ pub use invoke::InvocationContext;
 pub use invoke::InvocationOrigin;
 pub use invoke::InvokeAction;
 pub use invoke::NativeEffect;
+pub use invoke::ObservationChange;
 pub use komorebi_layouts::DirectionSet;
 pub use offer::ActionAuthority;
 pub use offer::ActionGrants;
