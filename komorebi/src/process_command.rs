@@ -12,10 +12,12 @@ use std::io::BufReader;
 use std::io::Read;
 use std::net::TcpListener;
 use std::net::TcpStream;
+use std::path::Path;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
 use std::time::Duration;
+use uds_windows::UnixListener;
 use uds_windows::UnixStream;
 
 use crate::DATA_DIR;
@@ -82,45 +84,38 @@ use stackbar_manager::STACKBAR_TAB_HEIGHT;
 use stackbar_manager::STACKBAR_TAB_WIDTH;
 use stackbar_manager::STACKBAR_UNFOCUSED_TEXT_COLOUR;
 
-#[tracing::instrument]
-pub fn listen_for_commands(wm: Arc<Mutex<WindowManager>>) {
+pub fn bind_legacy_command_listener(socket: &Path) -> eyre::Result<UnixListener> {
+    match std::fs::remove_file(socket) {
+        Ok(()) => {}
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+        Err(error) => return Err(error.into()),
+    }
+
+    UnixListener::bind(socket).map_err(Into::into)
+}
+
+#[tracing::instrument(skip(listener))]
+pub fn listen_for_commands(wm: Arc<Mutex<WindowManager>>, listener: UnixListener) {
     std::thread::spawn(move || {
-        loop {
-            let wm = wm.clone();
-
-            let _ = std::thread::spawn(move || {
-                let listener = wm
-                    .lock()
-                    .command_listener
-                    .try_clone()
-                    .expect("could not clone unix listener");
-
-                tracing::info!("listening on komorebi.sock");
-                for client in listener.incoming() {
-                    match client {
-                        Ok(stream) => {
-                            let wm_clone = wm.clone();
-                            std::thread::spawn(move || {
-                                match stream.set_read_timeout(Some(Duration::from_secs(1))) {
-                                    Ok(()) => {}
-                                    Err(error) => tracing::error!("{}", error),
-                                }
-                                match read_commands_uds(&wm_clone, stream) {
-                                    Ok(()) => {}
-                                    Err(error) => tracing::error!("{}", error),
-                                }
-                            });
+        tracing::info!("listening on komorebi.sock");
+        for client in listener.incoming() {
+            match client {
+                Ok(stream) => {
+                    let wm = wm.clone();
+                    std::thread::spawn(move || {
+                        if let Err(error) = stream.set_read_timeout(Some(Duration::from_secs(1))) {
+                            tracing::error!(%error, "could not set legacy command read timeout");
                         }
-                        Err(error) => {
-                            tracing::error!("{}", error);
-                            break;
+                        if let Err(error) = read_commands_uds(&wm, stream) {
+                            tracing::error!(%error, "legacy command connection failed");
                         }
-                    }
+                    });
                 }
-            })
-            .join();
-
-            tracing::error!("restarting failed thread");
+                Err(error) => {
+                    tracing::error!(%error, "legacy command listener stopped");
+                    break;
+                }
+            }
         }
     });
 }
@@ -661,11 +656,7 @@ impl WindowManager {
                         self.restore_all_windows(false)?;
 
                         // Create a new wm from the config path
-                        let mut wm = StaticConfig::preload(
-                            config,
-                            self.manager_epoch,
-                            self.command_listener.try_clone().ok(),
-                        )?;
+                        let mut wm = StaticConfig::preload(config, self.manager_epoch)?;
 
                         // Initialize the new wm
                         wm.init()?;
@@ -1269,15 +1260,12 @@ mod tests {
         ManagerEpoch::new([1; 16]).expect("test epoch is non-nil")
     }
 
-    fn window_manager(socket_path: PathBuf) -> WindowManager {
-        WindowManager::new(manager_epoch(), Some(socket_path))
-            .expect("test manager should bind its socket")
+    fn window_manager() -> WindowManager {
+        WindowManager::new(manager_epoch()).expect("test manager should initialize")
     }
 
-    fn paused_manager() -> (WindowManager, PathBuf) {
-        let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
-        let socket_path = PathBuf::from(&socket_name);
-        let mut wm = window_manager(socket_path.clone());
+    fn paused_manager() -> WindowManager {
+        let mut wm = window_manager();
         let m = monitor::new(
             0,
             Rect::default(),
@@ -1289,20 +1277,18 @@ mod tests {
         );
         wm.monitors_mut().push_back(m);
         wm.is_paused = true;
-        (wm, socket_path)
+        wm
     }
 
     fn assert_paused_rejects(message: SocketMessage) {
-        let (mut wm, socket_path) = paused_manager();
-        let stream = UnixStream::connect(&socket_path).unwrap();
+        let mut wm = paused_manager();
         let error = wm
-            .process_command(message, stream)
+            .process_command(message, Vec::new())
             .expect_err("paused command must not apply");
         assert!(
             error.to_string().contains("unavailable"),
             "unexpected rejection: {error}"
         );
-        std::fs::remove_file(socket_path).unwrap();
     }
 
     fn send_socket_message(socket: &PathBuf, message: SocketMessage) {
@@ -1317,9 +1303,10 @@ mod tests {
 
     #[test]
     fn test_receive_socket_message() {
-        let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
-        let socket_path = PathBuf::from(&socket_name);
-        let mut wm = window_manager(socket_path.clone());
+        let test_socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
+        let test_socket_path = PathBuf::from(&test_socket_name);
+        let listener = super::bind_legacy_command_listener(&test_socket_path).unwrap();
+        let mut wm = window_manager();
         let m = monitor::new(
             0,
             Rect::default(),
@@ -1333,9 +1320,9 @@ mod tests {
         wm.monitors_mut().push_back(m);
 
         // send a message
-        send_socket_message(&socket_path, SocketMessage::FocusWorkspaceNumber(5));
+        send_socket_message(&test_socket_path, SocketMessage::FocusWorkspaceNumber(5));
 
-        let (stream, _) = wm.command_listener.accept().unwrap();
+        let (stream, _) = listener.accept().unwrap();
         let reader = BufReader::new(stream.try_clone().unwrap());
         let next = reader.lines().next();
 
@@ -1350,14 +1337,12 @@ mod tests {
         // check the updated window manager state
         assert_eq!(wm.focused_workspace_idx().unwrap(), 5);
 
-        std::fs::remove_file(socket_path).unwrap();
+        std::fs::remove_file(test_socket_path).unwrap();
     }
 
     #[test]
     fn live_cycle_focus_workspace_advances_index() {
-        let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
-        let socket_path = PathBuf::from(&socket_name);
-        let mut wm = window_manager(socket_path.clone());
+        let mut wm = window_manager();
         let m = monitor::new(
             0,
             Rect::default(),
@@ -1369,32 +1354,28 @@ mod tests {
         );
         wm.monitors_mut().push_back(m);
 
-        let stream = UnixStream::connect(&socket_path).unwrap();
+        let stream = Vec::new();
         wm.process_command(SocketMessage::FocusWorkspaceNumber(1), stream)
             .unwrap();
         assert_eq!(wm.focused_workspace_idx().unwrap(), 1);
 
-        let stream = UnixStream::connect(&socket_path).unwrap();
+        let stream = Vec::new();
         wm.process_command(SocketMessage::FocusWorkspaceNumber(0), stream)
             .unwrap();
         assert_eq!(wm.focused_workspace_idx().unwrap(), 0);
 
-        let stream = UnixStream::connect(&socket_path).unwrap();
+        let stream = Vec::new();
         wm.process_command(
             SocketMessage::CycleFocusWorkspace(crate::core::CycleDirection::Next),
             stream,
         )
         .unwrap();
         assert_eq!(wm.focused_workspace_idx().unwrap(), 1);
-
-        std::fs::remove_file(socket_path).unwrap();
     }
 
     #[test]
     fn live_focus_monitor_workspace_number_selects_pair() {
-        let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
-        let socket_path = PathBuf::from(&socket_name);
-        let mut wm = window_manager(socket_path.clone());
+        let mut wm = window_manager();
         let m = monitor::new(
             0,
             Rect::default(),
@@ -1406,20 +1387,16 @@ mod tests {
         );
         wm.monitors_mut().push_back(m);
 
-        let stream = UnixStream::connect(&socket_path).unwrap();
+        let stream = Vec::new();
         wm.process_command(SocketMessage::FocusMonitorWorkspaceNumber(0, 3), stream)
             .unwrap();
         assert_eq!(wm.focused_monitor_idx(), 0);
         assert_eq!(wm.focused_workspace_idx().unwrap(), 3);
-
-        std::fs::remove_file(socket_path).unwrap();
     }
 
     #[test]
     fn paused_focus_window_is_rejected_instead_of_ignored() {
-        let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
-        let socket_path = PathBuf::from(&socket_name);
-        let mut wm = window_manager(socket_path.clone());
+        let mut wm = window_manager();
         let m = monitor::new(
             0,
             Rect::default(),
@@ -1432,7 +1409,7 @@ mod tests {
         wm.monitors_mut().push_back(m);
         wm.is_paused = true;
 
-        let stream = UnixStream::connect(&socket_path).unwrap();
+        let stream = Vec::new();
         let error = wm
             .process_command(
                 SocketMessage::FocusWindow(crate::core::OperationDirection::Left),
@@ -1443,15 +1420,11 @@ mod tests {
             error.to_string().contains("unavailable"),
             "unexpected rejection: {error}"
         );
-
-        std::fs::remove_file(socket_path).unwrap();
     }
 
     #[test]
     fn paused_move_window_is_rejected_instead_of_ignored() {
-        let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
-        let socket_path = PathBuf::from(&socket_name);
-        let mut wm = window_manager(socket_path.clone());
+        let mut wm = window_manager();
         let m = monitor::new(
             0,
             Rect::default(),
@@ -1464,7 +1437,7 @@ mod tests {
         wm.monitors_mut().push_back(m);
         wm.is_paused = true;
 
-        let stream = UnixStream::connect(&socket_path).unwrap();
+        let stream = Vec::new();
         let error = wm
             .process_command(
                 SocketMessage::MoveWindow(crate::core::OperationDirection::Left),
@@ -1475,15 +1448,11 @@ mod tests {
             error.to_string().contains("unavailable"),
             "unexpected rejection: {error}"
         );
-
-        std::fs::remove_file(socket_path).unwrap();
     }
 
     #[test]
     fn paused_change_layout_is_rejected_instead_of_applied() {
-        let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
-        let socket_path = PathBuf::from(&socket_name);
-        let mut wm = window_manager(socket_path.clone());
+        let mut wm = window_manager();
         let m = monitor::new(
             0,
             Rect::default(),
@@ -1496,7 +1465,7 @@ mod tests {
         wm.monitors_mut().push_back(m);
         wm.is_paused = true;
 
-        let stream = UnixStream::connect(&socket_path).unwrap();
+        let stream = Vec::new();
         let error = wm
             .process_command(
                 SocketMessage::ChangeLayout(crate::core::DefaultLayout::Columns),
@@ -1515,15 +1484,11 @@ mod tests {
             ),
             "paused layout must stay BSP, got {layout:?}"
         );
-
-        std::fs::remove_file(socket_path).unwrap();
     }
 
     #[test]
     fn change_layout_commits_the_focused_workspace_layout() {
-        let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
-        let socket_path = PathBuf::from(&socket_name);
-        let mut wm = window_manager(socket_path.clone());
+        let mut wm = window_manager();
         let m = monitor::new(
             0,
             Rect::default(),
@@ -1535,7 +1500,7 @@ mod tests {
         );
         wm.monitors_mut().push_back(m);
 
-        let stream = UnixStream::connect(&socket_path).unwrap();
+        let stream = Vec::new();
         wm.process_command(
             SocketMessage::ChangeLayout(crate::core::DefaultLayout::Columns),
             stream,
@@ -1550,15 +1515,11 @@ mod tests {
             ),
             "expected Columns, got {layout:?}"
         );
-
-        std::fs::remove_file(socket_path).unwrap();
     }
 
     #[test]
     fn paused_toggle_float_is_rejected_instead_of_ignored() {
-        let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
-        let socket_path = PathBuf::from(&socket_name);
-        let mut wm = window_manager(socket_path.clone());
+        let mut wm = window_manager();
         let m = monitor::new(
             0,
             Rect::default(),
@@ -1571,7 +1532,7 @@ mod tests {
         wm.monitors_mut().push_back(m);
         wm.is_paused = true;
 
-        let stream = UnixStream::connect(&socket_path).unwrap();
+        let stream = Vec::new();
         let error = wm
             .process_command(SocketMessage::ToggleFloat, stream)
             .expect_err("paused float must not reach Win32");
@@ -1579,15 +1540,11 @@ mod tests {
             error.to_string().contains("unavailable"),
             "unexpected rejection: {error}"
         );
-
-        std::fs::remove_file(socket_path).unwrap();
     }
 
     #[test]
     fn paused_resize_window_axis_is_rejected_instead_of_applied() {
-        let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
-        let socket_path = PathBuf::from(&socket_name);
-        let mut wm = window_manager(socket_path.clone());
+        let mut wm = window_manager();
         let m = monitor::new(
             0,
             Rect::default(),
@@ -1600,7 +1557,7 @@ mod tests {
         wm.monitors_mut().push_back(m);
         wm.is_paused = true;
 
-        let stream = UnixStream::connect(&socket_path).unwrap();
+        let stream = Vec::new();
         let error = wm
             .process_command(
                 SocketMessage::ResizeWindowAxis(
@@ -1614,15 +1571,11 @@ mod tests {
             error.to_string().contains("unavailable"),
             "unexpected rejection: {error}"
         );
-
-        std::fs::remove_file(socket_path).unwrap();
     }
 
     #[test]
     fn paused_cycle_focus_window_is_rejected_instead_of_ignored() {
-        let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
-        let socket_path = PathBuf::from(&socket_name);
-        let mut wm = window_manager(socket_path.clone());
+        let mut wm = window_manager();
         let m = monitor::new(
             0,
             Rect::default(),
@@ -1635,7 +1588,7 @@ mod tests {
         wm.monitors_mut().push_back(m);
         wm.is_paused = true;
 
-        let stream = UnixStream::connect(&socket_path).unwrap();
+        let stream = Vec::new();
         let error = wm
             .process_command(
                 SocketMessage::CycleFocusWindow(crate::core::CycleDirection::Next),
@@ -1646,15 +1599,11 @@ mod tests {
             error.to_string().contains("unavailable"),
             "unexpected rejection: {error}"
         );
-
-        std::fs::remove_file(socket_path).unwrap();
     }
 
     #[test]
     fn paused_cycle_move_window_is_rejected_instead_of_ignored() {
-        let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
-        let socket_path = PathBuf::from(&socket_name);
-        let mut wm = window_manager(socket_path.clone());
+        let mut wm = window_manager();
         let m = monitor::new(
             0,
             Rect::default(),
@@ -1667,7 +1616,7 @@ mod tests {
         wm.monitors_mut().push_back(m);
         wm.is_paused = true;
 
-        let stream = UnixStream::connect(&socket_path).unwrap();
+        let stream = Vec::new();
         let error = wm
             .process_command(
                 SocketMessage::CycleMoveWindow(crate::core::CycleDirection::Previous),
@@ -1678,8 +1627,6 @@ mod tests {
             error.to_string().contains("unavailable"),
             "unexpected rejection: {error}"
         );
-
-        std::fs::remove_file(socket_path).unwrap();
     }
 
     #[test]
@@ -1711,8 +1658,8 @@ mod tests {
 
     #[test]
     fn paused_focus_workspace_number_is_rejected_instead_of_applied() {
-        let (mut wm, socket_path) = paused_manager();
-        let stream = UnixStream::connect(&socket_path).unwrap();
+        let mut wm = paused_manager();
+        let stream = Vec::new();
         let error = wm
             .process_command(SocketMessage::FocusWorkspaceNumber(5), stream)
             .expect_err("paused workspace focus must not apply");
@@ -1721,7 +1668,6 @@ mod tests {
             "unexpected rejection: {error}"
         );
         assert_eq!(wm.focused_workspace_idx().unwrap(), 0);
-        std::fs::remove_file(socket_path).unwrap();
     }
 
     #[test]
@@ -1814,9 +1760,7 @@ mod tests {
 
     #[test]
     fn live_toggle_mouse_follows_focus_flips_setting() {
-        let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
-        let socket_path = PathBuf::from(&socket_name);
-        let mut wm = window_manager(socket_path.clone());
+        let mut wm = window_manager();
         let m = monitor::new(
             0,
             Rect::default(),
@@ -1829,19 +1773,15 @@ mod tests {
         wm.monitors_mut().push_back(m);
         let before = wm.mouse_follows_focus;
 
-        let stream = UnixStream::connect(&socket_path).unwrap();
+        let stream = Vec::new();
         wm.process_command(SocketMessage::ToggleMouseFollowsFocus, stream)
             .unwrap();
         assert_eq!(wm.mouse_follows_focus, !before);
-
-        std::fs::remove_file(socket_path).unwrap();
     }
 
     #[test]
     fn live_new_workspace_advances_focus() {
-        let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
-        let socket_path = PathBuf::from(&socket_name);
-        let mut wm = window_manager(socket_path.clone());
+        let mut wm = window_manager();
         let m = monitor::new(
             0,
             Rect::default(),
@@ -1854,19 +1794,15 @@ mod tests {
         wm.monitors_mut().push_back(m);
         assert_eq!(wm.focused_workspace_idx().unwrap(), 0);
 
-        let stream = UnixStream::connect(&socket_path).unwrap();
+        let stream = Vec::new();
         wm.process_command(SocketMessage::NewWorkspace, stream)
             .unwrap();
         assert_eq!(wm.focused_workspace_idx().unwrap(), 1);
-
-        std::fs::remove_file(socket_path).unwrap();
     }
 
     #[test]
     fn live_toggle_tiling_flips_focused_workspace() {
-        let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
-        let socket_path = PathBuf::from(&socket_name);
-        let mut wm = window_manager(socket_path.clone());
+        let mut wm = window_manager();
         let m = monitor::new(
             0,
             Rect::default(),
@@ -1879,23 +1815,20 @@ mod tests {
         wm.monitors_mut().push_back(m);
         assert!(wm.focused_workspace().unwrap().tile);
 
-        let stream = UnixStream::connect(&socket_path).unwrap();
+        let stream = Vec::new();
         wm.process_command(SocketMessage::ToggleTiling, stream)
             .unwrap();
         assert!(!wm.focused_workspace().unwrap().tile);
-
-        std::fs::remove_file(socket_path).unwrap();
     }
 
     #[test]
     fn paused_toggle_pause_is_still_available() {
-        let (mut wm, socket_path) = paused_manager();
+        let mut wm = paused_manager();
         assert!(wm.is_paused);
-        let stream = UnixStream::connect(&socket_path).unwrap();
+        let stream = Vec::new();
         wm.process_command(SocketMessage::TogglePause, stream)
             .unwrap();
         assert!(!wm.is_paused);
-        std::fs::remove_file(socket_path).unwrap();
     }
 
     #[test]
@@ -1979,9 +1912,7 @@ mod tests {
 
     #[test]
     fn live_named_workspace_focus_after_naming() {
-        let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
-        let socket_path = PathBuf::from(&socket_name);
-        let mut wm = window_manager(socket_path.clone());
+        let mut wm = window_manager();
         let m = monitor::new(
             0,
             Rect::default(),
@@ -1993,15 +1924,15 @@ mod tests {
         );
         wm.monitors_mut().push_back(m);
 
-        let stream = UnixStream::connect(&socket_path).unwrap();
+        let stream = Vec::new();
         wm.process_command(SocketMessage::EnsureWorkspaces(0, 2), stream)
             .unwrap();
-        let stream = UnixStream::connect(&socket_path).unwrap();
+        let stream = Vec::new();
         wm.process_command(SocketMessage::WorkspaceName(0, 1, "chat".into()), stream)
             .unwrap();
         assert_eq!(wm.focused_workspace_idx().unwrap(), 0);
 
-        let stream = UnixStream::connect(&socket_path).unwrap();
+        let stream = Vec::new();
         wm.process_command(SocketMessage::FocusNamedWorkspace("chat".into()), stream)
             .unwrap();
         assert_eq!(wm.focused_workspace_idx().unwrap(), 1);
@@ -2009,15 +1940,11 @@ mod tests {
             wm.focused_workspace().unwrap().name.as_deref(),
             Some("chat")
         );
-
-        std::fs::remove_file(socket_path).unwrap();
     }
 
     #[test]
     fn live_ensure_named_workspaces_names_the_ring() {
-        let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
-        let socket_path = PathBuf::from(&socket_name);
-        let mut wm = window_manager(socket_path.clone());
+        let mut wm = window_manager();
         let m = monitor::new(
             0,
             Rect::default(),
@@ -2029,7 +1956,7 @@ mod tests {
         );
         wm.monitors_mut().push_back(m);
 
-        let stream = UnixStream::connect(&socket_path).unwrap();
+        let stream = Vec::new();
         wm.process_command(
             SocketMessage::EnsureNamedWorkspaces(0, vec!["code".into(), "chat".into()]),
             stream,
@@ -2039,15 +1966,11 @@ mod tests {
         assert_eq!(workspaces.len(), 2);
         assert_eq!(workspaces[0].name.as_deref(), Some("code"));
         assert_eq!(workspaces[1].name.as_deref(), Some("chat"));
-
-        std::fs::remove_file(socket_path).unwrap();
     }
 
     #[test]
     fn live_cross_monitor_move_behaviour_is_set() {
-        let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
-        let socket_path = PathBuf::from(&socket_name);
-        let mut wm = window_manager(socket_path.clone());
+        let mut wm = window_manager();
         let m = monitor::new(
             0,
             Rect::default(),
@@ -2063,7 +1986,7 @@ mod tests {
             crate::core::MoveBehaviour::Swap
         );
 
-        let stream = UnixStream::connect(&socket_path).unwrap();
+        let stream = Vec::new();
         wm.process_command(
             SocketMessage::CrossMonitorMoveBehaviour(crate::core::MoveBehaviour::Insert),
             stream,
@@ -2073,15 +1996,11 @@ mod tests {
             wm.cross_monitor_move_behaviour,
             crate::core::MoveBehaviour::Insert
         );
-
-        std::fs::remove_file(socket_path).unwrap();
     }
 
     #[test]
     fn live_ensure_workspaces_grows_the_ring() {
-        let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
-        let socket_path = PathBuf::from(&socket_name);
-        let mut wm = window_manager(socket_path.clone());
+        let mut wm = window_manager();
         let m = monitor::new(
             0,
             Rect::default(),
@@ -2094,11 +2013,9 @@ mod tests {
         wm.monitors_mut().push_back(m);
         assert_eq!(wm.focused_monitor().unwrap().workspaces().len(), 1);
 
-        let stream = UnixStream::connect(&socket_path).unwrap();
+        let stream = Vec::new();
         wm.process_command(SocketMessage::EnsureWorkspaces(0, 4), stream)
             .unwrap();
         assert_eq!(wm.focused_monitor().unwrap().workspaces().len(), 4);
-
-        std::fs::remove_file(socket_path).unwrap();
     }
 }

@@ -107,12 +107,10 @@ use serde::Deserialize;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::collections::HashSet;
-use std::io::ErrorKind;
 use std::io::Write;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
-use uds_windows::UnixListener;
 use uds_windows::UnixStream;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -1304,39 +1302,14 @@ impl StaticConfig {
     }
 
     #[allow(clippy::too_many_lines)]
-    pub fn preload(
-        path: &PathBuf,
-        manager_epoch: ManagerEpoch,
-        unix_listener: Option<UnixListener>,
-    ) -> eyre::Result<WindowManager> {
+    pub fn preload(path: &PathBuf, manager_epoch: ManagerEpoch) -> eyre::Result<WindowManager> {
         let mut value = Self::read(path)?;
         value.apply_globals()?;
-
-        let listener = match unix_listener {
-            Some(listener) => listener,
-            None => {
-                let socket = DATA_DIR.join("komorebi.sock");
-
-                match std::fs::remove_file(&socket) {
-                    Ok(()) => {}
-                    Err(error) => match error.kind() {
-                        // Doing this because ::exists() doesn't work reliably on Windows via IntelliJ
-                        ErrorKind::NotFound => {}
-                        _ => {
-                            return Err(error.into());
-                        }
-                    },
-                };
-
-                UnixListener::bind(&socket)?
-            }
-        };
 
         let mut wm = WindowManager {
             manager_epoch,
             monitors: Ring::default(),
             monitor_usr_idx_map: HashMap::new(),
-            command_listener: listener,
             is_paused: false,
             virtual_desktop_id: current_virtual_desktop(),
             work_area_offset: value.global_work_area_offset,

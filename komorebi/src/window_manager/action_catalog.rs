@@ -639,12 +639,9 @@ impl WindowManager {
 
 #[cfg(test)]
 mod tests {
-    use std::env::temp_dir;
-
     use komorebi_protocol::ManagerEpoch;
     use komorebi_protocol::Revision;
     use komorebi_protocol::StateStamp;
-    use uuid::Uuid;
 
     use super::*;
     use crate::action::WorkspaceSelector;
@@ -652,12 +649,8 @@ mod tests {
     use crate::action::outcome::ActionResult;
 
     fn empty_manager() -> WindowManager {
-        let socket = temp_dir().join(format!("komorebi-catalog-test-{}.sock", Uuid::new_v4()));
-        WindowManager::new(
-            ManagerEpoch::new([1; 16]).expect("test epoch is non-nil"),
-            Some(socket),
-        )
-        .expect("test manager should bind its socket")
+        WindowManager::new(ManagerEpoch::new([1; 16]).expect("test epoch is non-nil"))
+            .expect("test manager should initialize")
     }
 
     #[test]

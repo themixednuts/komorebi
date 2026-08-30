@@ -47,6 +47,7 @@ use komorebi::command_protocol::CommandProtocol;
 use komorebi::focus_manager;
 use komorebi::load_configuration;
 use komorebi::monitor_reconciliator;
+use komorebi::process_command::bind_legacy_command_listener;
 use komorebi::process_command::listen_for_commands;
 use komorebi::process_command::listen_for_commands_tcp;
 use komorebi::process_event::listen_for_events;
@@ -283,13 +284,9 @@ async fn main() -> eyre::Result<()> {
             config.display()
         );
 
-        Arc::new(Mutex::new(StaticConfig::preload(
-            config,
-            manager_epoch,
-            None,
-        )?))
+        Arc::new(Mutex::new(StaticConfig::preload(config, manager_epoch)?))
     } else {
-        Arc::new(Mutex::new(WindowManager::new(manager_epoch, None)?))
+        Arc::new(Mutex::new(WindowManager::new(manager_epoch)?))
     };
 
     wm.lock().init()?;
@@ -336,7 +333,9 @@ async fn main() -> eyre::Result<()> {
     focus_manager::listen_for_notifications(wm.clone());
     theme_manager::listen_for_notifications();
 
-    listen_for_commands(wm.clone());
+    let legacy_socket = DATA_DIR.join("komorebi.sock");
+    let legacy_listener = bind_legacy_command_listener(&legacy_socket)?;
+    listen_for_commands(wm.clone(), legacy_listener);
 
     if let Some(port) = opts.tcp_port {
         listen_for_commands_tcp(wm.clone(), port);

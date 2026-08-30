@@ -822,8 +822,6 @@ where
 mod tests {
     use super::*;
     use komorebi_protocol::ManagerEpoch;
-    use std::path::PathBuf;
-    use uuid::Uuid;
     use windows::Win32::Devices::Display::DISPLAYCONFIG_VIDEO_OUTPUT_TECHNOLOGY;
     // NOTE: Using RECT instead of RECT since I get a mismatched type error. Can be updated if
     // needed.
@@ -859,45 +857,17 @@ mod tests {
         }
     }
 
-    // Creating a Window Manager Instance
-    struct TestContext {
-        socket_path: Option<PathBuf>,
-    }
-
-    impl Drop for TestContext {
-        fn drop(&mut self) {
-            if let Some(socket_path) = &self.socket_path {
-                // Clean up the socket file
-                if let Err(e) = std::fs::remove_file(socket_path) {
-                    tracing::warn!("Failed to remove socket file: {}", e);
-                }
-            }
-        }
-    }
-
-    fn setup_window_manager() -> (WindowManager, TestContext) {
-        // Temporary socket path for testing
-        let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
-        let socket_path = PathBuf::from(socket_name);
-
-        // Create a new WindowManager instance
+    fn setup_window_manager() -> WindowManager {
         let manager_epoch = match ManagerEpoch::new([1; 16]) {
             Ok(epoch) => epoch,
             Err(error) => panic!("test epoch should be non-nil: {error}"),
         };
-        let wm = match WindowManager::new(manager_epoch, Some(socket_path.clone())) {
+        match WindowManager::new(manager_epoch) {
             Ok(manager) => manager,
             Err(e) => {
                 panic!("Failed to create WindowManager: {e}");
             }
-        };
-
-        (
-            wm,
-            TestContext {
-                socket_path: Some(socket_path),
-            },
-        )
+        }
     }
 
     #[test]
@@ -1028,7 +998,7 @@ mod tests {
     #[test]
     fn test_listen_for_notifications() {
         // Create a WindowManager instance for testing
-        let (wm, _test_context) = setup_window_manager();
+        let wm = setup_window_manager();
 
         // Start the notification listener
         let result = listen_for_notifications(Arc::new(Mutex::new(wm)));
