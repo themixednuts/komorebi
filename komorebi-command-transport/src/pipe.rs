@@ -10,7 +10,9 @@ use komorebi_protocol::OutboundSequence;
 use komorebi_protocol::ProtocolPreface;
 use komorebi_protocol::SequenceError;
 use komorebi_protocol::StreamId;
+use tokio::io::AsyncRead;
 use tokio::io::AsyncReadExt;
+use tokio::io::AsyncWrite;
 use tokio::io::AsyncWriteExt;
 use tokio::net::windows::named_pipe::NamedPipeServer;
 use tokio::net::windows::named_pipe::PipeMode;
@@ -140,13 +142,8 @@ impl AuthenticatedPipe {
         read_complete(&mut self.pipe, &mut preface).await?;
         ProtocolPreface::decode(&preface)?;
         Ok(ProtocolConnection {
-            pipe: self.pipe,
+            framed: FramedPipe::after_inbound_preface(self.pipe),
             peer: self.peer,
-            read: FrameReadState::default(),
-            inbound_sequence: InboundSequence::default(),
-            write: None,
-            outbound_sequence: OutboundSequence::default(),
-            outbound_preface: OutboundPreface::Pending,
         })
     }
 
@@ -157,13 +154,18 @@ impl AuthenticatedPipe {
 }
 
 pub struct ProtocolConnection {
-    pipe: NamedPipeServer,
+    framed: FramedPipe<NamedPipeServer>,
     peer: PeerIdentity,
+}
+
+pub(crate) struct FramedPipe<P> {
+    pipe: P,
     read: FrameReadState,
     inbound_sequence: InboundSequence,
     write: Option<PendingWrite>,
     outbound_sequence: OutboundSequence,
     outbound_preface: OutboundPreface,
+    inbound_preface: InboundPreface,
 }
 
 impl ProtocolConnection {
@@ -182,6 +184,71 @@ impl ProtocolConnection {
     ///
     /// Returns an error on EOF, pipe I/O failure, or invalid frame data.
     pub async fn receive_frame(&mut self) -> Result<Frame, TransportError> {
+        self.framed.receive_frame().await
+    }
+
+    /// Creates and queues exactly one correctly sequenced frame.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TransportError::WriteInProgress`] when a previous frame has
+    /// not finished flushing, or a framing/sequence error at its boundary.
+    pub fn queue_frame(
+        &mut self,
+        kind: FrameKind,
+        stream_id: StreamId,
+        payload: impl Into<Box<[u8]>>,
+    ) -> Result<komorebi_protocol::DirectionSequence, TransportError> {
+        self.framed.queue_frame(kind, stream_id, payload)
+    }
+
+    /// Flushes the queued frame while retaining its offset if cancelled.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the pipe write fails or makes no progress.
+    pub async fn flush_queued_frame(&mut self) -> Result<(), TransportError> {
+        self.framed.flush_queued_frame().await
+    }
+
+    #[must_use]
+    pub const fn has_queued_frame(&self) -> bool {
+        self.framed.has_queued_frame()
+    }
+}
+
+impl<P> FramedPipe<P> {
+    pub(crate) fn awaiting_inbound_preface(pipe: P) -> Self {
+        Self::new(pipe, InboundPreface::default())
+    }
+
+    fn after_inbound_preface(pipe: P) -> Self {
+        Self::new(pipe, InboundPreface::Complete)
+    }
+
+    fn new(pipe: P, inbound_preface: InboundPreface) -> Self {
+        Self {
+            pipe,
+            read: FrameReadState::default(),
+            inbound_sequence: InboundSequence::default(),
+            write: None,
+            outbound_sequence: OutboundSequence::default(),
+            outbound_preface: OutboundPreface::Pending,
+            inbound_preface,
+        }
+    }
+
+    pub(crate) const fn has_queued_frame(&self) -> bool {
+        self.write.is_some()
+    }
+}
+
+impl<P> FramedPipe<P>
+where
+    P: AsyncRead + AsyncWrite + Unpin,
+{
+    pub(crate) async fn receive_frame(&mut self) -> Result<Frame, TransportError> {
+        self.receive_preface().await?;
         loop {
             let (pipe, state) = (&mut self.pipe, &mut self.read);
             match state {
@@ -222,13 +289,23 @@ impl ProtocolConnection {
         }
     }
 
+    async fn receive_preface(&mut self) -> Result<(), TransportError> {
+        let InboundPreface::Pending { bytes, filled } = &mut self.inbound_preface else {
+            return Ok(());
+        };
+        read_progress(&mut self.pipe, bytes, filled).await?;
+        ProtocolPreface::decode(bytes)?;
+        self.inbound_preface = InboundPreface::Complete;
+        Ok(())
+    }
+
     /// Creates and queues exactly one correctly sequenced frame.
     ///
     /// # Errors
     ///
     /// Returns [`TransportError::WriteInProgress`] when a previous frame has
     /// not finished flushing, or a framing/sequence error at its boundary.
-    pub fn queue_frame(
+    pub(crate) fn queue_frame(
         &mut self,
         kind: FrameKind,
         stream_id: StreamId,
@@ -262,7 +339,7 @@ impl ProtocolConnection {
     /// # Errors
     ///
     /// Returns an error when the pipe write fails or makes no progress.
-    pub async fn flush_queued_frame(&mut self) -> Result<(), TransportError> {
+    pub(crate) async fn flush_queued_frame(&mut self) -> Result<(), TransportError> {
         while let Some(pending) = &mut self.write {
             let written = self.pipe.write(&pending.bytes[pending.written..]).await?;
             if written == 0 {
@@ -274,11 +351,6 @@ impl ProtocolConnection {
             }
         }
         Ok(())
-    }
-
-    #[must_use]
-    pub const fn has_queued_frame(&self) -> bool {
-        self.write.is_some()
     }
 }
 
@@ -314,6 +386,23 @@ enum OutboundPreface {
     Sent,
 }
 
+enum InboundPreface {
+    Pending {
+        bytes: [u8; PREFACE_BYTES],
+        filled: usize,
+    },
+    Complete,
+}
+
+impl Default for InboundPreface {
+    fn default() -> Self {
+        Self::Pending {
+            bytes: [0; PREFACE_BYTES],
+            filled: 0,
+        }
+    }
+}
+
 impl OutboundPreface {
     fn take(&mut self) -> Option<[u8; PREFACE_BYTES]> {
         match self {
@@ -326,16 +415,22 @@ impl OutboundPreface {
     }
 }
 
-async fn read_complete(pipe: &mut NamedPipeServer, bytes: &mut [u8]) -> Result<(), TransportError> {
+async fn read_complete<P>(pipe: &mut P, bytes: &mut [u8]) -> Result<(), TransportError>
+where
+    P: AsyncRead + Unpin,
+{
     let mut filled = 0;
     read_progress(pipe, bytes, &mut filled).await
 }
 
-async fn read_progress(
-    pipe: &mut NamedPipeServer,
+async fn read_progress<P>(
+    pipe: &mut P,
     bytes: &mut [u8],
     filled: &mut usize,
-) -> Result<(), TransportError> {
+) -> Result<(), TransportError>
+where
+    P: AsyncRead + Unpin,
+{
     while *filled < bytes.len() {
         let read = pipe.read(&mut bytes[*filled..]).await?;
         if read == 0 {

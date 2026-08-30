@@ -8,8 +8,11 @@ use komorebi_protocol::FrameError;
 use komorebi_protocol::FrameKind;
 use komorebi_protocol::IdentifierError;
 use komorebi_protocol::InvocationIdentityError;
+use komorebi_protocol::ProtocolFaultCode;
 use komorebi_protocol::SequenceError;
 use komorebi_protocol::StreamId;
+use komorebi_protocol::TraceId;
+use komorebi_protocol::UnsupportedVersion;
 use thiserror::Error;
 
 use crate::LogonSid;
@@ -48,6 +51,31 @@ pub enum TransportError {
         expected: FrameKind,
         actual: FrameKind,
     },
+    #[error("the server does not support this command protocol: {0:?}")]
+    UnsupportedVersion(UnsupportedVersion),
+    #[error("the server rejected the command protocol with {code:?} ({trace_id:?})")]
+    ProtocolFault {
+        code: ProtocolFaultCode,
+        trace_id: TraceId,
+    },
+    #[error("the server selected a command protocol outside the client offer")]
+    NegotiationMismatch,
+    #[error("another client request is already in progress")]
+    ClientRequestInProgress,
+    #[error("client-owned stream identities are exhausted")]
+    ClientStreamsExhausted,
+    #[error("expected reply stream {expected:?}, received {actual:?}")]
+    UnexpectedReplyStream {
+        expected: StreamId,
+        actual: StreamId,
+    },
+    #[error("expected reply frame {expected:?}, received {actual:?}")]
+    UnexpectedReplyFrame {
+        expected: FrameKind,
+        actual: FrameKind,
+    },
+    #[error("catalog transfer exceeded the negotiated assembly deadline")]
+    CatalogAssemblyDeadline,
     #[error("requests must use a client-initiated stream, received {0:?}")]
     RequestMustUseClientStream(StreamId),
     #[error("unsupported request frame kind {0:?}")]

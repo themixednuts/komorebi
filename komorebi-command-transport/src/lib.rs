@@ -1,6 +1,7 @@
 #![cfg(windows)]
 #![warn(clippy::all, clippy::pedantic)]
 
+mod client;
 mod endpoint;
 mod error;
 mod mailbox;
@@ -11,6 +12,7 @@ mod server;
 mod subscription;
 mod token;
 
+pub use client::CommandProtocolClient;
 pub use endpoint::CommandPipeEndpoint;
 pub use endpoint::WindowsSessionId;
 pub use error::TransportError;

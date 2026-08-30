@@ -8,7 +8,7 @@ publish = false
 komorebi-protocol = { path = "../komorebi-protocol" }
 sha2 = "0.10"
 thiserror = "2"
-tokio = { version = "=1.53.1", features = ["io-util", "macros", "net", "rt", "sync"] }
+tokio = { version = "=1.53.1", features = ["io-util", "macros", "net", "rt", "sync", "time"] }
 uuid = { version = "1", features = ["v4"] }
 windows-sys = { version = "=0.61.2", features = [
   "Win32_Foundation",
