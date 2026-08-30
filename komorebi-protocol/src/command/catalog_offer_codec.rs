@@ -128,7 +128,7 @@ fn decode_availability(decoder: &mut Decoder<'_>) -> Result<ActionAvailability, 
     }
 }
 
-fn decode_unavailability(value: u8) -> Result<ActionUnavailability, CommandCodecError> {
+pub(super) fn decode_unavailability(value: u8) -> Result<ActionUnavailability, CommandCodecError> {
     match value {
         1 => Ok(ActionUnavailability::ManagerPaused),
         2 => Ok(ActionUnavailability::NoFocusedWindow),

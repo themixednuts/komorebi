@@ -737,6 +737,12 @@ pub enum CommandCodecError {
     WrongInvocationProgressLength { tag: u8, length: u64 },
     #[error("unknown invocation terminal tag {0}")]
     UnknownInvocationTerminalTag(u8),
+    #[error("unknown invocation submission reply tag {0}")]
+    UnknownSubmissionReplyTag(u8),
+    #[error("unknown invocation rejection code {0}")]
+    UnknownInvocationRejection(u8),
+    #[error("invocation rejection code {tag} has array length {length}")]
+    WrongInvocationRejectionLength { tag: u8, length: u64 },
     #[error("invocation terminal tag {tag} has array length {length}")]
     WrongInvocationTerminalLength { tag: u8, length: u64 },
     #[error("unknown settled invocation kind {0}")]

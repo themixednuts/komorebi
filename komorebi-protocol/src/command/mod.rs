@@ -13,6 +13,7 @@ mod control_codec;
 mod lease;
 mod lease_codec;
 mod submission;
+mod submission_codec;
 
 #[cfg(test)]
 mod catalog_tests;
@@ -30,6 +31,7 @@ pub const CANCEL_INVOCATION_FRAME_KIND: FrameKind = FrameKind::new(21);
 pub const CANCEL_INVOCATION_REPLY_FRAME_KIND: FrameKind = FrameKind::new(22);
 pub const GET_CATALOG_FRAME_KIND: FrameKind = FrameKind::new(23);
 pub const CATALOG_REPLY_FRAME_KIND: FrameKind = FrameKind::new(24);
+pub const INVOKE_ACTION_REPLY_FRAME_KIND: FrameKind = FrameKind::new(25);
 
 pub use argument::ActionArgument;
 pub use argument::ActionArguments;
@@ -101,3 +103,4 @@ pub use lease::InvocationLeaseRequest;
 pub use lease_codec::InvocationLeaseCodec;
 pub use submission::InvocationRejection;
 pub use submission::InvocationSubmissionReply;
+pub use submission_codec::InvocationSubmissionCodec;

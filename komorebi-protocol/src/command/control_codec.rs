@@ -230,7 +230,7 @@ fn decode_request(bytes: &[u8]) -> Result<crate::InvocationId, CommandCodecError
     required(invocation_id, 0)
 }
 
-fn encode_status(
+pub(super) fn encode_status(
     encoder: &mut Encoder<Vec<u8>>,
     status: InvocationStatus,
 ) -> Result<(), CommandCodecError> {
@@ -240,7 +240,9 @@ fn encode_status(
     encode_progress(encoder, status.progress())
 }
 
-fn decode_status(decoder: &mut Decoder<'_>) -> Result<InvocationStatus, CommandCodecError> {
+pub(super) fn decode_status(
+    decoder: &mut Decoder<'_>,
+) -> Result<InvocationStatus, CommandCodecError> {
     let count = bounded_map(decoder)?;
     let mut seen = [false; 256];
     let mut invocation_id = None;

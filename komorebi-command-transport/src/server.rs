@@ -18,12 +18,15 @@ use komorebi_protocol::INVOCATION_LEASE_REPLY_FRAME_KIND;
 use komorebi_protocol::INVOCATION_STATUS_FRAME_KIND;
 use komorebi_protocol::INVOCATION_STATUS_REPLY_FRAME_KIND;
 use komorebi_protocol::INVOKE_ACTION_FRAME_KIND;
+use komorebi_protocol::INVOKE_ACTION_REPLY_FRAME_KIND;
 use komorebi_protocol::InvocationControlCodec;
 use komorebi_protocol::InvocationLeaseCodec;
 use komorebi_protocol::InvocationLeaseReply;
 use komorebi_protocol::InvocationLeaseRequest;
 use komorebi_protocol::InvocationStatusReply;
 use komorebi_protocol::InvocationStatusRequest;
+use komorebi_protocol::InvocationSubmissionCodec;
+use komorebi_protocol::InvocationSubmissionReply;
 use komorebi_protocol::LEASE_INVOCATION_IDS_FRAME_KIND;
 use komorebi_protocol::ManagerEpoch;
 use komorebi_protocol::NegotiatedProtocol;
@@ -206,6 +209,7 @@ pub enum SessionRequest {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SessionReply {
+    InvocationSubmission(InvocationSubmissionReply),
     InvocationLease(InvocationLeaseReply),
     InvocationStatus(InvocationStatusReply),
     CancelInvocation(CancelInvocationReply),
@@ -234,6 +238,10 @@ impl PendingReply {
         limits: SessionLimits,
     ) -> Result<Self, TransportError> {
         let frames = match reply {
+            SessionReply::InvocationSubmission(reply) => ReplyFrames::single(
+                INVOKE_ACTION_REPLY_FRAME_KIND,
+                InvocationSubmissionCodec::encode(reply)?,
+            ),
             SessionReply::InvocationLease(reply) => ReplyFrames::single(
                 INVOCATION_LEASE_REPLY_FRAME_KIND,
                 InvocationLeaseCodec::encode_reply(reply)?,
@@ -493,7 +501,9 @@ mod tests {
     use komorebi_protocol::InvocationLeaseReply;
     use komorebi_protocol::InvocationLeaseRequest;
     use komorebi_protocol::InvocationNamespaceId;
+    use komorebi_protocol::InvocationProgress;
     use komorebi_protocol::InvocationSequence;
+    use komorebi_protocol::InvocationStatus;
     use komorebi_protocol::InvocationStatusReply;
     use komorebi_protocol::InvocationStatusRequest;
     use komorebi_protocol::InvocationUnavailable;
@@ -711,8 +721,11 @@ mod tests {
         );
         let expected_invocation = invocation(established.manager_epoch())?;
         let expected_invocation_id = expected_invocation.invocation_id();
+        let expected_invocation_digest =
+            ActionInvocationCodec::canonicalize(&expected_invocation)?.digest();
         send_invocation(&mut accepted_client, &expected_invocation).await?;
         let request = established.receive_request().await?;
+        let invocation_reply_target = request.reply_target();
         assert_eq!(
             request.authority().principal(),
             established.peer().principal_id()
@@ -721,6 +734,28 @@ mod tests {
         assert_eq!(
             request.into_request(),
             SessionRequest::Invoke(expected_invocation)
+        );
+        let invocation_status = InvocationStatus::new(
+            expected_invocation_id,
+            expected_invocation_digest,
+            InvocationProgress::Reserved,
+        );
+        let invocation_reply = InvocationSubmissionReply::Accepted(invocation_status);
+        established
+            .send_reply(
+                invocation_reply_target,
+                SessionReply::InvocationSubmission(invocation_reply),
+            )
+            .await?;
+        let reply = receive_frame(&mut accepted_client).await?;
+        assert_eq!(reply.header().kind(), INVOKE_ACTION_REPLY_FRAME_KIND);
+        assert_eq!(
+            reply.header().stream_id(),
+            invocation_reply_target.stream_id()
+        );
+        assert_eq!(
+            InvocationSubmissionCodec::decode(reply.payload())?,
+            invocation_reply
         );
         let lease_request = InvocationLeaseRequest::new(None, NonZeroU32::MIN.saturating_add(31));
         send_lease_request(&mut accepted_client, lease_request).await?;
