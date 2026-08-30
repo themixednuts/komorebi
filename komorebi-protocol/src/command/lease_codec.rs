@@ -8,9 +8,11 @@ use super::CommandCodecError;
 use super::InvocationLeaseRejection;
 use super::InvocationLeaseReply;
 use super::InvocationLeaseRequest;
-use super::codec::MAX_COMMAND_PAYLOAD_BYTES;
+use super::codec::bounded_encoded;
 use super::codec::bounded_map;
 use super::codec::decode_bytes;
+use super::codec::ensure_command_bound;
+use super::codec::require_eof;
 use super::codec::required;
 use super::codec::skip_bounded;
 use super::codec::unique_key;
@@ -42,7 +44,7 @@ impl InvocationLeaseCodec {
         if let Some(namespace) = request.namespace() {
             encoder.u8(1)?.bytes(&namespace.into_bytes())?;
         }
-        bounded(encoder.into_writer())
+        bounded_encoded(encoder.into_writer())
     }
 
     /// Decodes a strict, bounded invocation lease request.
@@ -52,7 +54,7 @@ impl InvocationLeaseCodec {
     /// Returns [`CommandCodecError`] for malformed, duplicate, missing,
     /// oversized, indefinite, or trailing input.
     pub fn decode_request(bytes: &[u8]) -> Result<InvocationLeaseRequest, CommandCodecError> {
-        ensure_bound(bytes)?;
+        ensure_command_bound(bytes)?;
         let mut decoder = Decoder::new(bytes);
         let count = bounded_map(&mut decoder)?;
         let mut seen = [false; 256];
@@ -109,7 +111,7 @@ impl InvocationLeaseCodec {
                     .u8(reason as u8)?;
             }
         }
-        bounded(encoder.into_writer())
+        bounded_encoded(encoder.into_writer())
     }
 
     /// Decodes a strict, bounded invocation lease reply.
@@ -119,7 +121,7 @@ impl InvocationLeaseCodec {
     /// Returns [`CommandCodecError`] for malformed, duplicate, missing,
     /// unknown, oversized, indefinite, or trailing input.
     pub fn decode_reply(bytes: &[u8]) -> Result<InvocationLeaseReply, CommandCodecError> {
-        ensure_bound(bytes)?;
+        ensure_command_bound(bytes)?;
         let mut decoder = Decoder::new(bytes);
         let count = bounded_map(&mut decoder)?;
         let mut seen = [false; 256];
@@ -189,27 +191,6 @@ fn require_issued_tag(tag: Option<u8>, key: u8) -> Result<(), CommandCodecError>
     match tag.ok_or(CommandCodecError::MissingKey(0))? {
         ISSUED_REPLY_TAG => Ok(()),
         tag => Err(CommandCodecError::UnexpectedLeaseReplyField { tag, key }),
-    }
-}
-
-fn bounded(bytes: Vec<u8>) -> Result<Vec<u8>, CommandCodecError> {
-    ensure_bound(&bytes)?;
-    Ok(bytes)
-}
-
-fn ensure_bound(bytes: &[u8]) -> Result<(), CommandCodecError> {
-    if bytes.len() > MAX_COMMAND_PAYLOAD_BYTES {
-        Err(CommandCodecError::PayloadTooLarge(bytes.len()))
-    } else {
-        Ok(())
-    }
-}
-
-fn require_eof(decoder: &Decoder<'_>, bytes: &[u8]) -> Result<(), CommandCodecError> {
-    if decoder.position() == bytes.len() {
-        Ok(())
-    } else {
-        Err(CommandCodecError::TrailingBytes)
     }
 }
 

@@ -191,7 +191,7 @@ impl ActionInvocationCodec {
     }
 }
 
-fn encode_invocation_id(
+pub(super) fn encode_invocation_id(
     encoder: &mut Encoder<Vec<u8>>,
     id: InvocationId,
 ) -> Result<(), CommandCodecError> {
@@ -202,7 +202,9 @@ fn encode_invocation_id(
     Ok(())
 }
 
-fn decode_invocation_id(decoder: &mut Decoder<'_>) -> Result<InvocationId, CommandCodecError> {
+pub(super) fn decode_invocation_id(
+    decoder: &mut Decoder<'_>,
+) -> Result<InvocationId, CommandCodecError> {
     expect_array(decoder, 2)?;
     Ok(InvocationId::new(
         InvocationNamespaceId::new(decode_bytes(decoder)?)?,
@@ -269,7 +271,7 @@ fn decode_action_key(decoder: &mut Decoder<'_>) -> Result<ActionKey, CommandCode
     Ok(ActionKey::new(required(id, 0)?, required(schema, 1)?))
 }
 
-fn encode_state(
+pub(super) fn encode_state(
     encoder: &mut Encoder<Vec<u8>>,
     state: StateStamp,
 ) -> Result<(), CommandCodecError> {
@@ -282,7 +284,7 @@ fn encode_state(
     Ok(())
 }
 
-fn decode_state(decoder: &mut Decoder<'_>) -> Result<StateStamp, CommandCodecError> {
+pub(super) fn decode_state(decoder: &mut Decoder<'_>) -> Result<StateStamp, CommandCodecError> {
     let count = bounded_map(decoder)?;
     let mut seen = [false; 256];
     let mut epoch = None;
@@ -583,6 +585,27 @@ pub(super) fn required<T>(value: Option<T>, key: u8) -> Result<T, CommandCodecEr
     value.ok_or(CommandCodecError::MissingKey(key))
 }
 
+pub(super) fn bounded_encoded(bytes: Vec<u8>) -> Result<Vec<u8>, CommandCodecError> {
+    ensure_command_bound(&bytes)?;
+    Ok(bytes)
+}
+
+pub(super) fn ensure_command_bound(bytes: &[u8]) -> Result<(), CommandCodecError> {
+    if bytes.len() > MAX_COMMAND_PAYLOAD_BYTES {
+        Err(CommandCodecError::PayloadTooLarge(bytes.len()))
+    } else {
+        Ok(())
+    }
+}
+
+pub(super) fn require_eof(decoder: &Decoder<'_>, bytes: &[u8]) -> Result<(), CommandCodecError> {
+    if decoder.position() == bytes.len() {
+        Ok(())
+    } else {
+        Err(CommandCodecError::TrailingBytes)
+    }
+}
+
 pub(super) fn decode_bytes<const N: usize>(
     decoder: &mut Decoder<'_>,
 ) -> Result<[u8; N], CommandCodecError> {
@@ -693,6 +716,24 @@ pub enum CommandCodecError {
     WrongLeaseReplyFieldType,
     #[error("invocation lease reply tag {tag} cannot contain numeric key {key}")]
     UnexpectedLeaseReplyField { tag: u8, key: u8 },
+    #[error("unknown invocation status reply tag {0}")]
+    UnknownStatusReplyTag(u8),
+    #[error("unknown invocation cancellation reply tag {0}")]
+    UnknownCancelReplyTag(u8),
+    #[error("unknown invocation availability code {0}")]
+    UnknownInvocationUnavailable(u8),
+    #[error("invocation control reply tag {0} has the wrong field 1 CBOR type")]
+    WrongInvocationControlReplyFieldType(u8),
+    #[error("unknown invocation progress tag {0}")]
+    UnknownInvocationProgressTag(u8),
+    #[error("invocation progress tag {tag} has array length {length}")]
+    WrongInvocationProgressLength { tag: u8, length: u64 },
+    #[error("unknown invocation terminal tag {0}")]
+    UnknownInvocationTerminalTag(u8),
+    #[error("invocation terminal tag {tag} has array length {length}")]
+    WrongInvocationTerminalLength { tag: u8, length: u64 },
+    #[error("unknown settled invocation kind {0}")]
+    UnknownSettledInvocationKind(u8),
     #[error("expected array length {expected}, received {actual}")]
     WrongArrayLength { expected: u64, actual: u64 },
     #[error("expected {expected} bytes, received {actual}")]

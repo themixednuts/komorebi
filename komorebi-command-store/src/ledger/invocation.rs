@@ -91,7 +91,7 @@ impl DurableInvocationLedger {
                     Ok(existing)
                         if existing.principal == principal && existing.digest == digest =>
                     {
-                        return Ok(ReservationDecision::Retained(status_from_row(existing)));
+                        return Ok(ReservationDecision::Retained(status_from_row(existing)?));
                     }
                     Ok(_) => return Ok(ReservationDecision::IdempotencyConflict),
                     Err(error) if is_missing(&error) => {}
@@ -178,23 +178,6 @@ impl DurableInvocationLedger {
             .with_committed_event(commit.committed_event)
             .with_logical_committed_at_ms(commit.committed_at.as_unix_millis());
         self.transition_from(reservation.invocation_id(), StoredPhase::Reserved, update)
-    }
-
-    /// Atomically lets cancellation win only while the invocation is reserved.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`LedgerError`] if the typed durable transition fails.
-    pub fn cancel_reserved(
-        &mut self,
-        invocation_id: InvocationId,
-        cancelled_at: crate::model::LedgerTimestamp,
-    ) -> Result<TransitionDecision, LedgerError> {
-        let update = UpdateInvocations::default()
-            .with_phase(StoredPhase::Terminal)
-            .with_terminal_kind(StoredTerminalKind::CancelledBeforeCommit)
-            .with_terminal_at_ms(cancelled_at.as_unix_millis());
-        self.transition_from(invocation_id, StoredPhase::Reserved, update)
     }
 
     /// Records that native dispatch began. Cancellation after this point never
@@ -291,7 +274,7 @@ impl DurableInvocationLedger {
             .get();
         match record {
             Ok(row) if row.principal.0 == principal => {
-                Ok(StatusDecision::Retained(status_from_row(row)))
+                Ok(StatusDecision::Retained(status_from_row(row)?))
             }
             Ok(_) => Ok(StatusDecision::PrincipalConflict),
             Err(error) if is_missing(&error) => {

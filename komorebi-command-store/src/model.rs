@@ -6,7 +6,11 @@ use komorebi_protocol::InvocationId;
 use komorebi_protocol::InvocationLease;
 use komorebi_protocol::InvocationNamespaceId;
 use komorebi_protocol::InvocationSequence;
+use komorebi_protocol::InvocationStatus;
+use komorebi_protocol::InvocationStatusReply;
+use komorebi_protocol::InvocationUnavailable;
 use komorebi_protocol::PrincipalId;
+use komorebi_protocol::SettledInvocationKind;
 use komorebi_protocol::StateStamp;
 use thiserror::Error;
 
@@ -99,7 +103,7 @@ impl Reservation {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ReservationDecision {
     Reserved(Reservation),
-    Retained(InvocationStatus),
+    Retained(DurableInvocationRecord),
     IdempotencyConflict,
     InvocationExpired,
     InvocationNotLeased,
@@ -129,30 +133,33 @@ pub enum DurablePhase {
     Terminal,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum TerminalKind {
-    Succeeded,
-    Failed,
-    Degraded,
-    Indeterminate,
-    CancelledBeforeCommit,
-    RestartedBeforeCommit,
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct DurableInvocationRecord {
+    pub(crate) status: InvocationStatus,
+    pub(crate) outcome: Option<OutcomeDocument>,
+    pub(crate) committed_event: Option<CommittedEventDocument>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct InvocationStatus {
-    pub invocation_id: InvocationId,
-    pub digest: InvocationDigest,
-    pub phase: DurablePhase,
-    pub committed_state: Option<StateStamp>,
-    pub terminal_kind: Option<TerminalKind>,
-    pub outcome: Option<OutcomeDocument>,
-    pub committed_event: Option<CommittedEventDocument>,
+impl DurableInvocationRecord {
+    #[must_use]
+    pub const fn status(&self) -> InvocationStatus {
+        self.status
+    }
+
+    #[must_use]
+    pub const fn outcome(&self) -> Option<&OutcomeDocument> {
+        self.outcome.as_ref()
+    }
+
+    #[must_use]
+    pub const fn committed_event(&self) -> Option<&CommittedEventDocument> {
+        self.committed_event.as_ref()
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TerminalRecord {
-    pub kind: TerminalKind,
+    pub kind: SettledInvocationKind,
     pub outcome: OutcomeDocument,
     pub recorded_at: LedgerTimestamp,
 }
@@ -189,11 +196,32 @@ pub struct RecoveryReport {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum StatusDecision {
-    Retained(InvocationStatus),
+    Retained(DurableInvocationRecord),
     InvocationExpired,
     UnknownInvocation,
     UnknownNamespace,
     PrincipalConflict,
+}
+
+impl StatusDecision {
+    #[must_use]
+    pub fn into_reply(self) -> InvocationStatusReply {
+        match self {
+            Self::Retained(record) => InvocationStatusReply::Retained(record.status),
+            Self::InvocationExpired => {
+                InvocationStatusReply::Unavailable(InvocationUnavailable::Expired)
+            }
+            Self::UnknownInvocation => {
+                InvocationStatusReply::Unavailable(InvocationUnavailable::UnknownInvocation)
+            }
+            Self::UnknownNamespace => {
+                InvocationStatusReply::Unavailable(InvocationUnavailable::UnknownNamespace)
+            }
+            Self::PrincipalConflict => {
+                InvocationStatusReply::Unavailable(InvocationUnavailable::Forbidden)
+            }
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

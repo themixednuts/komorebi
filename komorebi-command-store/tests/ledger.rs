@@ -8,7 +8,6 @@ use komorebi_command_store::CommittedEventDocument;
 use komorebi_command_store::CompactionDecision;
 use komorebi_command_store::DispatchState;
 use komorebi_command_store::DurableInvocationLedger;
-use komorebi_command_store::DurablePhase;
 use komorebi_command_store::LeaseDecision;
 use komorebi_command_store::LeaseRequest;
 use komorebi_command_store::LedgerTimestamp;
@@ -19,14 +18,19 @@ use komorebi_command_store::OutcomeDocument;
 use komorebi_command_store::RecoveryPolicy;
 use komorebi_command_store::ReservationDecision;
 use komorebi_command_store::StatusDecision;
-use komorebi_command_store::TerminalKind;
 use komorebi_command_store::TerminalRecord;
 use komorebi_command_store::TerminalRetention;
 use komorebi_command_store::TransitionDecision;
+use komorebi_protocol::CancelInvocationReply;
 use komorebi_protocol::InvocationId;
 use komorebi_protocol::InvocationNamespaceId;
+use komorebi_protocol::InvocationProgress;
 use komorebi_protocol::InvocationSequence;
+use komorebi_protocol::InvocationStatusReply;
+use komorebi_protocol::InvocationTerminal;
+use komorebi_protocol::InvocationUnavailable;
 use komorebi_protocol::PrincipalId;
+use komorebi_protocol::SettledInvocationKind;
 
 fn canonical_invocation(
     id: InvocationId,
@@ -215,7 +219,7 @@ fn terminal_status_survives_reopen_on_a_unicode_windows_path() -> Result<(), Box
         ledger.record_terminal(
             id,
             TerminalRecord {
-                kind: TerminalKind::Succeeded,
+                kind: SettledInvocationKind::Succeeded,
                 outcome: outcome.clone(),
                 recorded_at: LedgerTimestamp::from_unix_millis(4)?,
             },
@@ -225,14 +229,28 @@ fn terminal_status_survives_reopen_on_a_unicode_windows_path() -> Result<(), Box
     drop(ledger);
 
     let reopened = DurableInvocationLedger::open(&path)?;
-    let StatusDecision::Retained(status) = reopened.status(fixture.principal, id)? else {
+    let decision = reopened.status(fixture.principal, id)?;
+    assert!(matches!(
+        decision.clone().into_reply(),
+        InvocationStatusReply::Retained(status)
+            if status.progress()
+                == InvocationProgress::Terminal(InvocationTerminal::Settled {
+                    state: committed_state()?,
+                    kind: SettledInvocationKind::Succeeded,
+                })
+    ));
+    let StatusDecision::Retained(status) = decision else {
         return Err("terminal invocation was not retained".into());
     };
-    assert_eq!(status.phase, DurablePhase::Terminal);
-    assert_eq!(status.committed_state, Some(committed_state()?));
-    assert_eq!(status.terminal_kind, Some(TerminalKind::Succeeded));
-    assert_eq!(status.outcome, Some(outcome));
-    assert_eq!(status.committed_event, Some(event));
+    assert_eq!(
+        status.status().progress(),
+        InvocationProgress::Terminal(InvocationTerminal::Settled {
+            state: committed_state()?,
+            kind: SettledInvocationKind::Succeeded,
+        })
+    );
+    assert_eq!(status.outcome(), Some(&outcome));
+    assert_eq!(status.committed_event(), Some(&event));
     Ok(())
 }
 
@@ -298,10 +316,15 @@ fn restart_never_blindly_replays_an_ambiguous_effect() -> Result<(), Box<dyn Err
         )?,
         TransitionDecision::Applied
     );
-    assert_eq!(
-        ledger.cancel_reserved(logical_id, LedgerTimestamp::from_unix_millis(3)?)?,
-        TransitionDecision::WrongPhase(DurablePhase::LogicalCommitted)
-    );
+    assert!(matches!(
+        ledger.cancel_invocation(
+            fixture.principal,
+            logical_id,
+            LedgerTimestamp::from_unix_millis(3)?,
+        )?,
+        CancelInvocationReply::TooLate(status)
+            if status.progress() == InvocationProgress::LogicalCommitted(committed_state()?)
+    ));
 
     let ReservationDecision::Reserved(dispatched) =
         reserve(&mut ledger, &fixture, dispatched_id, 3, 1)?
@@ -338,15 +361,72 @@ fn restart_never_blindly_replays_an_ambiguous_effect() -> Result<(), Box<dyn Err
     assert!(matches!(
         reopened.status(fixture.principal, reserved_id)?,
         StatusDecision::Retained(status)
-            if status.terminal_kind == Some(TerminalKind::RestartedBeforeCommit)
+            if status.status().progress()
+                == InvocationProgress::Terminal(InvocationTerminal::RestartedBeforeCommit)
     ));
     assert!(matches!(
         reopened.status(fixture.principal, dispatched_id)?,
         StatusDecision::Retained(status)
-            if status.terminal_kind == Some(TerminalKind::Indeterminate)
-                && status.committed_event
-                    == Some(CommittedEventDocument::new(NonZeroU16::MIN, [7])?)
+            if status.status().progress()
+                == InvocationProgress::Terminal(InvocationTerminal::Settled {
+                    state: committed_state()?,
+                    kind: SettledInvocationKind::Indeterminate,
+                })
+                && status.committed_event()
+                    == Some(&CommittedEventDocument::new(NonZeroU16::MIN, [7])?)
     ));
+    Ok(())
+}
+
+fn assert_compacted_invocation_is_expired_and_scoped(
+    ledger: &mut DurableInvocationLedger,
+    fixture: &IdentityFixture,
+    id: InvocationId,
+    at: i64,
+) -> Result<(), Box<dyn Error>> {
+    assert_eq!(
+        ledger.status(fixture.principal, id)?,
+        StatusDecision::InvocationExpired
+    );
+    assert_eq!(
+        ledger.status(fixture.principal, id)?.into_reply(),
+        InvocationStatusReply::Unavailable(InvocationUnavailable::Expired)
+    );
+    assert_eq!(
+        ledger.cancel_invocation(
+            fixture.principal,
+            id,
+            LedgerTimestamp::from_unix_millis(at)?,
+        )?,
+        CancelInvocationReply::Unavailable(InvocationUnavailable::Expired)
+    );
+    assert_eq!(
+        ledger.cancel_invocation(
+            fixture.other_principal,
+            id,
+            LedgerTimestamp::from_unix_millis(at)?,
+        )?,
+        CancelInvocationReply::Unavailable(InvocationUnavailable::Forbidden)
+    );
+    assert_eq!(
+        ledger.cancel_invocation(
+            fixture.principal,
+            fixture.id(2)?,
+            LedgerTimestamp::from_unix_millis(at)?,
+        )?,
+        CancelInvocationReply::Unavailable(InvocationUnavailable::UnknownInvocation)
+    );
+    assert_eq!(
+        ledger.cancel_invocation(
+            fixture.principal,
+            InvocationId::new(
+                InvocationNamespaceId::new([8; 16])?,
+                InvocationSequence::try_from(1)?,
+            ),
+            LedgerTimestamp::from_unix_millis(at)?,
+        )?,
+        CancelInvocationReply::Unavailable(InvocationUnavailable::UnknownNamespace)
+    );
     Ok(())
 }
 
@@ -361,10 +441,26 @@ fn compaction_advances_expiry_only_after_the_retention_floor() -> Result<(), Box
     let ReservationDecision::Reserved(_) = reserve(&mut ledger, &fixture, id, 1, 1)? else {
         return Err("invocation was not reserved".into());
     };
-    assert_eq!(
-        ledger.cancel_reserved(id, LedgerTimestamp::from_unix_millis(2)?)?,
-        TransitionDecision::Applied
-    );
+    assert!(matches!(
+        ledger.cancel_invocation(
+            fixture.principal,
+            id,
+            LedgerTimestamp::from_unix_millis(2)?,
+        )?,
+        CancelInvocationReply::Cancelled(status)
+            if status.progress()
+                == InvocationProgress::Terminal(InvocationTerminal::CancelledBeforeCommit)
+    ));
+    assert!(matches!(
+        ledger.cancel_invocation(
+            fixture.principal,
+            id,
+            LedgerTimestamp::from_unix_millis(3)?,
+        )?,
+        CancelInvocationReply::AlreadyTerminal(status)
+            if status.progress()
+                == InvocationProgress::Terminal(InvocationTerminal::CancelledBeforeCommit)
+    ));
 
     let retention = TerminalRetention::new(MINIMUM_TERMINAL_RETENTION)?;
     assert!(matches!(
@@ -391,10 +487,7 @@ fn compaction_advances_expiry_only_after_the_retention_floor() -> Result<(), Box
             minimum_accepted,
         } if minimum_accepted == InvocationSequence::try_from(2)?
     ));
-    assert_eq!(
-        ledger.status(fixture.principal, id)?,
-        StatusDecision::InvocationExpired
-    );
+    assert_compacted_invocation_is_expired_and_scoped(&mut ledger, &fixture, id, retained_until)?;
     assert_eq!(
         reserve(&mut ledger, &fixture, id, 1, retained_until)?,
         ReservationDecision::InvocationExpired

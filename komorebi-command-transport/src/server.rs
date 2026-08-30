@@ -2,11 +2,22 @@ use komorebi_protocol::ActionInvocation;
 use komorebi_protocol::ActionInvocationCodec;
 use komorebi_protocol::AuthoritySummary;
 use komorebi_protocol::BootstrapCodec;
+use komorebi_protocol::CANCEL_INVOCATION_FRAME_KIND;
+use komorebi_protocol::CANCEL_INVOCATION_REPLY_FRAME_KIND;
+use komorebi_protocol::CancelInvocationReply;
+use komorebi_protocol::CancelInvocationRequest;
 use komorebi_protocol::ConnectionId;
 use komorebi_protocol::HELLO_FRAME_KIND;
+use komorebi_protocol::INVOCATION_LEASE_REPLY_FRAME_KIND;
+use komorebi_protocol::INVOCATION_STATUS_FRAME_KIND;
+use komorebi_protocol::INVOCATION_STATUS_REPLY_FRAME_KIND;
 use komorebi_protocol::INVOKE_ACTION_FRAME_KIND;
+use komorebi_protocol::InvocationControlCodec;
 use komorebi_protocol::InvocationLeaseCodec;
+use komorebi_protocol::InvocationLeaseReply;
 use komorebi_protocol::InvocationLeaseRequest;
+use komorebi_protocol::InvocationStatusReply;
+use komorebi_protocol::InvocationStatusRequest;
 use komorebi_protocol::LEASE_INVOCATION_IDS_FRAME_KIND;
 use komorebi_protocol::ManagerEpoch;
 use komorebi_protocol::NegotiatedProtocol;
@@ -179,12 +190,34 @@ pub struct EstablishedSession {
 pub enum SessionRequest {
     Invoke(ActionInvocation),
     LeaseInvocationIds(InvocationLeaseRequest),
+    InvocationStatus(InvocationStatusRequest),
+    CancelInvocation(CancelInvocationRequest),
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum SessionReply {
+    InvocationLease(InvocationLeaseReply),
+    InvocationStatus(InvocationStatusReply),
+    CancelInvocation(CancelInvocationReply),
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ReplyTarget {
+    connection_id: ConnectionId,
+    stream_id: StreamId,
+}
+
+impl ReplyTarget {
+    #[must_use]
+    pub const fn stream_id(self) -> StreamId {
+        self.stream_id
+    }
 }
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct AuthenticatedRequest {
     authority: SessionAuthority,
-    stream_id: StreamId,
+    reply_target: ReplyTarget,
     request: SessionRequest,
 }
 
@@ -196,7 +229,12 @@ impl AuthenticatedRequest {
 
     #[must_use]
     pub const fn stream_id(&self) -> StreamId {
-        self.stream_id
+        self.reply_target.stream_id()
+    }
+
+    #[must_use]
+    pub const fn reply_target(&self) -> ReplyTarget {
+        self.reply_target
     }
 
     #[must_use]
@@ -251,13 +289,60 @@ impl EstablishedSession {
             LEASE_INVOCATION_IDS_FRAME_KIND => SessionRequest::LeaseInvocationIds(
                 InvocationLeaseCodec::decode_request(frame.payload())?,
             ),
+            INVOCATION_STATUS_FRAME_KIND => SessionRequest::InvocationStatus(
+                InvocationControlCodec::decode_status_request(frame.payload())?,
+            ),
+            CANCEL_INVOCATION_FRAME_KIND => SessionRequest::CancelInvocation(
+                InvocationControlCodec::decode_cancel_request(frame.payload())?,
+            ),
             kind => return Err(TransportError::UnsupportedRequestFrame(kind)),
         };
         Ok(AuthenticatedRequest {
             authority: self.authority.clone(),
-            stream_id,
+            reply_target: ReplyTarget {
+                connection_id: self.connection_id,
+                stream_id,
+            },
             request,
         })
+    }
+
+    /// Queues and flushes one typed reply on its originating request stream.
+    ///
+    /// Cancellation is safe: a partially written reply remains connection-owned
+    /// and the next call resumes at the retained byte offset.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TransportError`] when encoding, framing, or pipe I/O fails.
+    pub async fn send_reply(
+        &mut self,
+        target: ReplyTarget,
+        reply: SessionReply,
+    ) -> Result<(), TransportError> {
+        if target.connection_id != self.connection_id {
+            return Err(TransportError::WrongReplyConnection {
+                expected: self.connection_id,
+                actual: target.connection_id,
+            });
+        }
+        let (kind, payload) = match reply {
+            SessionReply::InvocationLease(reply) => (
+                INVOCATION_LEASE_REPLY_FRAME_KIND,
+                InvocationLeaseCodec::encode_reply(reply)?,
+            ),
+            SessionReply::InvocationStatus(reply) => (
+                INVOCATION_STATUS_REPLY_FRAME_KIND,
+                InvocationControlCodec::encode_status_reply(reply)?,
+            ),
+            SessionReply::CancelInvocation(reply) => (
+                CANCEL_INVOCATION_REPLY_FRAME_KIND,
+                InvocationControlCodec::encode_cancel_reply(reply)?,
+            ),
+        };
+        self.connection
+            .queue_frame(kind, target.stream_id(), payload)?;
+        self.connection.flush_queued_frame().await
     }
 
     #[must_use]
@@ -304,17 +389,24 @@ mod tests {
     use komorebi_protocol::ActionInvocationCodec;
     use komorebi_protocol::ActionKey;
     use komorebi_protocol::ActionSchemaVersion;
+    use komorebi_protocol::CancelInvocationRequest;
     use komorebi_protocol::CatalogSchemaVersion;
     use komorebi_protocol::CatalogStamp;
     use komorebi_protocol::FeatureSet;
     use komorebi_protocol::Frame;
     use komorebi_protocol::FrameHeader;
     use komorebi_protocol::HEADER_BYTES;
+    use komorebi_protocol::InvocationControlCodec;
     use komorebi_protocol::InvocationId;
     use komorebi_protocol::InvocationLeaseCodec;
+    use komorebi_protocol::InvocationLeaseRejection;
+    use komorebi_protocol::InvocationLeaseReply;
     use komorebi_protocol::InvocationLeaseRequest;
     use komorebi_protocol::InvocationNamespaceId;
     use komorebi_protocol::InvocationSequence;
+    use komorebi_protocol::InvocationStatusReply;
+    use komorebi_protocol::InvocationStatusRequest;
+    use komorebi_protocol::InvocationUnavailable;
     use komorebi_protocol::OfferRef;
     use komorebi_protocol::ProtocolMajor;
     use komorebi_protocol::ProtocolMinor;
@@ -389,6 +481,17 @@ mod tests {
         Ok(Frame::from_received_parts(header, payload)?)
     }
 
+    async fn receive_frame(
+        client: &mut tokio::net::windows::named_pipe::NamedPipeClient,
+    ) -> Result<Frame, Box<dyn std::error::Error>> {
+        let mut header = [0; HEADER_BYTES];
+        client.read_exact(&mut header).await?;
+        let header = FrameHeader::decode(&header)?;
+        let mut payload = vec![0; header.payload_len()];
+        client.read_exact(&mut payload).await?;
+        Ok(Frame::from_received_parts(header, payload)?)
+    }
+
     fn invocation(epoch: ManagerEpoch) -> Result<ActionInvocation, Box<dyn std::error::Error>> {
         let revision = Revision::try_from(1)?;
         Ok(ActionInvocation::new(
@@ -440,6 +543,36 @@ mod tests {
         Ok(())
     }
 
+    async fn send_status_request(
+        client: &mut tokio::net::windows::named_pipe::NamedPipeClient,
+        request: InvocationStatusRequest,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let frame = Frame::new(
+            INVOCATION_STATUS_FRAME_KIND,
+            StreamId::client_initiated(NonZeroU32::MIN.saturating_add(4))?,
+            komorebi_protocol::DirectionSequence::try_from(4)?,
+            InvocationControlCodec::encode_status_request(request)?,
+        )?;
+        client.write_all(&frame.header().encode()).await?;
+        client.write_all(frame.payload()).await?;
+        Ok(())
+    }
+
+    async fn send_cancel_request(
+        client: &mut tokio::net::windows::named_pipe::NamedPipeClient,
+        request: CancelInvocationRequest,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let frame = Frame::new(
+            CANCEL_INVOCATION_FRAME_KIND,
+            StreamId::client_initiated(NonZeroU32::MIN.saturating_add(6))?,
+            komorebi_protocol::DirectionSequence::try_from(5)?,
+            InvocationControlCodec::encode_cancel_request(request)?,
+        )?;
+        client.write_all(&frame.header().encode()).await?;
+        client.write_all(frame.payload()).await?;
+        Ok(())
+    }
+
     #[tokio::test(flavor = "current_thread")]
     #[serial_test::serial]
     async fn handshake_establishes_or_rejects_without_blocking_the_listener()
@@ -467,6 +600,7 @@ mod tests {
             established.connection_id()
         );
         let expected_invocation = invocation(established.manager_epoch())?;
+        let expected_invocation_id = expected_invocation.invocation_id();
         send_invocation(&mut accepted_client, &expected_invocation).await?;
         let request = established.receive_request().await?;
         assert_eq!(
@@ -481,9 +615,84 @@ mod tests {
         let lease_request = InvocationLeaseRequest::new(None, NonZeroU32::MIN.saturating_add(31));
         send_lease_request(&mut accepted_client, lease_request).await?;
         let request = established.receive_request().await?;
+        let lease_reply_target = request.reply_target();
         assert_eq!(
             request.into_request(),
             SessionRequest::LeaseInvocationIds(lease_request)
+        );
+        let lease_reply = InvocationLeaseReply::Rejected(InvocationLeaseRejection::CapacityFull);
+        let mut other_connection = established.connection_id().into_bytes();
+        other_connection[0] ^= u8::MAX;
+        let wrong_target = ReplyTarget {
+            connection_id: ConnectionId::new(other_connection)?,
+            stream_id: lease_reply_target.stream_id(),
+        };
+        assert!(matches!(
+            established
+                .send_reply(wrong_target, SessionReply::InvocationLease(lease_reply))
+                .await,
+            Err(TransportError::WrongReplyConnection { .. })
+        ));
+        established
+            .send_reply(
+                lease_reply_target,
+                SessionReply::InvocationLease(lease_reply),
+            )
+            .await?;
+        let reply = receive_frame(&mut accepted_client).await?;
+        assert_eq!(reply.header().kind(), INVOCATION_LEASE_REPLY_FRAME_KIND);
+        assert_eq!(reply.header().stream_id(), lease_reply_target.stream_id());
+        assert_eq!(
+            InvocationLeaseCodec::decode_reply(reply.payload())?,
+            lease_reply
+        );
+
+        let status_request = InvocationStatusRequest::new(expected_invocation_id);
+        send_status_request(&mut accepted_client, status_request).await?;
+        let request = established.receive_request().await?;
+        let status_reply_target = request.reply_target();
+        assert_eq!(
+            request.into_request(),
+            SessionRequest::InvocationStatus(status_request)
+        );
+        let status_reply =
+            InvocationStatusReply::Unavailable(InvocationUnavailable::UnknownInvocation);
+        established
+            .send_reply(
+                status_reply_target,
+                SessionReply::InvocationStatus(status_reply),
+            )
+            .await?;
+        let reply = receive_frame(&mut accepted_client).await?;
+        assert_eq!(reply.header().kind(), INVOCATION_STATUS_REPLY_FRAME_KIND);
+        assert_eq!(reply.header().stream_id(), status_reply_target.stream_id());
+        assert_eq!(
+            InvocationControlCodec::decode_status_reply(reply.payload())?,
+            status_reply
+        );
+
+        let cancel_request = CancelInvocationRequest::new(expected_invocation_id);
+        send_cancel_request(&mut accepted_client, cancel_request).await?;
+        let request = established.receive_request().await?;
+        let cancel_reply_target = request.reply_target();
+        assert_eq!(
+            request.into_request(),
+            SessionRequest::CancelInvocation(cancel_request)
+        );
+        let cancel_reply =
+            CancelInvocationReply::Unavailable(InvocationUnavailable::UnknownInvocation);
+        established
+            .send_reply(
+                cancel_reply_target,
+                SessionReply::CancelInvocation(cancel_reply),
+            )
+            .await?;
+        let reply = receive_frame(&mut accepted_client).await?;
+        assert_eq!(reply.header().kind(), CANCEL_INVOCATION_REPLY_FRAME_KIND);
+        assert_eq!(reply.header().stream_id(), cancel_reply_target.stream_id());
+        assert_eq!(
+            InvocationControlCodec::decode_cancel_reply(reply.payload())?,
+            cancel_reply
         );
 
         assert!(matches!(

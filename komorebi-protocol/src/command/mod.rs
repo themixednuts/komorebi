@@ -1,6 +1,8 @@
 mod argument;
 mod codec;
 mod contract;
+mod control;
+mod control_codec;
 mod lease;
 mod lease_codec;
 
@@ -12,6 +14,10 @@ use crate::FrameKind;
 pub const INVOKE_ACTION_FRAME_KIND: FrameKind = FrameKind::new(16);
 pub const LEASE_INVOCATION_IDS_FRAME_KIND: FrameKind = FrameKind::new(17);
 pub const INVOCATION_LEASE_REPLY_FRAME_KIND: FrameKind = FrameKind::new(18);
+pub const INVOCATION_STATUS_FRAME_KIND: FrameKind = FrameKind::new(19);
+pub const INVOCATION_STATUS_REPLY_FRAME_KIND: FrameKind = FrameKind::new(20);
+pub const CANCEL_INVOCATION_FRAME_KIND: FrameKind = FrameKind::new(21);
+pub const CANCEL_INVOCATION_REPLY_FRAME_KIND: FrameKind = FrameKind::new(22);
 
 pub use argument::ActionArgument;
 pub use argument::ActionArguments;
@@ -45,6 +51,16 @@ pub use contract::ConfirmationChallengeId;
 pub use contract::OfferRef;
 pub use contract::Revision;
 pub use contract::StateStamp;
+pub use control::CancelInvocationReply;
+pub use control::CancelInvocationRequest;
+pub use control::InvocationProgress;
+pub use control::InvocationStatus;
+pub use control::InvocationStatusReply;
+pub use control::InvocationStatusRequest;
+pub use control::InvocationTerminal;
+pub use control::InvocationUnavailable;
+pub use control::SettledInvocationKind;
+pub use control_codec::InvocationControlCodec;
 pub use lease::InvocationLeaseRejection;
 pub use lease::InvocationLeaseReply;
 pub use lease::InvocationLeaseRequest;

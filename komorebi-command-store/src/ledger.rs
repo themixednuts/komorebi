@@ -5,12 +5,15 @@ use drizzle::migrations::Tracking;
 use drizzle::sqlite::rusqlite::Drizzle;
 use komorebi_protocol::CommandCodecError;
 use komorebi_protocol::InvocationId;
+use komorebi_protocol::InvocationProgress;
+use komorebi_protocol::InvocationStatus;
+use komorebi_protocol::InvocationTerminal;
+use komorebi_protocol::SettledInvocationKind;
 use thiserror::Error;
 
+use crate::model::DurableInvocationRecord;
 use crate::model::DurablePhase;
-use crate::model::InvocationStatus;
 use crate::model::RecoveryPolicy;
-use crate::model::TerminalKind;
 use crate::path::configure_durability;
 use crate::path::open_sqlite;
 use crate::schema::CommandStoreSchema;
@@ -61,6 +64,7 @@ macro_rules! mark_system_terminal {
     }};
 }
 
+mod cancellation;
 mod compaction;
 mod invocation;
 mod namespace;
@@ -104,15 +108,64 @@ fn is_missing(error: &DrizzleError) -> bool {
     }
 }
 
-fn status_from_row(row: InvocationSnapshot) -> InvocationStatus {
-    InvocationStatus {
-        invocation_id: row_id(&row),
-        digest: row.digest.0,
-        phase: row.phase.into(),
-        committed_state: row.state_stamp.map(|stamp| stamp.0),
-        terminal_kind: row.terminal_kind.map(Into::into),
+fn status_from_row(row: InvocationSnapshot) -> Result<DurableInvocationRecord, DrizzleError> {
+    let progress = progress_from_row(row.phase, row.state_stamp, row.terminal_kind)?;
+    Ok(DurableInvocationRecord {
+        status: InvocationStatus::new(row_id(&row), row.digest.0, progress),
         outcome: row.outcome,
         committed_event: row.committed_event,
+    })
+}
+
+fn progress_from_row(
+    phase: StoredPhase,
+    state: Option<crate::storage::StoredStateStamp>,
+    terminal: Option<StoredTerminalKind>,
+) -> Result<InvocationProgress, DrizzleError> {
+    match (phase, state, terminal) {
+        (StoredPhase::Reserved, None, None) => Ok(InvocationProgress::Reserved),
+        (StoredPhase::LogicalCommitted, Some(state), None) => {
+            Ok(InvocationProgress::LogicalCommitted(state.0))
+        }
+        (StoredPhase::EffectDispatched, Some(state), None) => {
+            Ok(InvocationProgress::EffectDispatched(state.0))
+        }
+        (StoredPhase::Terminal, state, Some(terminal)) => {
+            terminal_from_row(state, terminal).map(InvocationProgress::Terminal)
+        }
+        _ => Err(DrizzleError::ConversionError(
+            "invocation row has an invalid phase, state, and terminal combination".into(),
+        )),
+    }
+}
+
+fn terminal_from_row(
+    state: Option<crate::storage::StoredStateStamp>,
+    terminal: StoredTerminalKind,
+) -> Result<InvocationTerminal, DrizzleError> {
+    let settled = match terminal {
+        StoredTerminalKind::Succeeded => Some(SettledInvocationKind::Succeeded),
+        StoredTerminalKind::Failed => Some(SettledInvocationKind::Failed),
+        StoredTerminalKind::Degraded => Some(SettledInvocationKind::Degraded),
+        StoredTerminalKind::Indeterminate => Some(SettledInvocationKind::Indeterminate),
+        StoredTerminalKind::CancelledBeforeCommit if state.is_none() => {
+            return Ok(InvocationTerminal::CancelledBeforeCommit);
+        }
+        StoredTerminalKind::RestartedBeforeCommit if state.is_none() => {
+            return Ok(InvocationTerminal::RestartedBeforeCommit);
+        }
+        StoredTerminalKind::CancelledBeforeCommit | StoredTerminalKind::RestartedBeforeCommit => {
+            None
+        }
+    };
+    match (state, settled) {
+        (Some(state), Some(kind)) => Ok(InvocationTerminal::Settled {
+            state: state.0,
+            kind,
+        }),
+        _ => Err(DrizzleError::ConversionError(
+            "terminal invocation row has an invalid state and kind combination".into(),
+        )),
     }
 }
 
@@ -145,28 +198,13 @@ impl From<StoredPhase> for DurablePhase {
     }
 }
 
-impl From<TerminalKind> for StoredTerminalKind {
-    fn from(value: TerminalKind) -> Self {
+impl From<SettledInvocationKind> for StoredTerminalKind {
+    fn from(value: SettledInvocationKind) -> Self {
         match value {
-            TerminalKind::Succeeded => Self::Succeeded,
-            TerminalKind::Failed => Self::Failed,
-            TerminalKind::Degraded => Self::Degraded,
-            TerminalKind::Indeterminate => Self::Indeterminate,
-            TerminalKind::CancelledBeforeCommit => Self::CancelledBeforeCommit,
-            TerminalKind::RestartedBeforeCommit => Self::RestartedBeforeCommit,
-        }
-    }
-}
-
-impl From<StoredTerminalKind> for TerminalKind {
-    fn from(value: StoredTerminalKind) -> Self {
-        match value {
-            StoredTerminalKind::Succeeded => Self::Succeeded,
-            StoredTerminalKind::Failed => Self::Failed,
-            StoredTerminalKind::Degraded => Self::Degraded,
-            StoredTerminalKind::Indeterminate => Self::Indeterminate,
-            StoredTerminalKind::CancelledBeforeCommit => Self::CancelledBeforeCommit,
-            StoredTerminalKind::RestartedBeforeCommit => Self::RestartedBeforeCommit,
+            SettledInvocationKind::Succeeded => Self::Succeeded,
+            SettledInvocationKind::Failed => Self::Failed,
+            SettledInvocationKind::Degraded => Self::Degraded,
+            SettledInvocationKind::Indeterminate => Self::Indeterminate,
         }
     }
 }
