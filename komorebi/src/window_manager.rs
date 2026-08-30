@@ -18,6 +18,7 @@ use crossbeam_channel::Receiver;
 use hotwatch::EventKind;
 use hotwatch::Hotwatch;
 use hotwatch::notify::ErrorKind as NotifyErrorKind;
+use komorebi_protocol::ManagerEpoch;
 use parking_lot::Mutex;
 use uds_windows::UnixListener;
 use uds_windows::UnixStream;
@@ -89,6 +90,7 @@ pub use action_catalog::CatalogActionError;
 
 #[derive(Debug)]
 pub struct WindowManager {
+    pub manager_epoch: ManagerEpoch,
     pub monitors: Ring<Monitor>,
     pub monitor_usr_idx_map: HashMap<usize, usize>,
     pub incoming_events: Receiver<WindowManagerEvent>,
@@ -149,6 +151,7 @@ impl EnforceWorkspaceRuleOp {
 impl WindowManager {
     #[tracing::instrument]
     pub fn new(
+        manager_epoch: ManagerEpoch,
         incoming: Receiver<WindowManagerEvent>,
         custom_socket_path: Option<PathBuf>,
     ) -> eyre::Result<Self> {
@@ -168,6 +171,7 @@ impl WindowManager {
         let listener = UnixListener::bind(&socket)?;
 
         Ok(Self {
+            manager_epoch,
             monitors: Ring::default(),
             monitor_usr_idx_map: HashMap::new(),
             incoming_events: incoming,
@@ -189,7 +193,7 @@ impl WindowManager {
             already_moved_window_handles: Arc::new(Mutex::new(HashSet::new())),
             uncloack_to_ignore: 0,
             known_hwnds: HashMap::new(),
-            catalog: CatalogState::new(ActionSnapshot::empty()),
+            catalog: CatalogState::new(ActionSnapshot::empty(manager_epoch)),
         })
     }
 
@@ -4824,6 +4828,7 @@ mod tests {
     use crate::monitor;
     use crossbeam_channel::Sender;
     use crossbeam_channel::bounded;
+    use komorebi_protocol::ManagerEpoch;
     use std::path::PathBuf;
     use uuid::Uuid;
 
@@ -4849,7 +4854,11 @@ mod tests {
         let socket_path = PathBuf::from(socket_name);
 
         // Create a new WindowManager instance
-        let wm = WindowManager::new(receiver, Some(socket_path.clone()));
+        let wm = WindowManager::new(
+            ManagerEpoch::new([1; 16]).expect("test epoch is non-nil"),
+            receiver,
+            Some(socket_path.clone()),
+        );
 
         // Window Manager should be created successfully
         assert!(wm.is_ok());

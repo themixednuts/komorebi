@@ -56,13 +56,13 @@ impl CommandProtocolServer {
     ///
     /// # Errors
     ///
-    /// Returns [`TransportError`] when the endpoint, current logon identity, or
-    /// manager epoch cannot be established.
+    /// Returns [`TransportError`] when the endpoint or current logon identity
+    /// cannot be established.
     pub fn bind_current(
+        manager_epoch: ManagerEpoch,
         support: ServerSupport,
         authority: AuthoritySummary,
     ) -> Result<Self, TransportError> {
-        let manager_epoch = ManagerEpoch::new(*Uuid::new_v4().as_bytes())?;
         Ok(Self {
             listener: CommandPipeListener::bind_current()?,
             context: ServerContext {
@@ -577,8 +577,13 @@ mod tests {
     #[serial_test::serial]
     async fn handshake_establishes_or_rejects_without_blocking_the_listener()
     -> Result<(), Box<dyn std::error::Error>> {
-        let mut server =
-            CommandProtocolServer::bind_current(support(0)?, AuthoritySummary::default())?;
+        let manager_epoch = ManagerEpoch::new(*Uuid::new_v4().as_bytes())?;
+        let mut server = CommandProtocolServer::bind_current(
+            manager_epoch,
+            support(0)?,
+            AuthoritySummary::default(),
+        )?;
+        assert_eq!(server.manager_epoch(), manager_epoch);
 
         let mut accepted_client = ClientOptions::new().open(server.endpoint().as_os_str())?;
         let accepted_pending = server.accept().await?;

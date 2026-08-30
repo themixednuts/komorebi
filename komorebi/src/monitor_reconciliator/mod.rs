@@ -990,6 +990,7 @@ mod tests {
     use crate::window_manager_event::WindowManagerEvent;
     use crossbeam_channel::Sender;
     use crossbeam_channel::bounded;
+    use komorebi_protocol::ManagerEpoch;
     use std::path::PathBuf;
     use uuid::Uuid;
     use windows::Win32::Devices::Display::DISPLAYCONFIG_VIDEO_OUTPUT_TECHNOLOGY;
@@ -1052,7 +1053,11 @@ mod tests {
         let socket_path = PathBuf::from(socket_name);
 
         // Create a new WindowManager instance
-        let wm = match WindowManager::new(receiver, Some(socket_path.clone())) {
+        let manager_epoch = match ManagerEpoch::new([1; 16]) {
+            Ok(epoch) => epoch,
+            Err(error) => panic!("test epoch should be non-nil: {error}"),
+        };
+        let wm = match WindowManager::new(manager_epoch, receiver, Some(socket_path.clone())) {
             Ok(manager) => manager,
             Err(e) => {
                 panic!("Failed to create WindowManager: {e}");

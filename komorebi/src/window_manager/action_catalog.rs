@@ -93,7 +93,7 @@ impl WindowManager {
             .ok()
             .is_some_and(|workspace| workspace.layer == WorkspaceLayer::Floating);
         ActionSnapshot {
-            revision: self.catalog.snapshot().revision,
+            state: self.catalog.snapshot().state,
             paused: self.is_paused,
             focused_window,
             directional_targets: [
@@ -195,7 +195,7 @@ impl WindowManager {
     ) -> Result<InvocationId, CatalogActionError> {
         let request = InvokeAction {
             invocation_id: InvocationId::new(),
-            expected_revision: self.catalog.snapshot().revision,
+            expected_state: self.catalog.snapshot().state,
             action,
             confirmation: None,
         };
@@ -642,10 +642,12 @@ mod tests {
     use std::env::temp_dir;
 
     use crossbeam_channel::bounded;
+    use komorebi_protocol::ManagerEpoch;
+    use komorebi_protocol::Revision;
+    use komorebi_protocol::StateStamp;
     use uuid::Uuid;
 
     use super::*;
-    use crate::action::Revision;
     use crate::action::WorkspaceSelector;
     use crate::action::invoke::InvocationStatus;
     use crate::action::outcome::ActionResult;
@@ -654,7 +656,12 @@ mod tests {
     fn empty_manager() -> WindowManager {
         let (_sender, receiver) = bounded::<WindowManagerEvent>(1);
         let socket = temp_dir().join(format!("komorebi-catalog-test-{}.sock", Uuid::new_v4()));
-        WindowManager::new(receiver, Some(socket)).expect("test manager should bind its socket")
+        WindowManager::new(
+            ManagerEpoch::new([1; 16]).expect("test epoch is non-nil"),
+            receiver,
+            Some(socket),
+        )
+        .expect("test manager should bind its socket")
     }
 
     #[test]
@@ -669,7 +676,7 @@ mod tests {
         assert_eq!(
             manager.catalog.status(invocation_id),
             Some(&InvocationStatus::Settled {
-                revision: Revision::new(1),
+                state: manager.catalog.snapshot().state,
                 result: ActionResult::PauseToggled { paused: true },
             })
         );
@@ -695,7 +702,7 @@ mod tests {
         assert_eq!(
             manager.catalog.status(invocation_id),
             Some(&InvocationStatus::Degraded {
-                revision: Revision::new(1),
+                state: manager.catalog.snapshot().state,
                 failures: vec![failure],
             })
         );
@@ -715,7 +722,10 @@ mod tests {
             .invoke_catalog_action(
                 InvokeAction {
                     invocation_id,
-                    expected_revision: Revision::new(9),
+                    expected_state: StateStamp::new(
+                        manager.manager_epoch,
+                        Revision::try_from(9).expect("test revision is nonzero"),
+                    ),
                     action: BuiltinAction::TogglePause,
                     confirmation: None,
                 },
@@ -727,11 +737,14 @@ mod tests {
         assert!(matches!(
             error,
             CatalogActionError::Rejected {
-                source: ActionRejection::StaleRevision { .. },
+                source: ActionRejection::StaleState { .. },
                 ..
             }
         ));
         assert!(!manager.is_paused);
-        assert_eq!(manager.catalog.snapshot().revision, Revision::new(0));
+        assert_eq!(
+            manager.catalog.snapshot().state,
+            StateStamp::initial(manager.manager_epoch)
+        );
     }
 }

@@ -7,7 +7,7 @@ use super::builtin::BuiltinAction;
 use super::id::ActionId;
 use super::id::ConfirmationToken;
 use super::id::PrincipalId;
-use super::id::Revision;
+use komorebi_protocol::StateStamp;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Error)]
 pub enum ConfirmationError {
@@ -23,8 +23,8 @@ pub enum ConfirmationError {
     ActionMismatch,
     #[error("confirmation token was issued for different arguments")]
     ArgumentMismatch,
-    #[error("confirmation token was issued for a different revision")]
-    RevisionMismatch,
+    #[error("confirmation token was issued for a different manager state")]
+    StateMismatch,
 }
 
 #[derive(Clone, Debug)]
@@ -32,7 +32,7 @@ struct IssuedConfirmation {
     principal: PrincipalId,
     action_id: ActionId,
     canonical: String,
-    revision: Revision,
+    state: StateStamp,
     expires_at: Instant,
     consumed: bool,
 }
@@ -53,7 +53,7 @@ impl ConfirmationLedger {
         token: ConfirmationToken,
         principal: PrincipalId,
         action: &BuiltinAction,
-        revision: Revision,
+        state: StateStamp,
         expires_at: Instant,
     ) {
         self.issued.insert(
@@ -62,7 +62,7 @@ impl ConfirmationLedger {
                 principal,
                 action_id: action.kind().id(),
                 canonical: canonical_args(action),
-                revision,
+                state,
                 expires_at,
                 consumed: false,
             },
@@ -74,7 +74,7 @@ impl ConfirmationLedger {
         token: ConfirmationToken,
         principal: PrincipalId,
         action: &BuiltinAction,
-        revision: Revision,
+        state: StateStamp,
         now: Instant,
     ) -> Result<(), ConfirmationError> {
         let Some(issued) = self.issued.get_mut(&token_bytes(&token)) else {
@@ -95,8 +95,8 @@ impl ConfirmationLedger {
         if issued.canonical != canonical_args(action) {
             return Err(ConfirmationError::ArgumentMismatch);
         }
-        if issued.revision != revision {
-            return Err(ConfirmationError::RevisionMismatch);
+        if issued.state != state {
+            return Err(ConfirmationError::StateMismatch);
         }
         issued.consumed = true;
         Ok(())
@@ -118,6 +118,17 @@ mod tests {
     use crate::core::OperationDirection;
     use std::time::Duration;
 
+    fn stamp_in(epoch: u8, revision: u64) -> StateStamp {
+        StateStamp::new(
+            komorebi_protocol::ManagerEpoch::new([epoch; 16]).expect("test epoch is non-nil"),
+            komorebi_protocol::Revision::try_from(revision).expect("test revision is nonzero"),
+        )
+    }
+
+    fn stamp(revision: u64) -> StateStamp {
+        stamp_in(1, revision)
+    }
+
     fn focus_left() -> BuiltinAction {
         BuiltinAction::FocusWindow {
             direction: OperationDirection::Left,
@@ -131,47 +142,51 @@ mod tests {
     }
 
     #[test]
-    fn confirmation_rejects_changed_args_principal_revision_expiry_and_replay() {
+    fn confirmation_rejects_changed_args_principal_state_expiry_and_replay() {
         let mut ledger = ConfirmationLedger::new();
         let token = ConfirmationToken::from_bytes([9; 16]);
         let principal = PrincipalId::new(7);
-        let revision = Revision::new(4);
+        let state = stamp(4);
         let now = Instant::now();
         ledger.issue(
             token,
             principal,
             &focus_left(),
-            revision,
+            state,
             now + Duration::from_secs(30),
         );
 
         assert_eq!(
-            ledger.consume(token, PrincipalId::new(8), &focus_left(), revision, now),
+            ledger.consume(token, PrincipalId::new(8), &focus_left(), state, now),
             Err(ConfirmationError::PrincipalMismatch)
         );
         assert_eq!(
-            ledger.consume(token, principal, &focus_right(), revision, now),
+            ledger.consume(token, principal, &focus_right(), state, now),
             Err(ConfirmationError::ArgumentMismatch)
         );
         assert_eq!(
-            ledger.consume(token, principal, &focus_left(), Revision::new(5), now),
-            Err(ConfirmationError::RevisionMismatch)
+            ledger.consume(token, principal, &focus_left(), stamp(5), now),
+            Err(ConfirmationError::StateMismatch)
+        );
+        assert_eq!(
+            ledger.consume(token, principal, &focus_left(), stamp_in(2, 4), now),
+            Err(ConfirmationError::StateMismatch)
         );
         assert_eq!(
             ledger.consume(
                 token,
                 principal,
                 &focus_left(),
-                revision,
+                state,
                 now + Duration::from_secs(31)
             ),
             Err(ConfirmationError::Expired)
         );
         ledger
-            .consume(token, principal, &focus_left(), revision, now)
+            .consume(token, principal, &focus_left(), state, now)
             .unwrap();
         assert_eq!(
-            ledger.consume(token, principal, &focus_left(), revision, now),
+            ledger.consume(token, principal, &focus_left(), state, now),
             Err(ConfirmationError::Replay)
         );
     }
@@ -190,18 +205,18 @@ mod tests {
         let mut ledger = ConfirmationLedger::new();
         let token = ConfirmationToken::from_bytes([3; 16]);
         let principal = PrincipalId::new(11);
-        let revision = Revision::new(7);
+        let state = stamp(7);
         let now = Instant::now();
         ledger.issue(
             token,
             principal,
             &action,
-            revision,
+            state,
             now + Duration::from_secs(30),
         );
 
         assert_eq!(
-            ledger.consume(token, principal, &action, revision, now),
+            ledger.consume(token, principal, &action, state, now),
             Ok(())
         );
     }

@@ -664,6 +664,7 @@ impl WindowManager {
                         // Create a new wm from the config path
                         let mut wm = StaticConfig::preload(
                             config,
+                            self.manager_epoch,
                             winevent_listener::event_rx(),
                             self.command_listener.try_clone().ok(),
                         )?;
@@ -1260,6 +1261,7 @@ mod tests {
     use crossbeam_channel::Receiver;
     use crossbeam_channel::Sender;
     use crossbeam_channel::bounded;
+    use komorebi_protocol::ManagerEpoch;
     use std::io::BufRead;
     use std::io::BufReader;
     use std::io::Write;
@@ -1269,12 +1271,24 @@ mod tests {
     use uds_windows::UnixStream;
     use uuid::Uuid;
 
+    fn manager_epoch() -> ManagerEpoch {
+        ManagerEpoch::new([1; 16]).expect("test epoch is non-nil")
+    }
+
+    fn window_manager(
+        receiver: Receiver<WindowManagerEvent>,
+        socket_path: PathBuf,
+    ) -> WindowManager {
+        WindowManager::new(manager_epoch(), receiver, Some(socket_path))
+            .expect("test manager should bind its socket")
+    }
+
     fn paused_manager() -> (WindowManager, PathBuf) {
         let (_sender, receiver): (Sender<WindowManagerEvent>, Receiver<WindowManagerEvent>) =
             bounded(1);
         let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
         let socket_path = PathBuf::from(&socket_name);
-        let mut wm = WindowManager::new(receiver, Some(socket_path.clone())).unwrap();
+        let mut wm = window_manager(receiver, socket_path.clone());
         let m = monitor::new(
             0,
             Rect::default(),
@@ -1318,7 +1332,7 @@ mod tests {
             bounded(1);
         let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
         let socket_path = PathBuf::from(&socket_name);
-        let mut wm = WindowManager::new(receiver, Some(socket_path.clone())).unwrap();
+        let mut wm = window_manager(receiver, socket_path.clone());
         let m = monitor::new(
             0,
             Rect::default(),
@@ -1358,7 +1372,7 @@ mod tests {
             bounded(1);
         let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
         let socket_path = PathBuf::from(&socket_name);
-        let mut wm = WindowManager::new(receiver, Some(socket_path.clone())).unwrap();
+        let mut wm = window_manager(receiver, socket_path.clone());
         let m = monitor::new(
             0,
             Rect::default(),
@@ -1397,7 +1411,7 @@ mod tests {
             bounded(1);
         let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
         let socket_path = PathBuf::from(&socket_name);
-        let mut wm = WindowManager::new(receiver, Some(socket_path.clone())).unwrap();
+        let mut wm = window_manager(receiver, socket_path.clone());
         let m = monitor::new(
             0,
             Rect::default(),
@@ -1424,7 +1438,7 @@ mod tests {
             bounded(1);
         let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
         let socket_path = PathBuf::from(&socket_name);
-        let mut wm = WindowManager::new(receiver, Some(socket_path.clone())).unwrap();
+        let mut wm = window_manager(receiver, socket_path.clone());
         let m = monitor::new(
             0,
             Rect::default(),
@@ -1458,7 +1472,7 @@ mod tests {
             bounded(1);
         let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
         let socket_path = PathBuf::from(&socket_name);
-        let mut wm = WindowManager::new(receiver, Some(socket_path.clone())).unwrap();
+        let mut wm = window_manager(receiver, socket_path.clone());
         let m = monitor::new(
             0,
             Rect::default(),
@@ -1492,7 +1506,7 @@ mod tests {
             bounded(1);
         let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
         let socket_path = PathBuf::from(&socket_name);
-        let mut wm = WindowManager::new(receiver, Some(socket_path.clone())).unwrap();
+        let mut wm = window_manager(receiver, socket_path.clone());
         let m = monitor::new(
             0,
             Rect::default(),
@@ -1534,7 +1548,7 @@ mod tests {
             bounded(1);
         let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
         let socket_path = PathBuf::from(&socket_name);
-        let mut wm = WindowManager::new(receiver, Some(socket_path.clone())).unwrap();
+        let mut wm = window_manager(receiver, socket_path.clone());
         let m = monitor::new(
             0,
             Rect::default(),
@@ -1571,7 +1585,7 @@ mod tests {
             bounded(1);
         let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
         let socket_path = PathBuf::from(&socket_name);
-        let mut wm = WindowManager::new(receiver, Some(socket_path.clone())).unwrap();
+        let mut wm = window_manager(receiver, socket_path.clone());
         let m = monitor::new(
             0,
             Rect::default(),
@@ -1602,7 +1616,7 @@ mod tests {
             bounded(1);
         let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
         let socket_path = PathBuf::from(&socket_name);
-        let mut wm = WindowManager::new(receiver, Some(socket_path.clone())).unwrap();
+        let mut wm = window_manager(receiver, socket_path.clone());
         let m = monitor::new(
             0,
             Rect::default(),
@@ -1639,7 +1653,7 @@ mod tests {
             bounded(1);
         let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
         let socket_path = PathBuf::from(&socket_name);
-        let mut wm = WindowManager::new(receiver, Some(socket_path.clone())).unwrap();
+        let mut wm = window_manager(receiver, socket_path.clone());
         let m = monitor::new(
             0,
             Rect::default(),
@@ -1673,7 +1687,7 @@ mod tests {
             bounded(1);
         let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
         let socket_path = PathBuf::from(&socket_name);
-        let mut wm = WindowManager::new(receiver, Some(socket_path.clone())).unwrap();
+        let mut wm = window_manager(receiver, socket_path.clone());
         let m = monitor::new(
             0,
             Rect::default(),
@@ -1837,7 +1851,7 @@ mod tests {
             bounded(1);
         let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
         let socket_path = PathBuf::from(&socket_name);
-        let mut wm = WindowManager::new(receiver, Some(socket_path.clone())).unwrap();
+        let mut wm = window_manager(receiver, socket_path.clone());
         let m = monitor::new(
             0,
             Rect::default(),
@@ -1864,7 +1878,7 @@ mod tests {
             bounded(1);
         let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
         let socket_path = PathBuf::from(&socket_name);
-        let mut wm = WindowManager::new(receiver, Some(socket_path.clone())).unwrap();
+        let mut wm = window_manager(receiver, socket_path.clone());
         let m = monitor::new(
             0,
             Rect::default(),
@@ -1891,7 +1905,7 @@ mod tests {
             bounded(1);
         let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
         let socket_path = PathBuf::from(&socket_name);
-        let mut wm = WindowManager::new(receiver, Some(socket_path.clone())).unwrap();
+        let mut wm = window_manager(receiver, socket_path.clone());
         let m = monitor::new(
             0,
             Rect::default(),
@@ -2008,7 +2022,7 @@ mod tests {
             bounded(1);
         let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
         let socket_path = PathBuf::from(&socket_name);
-        let mut wm = WindowManager::new(receiver, Some(socket_path.clone())).unwrap();
+        let mut wm = window_manager(receiver, socket_path.clone());
         let m = monitor::new(
             0,
             Rect::default(),
@@ -2046,7 +2060,7 @@ mod tests {
             bounded(1);
         let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
         let socket_path = PathBuf::from(&socket_name);
-        let mut wm = WindowManager::new(receiver, Some(socket_path.clone())).unwrap();
+        let mut wm = window_manager(receiver, socket_path.clone());
         let m = monitor::new(
             0,
             Rect::default(),
@@ -2078,7 +2092,7 @@ mod tests {
             bounded(1);
         let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
         let socket_path = PathBuf::from(&socket_name);
-        let mut wm = WindowManager::new(receiver, Some(socket_path.clone())).unwrap();
+        let mut wm = window_manager(receiver, socket_path.clone());
         let m = monitor::new(
             0,
             Rect::default(),
@@ -2114,7 +2128,7 @@ mod tests {
             bounded(1);
         let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
         let socket_path = PathBuf::from(&socket_name);
-        let mut wm = WindowManager::new(receiver, Some(socket_path.clone())).unwrap();
+        let mut wm = window_manager(receiver, socket_path.clone());
         let m = monitor::new(
             0,
             Rect::default(),

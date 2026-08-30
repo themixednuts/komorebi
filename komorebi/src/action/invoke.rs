@@ -7,7 +7,6 @@ use super::confirmation::ConfirmationLedger;
 use super::definition::UndoPolicy;
 use super::id::InvocationId;
 use super::id::PrincipalId;
-use super::id::Revision;
 use super::offer::ActionAvailability;
 use super::offer::ActionGrants;
 use super::offer::ActionSnapshot;
@@ -24,6 +23,7 @@ use super::transition::effects;
 use super::transition::logical_result;
 use super::undo::UndoLedger;
 use super::undo::UndoRecord;
+use komorebi_protocol::StateStamp;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum InvocationOrigin {
@@ -44,18 +44,20 @@ pub struct InvocationContext {
 #[derive(Clone, Debug)]
 pub struct InvokeAction {
     pub invocation_id: InvocationId,
-    pub expected_revision: Revision,
+    pub expected_state: StateStamp,
     pub action: BuiltinAction,
     pub confirmation: Option<super::id::ConfirmationToken>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, thiserror::Error)]
 pub enum ActionRejection {
-    #[error("expected revision {expected:?} but catalog is at {actual:?}")]
-    StaleRevision {
-        expected: Revision,
-        actual: Revision,
+    #[error("expected state {expected:?} but manager is at {actual:?}")]
+    StaleState {
+        expected: StateStamp,
+        actual: StateStamp,
     },
+    #[error("manager state revision is exhausted")]
+    RevisionExhausted,
     #[error("action is unavailable: {0:?}")]
     Unavailable(Unavailability),
     #[error(transparent)]
@@ -66,7 +68,7 @@ pub enum ActionRejection {
 pub enum ActionAdmission {
     Rejected(ActionRejection),
     Committed {
-        revision: Revision,
+        state: StateStamp,
         logical_result: ActionResult,
         undo: Option<UndoRecord>,
         effects: Vec<PlannedEffect>,
@@ -76,26 +78,26 @@ pub enum ActionAdmission {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum InvocationStatus {
     Committed {
-        revision: Revision,
+        state: StateStamp,
     },
     Converging {
-        revision: Revision,
+        state: StateStamp,
         pending: usize,
     },
     Settled {
-        revision: Revision,
+        state: StateStamp,
         result: ActionResult,
     },
     Degraded {
-        revision: Revision,
+        state: StateStamp,
         failures: Vec<NativeEffectFailure>,
     },
     Superseded {
-        by_revision: Revision,
+        by_state: StateStamp,
     },
     Cancelled,
     ReconcilingAfterRestart {
-        revision: Revision,
+        state: StateStamp,
     },
 }
 
@@ -126,7 +128,7 @@ impl CatalogState {
     }
 
     pub fn replace_observation(&mut self, mut snapshot: ActionSnapshot) {
-        snapshot.revision = self.snapshot.revision;
+        snapshot.state = self.snapshot.state;
         self.snapshot = snapshot;
     }
 
@@ -149,13 +151,13 @@ impl CatalogState {
             return previous.clone();
         }
 
-        if request.expected_revision != self.snapshot.revision {
+        if request.expected_state != self.snapshot.state {
             return store(
                 &mut self.invocations,
                 request.invocation_id,
-                ActionAdmission::Rejected(ActionRejection::StaleRevision {
-                    expected: request.expected_revision,
-                    actual: self.snapshot.revision,
+                ActionAdmission::Rejected(ActionRejection::StaleState {
+                    expected: request.expected_state,
+                    actual: self.snapshot.state,
                 }),
             );
         }
@@ -175,7 +177,7 @@ impl CatalogState {
                 token,
                 context.principal,
                 &request.action,
-                request.expected_revision,
+                request.expected_state,
                 now,
             )
         {
@@ -221,8 +223,14 @@ impl CatalogState {
                         ActionAdmission::Rejected(ActionRejection::Unavailable(reason)),
                     );
                 }
-                let revision = self.snapshot.revision.next();
-                self.snapshot.revision = revision;
+                let Ok(state) = self.snapshot.state.next() else {
+                    return store(
+                        &mut self.invocations,
+                        request.invocation_id,
+                        ActionAdmission::Rejected(ActionRejection::RevisionExhausted),
+                    );
+                };
+                self.snapshot.state = state;
                 apply_logical(&mut self.snapshot, &action);
                 let undo = request
                     .action
@@ -237,7 +245,7 @@ impl CatalogState {
                     })
                     .flatten();
                 let committed = ActionAdmission::Committed {
-                    revision,
+                    state,
                     logical_result: logical_result(&action, &self.snapshot),
                     undo,
                     effects: effects(&action, &self.snapshot)
@@ -249,10 +257,8 @@ impl CatalogState {
                         })
                         .collect(),
                 };
-                self.statuses.insert(
-                    request.invocation_id,
-                    InvocationStatus::Committed { revision },
-                );
+                self.statuses
+                    .insert(request.invocation_id, InvocationStatus::Committed { state });
                 store(&mut self.invocations, request.invocation_id, committed)
             }
             None => store(
@@ -266,27 +272,27 @@ impl CatalogState {
     }
 
     pub fn settle(&mut self, id: InvocationId, result: ActionResult) {
-        if let Some(InvocationStatus::Committed { revision }) = self.statuses.get(&id).cloned() {
+        if let Some(InvocationStatus::Committed { state }) = self.statuses.get(&id).cloned() {
             self.statuses
-                .insert(id, InvocationStatus::Settled { revision, result });
+                .insert(id, InvocationStatus::Settled { state, result });
         }
     }
 
     pub fn degrade(&mut self, id: InvocationId, failures: Vec<NativeEffectFailure>) {
-        if let Some(InvocationStatus::Committed { revision }) = self.statuses.get(&id).cloned() {
+        if let Some(InvocationStatus::Committed { state }) = self.statuses.get(&id).cloned() {
             self.statuses
-                .insert(id, InvocationStatus::Degraded { revision, failures });
+                .insert(id, InvocationStatus::Degraded { state, failures });
         }
     }
 
-    pub fn supersede(&mut self, id: InvocationId, by_revision: Revision) {
+    pub fn supersede(&mut self, id: InvocationId, by_state: StateStamp) {
         self.statuses
-            .insert(id, InvocationStatus::Superseded { by_revision });
+            .insert(id, InvocationStatus::Superseded { by_state });
     }
 
-    pub fn reconcile_after_restart(&mut self, id: InvocationId, revision: Revision) {
+    pub fn reconcile_after_restart(&mut self, id: InvocationId, state: StateStamp) {
         self.statuses
-            .insert(id, InvocationStatus::ReconcilingAfterRestart { revision });
+            .insert(id, InvocationStatus::ReconcilingAfterRestart { state });
     }
 }
 
@@ -306,9 +312,20 @@ mod tests {
     use crate::core::DefaultLayout;
     use crate::core::OperationDirection;
 
+    fn stamp_in(epoch: u8, revision: u64) -> StateStamp {
+        StateStamp::new(
+            komorebi_protocol::ManagerEpoch::new([epoch; 16]).expect("test epoch is non-nil"),
+            komorebi_protocol::Revision::try_from(revision).expect("test revision is nonzero"),
+        )
+    }
+
+    fn stamp(revision: u64) -> StateStamp {
+        stamp_in(1, revision)
+    }
+
     fn live_state() -> CatalogState {
         CatalogState::new(ActionSnapshot {
-            revision: Revision::new(10),
+            state: stamp(10),
             paused: false,
             focused_window: Some(WindowId::new(1)),
             directional_targets: [OperationDirection::Left].into(),
@@ -327,10 +344,10 @@ mod tests {
         }
     }
 
-    fn focus_left(id: InvocationId, revision: Revision) -> InvokeAction {
+    fn focus_left(id: InvocationId, state: StateStamp) -> InvokeAction {
         InvokeAction {
             invocation_id: id,
-            expected_revision: revision,
+            expected_state: state,
             action: BuiltinAction::FocusWindow {
                 direction: OperationDirection::Left,
             },
@@ -339,17 +356,37 @@ mod tests {
     }
 
     #[test]
-    fn stale_revision_is_rejected() {
+    fn stale_state_is_rejected() {
         let mut state = live_state();
         let admission = state.admit(
-            focus_left(InvocationId::new(), Revision::new(1)),
+            focus_left(InvocationId::new(), stamp_in(2, 10)),
             &context(),
             Instant::now(),
         );
         assert!(matches!(
             admission,
-            ActionAdmission::Rejected(ActionRejection::StaleRevision { .. })
+            ActionAdmission::Rejected(ActionRejection::StaleState { .. })
         ));
+    }
+
+    #[test]
+    fn exhausted_revision_rejects_without_mutating_logical_state() {
+        let mut state = live_state();
+        state.snapshot.state = stamp(u64::MAX);
+        let invocation_id = InvocationId::new();
+
+        let admission = state.admit(
+            focus_left(invocation_id, stamp(u64::MAX)),
+            &context(),
+            Instant::now(),
+        );
+
+        assert_eq!(
+            admission,
+            ActionAdmission::Rejected(ActionRejection::RevisionExhausted)
+        );
+        assert_eq!(state.snapshot().state, stamp(u64::MAX));
+        assert_eq!(state.status(invocation_id), None);
     }
 
     #[test]
@@ -358,7 +395,7 @@ mod tests {
         let admission = state.admit(
             InvokeAction {
                 invocation_id: InvocationId::new(),
-                expected_revision: Revision::new(10),
+                expected_state: stamp(10),
                 action: BuiltinAction::FocusWindow {
                     direction: OperationDirection::Right,
                 },
@@ -379,29 +416,20 @@ mod tests {
     fn one_invocation_id_commits_once() {
         let mut state = live_state();
         let id = InvocationId::new();
-        let first = state.admit(
-            focus_left(id, Revision::new(10)),
-            &context(),
-            Instant::now(),
-        );
-        let second = state.admit(
-            focus_left(id, Revision::new(10)),
-            &context(),
-            Instant::now(),
-        );
+        let first = state.admit(focus_left(id, stamp(10)), &context(), Instant::now());
+        let second = state.admit(focus_left(id, stamp(10)), &context(), Instant::now());
         match (first, second) {
             (
                 ActionAdmission::Committed {
-                    revision: first_revision,
-                    ..
+                    state: first_state, ..
                 },
                 ActionAdmission::Committed {
-                    revision: second_revision,
+                    state: second_state,
                     ..
                 },
             ) => {
-                assert_eq!(first_revision, second_revision);
-                assert_eq!(first_revision, Revision::new(11));
+                assert_eq!(first_state, second_state);
+                assert_eq!(first_state, stamp(11));
             }
             _ => panic!("both admissions should be the same commit"),
         }
@@ -411,13 +439,9 @@ mod tests {
     fn injected_outcomes_produce_settled_degraded_superseded_and_reconcile() {
         let mut state = live_state();
         let id = InvocationId::new();
-        let admission = state.admit(
-            focus_left(id, Revision::new(10)),
-            &context(),
-            Instant::now(),
-        );
+        let admission = state.admit(focus_left(id, stamp(10)), &context(), Instant::now());
         let ActionAdmission::Committed {
-            revision,
+            state: committed_state,
             logical_result,
             ..
         } = admission
@@ -428,7 +452,7 @@ mod tests {
         assert_eq!(
             state.status(id),
             Some(&InvocationStatus::Settled {
-                revision,
+                state: committed_state,
                 result: logical_result
             })
         );
@@ -440,9 +464,12 @@ mod tests {
             }],
         );
         // settle already moved it; degrade only from Committed. seed a committed status.
-        state
-            .statuses
-            .insert(id, InvocationStatus::Committed { revision });
+        state.statuses.insert(
+            id,
+            InvocationStatus::Committed {
+                state: committed_state,
+            },
+        );
         let failures = vec![
             NativeEffectFailure {
                 effect_id: EffectId::new(0),
@@ -456,19 +483,24 @@ mod tests {
         state.degrade(id, failures.clone());
         assert_eq!(
             state.status(id),
-            Some(&InvocationStatus::Degraded { revision, failures })
+            Some(&InvocationStatus::Degraded {
+                state: committed_state,
+                failures
+            })
         );
-        state.supersede(id, Revision::new(12));
+        state.supersede(id, stamp(12));
         assert_eq!(
             state.status(id),
             Some(&InvocationStatus::Superseded {
-                by_revision: Revision::new(12)
+                by_state: stamp(12)
             })
         );
-        state.reconcile_after_restart(id, revision);
+        state.reconcile_after_restart(id, committed_state);
         assert_eq!(
             state.status(id),
-            Some(&InvocationStatus::ReconcilingAfterRestart { revision })
+            Some(&InvocationStatus::ReconcilingAfterRestart {
+                state: committed_state
+            })
         );
     }
 }

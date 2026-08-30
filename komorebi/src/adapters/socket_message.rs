@@ -698,6 +698,13 @@ mod tests {
     use crate::core::DefaultLayout;
     use crate::core::OperationDirection;
 
+    fn stamp(revision: u64) -> komorebi_protocol::StateStamp {
+        komorebi_protocol::StateStamp::new(
+            komorebi_protocol::ManagerEpoch::new([1; 16]).expect("test epoch is non-nil"),
+            komorebi_protocol::Revision::try_from(revision).expect("test revision is nonzero"),
+        )
+    }
+
     #[test]
     fn migrated_socket_messages_become_the_same_builtin_action() {
         assert_eq!(
@@ -850,7 +857,6 @@ mod tests {
         use crate::action::InvocationOrigin;
         use crate::action::InvokeAction;
         use crate::action::PrincipalId;
-        use crate::action::Revision;
         use crate::action::id::WindowId;
         use crate::action::invoke::ActionAdmission;
         use std::time::Instant;
@@ -858,7 +864,7 @@ mod tests {
         let message = SocketMessage::FocusWindow(OperationDirection::Left);
         let action = to_builtin_action(&message, 50).expect("focus-window is migrated");
         let mut state = CatalogState::new(ActionSnapshot {
-            revision: Revision::new(1),
+            state: stamp(1),
             paused: false,
             focused_window: Some(WindowId::new(9)),
             directional_targets: [OperationDirection::Left].into(),
@@ -870,7 +876,7 @@ mod tests {
         let admission = state.admit(
             InvokeAction {
                 invocation_id: InvocationId::new(),
-                expected_revision: Revision::new(1),
+                expected_state: stamp(1),
                 action,
                 confirmation: None,
             },
@@ -883,7 +889,7 @@ mod tests {
         );
         assert!(matches!(
             admission,
-            ActionAdmission::Committed { revision, .. } if revision == Revision::new(2)
+            ActionAdmission::Committed { state, .. } if state == stamp(2)
         ));
     }
 

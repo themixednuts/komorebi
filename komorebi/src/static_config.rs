@@ -101,6 +101,7 @@ use color_eyre::eyre;
 use crossbeam_channel::Receiver;
 use hotwatch::EventKind;
 use hotwatch::Hotwatch;
+use komorebi_protocol::ManagerEpoch;
 use komorebi_themes::colour::Colour;
 use parking_lot::Mutex;
 use regex::Regex;
@@ -1307,6 +1308,7 @@ impl StaticConfig {
     #[allow(clippy::too_many_lines)]
     pub fn preload(
         path: &PathBuf,
+        manager_epoch: ManagerEpoch,
         incoming: Receiver<WindowManagerEvent>,
         unix_listener: Option<UnixListener>,
     ) -> eyre::Result<WindowManager> {
@@ -1334,6 +1336,7 @@ impl StaticConfig {
         };
 
         let mut wm = WindowManager {
+            manager_epoch,
             monitors: Ring::default(),
             monitor_usr_idx_map: HashMap::new(),
             incoming_events: incoming,
@@ -1379,7 +1382,7 @@ impl StaticConfig {
             already_moved_window_handles: Arc::new(Mutex::new(HashSet::new())),
             uncloack_to_ignore: 0,
             known_hwnds: HashMap::new(),
-            catalog: CatalogState::new(ActionSnapshot::empty()),
+            catalog: CatalogState::new(ActionSnapshot::empty(manager_epoch)),
         };
 
         #[allow(deprecated)]

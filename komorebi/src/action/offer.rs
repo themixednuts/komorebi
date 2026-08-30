@@ -12,10 +12,11 @@ use super::definition::ActionDefinition;
 use super::definition::layout_name;
 use super::id::ActionId;
 use super::id::PrincipalId;
-use super::id::Revision;
 use super::id::WindowId;
 use super::index::MonitorIndex;
 use super::index::WorkspaceIndex;
+use komorebi_protocol::ManagerEpoch;
+use komorebi_protocol::StateStamp;
 
 pub use choices::DynamicParameterChoice;
 pub use choices::DynamicParameterChoices;
@@ -29,7 +30,7 @@ pub struct NamedWorkspaceTarget {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ActionSnapshot {
-    pub revision: Revision,
+    pub state: StateStamp,
     pub paused: bool,
     pub focused_window: Option<WindowId>,
     pub directional_targets: DirectionSet,
@@ -41,9 +42,9 @@ pub struct ActionSnapshot {
 
 impl ActionSnapshot {
     #[must_use]
-    pub fn empty() -> Self {
+    pub fn empty(manager_epoch: ManagerEpoch) -> Self {
         Self {
-            revision: Revision::new(0),
+            state: StateStamp::initial(manager_epoch),
             paused: false,
             focused_window: None,
             directional_targets: DirectionSet::empty(),
@@ -126,7 +127,7 @@ pub enum ActionCurrentValue {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ActionOffer {
     pub definition: &'static ActionDefinition,
-    pub revision: Revision,
+    pub state: StateStamp,
     pub availability: ActionAvailability,
     pub current_value: Option<ActionCurrentValue>,
     pub dynamic_choices: Vec<DynamicParameterChoices>,
@@ -156,7 +157,7 @@ fn offer_kind(
         .collect();
     ActionOffer {
         definition,
-        revision: snapshot.revision,
+        state: snapshot.state,
         availability: availability::availability(snapshot, authority, kind, policy),
         current_value: current_value(snapshot, policy.current_value),
         dynamic_choices: choices::dynamic_choices(snapshot, policy.choices),
@@ -195,9 +196,16 @@ mod tests {
     use crate::action::ParameterId;
     use crate::action::definition::ParameterDomain;
 
+    fn stamp(revision: u64) -> StateStamp {
+        StateStamp::new(
+            ManagerEpoch::new([1; 16]).expect("test epoch is non-nil"),
+            komorebi_protocol::Revision::try_from(revision).expect("test revision is nonzero"),
+        )
+    }
+
     fn live_snapshot() -> ActionSnapshot {
         ActionSnapshot {
-            revision: Revision::new(3),
+            state: stamp(3),
             paused: false,
             focused_window: Some(WindowId::new(1)),
             directional_targets: [OperationDirection::Left].into(),
@@ -263,7 +271,7 @@ mod tests {
             Some(ActionCurrentValue::Layout(DefaultLayout::BSP))
         );
         assert_eq!(current_layout_name(&snapshot), "bsp");
-        assert_eq!(layout.revision, Revision::new(3));
+        assert_eq!(layout.state, stamp(3));
     }
 
     #[test]

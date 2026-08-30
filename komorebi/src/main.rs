@@ -24,6 +24,7 @@ use komorebi::animation::ANIMATION_ENABLED_GLOBAL;
 use komorebi::animation::ANIMATION_ENABLED_PER_ANIMATION;
 use komorebi::animation::AnimationEngine;
 use komorebi::replace_env_in_path;
+use komorebi_protocol::ManagerEpoch;
 use parking_lot::Mutex;
 #[cfg(feature = "deadlock_detection")]
 use parking_lot::deadlock;
@@ -34,6 +35,7 @@ use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::EnvFilter;
 use tracing_subscriber::layer::SubscriberExt;
 use uds_windows::UnixStream;
+use uuid::Uuid;
 
 use komorebi::CUSTOM_FFM;
 use komorebi::DATA_DIR;
@@ -271,6 +273,7 @@ fn main() -> eyre::Result<()> {
     );
 
     std::fs::create_dir_all(&*DATA_DIR)?;
+    let manager_epoch = ManagerEpoch::new(*Uuid::new_v4().as_bytes())?;
 
     let wm = if let Some(config) = &static_config {
         tracing::info!(
@@ -280,11 +283,13 @@ fn main() -> eyre::Result<()> {
 
         Arc::new(Mutex::new(StaticConfig::preload(
             config,
+            manager_epoch,
             winevent_listener::event_rx(),
             None,
         )?))
     } else {
         Arc::new(Mutex::new(WindowManager::new(
+            manager_epoch,
             winevent_listener::event_rx(),
             None,
         )?))

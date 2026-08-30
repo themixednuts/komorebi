@@ -26,7 +26,6 @@ pub use id::ConfirmationToken;
 pub use id::InvocationId;
 pub use id::ParameterId;
 pub use id::PrincipalId;
-pub use id::Revision;
 pub use index::ContainerIndex;
 pub use index::MonitorIndex;
 pub use index::StackIndex;

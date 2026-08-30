@@ -60,6 +60,8 @@ impl TryFrom<u16> for ActionSchemaVersion {
 pub struct Revision(NonZeroU64);
 
 impl Revision {
+    pub const FIRST: Self = Self(NonZeroU64::MIN);
+
     #[must_use]
     pub const fn new(value: NonZeroU64) -> Self {
         Self(value)
@@ -68,6 +70,18 @@ impl Revision {
     #[must_use]
     pub const fn get(self) -> u64 {
         self.0.get()
+    }
+
+    /// Advances the revision without wrapping the authoritative sequence.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ActionContractError::RevisionExhausted`] at `u64::MAX`.
+    pub const fn next(self) -> Result<Self, ActionContractError> {
+        match self.0.checked_add(1) {
+            Some(value) => Ok(Self(value)),
+            None => Err(ActionContractError::RevisionExhausted),
+        }
     }
 }
 
@@ -127,6 +141,11 @@ pub struct StateStamp {
 
 impl StateStamp {
     #[must_use]
+    pub const fn initial(epoch: ManagerEpoch) -> Self {
+        Self::new(epoch, Revision::FIRST)
+    }
+
+    #[must_use]
     pub const fn new(epoch: ManagerEpoch, revision: Revision) -> Self {
         Self { epoch, revision }
     }
@@ -139,6 +158,18 @@ impl StateStamp {
     #[must_use]
     pub const fn revision(self) -> Revision {
         self.revision
+    }
+
+    /// Advances this manager's state sequence without changing its epoch.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ActionContractError::RevisionExhausted`] at `u64::MAX`.
+    pub const fn next(self) -> Result<Self, ActionContractError> {
+        match self.revision.next() {
+            Ok(revision) => Ok(Self::new(self.epoch, revision)),
+            Err(error) => Err(error),
+        }
     }
 }
 
@@ -306,4 +337,32 @@ pub enum ActionContractError {
     ZeroActionSchemaVersion,
     #[error("revisions begin at one")]
     ZeroRevision,
+    #[error("revision sequence exhausted")]
+    RevisionExhausted,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn revision_advances_without_zero_or_wraparound() -> Result<(), ActionContractError> {
+        let first = Revision::try_from(1)?;
+        assert_eq!(first.next()?.get(), 2);
+
+        let last = Revision::try_from(u64::MAX)?;
+        assert_eq!(last.next(), Err(ActionContractError::RevisionExhausted));
+        Ok(())
+    }
+
+    #[test]
+    fn state_stamp_advances_inside_one_epoch() -> Result<(), Box<dyn std::error::Error>> {
+        let epoch = ManagerEpoch::new([1; 16])?;
+        let initial = StateStamp::initial(epoch);
+        let next = initial.next()?;
+        assert_eq!(initial.revision(), Revision::FIRST);
+        assert_eq!(next.epoch(), epoch);
+        assert_eq!(next.revision().get(), 2);
+        Ok(())
+    }
 }
