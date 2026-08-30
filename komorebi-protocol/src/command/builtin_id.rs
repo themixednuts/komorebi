@@ -153,6 +153,15 @@ built_in_action_ids! {
     SetBorderOffset => "set-border-offset",
     SetBorderStyle => "set-border-style",
     SetBorderImplementation => "set-border-implementation",
+    SetStackbarMode => "set-stackbar-mode",
+    SetStackbarLabel => "set-stackbar-label",
+    SetStackbarFocusedTextColour => "set-stackbar-focused-text-colour",
+    SetStackbarUnfocusedTextColour => "set-stackbar-unfocused-text-colour",
+    SetStackbarBackgroundColour => "set-stackbar-background-colour",
+    SetStackbarHeight => "set-stackbar-height",
+    SetStackbarTabWidth => "set-stackbar-tab-width",
+    SetStackbarFontSize => "set-stackbar-font-size",
+    SetStackbarFontFamily => "set-stackbar-font-family",
 }
 
 impl fmt::Display for BuiltInActionId {

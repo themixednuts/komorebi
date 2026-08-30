@@ -29,6 +29,8 @@ pub use komorebi_protocol::BuiltInResizeStep;
 pub use komorebi_protocol::BuiltInResizeStepError;
 pub use komorebi_protocol::BuiltInSelector;
 pub use komorebi_protocol::BuiltInSizing;
+pub use komorebi_protocol::BuiltInStackbarLabel;
+pub use komorebi_protocol::BuiltInStackbarMode;
 pub use komorebi_protocol::BuiltInWindowKind;
 use komorebi_protocol::CatalogQuery;
 use komorebi_protocol::CatalogReply;

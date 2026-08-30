@@ -144,6 +144,15 @@ impl ActionId {
     pub const SET_BORDER_OFFSET: Self = Self("set-border-offset");
     pub const SET_BORDER_STYLE: Self = Self("set-border-style");
     pub const SET_BORDER_IMPLEMENTATION: Self = Self("set-border-implementation");
+    pub const SET_STACKBAR_MODE: Self = Self("set-stackbar-mode");
+    pub const SET_STACKBAR_LABEL: Self = Self("set-stackbar-label");
+    pub const SET_STACKBAR_FOCUSED_TEXT_COLOUR: Self = Self("set-stackbar-focused-text-colour");
+    pub const SET_STACKBAR_UNFOCUSED_TEXT_COLOUR: Self = Self("set-stackbar-unfocused-text-colour");
+    pub const SET_STACKBAR_BACKGROUND_COLOUR: Self = Self("set-stackbar-background-colour");
+    pub const SET_STACKBAR_HEIGHT: Self = Self("set-stackbar-height");
+    pub const SET_STACKBAR_TAB_WIDTH: Self = Self("set-stackbar-tab-width");
+    pub const SET_STACKBAR_FONT_SIZE: Self = Self("set-stackbar-font-size");
+    pub const SET_STACKBAR_FONT_FAMILY: Self = Self("set-stackbar-font-family");
 
     #[must_use]
     pub const fn as_str(self) -> &'static str {
@@ -197,8 +206,14 @@ impl ParameterId {
     pub const WIDTH: Self = Self("width");
     pub const OFFSET: Self = Self("offset");
     pub const STYLE: Self = Self("style");
+    pub const MODE: Self = Self("mode");
+    pub const LABEL: Self = Self("label");
+    pub const HEIGHT: Self = Self("height");
+    pub const TAB_WIDTH: Self = Self("tab-width");
+    pub const FONT_SIZE: Self = Self("font-size");
+    pub const FONT_FAMILY: Self = Self("font-family");
 
-    pub const ALL: [Self; 35] = [
+    pub const ALL: [Self; 41] = [
         Self::DIRECTION,
         Self::AXIS,
         Self::DELTA,
@@ -234,6 +249,12 @@ impl ParameterId {
         Self::WIDTH,
         Self::OFFSET,
         Self::STYLE,
+        Self::MODE,
+        Self::LABEL,
+        Self::HEIGHT,
+        Self::TAB_WIDTH,
+        Self::FONT_SIZE,
+        Self::FONT_FAMILY,
     ];
 
     #[must_use]

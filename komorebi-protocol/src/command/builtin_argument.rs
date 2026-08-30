@@ -77,6 +77,12 @@ known_ids! {
     Width => "width",
     Offset => "offset",
     Style => "style",
+    Mode => "mode",
+    Label => "label",
+    Height => "height",
+    TabWidth => "tab-width",
+    FontSize => "font-size",
+    FontFamily => "font-family",
 }
 
 known_ids! {
@@ -201,6 +207,19 @@ known_ids! {
 }
 
 known_ids! {
+    BuiltInStackbarMode, ChoiceId,
+    Always => "always",
+    Never => "never",
+    OnStack => "on-stack",
+}
+
+known_ids! {
+    BuiltInStackbarLabel, ChoiceId,
+    Process => "process",
+    Title => "title",
+}
+
+known_ids! {
     BuiltInIdentifier, ChoiceId,
     Exe => "exe",
     Class => "class",
@@ -291,6 +310,12 @@ pub enum BuiltInArgument {
     Offset(i32),
     BorderStyle(BuiltInBorderStyle),
     BorderImplementation(BuiltInBorderImplementation),
+    StackbarMode(BuiltInStackbarMode),
+    StackbarLabel(BuiltInStackbarLabel),
+    Height(i32),
+    TabWidth(i32),
+    FontSize(i32),
+    FontFamily(BoundedText),
 }
 
 impl BuiltInArgument {
@@ -360,6 +385,12 @@ impl BuiltInArgument {
             Self::BorderImplementation(value) => {
                 choice(BuiltInParameterId::Implementation, value.into_wire())
             }
+            Self::StackbarMode(value) => choice(BuiltInParameterId::Mode, value.into_wire()),
+            Self::StackbarLabel(value) => choice(BuiltInParameterId::Label, value.into_wire()),
+            Self::Height(value) => signed(BuiltInParameterId::Height, value),
+            Self::TabWidth(value) => signed(BuiltInParameterId::TabWidth, value),
+            Self::FontSize(value) => signed(BuiltInParameterId::FontSize, value),
+            Self::FontFamily(value) => (BuiltInParameterId::FontFamily, Scalar(S::Text(value))),
         }
     }
 }

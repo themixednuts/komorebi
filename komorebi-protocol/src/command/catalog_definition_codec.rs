@@ -244,6 +244,12 @@ fn decode_domain(value: u8) -> Result<ParameterDomain, CommandCodecError> {
         28 => Ok(ParameterDomain::BorderOffset),
         29 => Ok(ParameterDomain::BorderStyle),
         30 => Ok(ParameterDomain::BorderImplementation),
+        31 => Ok(ParameterDomain::StackbarMode),
+        32 => Ok(ParameterDomain::StackbarLabel),
+        33 => Ok(ParameterDomain::StackbarHeight),
+        34 => Ok(ParameterDomain::StackbarTabWidth),
+        35 => Ok(ParameterDomain::StackbarFontSize),
+        36 => Ok(ParameterDomain::StackbarFontFamily),
         _ => Err(CommandCodecError::UnknownParameterDomain(value)),
     }
 }

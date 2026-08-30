@@ -76,6 +76,12 @@ pub enum ParameterDomain {
     BorderOffset = 28,
     BorderStyle = 29,
     BorderImplementation = 30,
+    StackbarMode = 31,
+    StackbarLabel = 32,
+    StackbarHeight = 33,
+    StackbarTabWidth = 34,
+    StackbarFontSize = 35,
+    StackbarFontFamily = 36,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

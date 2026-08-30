@@ -16,6 +16,11 @@ use crate::core::OperationBehaviour;
 use crate::core::OperationDirection;
 use crate::core::ResizeStep;
 use crate::core::Sizing;
+use crate::core::StackbarFontSize;
+use crate::core::StackbarHeight;
+use crate::core::StackbarLabel;
+use crate::core::StackbarMode;
+use crate::core::StackbarTabWidth;
 use crate::core::TransparencyAlpha;
 use crate::core::WindowKind;
 use komorebi_themes::colour::Rgb;
@@ -71,6 +76,15 @@ pub enum ActionResult {
     BorderImplementationSet {
         implementation: BorderImplementation,
     },
+    StackbarModeSet,
+    StackbarLabelSet,
+    StackbarFocusedTextColourSet,
+    StackbarUnfocusedTextColourSet,
+    StackbarBackgroundColourSet,
+    StackbarHeightSet,
+    StackbarTabWidthSet,
+    StackbarFontSizeSet,
+    StackbarFontFamilySet,
     LayoutSet {
         layout: DefaultLayout,
     },
@@ -385,6 +399,33 @@ pub enum NativeEffect {
     },
     SetBorderImplementation {
         implementation: BorderImplementation,
+    },
+    SetStackbarMode {
+        mode: StackbarMode,
+    },
+    SetStackbarLabel {
+        label: StackbarLabel,
+    },
+    SetStackbarFocusedTextColour {
+        colour: Rgb,
+    },
+    SetStackbarUnfocusedTextColour {
+        colour: Rgb,
+    },
+    SetStackbarBackgroundColour {
+        colour: Rgb,
+    },
+    SetStackbarHeight {
+        height: StackbarHeight,
+    },
+    SetStackbarTabWidth {
+        width: StackbarTabWidth,
+    },
+    SetStackbarFontSize {
+        size: StackbarFontSize,
+    },
+    SetStackbarFontFamily {
+        family: Option<String>,
     },
     SetLayout {
         layout: DefaultLayout,

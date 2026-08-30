@@ -18,6 +18,7 @@ use komorebi_client::MoveBehaviour;
 use komorebi_client::OperationBehaviour;
 use komorebi_client::OperationDirection;
 use komorebi_client::Sizing;
+use komorebi_client::StackbarMode;
 use komorebi_client::WindowKind;
 use komorebi_client::command::BoundedText;
 use komorebi_client::command::BuiltInActionId;
@@ -37,6 +38,7 @@ use komorebi_client::command::BuiltInMoveBehaviour;
 use komorebi_client::command::BuiltInOperationBehaviour;
 use komorebi_client::command::BuiltInSelector;
 use komorebi_client::command::BuiltInSizing;
+use komorebi_client::command::BuiltInStackbarMode;
 use komorebi_client::command::BuiltInWindowKind;
 use komorebi_client::command::CommandClient;
 use komorebi_client::command::InvocationSubmissionReply;
@@ -113,6 +115,14 @@ pub(super) const fn built_in_border_implementation(
     match value {
         BorderImplementation::Komorebi => BuiltInBorderImplementation::Komorebi,
         BorderImplementation::Windows => BuiltInBorderImplementation::Windows,
+    }
+}
+
+pub(super) const fn built_in_stackbar_mode(value: StackbarMode) -> BuiltInStackbarMode {
+    match value {
+        StackbarMode::Always => BuiltInStackbarMode::Always,
+        StackbarMode::Never => BuiltInStackbarMode::Never,
+        StackbarMode::OnStack => BuiltInStackbarMode::OnStack,
     }
 }
 

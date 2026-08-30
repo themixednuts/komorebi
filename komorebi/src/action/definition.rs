@@ -62,6 +62,12 @@ pub enum ParameterDomain {
     BorderOffset,
     BorderStyle,
     BorderImplementation,
+    StackbarMode,
+    StackbarLabel,
+    StackbarHeight,
+    StackbarTabWidth,
+    StackbarFontSize,
+    StackbarFontFamily,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -640,6 +646,57 @@ const BORDER_IMPLEMENTATION: &[ParameterDefinition] = &[ParameterDefinition {
     cardinality: ArgumentCardinality::RequiredScalar,
 }];
 
+const STACKBAR_MODE: &[ParameterDefinition] = &[ParameterDefinition {
+    id: ParameterId::MODE,
+    domain: ParameterDomain::StackbarMode,
+    cardinality: ArgumentCardinality::RequiredScalar,
+}];
+
+const STACKBAR_LABEL: &[ParameterDefinition] = &[ParameterDefinition {
+    id: ParameterId::LABEL,
+    domain: ParameterDomain::StackbarLabel,
+    cardinality: ArgumentCardinality::RequiredScalar,
+}];
+
+const COLOUR: &[ParameterDefinition] = &[
+    ParameterDefinition {
+        id: ParameterId::RED,
+        domain: ParameterDomain::ColourChannel,
+        cardinality: ArgumentCardinality::RequiredScalar,
+    },
+    ParameterDefinition {
+        id: ParameterId::GREEN,
+        domain: ParameterDomain::ColourChannel,
+        cardinality: ArgumentCardinality::RequiredScalar,
+    },
+    ParameterDefinition {
+        id: ParameterId::BLUE,
+        domain: ParameterDomain::ColourChannel,
+        cardinality: ArgumentCardinality::RequiredScalar,
+    },
+];
+
+const STACKBAR_HEIGHT: &[ParameterDefinition] = &[ParameterDefinition {
+    id: ParameterId::HEIGHT,
+    domain: ParameterDomain::StackbarHeight,
+    cardinality: ArgumentCardinality::RequiredScalar,
+}];
+const STACKBAR_TAB_WIDTH: &[ParameterDefinition] = &[ParameterDefinition {
+    id: ParameterId::TAB_WIDTH,
+    domain: ParameterDomain::StackbarTabWidth,
+    cardinality: ArgumentCardinality::RequiredScalar,
+}];
+const STACKBAR_FONT_SIZE: &[ParameterDefinition] = &[ParameterDefinition {
+    id: ParameterId::FONT_SIZE,
+    domain: ParameterDomain::StackbarFontSize,
+    cardinality: ArgumentCardinality::RequiredScalar,
+}];
+const STACKBAR_FONT_FAMILY: &[ParameterDefinition] = &[ParameterDefinition {
+    id: ParameterId::FONT_FAMILY,
+    domain: ParameterDomain::StackbarFontFamily,
+    cardinality: ArgumentCardinality::OptionalScalar,
+}];
+
 const fn def(
     id: ActionId,
     kind: BuiltinActionKind,
@@ -803,12 +860,23 @@ impl BuiltinActionKind {
             Self::SetBorderOffset => &SET_BORDER_OFFSET,
             Self::SetBorderStyle => &SET_BORDER_STYLE,
             Self::SetBorderImplementation => &SET_BORDER_IMPLEMENTATION,
+            Self::SetStackbarMode => &configuration::SET_STACKBAR_MODE,
+            Self::SetStackbarLabel => &configuration::SET_STACKBAR_LABEL,
+            Self::SetStackbarFocusedTextColour => &configuration::SET_STACKBAR_FOCUSED_TEXT_COLOUR,
+            Self::SetStackbarUnfocusedTextColour => {
+                &configuration::SET_STACKBAR_UNFOCUSED_TEXT_COLOUR
+            }
+            Self::SetStackbarBackgroundColour => &configuration::SET_STACKBAR_BACKGROUND_COLOUR,
+            Self::SetStackbarHeight => &configuration::SET_STACKBAR_HEIGHT,
+            Self::SetStackbarTabWidth => &configuration::SET_STACKBAR_TAB_WIDTH,
+            Self::SetStackbarFontSize => &configuration::SET_STACKBAR_FONT_SIZE,
+            Self::SetStackbarFontFamily => &configuration::SET_STACKBAR_FONT_FAMILY,
         }
     }
 }
 
 #[must_use]
-pub fn definitions() -> [&'static ActionDefinition; 125] {
+pub fn definitions() -> [&'static ActionDefinition; 134] {
     BuiltinActionKind::ALL.map(BuiltinActionKind::definition)
 }
 

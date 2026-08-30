@@ -10,6 +10,7 @@ use crate::core::DefaultLayout;
 use crate::core::OperationDirection;
 use crate::core::ResizeStep;
 use crate::core::Sizing;
+use crate::core::StackbarHeight;
 use crate::core::TransparencyAlpha;
 use crate::core::WindowKind;
 use komorebi_themes::colour::Rgb;
@@ -375,6 +376,35 @@ fn border_configuration_resolves_to_exact_typed_effects() {
             }]
         );
     }
+}
+
+#[test]
+fn stackbar_height_is_one_logical_transition_with_one_composite_native_effect() {
+    let mut state = live_state();
+    let height = StackbarHeight::new(56);
+    let request = InvokeAction {
+        invocation_id: invocation(17),
+        expected_state: stamp(10),
+        action: BuiltinAction::SetStackbarHeight { height },
+        confirmation: None,
+    };
+
+    let ActionPreparation::Prepared(prepared) = state.prepare(&request, &context(), Instant::now())
+    else {
+        panic!("stackbar height should prepare");
+    };
+    assert_eq!(prepared.logical_result, ActionResult::StackbarHeightSet);
+    assert_eq!(
+        prepared.effects,
+        vec![PlannedEffect {
+            id: EffectId::new(0),
+            effect: NativeEffect::SetStackbarHeight { height },
+        }]
+    );
+    state
+        .commit_prepared(prepared)
+        .expect("stackbar height should commit");
+    assert_eq!(state.snapshot().configuration.stackbar.height, height);
 }
 
 #[test]

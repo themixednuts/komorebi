@@ -75,6 +75,8 @@ pub use builtin_argument::BuiltInResizeStep;
 pub use builtin_argument::BuiltInResizeStepError;
 pub use builtin_argument::BuiltInSelector;
 pub use builtin_argument::BuiltInSizing;
+pub use builtin_argument::BuiltInStackbarLabel;
+pub use builtin_argument::BuiltInStackbarMode;
 pub use builtin_argument::BuiltInWindowKind;
 pub use builtin_id::BuiltInActionId;
 pub use catalog::ActionAvailability;

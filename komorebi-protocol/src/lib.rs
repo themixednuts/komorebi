@@ -71,6 +71,8 @@ pub use command::BuiltInResizeStep;
 pub use command::BuiltInResizeStepError;
 pub use command::BuiltInSelector;
 pub use command::BuiltInSizing;
+pub use command::BuiltInStackbarLabel;
+pub use command::BuiltInStackbarMode;
 pub use command::BuiltInWindowKind;
 pub use command::CANCEL_INVOCATION_FRAME_KIND;
 pub use command::CANCEL_INVOCATION_REPLY_FRAME_KIND;

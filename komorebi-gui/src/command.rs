@@ -4,12 +4,16 @@ use std::sync::Mutex;
 
 use komorebi_client::BorderStyle;
 use komorebi_client::Rgb;
+use komorebi_client::StackbarLabel;
+use komorebi_client::StackbarMode;
 use komorebi_client::WindowKind;
 use komorebi_client::command::BuiltInActionId;
 use komorebi_client::command::BuiltInArgument;
 use komorebi_client::command::BuiltInArguments;
 use komorebi_client::command::BuiltInArgumentsError;
 use komorebi_client::command::BuiltInBorderStyle;
+use komorebi_client::command::BuiltInStackbarLabel;
+use komorebi_client::command::BuiltInStackbarMode;
 use komorebi_client::command::BuiltInWindowKind;
 use komorebi_client::command::CommandClient;
 use komorebi_client::command::InvocationSubmissionReply;
@@ -80,6 +84,59 @@ impl CommandQueue {
         self.send(
             BuiltInActionId::SetBorderStyle,
             [BuiltInArgument::BorderStyle(built_in_border_style(style))],
+        )
+    }
+
+    pub fn set_stackbar_mode(&self, mode: StackbarMode) -> Result<(), CommandQueueError> {
+        self.send(
+            BuiltInActionId::SetStackbarMode,
+            [BuiltInArgument::StackbarMode(built_in_stackbar_mode(mode))],
+        )
+    }
+
+    pub fn set_stackbar_label(&self, label: StackbarLabel) -> Result<(), CommandQueueError> {
+        self.send(
+            BuiltInActionId::SetStackbarLabel,
+            [BuiltInArgument::StackbarLabel(built_in_stackbar_label(
+                label,
+            ))],
+        )
+    }
+
+    pub fn set_stackbar_focused_text_colour(&self, colour: Rgb) -> Result<(), CommandQueueError> {
+        self.send_colour(BuiltInActionId::SetStackbarFocusedTextColour, colour)
+    }
+
+    pub fn set_stackbar_unfocused_text_colour(&self, colour: Rgb) -> Result<(), CommandQueueError> {
+        self.send_colour(BuiltInActionId::SetStackbarUnfocusedTextColour, colour)
+    }
+
+    pub fn set_stackbar_background_colour(&self, colour: Rgb) -> Result<(), CommandQueueError> {
+        self.send_colour(BuiltInActionId::SetStackbarBackgroundColour, colour)
+    }
+
+    pub fn set_stackbar_height(&self, height: i32) -> Result<(), CommandQueueError> {
+        self.send(
+            BuiltInActionId::SetStackbarHeight,
+            [BuiltInArgument::Height(height)],
+        )
+    }
+
+    pub fn set_stackbar_tab_width(&self, width: i32) -> Result<(), CommandQueueError> {
+        self.send(
+            BuiltInActionId::SetStackbarTabWidth,
+            [BuiltInArgument::TabWidth(width)],
+        )
+    }
+
+    fn send_colour(&self, action: BuiltInActionId, colour: Rgb) -> Result<(), CommandQueueError> {
+        self.send(
+            action,
+            [
+                BuiltInArgument::Red(colour.r),
+                BuiltInArgument::Green(colour.g),
+                BuiltInArgument::Blue(colour.b),
+            ],
         )
     }
 
@@ -181,6 +238,21 @@ const fn built_in_border_style(value: BorderStyle) -> BuiltInBorderStyle {
         BorderStyle::System => BuiltInBorderStyle::System,
         BorderStyle::Rounded => BuiltInBorderStyle::Rounded,
         BorderStyle::Square => BuiltInBorderStyle::Square,
+    }
+}
+
+const fn built_in_stackbar_mode(value: StackbarMode) -> BuiltInStackbarMode {
+    match value {
+        StackbarMode::Always => BuiltInStackbarMode::Always,
+        StackbarMode::Never => BuiltInStackbarMode::Never,
+        StackbarMode::OnStack => BuiltInStackbarMode::OnStack,
+    }
+}
+
+const fn built_in_stackbar_label(value: StackbarLabel) -> BuiltInStackbarLabel {
+    match value {
+        StackbarLabel::Process => BuiltInStackbarLabel::Process,
+        StackbarLabel::Title => BuiltInStackbarLabel::Title,
     }
 }
 

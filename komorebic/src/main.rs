@@ -20,6 +20,7 @@ use action::built_in_move_behaviour;
 use action::built_in_operation_behaviour;
 use action::built_in_path;
 use action::built_in_sizing;
+use action::built_in_stackbar_mode;
 use action::built_in_text;
 use action::built_in_window_kind;
 use action::focused_window_arguments;
@@ -3660,7 +3661,13 @@ if (Get-Command Get-CimInstance -ErrorAction SilentlyContinue) {
             .await?;
         }
         SubCommand::StackbarMode(args) => {
-            send_message(&SocketMessage::StackbarMode(args.mode))?;
+            invoke_action(
+                BuiltInActionId::SetStackbarMode,
+                built_in_arguments([BuiltInArgument::StackbarMode(built_in_stackbar_mode(
+                    args.mode,
+                ))])?,
+            )
+            .await?;
         }
         SubCommand::Transparency(args) => {
             invoke_action(

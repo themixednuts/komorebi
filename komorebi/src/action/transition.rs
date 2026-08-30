@@ -160,6 +160,15 @@ pub(super) fn directional_gap(
         | BuiltinAction::SetBorderOffset { .. }
         | BuiltinAction::SetBorderStyle { .. }
         | BuiltinAction::SetBorderImplementation { .. }
+        | BuiltinAction::SetStackbarMode { .. }
+        | BuiltinAction::SetStackbarLabel { .. }
+        | BuiltinAction::SetStackbarFocusedTextColour { .. }
+        | BuiltinAction::SetStackbarUnfocusedTextColour { .. }
+        | BuiltinAction::SetStackbarBackgroundColour { .. }
+        | BuiltinAction::SetStackbarHeight { .. }
+        | BuiltinAction::SetStackbarTabWidth { .. }
+        | BuiltinAction::SetStackbarFontSize { .. }
+        | BuiltinAction::SetStackbarFontFamily { .. }
         | BuiltinAction::SetWorkspaceLayout { .. }
         | BuiltinAction::ToggleWindowFloat { .. }
         | BuiltinAction::CycleFocusWindow { .. }
@@ -301,6 +310,29 @@ pub(super) fn apply_logical(snapshot: &mut ActionSnapshot, action: &BuiltinActio
         }
         BuiltinAction::SetBorderImplementation { implementation } => {
             snapshot.configuration.border.implementation = implementation;
+        }
+        BuiltinAction::SetStackbarMode { mode } => snapshot.configuration.stackbar.mode = mode,
+        BuiltinAction::SetStackbarLabel { label } => snapshot.configuration.stackbar.label = label,
+        BuiltinAction::SetStackbarFocusedTextColour { colour } => {
+            snapshot.configuration.stackbar.focused_text_colour = colour;
+        }
+        BuiltinAction::SetStackbarUnfocusedTextColour { colour } => {
+            snapshot.configuration.stackbar.unfocused_text_colour = colour;
+        }
+        BuiltinAction::SetStackbarBackgroundColour { colour } => {
+            snapshot.configuration.stackbar.background_colour = colour;
+        }
+        BuiltinAction::SetStackbarHeight { height } => {
+            snapshot.configuration.stackbar.height = height;
+        }
+        BuiltinAction::SetStackbarTabWidth { width } => {
+            snapshot.configuration.stackbar.tab_width = width;
+        }
+        BuiltinAction::SetStackbarFontSize { size } => {
+            snapshot.configuration.stackbar.font_size = size;
+        }
+        BuiltinAction::SetStackbarFontFamily { family } => {
+            snapshot.configuration.stackbar.font_family = family.map(String::into_boxed_str);
         }
         BuiltinAction::ToggleWindowFloat { .. } => {
             snapshot.focused_window_floating = !snapshot.focused_window_floating;
@@ -453,6 +485,21 @@ pub(super) fn logical_result(action: &BuiltinAction, snapshot: &ActionSnapshot) 
         BuiltinAction::SetBorderImplementation { implementation } => {
             ActionResult::BorderImplementationSet { implementation }
         }
+        BuiltinAction::SetStackbarMode { .. } => ActionResult::StackbarModeSet,
+        BuiltinAction::SetStackbarLabel { .. } => ActionResult::StackbarLabelSet,
+        BuiltinAction::SetStackbarFocusedTextColour { .. } => {
+            ActionResult::StackbarFocusedTextColourSet
+        }
+        BuiltinAction::SetStackbarUnfocusedTextColour { .. } => {
+            ActionResult::StackbarUnfocusedTextColourSet
+        }
+        BuiltinAction::SetStackbarBackgroundColour { .. } => {
+            ActionResult::StackbarBackgroundColourSet
+        }
+        BuiltinAction::SetStackbarHeight { .. } => ActionResult::StackbarHeightSet,
+        BuiltinAction::SetStackbarTabWidth { .. } => ActionResult::StackbarTabWidthSet,
+        BuiltinAction::SetStackbarFontSize { .. } => ActionResult::StackbarFontSizeSet,
+        BuiltinAction::SetStackbarFontFamily { .. } => ActionResult::StackbarFontFamilySet,
         BuiltinAction::SetWorkspaceLayout { layout, .. } => ActionResult::LayoutSet { layout },
         BuiltinAction::ToggleWindowFloat { .. } => ActionResult::FloatToggled {
             floating: snapshot.focused_window_floating,
@@ -762,6 +809,29 @@ pub(super) fn effects(action: &BuiltinAction, snapshot: &ActionSnapshot) -> Vec<
         BuiltinAction::SetBorderStyle { style } => vec![NativeEffect::SetBorderStyle { style }],
         BuiltinAction::SetBorderImplementation { implementation } => {
             vec![NativeEffect::SetBorderImplementation { implementation }]
+        }
+        BuiltinAction::SetStackbarMode { mode } => vec![NativeEffect::SetStackbarMode { mode }],
+        BuiltinAction::SetStackbarLabel { label } => vec![NativeEffect::SetStackbarLabel { label }],
+        BuiltinAction::SetStackbarFocusedTextColour { colour } => {
+            vec![NativeEffect::SetStackbarFocusedTextColour { colour }]
+        }
+        BuiltinAction::SetStackbarUnfocusedTextColour { colour } => {
+            vec![NativeEffect::SetStackbarUnfocusedTextColour { colour }]
+        }
+        BuiltinAction::SetStackbarBackgroundColour { colour } => {
+            vec![NativeEffect::SetStackbarBackgroundColour { colour }]
+        }
+        BuiltinAction::SetStackbarHeight { height } => {
+            vec![NativeEffect::SetStackbarHeight { height }]
+        }
+        BuiltinAction::SetStackbarTabWidth { width } => {
+            vec![NativeEffect::SetStackbarTabWidth { width }]
+        }
+        BuiltinAction::SetStackbarFontSize { size } => {
+            vec![NativeEffect::SetStackbarFontSize { size }]
+        }
+        BuiltinAction::SetStackbarFontFamily { family } => {
+            vec![NativeEffect::SetStackbarFontFamily { family }]
         }
         BuiltinAction::SetWorkspaceLayout { layout, .. } => {
             vec![NativeEffect::SetLayout { layout }]

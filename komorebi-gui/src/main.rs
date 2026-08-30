@@ -502,12 +502,9 @@ impl eframe::App for KomorebiGui {
                             .clicked()
                         {
                             self.stackbar_config.mode = option;
-                            komorebi_client::send_message(&SocketMessage::StackbarMode(
-                                self.stackbar_config.mode,
-                            ))
-                            .unwrap();
-
-                            komorebi_client::send_message(&SocketMessage::Retile).unwrap()
+                            report_command(
+                                self.commands.set_stackbar_mode(self.stackbar_config.mode),
+                            );
                         }
                     }
 
@@ -521,10 +518,9 @@ impl eframe::App for KomorebiGui {
                                 .clicked()
                             {
                                 self.stackbar_config.label = option;
-                                komorebi_client::send_message(&SocketMessage::StackbarLabel(
-                                    self.stackbar_config.label,
-                                ))
-                                .unwrap();
+                                report_command(
+                                    self.commands.set_stackbar_label(self.stackbar_config.label),
+                                );
                             }
                         }
                     });
@@ -536,14 +532,9 @@ impl eframe::App for KomorebiGui {
                                 &mut self.stackbar_config.focused_text_colour,
                                 Alpha::Opaque,
                             ) {
-                                komorebi_client::send_message(
-                                    &SocketMessage::StackbarFocusedTextColour(
-                                        self.stackbar_config.focused_text_colour.r(),
-                                        self.stackbar_config.focused_text_colour.g(),
-                                        self.stackbar_config.focused_text_colour.b(),
-                                    ),
-                                )
-                                .unwrap();
+                                report_command(self.commands.set_stackbar_focused_text_colour(
+                                    rgb(self.stackbar_config.focused_text_colour),
+                                ));
                             }
                         });
 
@@ -553,14 +544,9 @@ impl eframe::App for KomorebiGui {
                                 &mut self.stackbar_config.unfocused_text_colour,
                                 Alpha::Opaque,
                             ) {
-                                komorebi_client::send_message(
-                                    &SocketMessage::StackbarUnfocusedTextColour(
-                                        self.stackbar_config.unfocused_text_colour.r(),
-                                        self.stackbar_config.unfocused_text_colour.g(),
-                                        self.stackbar_config.unfocused_text_colour.b(),
-                                    ),
-                                )
-                                .unwrap();
+                                report_command(self.commands.set_stackbar_unfocused_text_colour(
+                                    rgb(self.stackbar_config.unfocused_text_colour),
+                                ));
                             }
                         });
 
@@ -570,14 +556,9 @@ impl eframe::App for KomorebiGui {
                                 &mut self.stackbar_config.background_colour,
                                 Alpha::Opaque,
                             ) {
-                                komorebi_client::send_message(
-                                    &SocketMessage::StackbarBackgroundColour(
-                                        self.stackbar_config.background_colour.r(),
-                                        self.stackbar_config.background_colour.g(),
-                                        self.stackbar_config.background_colour.b(),
-                                    ),
-                                )
-                                .unwrap();
+                                report_command(self.commands.set_stackbar_background_colour(rgb(
+                                    self.stackbar_config.background_colour,
+                                )));
                             }
                         })
                     });
@@ -587,12 +568,10 @@ impl eframe::App for KomorebiGui {
                             .add(egui::Slider::new(&mut self.stackbar_config.width, 0..=500))
                             .drag_stopped()
                         {
-                            komorebi_client::send_message(&SocketMessage::StackbarTabWidth(
-                                self.stackbar_config.width,
-                            ))
-                            .unwrap();
-
-                            komorebi_client::send_message(&SocketMessage::Retile).unwrap()
+                            report_command(
+                                self.commands
+                                    .set_stackbar_tab_width(self.stackbar_config.width),
+                            );
                         };
                     });
 
@@ -601,12 +580,10 @@ impl eframe::App for KomorebiGui {
                             .add(egui::Slider::new(&mut self.stackbar_config.height, 0..=100))
                             .drag_stopped()
                         {
-                            komorebi_client::send_message(&SocketMessage::StackbarHeight(
-                                self.stackbar_config.height,
-                            ))
-                            .unwrap();
-
-                            komorebi_client::send_message(&SocketMessage::Retile).unwrap()
+                            report_command(
+                                self.commands
+                                    .set_stackbar_height(self.stackbar_config.height),
+                            );
                         };
                     });
                 });

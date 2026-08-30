@@ -55,6 +55,14 @@ pub use pathext::replace_env_in_path;
 pub use pathext::resolve_option_hashmap_usize_path;
 pub use resize_step::ResizeStep;
 pub use resize_step::ResizeStepError;
+pub use stackbar_configuration::DEFAULT_STACKBAR_BACKGROUND_COLOUR;
+pub use stackbar_configuration::DEFAULT_STACKBAR_FOCUSED_TEXT_COLOUR;
+pub use stackbar_configuration::DEFAULT_STACKBAR_LABEL;
+pub use stackbar_configuration::DEFAULT_STACKBAR_MODE;
+pub use stackbar_configuration::DEFAULT_STACKBAR_UNFOCUSED_TEXT_COLOUR;
+pub use stackbar_configuration::StackbarFontSize;
+pub use stackbar_configuration::StackbarHeight;
+pub use stackbar_configuration::StackbarTabWidth;
 pub use subscriber::SubscriberName;
 pub use subscriber::SubscriberNameError;
 pub use subscriber::SubscriberRegistry;
@@ -69,6 +77,7 @@ pub mod border_geometry;
 pub mod config_generation;
 pub mod pathext;
 pub mod resize_step;
+pub mod stackbar_configuration;
 pub mod subscriber;
 pub mod transparency_alpha;
 
@@ -215,15 +224,6 @@ pub enum SocketMessage {
     ToggleTransparency,
     TransparencyAlpha(u8),
     InvisibleBorders(Rect),
-    StackbarMode(StackbarMode),
-    StackbarLabel(StackbarLabel),
-    StackbarFocusedTextColour(u8, u8, u8),
-    StackbarUnfocusedTextColour(u8, u8, u8),
-    StackbarBackgroundColour(u8, u8, u8),
-    StackbarHeight(i32),
-    StackbarTabWidth(i32),
-    StackbarFontSize(i32),
-    StackbarFontFamily(Option<String>),
     WorkAreaOffset(Rect),
     MonitorWorkAreaOffset(usize, Rect),
     WorkspaceWorkAreaOffset(usize, usize, Rect),

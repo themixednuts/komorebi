@@ -4,8 +4,16 @@ use crate::DEFAULT_CONTAINER_PADDING;
 use crate::WindowManager;
 use crate::WindowsApi;
 use crate::container::Container;
+use crate::core::DEFAULT_STACKBAR_BACKGROUND_COLOUR;
+use crate::core::DEFAULT_STACKBAR_FOCUSED_TEXT_COLOUR;
+use crate::core::DEFAULT_STACKBAR_LABEL;
+use crate::core::DEFAULT_STACKBAR_MODE;
+use crate::core::DEFAULT_STACKBAR_UNFOCUSED_TEXT_COLOUR;
+use crate::core::StackbarFontSize;
+use crate::core::StackbarHeight;
 use crate::core::StackbarLabel;
 use crate::core::StackbarMode;
+use crate::core::StackbarTabWidth;
 use crate::stackbar_manager::stackbar::Stackbar;
 use crossbeam_channel::Receiver;
 use crossbeam_channel::Sender;
@@ -22,14 +30,17 @@ use std::sync::atomic::AtomicI32;
 use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering;
 
-pub static STACKBAR_FONT_SIZE: AtomicI32 = AtomicI32::new(0); // 0 will produce the system default
-pub static STACKBAR_FOCUSED_TEXT_COLOUR: AtomicU32 = AtomicU32::new(16777215); // white
-pub static STACKBAR_UNFOCUSED_TEXT_COLOUR: AtomicU32 = AtomicU32::new(11776947); // gray text
-pub static STACKBAR_TAB_BACKGROUND_COLOUR: AtomicU32 = AtomicU32::new(3355443); // gray
-pub static STACKBAR_TAB_HEIGHT: AtomicI32 = AtomicI32::new(40);
-pub static STACKBAR_TAB_WIDTH: AtomicI32 = AtomicI32::new(200);
-pub static STACKBAR_LABEL: AtomicCell<StackbarLabel> = AtomicCell::new(StackbarLabel::Title);
-pub static STACKBAR_MODE: AtomicCell<StackbarMode> = AtomicCell::new(StackbarMode::Never);
+pub static STACKBAR_FONT_SIZE: AtomicI32 = AtomicI32::new(StackbarFontSize::DEFAULT.get());
+pub static STACKBAR_FOCUSED_TEXT_COLOUR: AtomicU32 =
+    AtomicU32::new(DEFAULT_STACKBAR_FOCUSED_TEXT_COLOUR);
+pub static STACKBAR_UNFOCUSED_TEXT_COLOUR: AtomicU32 =
+    AtomicU32::new(DEFAULT_STACKBAR_UNFOCUSED_TEXT_COLOUR);
+pub static STACKBAR_TAB_BACKGROUND_COLOUR: AtomicU32 =
+    AtomicU32::new(DEFAULT_STACKBAR_BACKGROUND_COLOUR);
+pub static STACKBAR_TAB_HEIGHT: AtomicI32 = AtomicI32::new(StackbarHeight::DEFAULT.get());
+pub static STACKBAR_TAB_WIDTH: AtomicI32 = AtomicI32::new(StackbarTabWidth::DEFAULT.get());
+pub static STACKBAR_LABEL: AtomicCell<StackbarLabel> = AtomicCell::new(DEFAULT_STACKBAR_LABEL);
+pub static STACKBAR_MODE: AtomicCell<StackbarMode> = AtomicCell::new(DEFAULT_STACKBAR_MODE);
 
 pub static STACKBAR_TEMPORARILY_DISABLED: AtomicBool = AtomicBool::new(false);
 

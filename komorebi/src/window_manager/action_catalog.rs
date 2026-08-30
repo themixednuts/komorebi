@@ -22,6 +22,7 @@ use crate::action::NativeEffectFailure;
 use crate::action::ObservationChange;
 use crate::action::PlannedEffect;
 use crate::action::PrincipalId;
+use crate::action::StackbarConfiguration;
 use crate::action::TransparencyConfiguration;
 use crate::action::WorkspaceIndex;
 use crate::action::WorkspaceName;
@@ -36,8 +37,12 @@ use crate::core::DefaultLayout;
 use crate::core::Layout;
 use crate::core::OperationDirection;
 use crate::core::Sizing;
+use crate::core::StackbarFontSize;
+use crate::core::StackbarHeight;
+use crate::core::StackbarTabWidth;
 use crate::core::TransparencyAlpha;
 use crate::core::WindowKind;
+use crate::stackbar_manager;
 use crate::transparency_manager;
 use crate::workspace::WorkspaceLayer;
 use komorebi_protocol::CatalogReply;
@@ -181,6 +186,32 @@ impl WindowManager {
                     alpha: TransparencyAlpha::new(
                         transparency_manager::TRANSPARENCY_ALPHA.load(Ordering::SeqCst),
                     ),
+                },
+                stackbar: StackbarConfiguration {
+                    mode: stackbar_manager::STACKBAR_MODE.load(),
+                    label: stackbar_manager::STACKBAR_LABEL.load(),
+                    focused_text_colour: stackbar_manager::STACKBAR_FOCUSED_TEXT_COLOUR
+                        .load(Ordering::SeqCst)
+                        .into(),
+                    unfocused_text_colour: stackbar_manager::STACKBAR_UNFOCUSED_TEXT_COLOUR
+                        .load(Ordering::SeqCst)
+                        .into(),
+                    background_colour: stackbar_manager::STACKBAR_TAB_BACKGROUND_COLOUR
+                        .load(Ordering::SeqCst)
+                        .into(),
+                    height: StackbarHeight::new(
+                        stackbar_manager::STACKBAR_TAB_HEIGHT.load(Ordering::SeqCst),
+                    ),
+                    tab_width: StackbarTabWidth::new(
+                        stackbar_manager::STACKBAR_TAB_WIDTH.load(Ordering::SeqCst),
+                    ),
+                    font_size: StackbarFontSize::new(
+                        stackbar_manager::STACKBAR_FONT_SIZE.load(Ordering::SeqCst),
+                    ),
+                    font_family: stackbar_manager::STACKBAR_FONT_FAMILY
+                        .lock()
+                        .clone()
+                        .map(String::into_boxed_str),
                 },
             },
             focused_window_floating,
@@ -448,6 +479,48 @@ impl WindowManager {
                 if implementation == BorderImplementation::Komorebi {
                     border_manager::send_notification(None);
                 }
+            }
+            NativeEffect::SetStackbarMode { mode } => {
+                stackbar_manager::STACKBAR_MODE.store(mode);
+                self.retile_all(true)?;
+                stackbar_manager::send_notification();
+            }
+            NativeEffect::SetStackbarLabel { label } => {
+                stackbar_manager::STACKBAR_LABEL.store(label);
+                stackbar_manager::send_notification();
+            }
+            NativeEffect::SetStackbarFocusedTextColour { colour } => {
+                stackbar_manager::STACKBAR_FOCUSED_TEXT_COLOUR
+                    .store(colour.into(), Ordering::SeqCst);
+                stackbar_manager::send_notification();
+            }
+            NativeEffect::SetStackbarUnfocusedTextColour { colour } => {
+                stackbar_manager::STACKBAR_UNFOCUSED_TEXT_COLOUR
+                    .store(colour.into(), Ordering::SeqCst);
+                stackbar_manager::send_notification();
+            }
+            NativeEffect::SetStackbarBackgroundColour { colour } => {
+                stackbar_manager::STACKBAR_TAB_BACKGROUND_COLOUR
+                    .store(colour.into(), Ordering::SeqCst);
+                stackbar_manager::send_notification();
+            }
+            NativeEffect::SetStackbarHeight { height } => {
+                stackbar_manager::STACKBAR_TAB_HEIGHT.store(height.get(), Ordering::SeqCst);
+                self.retile_all(true)?;
+                stackbar_manager::send_notification();
+            }
+            NativeEffect::SetStackbarTabWidth { width } => {
+                stackbar_manager::STACKBAR_TAB_WIDTH.store(width.get(), Ordering::SeqCst);
+                self.retile_all(true)?;
+                stackbar_manager::send_notification();
+            }
+            NativeEffect::SetStackbarFontSize { size } => {
+                stackbar_manager::STACKBAR_FONT_SIZE.store(size.get(), Ordering::SeqCst);
+                stackbar_manager::send_notification();
+            }
+            NativeEffect::SetStackbarFontFamily { family } => {
+                *stackbar_manager::STACKBAR_FONT_FAMILY.lock() = family;
+                stackbar_manager::send_notification();
             }
             NativeEffect::CycleFocus { direction } => {
                 let focused_workspace = self.focused_workspace()?;

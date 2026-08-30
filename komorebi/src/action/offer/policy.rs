@@ -219,5 +219,14 @@ pub(super) const fn policy(kind: BuiltinActionKind) -> OfferPolicy {
         | BuiltinActionKind::AddWorkspaceCustomLayoutRule
         | BuiltinActionKind::RemoveTitleBar
         | BuiltinActionKind::SetBorderColour => AVAILABLE,
+        BuiltinActionKind::SetStackbarMode
+        | BuiltinActionKind::SetStackbarLabel
+        | BuiltinActionKind::SetStackbarFocusedTextColour
+        | BuiltinActionKind::SetStackbarUnfocusedTextColour
+        | BuiltinActionKind::SetStackbarBackgroundColour
+        | BuiltinActionKind::SetStackbarHeight
+        | BuiltinActionKind::SetStackbarTabWidth
+        | BuiltinActionKind::SetStackbarFontSize
+        | BuiltinActionKind::SetStackbarFontFamily => AVAILABLE,
     }
 }

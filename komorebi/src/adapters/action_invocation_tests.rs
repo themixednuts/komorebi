@@ -141,6 +141,14 @@ fn scalar(
         D::BorderImplementation => {
             protocol::ArgumentScalar::Choice(protocol::ChoiceId::parse("komorebi")?)
         }
+        D::StackbarMode => protocol::ArgumentScalar::Choice(protocol::ChoiceId::parse("on-stack")?),
+        D::StackbarLabel => protocol::ArgumentScalar::Choice(protocol::ChoiceId::parse("title")?),
+        D::StackbarHeight | D::StackbarTabWidth | D::StackbarFontSize => {
+            protocol::ArgumentScalar::Signed(42)
+        }
+        D::StackbarFontFamily => {
+            protocol::ArgumentScalar::Text(protocol::BoundedText::new("Segoe UI")?)
+        }
     })
 }
 

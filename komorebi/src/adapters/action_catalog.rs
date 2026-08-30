@@ -284,6 +284,18 @@ const fn project_parameter_domain(value: definition::ParameterDomain) -> protoco
         definition::ParameterDomain::BorderImplementation => {
             protocol::ParameterDomain::BorderImplementation
         }
+        definition::ParameterDomain::StackbarMode => protocol::ParameterDomain::StackbarMode,
+        definition::ParameterDomain::StackbarLabel => protocol::ParameterDomain::StackbarLabel,
+        definition::ParameterDomain::StackbarHeight => protocol::ParameterDomain::StackbarHeight,
+        definition::ParameterDomain::StackbarTabWidth => {
+            protocol::ParameterDomain::StackbarTabWidth
+        }
+        definition::ParameterDomain::StackbarFontSize => {
+            protocol::ParameterDomain::StackbarFontSize
+        }
+        definition::ParameterDomain::StackbarFontFamily => {
+            protocol::ParameterDomain::StackbarFontFamily
+        }
     }
 }
 

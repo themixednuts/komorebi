@@ -20,6 +20,11 @@ use crate::core::OperationBehaviour;
 use crate::core::OperationDirection;
 use crate::core::ResizeStep;
 use crate::core::Sizing;
+use crate::core::StackbarFontSize;
+use crate::core::StackbarHeight;
+use crate::core::StackbarLabel;
+use crate::core::StackbarMode;
+use crate::core::StackbarTabWidth;
 use crate::core::TransparencyAlpha;
 use crate::core::WindowKind;
 use komorebi_themes::colour::Rgb;
@@ -158,10 +163,19 @@ pub enum BuiltinActionKind {
     SetBorderOffset,
     SetBorderStyle,
     SetBorderImplementation,
+    SetStackbarMode,
+    SetStackbarLabel,
+    SetStackbarFocusedTextColour,
+    SetStackbarUnfocusedTextColour,
+    SetStackbarBackgroundColour,
+    SetStackbarHeight,
+    SetStackbarTabWidth,
+    SetStackbarFontSize,
+    SetStackbarFontFamily,
 }
 
 impl BuiltinActionKind {
-    pub const ALL: [Self; 125] = [
+    pub const ALL: [Self; 134] = [
         Self::FocusWindow,
         Self::MoveWindow,
         Self::ResizeWindow,
@@ -287,6 +301,15 @@ impl BuiltinActionKind {
         Self::SetBorderOffset,
         Self::SetBorderStyle,
         Self::SetBorderImplementation,
+        Self::SetStackbarMode,
+        Self::SetStackbarLabel,
+        Self::SetStackbarFocusedTextColour,
+        Self::SetStackbarUnfocusedTextColour,
+        Self::SetStackbarBackgroundColour,
+        Self::SetStackbarHeight,
+        Self::SetStackbarTabWidth,
+        Self::SetStackbarFontSize,
+        Self::SetStackbarFontFamily,
     ];
 
     #[must_use]
@@ -425,6 +448,15 @@ impl BuiltinActionKind {
             Self::SetBorderOffset => ActionId::SET_BORDER_OFFSET,
             Self::SetBorderStyle => ActionId::SET_BORDER_STYLE,
             Self::SetBorderImplementation => ActionId::SET_BORDER_IMPLEMENTATION,
+            Self::SetStackbarMode => ActionId::SET_STACKBAR_MODE,
+            Self::SetStackbarLabel => ActionId::SET_STACKBAR_LABEL,
+            Self::SetStackbarFocusedTextColour => ActionId::SET_STACKBAR_FOCUSED_TEXT_COLOUR,
+            Self::SetStackbarUnfocusedTextColour => ActionId::SET_STACKBAR_UNFOCUSED_TEXT_COLOUR,
+            Self::SetStackbarBackgroundColour => ActionId::SET_STACKBAR_BACKGROUND_COLOUR,
+            Self::SetStackbarHeight => ActionId::SET_STACKBAR_HEIGHT,
+            Self::SetStackbarTabWidth => ActionId::SET_STACKBAR_TAB_WIDTH,
+            Self::SetStackbarFontSize => ActionId::SET_STACKBAR_FONT_SIZE,
+            Self::SetStackbarFontFamily => ActionId::SET_STACKBAR_FONT_FAMILY,
         }
     }
 }
@@ -863,6 +895,33 @@ pub enum BuiltinAction {
     SetBorderImplementation {
         implementation: BorderImplementation,
     },
+    SetStackbarMode {
+        mode: StackbarMode,
+    },
+    SetStackbarLabel {
+        label: StackbarLabel,
+    },
+    SetStackbarFocusedTextColour {
+        colour: Rgb,
+    },
+    SetStackbarUnfocusedTextColour {
+        colour: Rgb,
+    },
+    SetStackbarBackgroundColour {
+        colour: Rgb,
+    },
+    SetStackbarHeight {
+        height: StackbarHeight,
+    },
+    SetStackbarTabWidth {
+        width: StackbarTabWidth,
+    },
+    SetStackbarFontSize {
+        size: StackbarFontSize,
+    },
+    SetStackbarFontFamily {
+        family: Option<String>,
+    },
 }
 
 impl BuiltinAction {
@@ -1040,6 +1099,21 @@ impl BuiltinAction {
             Self::SetBorderOffset { .. } => BuiltinActionKind::SetBorderOffset,
             Self::SetBorderStyle { .. } => BuiltinActionKind::SetBorderStyle,
             Self::SetBorderImplementation { .. } => BuiltinActionKind::SetBorderImplementation,
+            Self::SetStackbarMode { .. } => BuiltinActionKind::SetStackbarMode,
+            Self::SetStackbarLabel { .. } => BuiltinActionKind::SetStackbarLabel,
+            Self::SetStackbarFocusedTextColour { .. } => {
+                BuiltinActionKind::SetStackbarFocusedTextColour
+            }
+            Self::SetStackbarUnfocusedTextColour { .. } => {
+                BuiltinActionKind::SetStackbarUnfocusedTextColour
+            }
+            Self::SetStackbarBackgroundColour { .. } => {
+                BuiltinActionKind::SetStackbarBackgroundColour
+            }
+            Self::SetStackbarHeight { .. } => BuiltinActionKind::SetStackbarHeight,
+            Self::SetStackbarTabWidth { .. } => BuiltinActionKind::SetStackbarTabWidth,
+            Self::SetStackbarFontSize { .. } => BuiltinActionKind::SetStackbarFontSize,
+            Self::SetStackbarFontFamily { .. } => BuiltinActionKind::SetStackbarFontFamily,
         }
     }
 }

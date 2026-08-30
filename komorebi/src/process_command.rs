@@ -1,7 +1,6 @@
 use color_eyre::eyre;
 use color_eyre::eyre::OptionExt;
 use color_eyre::eyre::WrapErr;
-use komorebi_themes::colour::Rgb;
 use miow::pipe::connect;
 use parking_lot::Mutex;
 use std::collections::HashMap;
@@ -60,8 +59,6 @@ use crate::current_virtual_desktop;
 use crate::monitor::MonitorInformation;
 use crate::notify_subscribers;
 use crate::stackbar_manager;
-use crate::stackbar_manager::STACKBAR_FONT_FAMILY;
-use crate::stackbar_manager::STACKBAR_FONT_SIZE;
 use crate::state;
 use crate::state::GlobalState;
 use crate::state::State;
@@ -71,13 +68,6 @@ use crate::transparency_manager;
 use crate::window::RuleDebug;
 use crate::window::Window;
 use crate::window_manager::WindowManager;
-use stackbar_manager::STACKBAR_FOCUSED_TEXT_COLOUR;
-use stackbar_manager::STACKBAR_LABEL;
-use stackbar_manager::STACKBAR_MODE;
-use stackbar_manager::STACKBAR_TAB_BACKGROUND_COLOUR;
-use stackbar_manager::STACKBAR_TAB_HEIGHT;
-use stackbar_manager::STACKBAR_TAB_WIDTH;
-use stackbar_manager::STACKBAR_UNFOCUSED_TEXT_COLOUR;
 
 pub fn bind_legacy_command_listener(socket: &Path) -> eyre::Result<UnixListener> {
     match std::fs::remove_file(socket) {
@@ -940,38 +930,6 @@ if (!(Get-Process komorebi-bar -ErrorAction SilentlyContinue))
                         ANIMATION_STYLE_PER_ANIMATION.lock().clear();
                     }
                 },
-                SocketMessage::StackbarMode(mode) => {
-                    STACKBAR_MODE.store(mode);
-                    self.retile_all(true)?;
-                }
-                SocketMessage::StackbarLabel(label) => {
-                    STACKBAR_LABEL.store(label);
-                }
-                SocketMessage::StackbarFocusedTextColour(r, g, b) => {
-                    let rgb = Rgb::new(r, g, b);
-                    STACKBAR_FOCUSED_TEXT_COLOUR.store(rgb.into(), Ordering::SeqCst);
-                }
-                SocketMessage::StackbarUnfocusedTextColour(r, g, b) => {
-                    let rgb = Rgb::new(r, g, b);
-                    STACKBAR_UNFOCUSED_TEXT_COLOUR.store(rgb.into(), Ordering::SeqCst);
-                }
-                SocketMessage::StackbarBackgroundColour(r, g, b) => {
-                    let rgb = Rgb::new(r, g, b);
-                    STACKBAR_TAB_BACKGROUND_COLOUR.store(rgb.into(), Ordering::SeqCst);
-                }
-                SocketMessage::StackbarHeight(height) => {
-                    STACKBAR_TAB_HEIGHT.store(height, Ordering::SeqCst);
-                }
-                SocketMessage::StackbarTabWidth(width) => {
-                    STACKBAR_TAB_WIDTH.store(width, Ordering::SeqCst);
-                }
-                SocketMessage::StackbarFontSize(size) => {
-                    STACKBAR_FONT_SIZE.store(size, Ordering::SeqCst);
-                }
-                #[allow(clippy::assigning_clones)]
-                SocketMessage::StackbarFontFamily(ref font_family) => {
-                    *STACKBAR_FONT_FAMILY.lock() = font_family.clone();
-                }
                 SocketMessage::ApplicationSpecificConfigurationSchema => {
                     #[cfg(feature = "schemars")]
                     {

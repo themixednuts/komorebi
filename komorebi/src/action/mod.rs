@@ -19,6 +19,7 @@ pub use builtin::WorkspaceName;
 pub use builtin::WorkspaceSelector;
 pub use configuration::BorderConfiguration;
 pub use configuration::ConfigurationSnapshot;
+pub use configuration::StackbarConfiguration;
 pub use configuration::TransparencyConfiguration;
 pub use confirmation::ConfirmationError;
 pub use confirmation::ConfirmationLedger;

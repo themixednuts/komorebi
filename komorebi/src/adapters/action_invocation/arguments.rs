@@ -25,6 +25,8 @@ use crate::core::OperationBehaviour;
 use crate::core::OperationDirection;
 use crate::core::ResizeStep;
 use crate::core::Sizing;
+use crate::core::StackbarLabel;
+use crate::core::StackbarMode;
 use crate::core::WindowKind;
 
 pub(super) struct ValidatedArguments<'a> {
@@ -114,6 +116,22 @@ impl<'a> ValidatedArguments<'a> {
         match self.scalar(id)? {
             protocol::ArgumentScalar::Text(value) => Ok(value.as_str()),
             _ => Err(wrong_scalar(id, ScalarKind::Text)),
+        }
+    }
+
+    pub(super) fn optional_text(
+        &self,
+        id: ParameterId,
+    ) -> Result<Option<&'a str>, ArgumentBindingError> {
+        match find(self.values, id) {
+            Some(protocol::ActionArgument::Scalar(protocol::ArgumentScalar::Text(value))) => {
+                Ok(Some(value.as_str()))
+            }
+            Some(protocol::ActionArgument::Scalar(_)) => Err(wrong_scalar(id, ScalarKind::Text)),
+            Some(protocol::ActionArgument::Scalars(_)) => {
+                Err(wrong_cardinality(id, ArgumentCardinality::OptionalScalar))
+            }
+            None => Ok(None),
         }
     }
 
@@ -344,6 +362,29 @@ impl<'a> ValidatedArguments<'a> {
         match self.choice(id)? {
             "komorebi" => Ok(BorderImplementation::Komorebi),
             "windows" => Ok(BorderImplementation::Windows),
+            value => Err(unknown_choice(id, value)),
+        }
+    }
+
+    pub(super) fn stackbar_mode(
+        &self,
+        id: ParameterId,
+    ) -> Result<StackbarMode, ArgumentBindingError> {
+        match self.choice(id)? {
+            "always" => Ok(StackbarMode::Always),
+            "never" => Ok(StackbarMode::Never),
+            "on-stack" => Ok(StackbarMode::OnStack),
+            value => Err(unknown_choice(id, value)),
+        }
+    }
+
+    pub(super) fn stackbar_label(
+        &self,
+        id: ParameterId,
+    ) -> Result<StackbarLabel, ArgumentBindingError> {
+        match self.choice(id)? {
+            "process" => Ok(StackbarLabel::Process),
+            "title" => Ok(StackbarLabel::Title),
             value => Err(unknown_choice(id, value)),
         }
     }

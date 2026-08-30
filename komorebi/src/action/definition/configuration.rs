@@ -139,3 +139,85 @@ pub const SET_BORDER_IMPLEMENTATION: ActionDefinition = ActionDefinition {
     confirmation: ConfirmationPolicy::None,
     undo: UndoPolicy::None,
 };
+
+macro_rules! stackbar_definition {
+    ($name:ident, $kind:ident, $title:literal, $description:literal, $parameters:ident) => {
+        pub const $name: ActionDefinition = ActionDefinition {
+            id: ActionId::$name,
+            schema_version: ActionSchemaVersion::V1,
+            kind: BuiltinActionKind::$kind,
+            category: ActionCategory::Configuration,
+            title: $title,
+            description: $description,
+            keywords: &["stackbar", "configuration"],
+            parameters: $parameters,
+            permitted_uses: BOTH_USES,
+            confirmation: ConfirmationPolicy::None,
+            undo: UndoPolicy::None,
+        };
+    };
+}
+
+stackbar_definition!(
+    SET_STACKBAR_MODE,
+    SetStackbarMode,
+    "Set stackbar mode",
+    "Choose when stackbars are displayed",
+    STACKBAR_MODE
+);
+stackbar_definition!(
+    SET_STACKBAR_LABEL,
+    SetStackbarLabel,
+    "Set stackbar label",
+    "Choose the text displayed on stackbar tabs",
+    STACKBAR_LABEL
+);
+stackbar_definition!(
+    SET_STACKBAR_FOCUSED_TEXT_COLOUR,
+    SetStackbarFocusedTextColour,
+    "Set focused stackbar text colour",
+    "Set the focused stackbar tab text colour",
+    COLOUR
+);
+stackbar_definition!(
+    SET_STACKBAR_UNFOCUSED_TEXT_COLOUR,
+    SetStackbarUnfocusedTextColour,
+    "Set unfocused stackbar text colour",
+    "Set the unfocused stackbar tab text colour",
+    COLOUR
+);
+stackbar_definition!(
+    SET_STACKBAR_BACKGROUND_COLOUR,
+    SetStackbarBackgroundColour,
+    "Set stackbar background colour",
+    "Set the stackbar tab background colour",
+    COLOUR
+);
+stackbar_definition!(
+    SET_STACKBAR_HEIGHT,
+    SetStackbarHeight,
+    "Set stackbar height",
+    "Set the stackbar height in pixels",
+    STACKBAR_HEIGHT
+);
+stackbar_definition!(
+    SET_STACKBAR_TAB_WIDTH,
+    SetStackbarTabWidth,
+    "Set stackbar tab width",
+    "Set the stackbar tab width in pixels",
+    STACKBAR_TAB_WIDTH
+);
+stackbar_definition!(
+    SET_STACKBAR_FONT_SIZE,
+    SetStackbarFontSize,
+    "Set stackbar font size",
+    "Set the stackbar font size; zero selects the system default",
+    STACKBAR_FONT_SIZE
+);
+stackbar_definition!(
+    SET_STACKBAR_FONT_FAMILY,
+    SetStackbarFontFamily,
+    "Set stackbar font family",
+    "Set the stackbar font family; omit it to select the system default",
+    STACKBAR_FONT_FAMILY
+);

@@ -18,6 +18,9 @@ use crate::action::WorkspaceIndex;
 use crate::action::id::ParameterId;
 use crate::core::BorderOffset;
 use crate::core::BorderWidth;
+use crate::core::StackbarFontSize;
+use crate::core::StackbarHeight;
+use crate::core::StackbarTabWidth;
 use crate::core::TransparencyAlpha;
 use komorebi_themes::colour::Rgb;
 
@@ -192,6 +195,35 @@ fn bind_builtin(
         },
         K::SetBorderImplementation => A::SetBorderImplementation {
             implementation: args.border_implementation(ParameterId::IMPLEMENTATION)?,
+        },
+        K::SetStackbarMode => A::SetStackbarMode {
+            mode: args.stackbar_mode(ParameterId::MODE)?,
+        },
+        K::SetStackbarLabel => A::SetStackbarLabel {
+            label: args.stackbar_label(ParameterId::LABEL)?,
+        },
+        K::SetStackbarFocusedTextColour => A::SetStackbarFocusedTextColour {
+            colour: colour(args)?,
+        },
+        K::SetStackbarUnfocusedTextColour => A::SetStackbarUnfocusedTextColour {
+            colour: colour(args)?,
+        },
+        K::SetStackbarBackgroundColour => A::SetStackbarBackgroundColour {
+            colour: colour(args)?,
+        },
+        K::SetStackbarHeight => A::SetStackbarHeight {
+            height: StackbarHeight::new(args.i32(ParameterId::HEIGHT)?),
+        },
+        K::SetStackbarTabWidth => A::SetStackbarTabWidth {
+            width: StackbarTabWidth::new(args.i32(ParameterId::TAB_WIDTH)?),
+        },
+        K::SetStackbarFontSize => A::SetStackbarFontSize {
+            size: StackbarFontSize::new(args.i32(ParameterId::FONT_SIZE)?),
+        },
+        K::SetStackbarFontFamily => A::SetStackbarFontFamily {
+            family: args
+                .optional_text(ParameterId::FONT_FAMILY)?
+                .map(str::to_owned),
         },
         K::SetWorkspaceLayout => A::SetWorkspaceLayout {
             workspace: args.workspace_selector(ParameterId::WORKSPACE)?,
@@ -512,6 +544,14 @@ fn bind_builtin(
             id: args.text(ParameterId::EXE)?.to_owned(),
         },
     })
+}
+
+fn colour(args: &ValidatedArguments<'_>) -> Result<Rgb, ArgumentBindingError> {
+    Ok(Rgb::new(
+        args.u8(ParameterId::RED)?,
+        args.u8(ParameterId::GREEN)?,
+        args.u8(ParameterId::BLUE)?,
+    ))
 }
 
 #[derive(Debug, Error)]
