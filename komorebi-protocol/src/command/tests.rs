@@ -176,12 +176,12 @@ fn duplicate_fields_and_oversized_payloads_fail_closed() -> Result<(), Box<dyn s
         .u8(0)?;
     assert!(matches!(
         ActionInvocationCodec::decode(&encoder.into_writer()),
-        Err(ActionInvocationCodecError::DuplicateKey(0))
+        Err(CommandCodecError::DuplicateKey(0))
     ));
 
     assert!(matches!(
         ActionInvocationCodec::decode(&vec![0; 16 * 1024 + 1]),
-        Err(ActionInvocationCodecError::PayloadTooLarge(_))
+        Err(CommandCodecError::PayloadTooLarge(_))
     ));
     Ok(())
 }

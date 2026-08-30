@@ -1,7 +1,7 @@
 use std::io;
 
-use komorebi_protocol::ActionInvocationCodecError;
 use komorebi_protocol::BootstrapCodecError;
+use komorebi_protocol::CommandCodecError;
 use komorebi_protocol::FrameError;
 use komorebi_protocol::FrameKind;
 use komorebi_protocol::IdentifierError;
@@ -51,7 +51,7 @@ pub enum TransportError {
     #[error("unsupported request frame kind {0:?}")]
     UnsupportedRequestFrame(FrameKind),
     #[error(transparent)]
-    ActionInvocation(#[from] ActionInvocationCodecError),
+    CommandPayload(#[from] CommandCodecError),
     #[error(transparent)]
     Bootstrap(#[from] BootstrapCodecError),
     #[error(transparent)]

@@ -1,6 +1,8 @@
 mod argument;
 mod codec;
 mod contract;
+mod lease;
+mod lease_codec;
 
 #[cfg(test)]
 mod tests;
@@ -8,6 +10,8 @@ mod tests;
 use crate::FrameKind;
 
 pub const INVOKE_ACTION_FRAME_KIND: FrameKind = FrameKind::new(16);
+pub const LEASE_INVOCATION_IDS_FRAME_KIND: FrameKind = FrameKind::new(17);
+pub const INVOCATION_LEASE_REPLY_FRAME_KIND: FrameKind = FrameKind::new(18);
 
 pub use argument::ActionArgument;
 pub use argument::ActionArguments;
@@ -28,8 +32,8 @@ pub use argument::Unit;
 pub use argument::UnitValue;
 pub use argument::WindowsPathInput;
 pub use codec::ActionInvocationCodec;
-pub use codec::ActionInvocationCodecError;
 pub use codec::CanonicalActionInvocation;
+pub use codec::CommandCodecError;
 pub use contract::ActionContractError;
 pub use contract::ActionContractFingerprint;
 pub use contract::ActionId;
@@ -41,3 +45,7 @@ pub use contract::ConfirmationChallengeId;
 pub use contract::OfferRef;
 pub use contract::Revision;
 pub use contract::StateStamp;
+pub use lease::InvocationLeaseRejection;
+pub use lease::InvocationLeaseReply;
+pub use lease::InvocationLeaseRequest;
+pub use lease_codec::InvocationLeaseCodec;

@@ -5,6 +5,9 @@ use komorebi_protocol::BootstrapCodec;
 use komorebi_protocol::ConnectionId;
 use komorebi_protocol::HELLO_FRAME_KIND;
 use komorebi_protocol::INVOKE_ACTION_FRAME_KIND;
+use komorebi_protocol::InvocationLeaseCodec;
+use komorebi_protocol::InvocationLeaseRequest;
+use komorebi_protocol::LEASE_INVOCATION_IDS_FRAME_KIND;
 use komorebi_protocol::ManagerEpoch;
 use komorebi_protocol::NegotiatedProtocol;
 use komorebi_protocol::PrincipalId;
@@ -175,6 +178,7 @@ pub struct EstablishedSession {
 #[derive(Debug, Eq, PartialEq)]
 pub enum SessionRequest {
     Invoke(ActionInvocation),
+    LeaseInvocationIds(InvocationLeaseRequest),
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -244,6 +248,9 @@ impl EstablishedSession {
             INVOKE_ACTION_FRAME_KIND => {
                 SessionRequest::Invoke(ActionInvocationCodec::decode(frame.payload())?)
             }
+            LEASE_INVOCATION_IDS_FRAME_KIND => SessionRequest::LeaseInvocationIds(
+                InvocationLeaseCodec::decode_request(frame.payload())?,
+            ),
             kind => return Err(TransportError::UnsupportedRequestFrame(kind)),
         };
         Ok(AuthenticatedRequest {
@@ -304,6 +311,8 @@ mod tests {
     use komorebi_protocol::FrameHeader;
     use komorebi_protocol::HEADER_BYTES;
     use komorebi_protocol::InvocationId;
+    use komorebi_protocol::InvocationLeaseCodec;
+    use komorebi_protocol::InvocationLeaseRequest;
     use komorebi_protocol::InvocationNamespaceId;
     use komorebi_protocol::InvocationSequence;
     use komorebi_protocol::OfferRef;
@@ -416,6 +425,21 @@ mod tests {
         Ok(())
     }
 
+    async fn send_lease_request(
+        client: &mut tokio::net::windows::named_pipe::NamedPipeClient,
+        request: InvocationLeaseRequest,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let frame = Frame::new(
+            LEASE_INVOCATION_IDS_FRAME_KIND,
+            StreamId::client_initiated(NonZeroU32::MIN.saturating_add(2))?,
+            komorebi_protocol::DirectionSequence::try_from(3)?,
+            InvocationLeaseCodec::encode_request(request)?,
+        )?;
+        client.write_all(&frame.header().encode()).await?;
+        client.write_all(frame.payload()).await?;
+        Ok(())
+    }
+
     #[tokio::test(flavor = "current_thread")]
     #[serial_test::serial]
     async fn handshake_establishes_or_rejects_without_blocking_the_listener()
@@ -453,6 +477,13 @@ mod tests {
         assert_eq!(
             request.into_request(),
             SessionRequest::Invoke(expected_invocation)
+        );
+        let lease_request = InvocationLeaseRequest::new(None, NonZeroU32::MIN.saturating_add(31));
+        send_lease_request(&mut accepted_client, lease_request).await?;
+        let request = established.receive_request().await?;
+        assert_eq!(
+            request.into_request(),
+            SessionRequest::LeaseInvocationIds(lease_request)
         );
 
         assert!(matches!(

@@ -47,7 +47,7 @@ use crate::InvocationNamespaceId;
 use crate::InvocationSequence;
 use crate::ManagerEpoch;
 
-const MAX_INVOCATION_BYTES: usize = 16 * 1024;
+pub(super) const MAX_COMMAND_PAYLOAD_BYTES: usize = 16 * 1024;
 const MAX_FIELDS: u64 = 32;
 const MAX_SKIPPED_ITEMS: u64 = 1024;
 const MAX_NESTING_DEPTH: u8 = 32;
@@ -84,9 +84,9 @@ impl ActionInvocationCodec {
     ///
     /// # Errors
     ///
-    /// Returns [`ActionInvocationCodecError`] when encoding fails or the final
+    /// Returns [`CommandCodecError`] when encoding fails or the final
     /// control payload exceeds 16 KiB.
-    pub fn encode(invocation: &ActionInvocation) -> Result<Vec<u8>, ActionInvocationCodecError> {
+    pub fn encode(invocation: &ActionInvocation) -> Result<Vec<u8>, CommandCodecError> {
         let mut encoder = Encoder::new(Vec::with_capacity(512));
         let fields = if invocation.confirmation().is_some() {
             5
@@ -105,8 +105,8 @@ impl ActionInvocationCodec {
             encoder.u8(4)?.bytes(&confirmation.into_bytes())?;
         }
         let payload = encoder.into_writer();
-        if payload.len() > MAX_INVOCATION_BYTES {
-            Err(ActionInvocationCodecError::PayloadTooLarge(payload.len()))
+        if payload.len() > MAX_COMMAND_PAYLOAD_BYTES {
+            Err(CommandCodecError::PayloadTooLarge(payload.len()))
         } else {
             Ok(payload)
         }
@@ -116,16 +116,16 @@ impl ActionInvocationCodec {
     ///
     /// # Errors
     ///
-    /// Returns [`ActionInvocationCodecError`] for malformed, duplicate,
+    /// Returns [`CommandCodecError`] for malformed, duplicate,
     /// noncanonical, oversized, or trailing input.
-    pub fn decode(bytes: &[u8]) -> Result<ActionInvocation, ActionInvocationCodecError> {
-        if bytes.len() > MAX_INVOCATION_BYTES {
-            return Err(ActionInvocationCodecError::PayloadTooLarge(bytes.len()));
+    pub fn decode(bytes: &[u8]) -> Result<ActionInvocation, CommandCodecError> {
+        if bytes.len() > MAX_COMMAND_PAYLOAD_BYTES {
+            return Err(CommandCodecError::PayloadTooLarge(bytes.len()));
         }
         let mut decoder = Decoder::new(bytes);
         let count = definite(decoder.map()?)?;
         if count > MAX_FIELDS {
-            return Err(ActionInvocationCodecError::TooManyFields(count));
+            return Err(CommandCodecError::TooManyFields(count));
         }
         let mut seen = [false; 256];
         let mut invocation_id = None;
@@ -136,7 +136,7 @@ impl ActionInvocationCodec {
         for _ in 0..count {
             let key = decoder.u8()?;
             if std::mem::replace(&mut seen[usize::from(key)], true) {
-                return Err(ActionInvocationCodecError::DuplicateKey(key));
+                return Err(CommandCodecError::DuplicateKey(key));
             }
             match key {
                 0 => invocation_id = Some(decode_invocation_id(&mut decoder)?),
@@ -151,17 +151,17 @@ impl ActionInvocationCodec {
         }
         for key in REQUIRED_INVOCATION_FIELDS {
             if !seen[usize::from(key)] {
-                return Err(ActionInvocationCodecError::MissingKey(key));
+                return Err(CommandCodecError::MissingKey(key));
             }
         }
         if decoder.position() != bytes.len() {
-            return Err(ActionInvocationCodecError::TrailingBytes);
+            return Err(CommandCodecError::TrailingBytes);
         }
         Ok(ActionInvocation::new(
-            invocation_id.ok_or(ActionInvocationCodecError::MissingKey(0))?,
-            offer.ok_or(ActionInvocationCodecError::MissingKey(1))?,
-            expected_state.ok_or(ActionInvocationCodecError::MissingKey(2))?,
-            arguments.ok_or(ActionInvocationCodecError::MissingKey(3))?,
+            invocation_id.ok_or(CommandCodecError::MissingKey(0))?,
+            offer.ok_or(CommandCodecError::MissingKey(1))?,
+            expected_state.ok_or(CommandCodecError::MissingKey(2))?,
+            arguments.ok_or(CommandCodecError::MissingKey(3))?,
             confirmation,
         ))
     }
@@ -172,9 +172,7 @@ impl ActionInvocationCodec {
     ///
     /// Returns the same errors as [`Self::encode`], or an identity error in the
     /// cryptographically negligible event of an all-zero SHA-256 output.
-    pub fn digest(
-        invocation: &ActionInvocation,
-    ) -> Result<InvocationDigest, ActionInvocationCodecError> {
+    pub fn digest(invocation: &ActionInvocation) -> Result<InvocationDigest, CommandCodecError> {
         Ok(Self::canonicalize(invocation)?.digest())
     }
 
@@ -186,7 +184,7 @@ impl ActionInvocationCodec {
     /// cryptographically negligible event of an all-zero SHA-256 output.
     pub fn canonicalize(
         invocation: &ActionInvocation,
-    ) -> Result<CanonicalActionInvocation, ActionInvocationCodecError> {
+    ) -> Result<CanonicalActionInvocation, CommandCodecError> {
         let bytes = Self::encode(invocation)?.into_boxed_slice();
         let digest = InvocationDigest::new(Sha256::digest(&bytes).into())?;
         Ok(CanonicalActionInvocation { bytes, digest })
@@ -196,7 +194,7 @@ impl ActionInvocationCodec {
 fn encode_invocation_id(
     encoder: &mut Encoder<Vec<u8>>,
     id: InvocationId,
-) -> Result<(), ActionInvocationCodecError> {
+) -> Result<(), CommandCodecError> {
     encoder
         .array(2)?
         .bytes(&id.namespace().into_bytes())?
@@ -204,9 +202,7 @@ fn encode_invocation_id(
     Ok(())
 }
 
-fn decode_invocation_id(
-    decoder: &mut Decoder<'_>,
-) -> Result<InvocationId, ActionInvocationCodecError> {
+fn decode_invocation_id(decoder: &mut Decoder<'_>) -> Result<InvocationId, CommandCodecError> {
     expect_array(decoder, 2)?;
     Ok(InvocationId::new(
         InvocationNamespaceId::new(decode_bytes(decoder)?)?,
@@ -214,10 +210,7 @@ fn decode_invocation_id(
     ))
 }
 
-fn encode_offer(
-    encoder: &mut Encoder<Vec<u8>>,
-    offer: &OfferRef,
-) -> Result<(), ActionInvocationCodecError> {
+fn encode_offer(encoder: &mut Encoder<Vec<u8>>, offer: &OfferRef) -> Result<(), CommandCodecError> {
     encoder.map(3)?.u8(0)?;
     encode_action_key(encoder, offer.action())?;
     encoder
@@ -227,7 +220,7 @@ fn encode_offer(
     encode_catalog(encoder, offer.catalog())
 }
 
-fn decode_offer(decoder: &mut Decoder<'_>) -> Result<OfferRef, ActionInvocationCodecError> {
+fn decode_offer(decoder: &mut Decoder<'_>) -> Result<OfferRef, CommandCodecError> {
     let count = bounded_map(decoder)?;
     let mut seen = [false; 256];
     let mut action = None;
@@ -251,7 +244,7 @@ fn decode_offer(decoder: &mut Decoder<'_>) -> Result<OfferRef, ActionInvocationC
 fn encode_action_key(
     encoder: &mut Encoder<Vec<u8>>,
     key: &ActionKey,
-) -> Result<(), ActionInvocationCodecError> {
+) -> Result<(), CommandCodecError> {
     encoder
         .map(2)?
         .u8(0)?
@@ -261,7 +254,7 @@ fn encode_action_key(
     Ok(())
 }
 
-fn decode_action_key(decoder: &mut Decoder<'_>) -> Result<ActionKey, ActionInvocationCodecError> {
+fn decode_action_key(decoder: &mut Decoder<'_>) -> Result<ActionKey, CommandCodecError> {
     let count = bounded_map(decoder)?;
     let mut seen = [false; 256];
     let mut id = None;
@@ -279,7 +272,7 @@ fn decode_action_key(decoder: &mut Decoder<'_>) -> Result<ActionKey, ActionInvoc
 fn encode_state(
     encoder: &mut Encoder<Vec<u8>>,
     state: StateStamp,
-) -> Result<(), ActionInvocationCodecError> {
+) -> Result<(), CommandCodecError> {
     encoder
         .map(2)?
         .u8(0)?
@@ -289,7 +282,7 @@ fn encode_state(
     Ok(())
 }
 
-fn decode_state(decoder: &mut Decoder<'_>) -> Result<StateStamp, ActionInvocationCodecError> {
+fn decode_state(decoder: &mut Decoder<'_>) -> Result<StateStamp, CommandCodecError> {
     let count = bounded_map(decoder)?;
     let mut seen = [false; 256];
     let mut epoch = None;
@@ -307,7 +300,7 @@ fn decode_state(decoder: &mut Decoder<'_>) -> Result<StateStamp, ActionInvocatio
 fn encode_catalog(
     encoder: &mut Encoder<Vec<u8>>,
     catalog: CatalogStamp,
-) -> Result<(), ActionInvocationCodecError> {
+) -> Result<(), CommandCodecError> {
     encoder
         .map(4)?
         .u8(0)?
@@ -321,7 +314,7 @@ fn encode_catalog(
     Ok(())
 }
 
-fn decode_catalog(decoder: &mut Decoder<'_>) -> Result<CatalogStamp, ActionInvocationCodecError> {
+fn decode_catalog(decoder: &mut Decoder<'_>) -> Result<CatalogStamp, CommandCodecError> {
     let count = bounded_map(decoder)?;
     let mut seen = [false; 256];
     let mut epoch = None;
@@ -348,7 +341,7 @@ fn decode_catalog(decoder: &mut Decoder<'_>) -> Result<CatalogStamp, ActionInvoc
 fn encode_arguments(
     encoder: &mut Encoder<Vec<u8>>,
     arguments: &ActionArguments,
-) -> Result<(), ActionInvocationCodecError> {
+) -> Result<(), CommandCodecError> {
     encoder.array(to_u64(arguments.values().len())?)?;
     for (id, value) in arguments.values() {
         encoder.array(2)?.str(id.as_str())?;
@@ -357,9 +350,7 @@ fn encode_arguments(
     Ok(())
 }
 
-fn decode_arguments(
-    decoder: &mut Decoder<'_>,
-) -> Result<ActionArguments, ActionInvocationCodecError> {
+fn decode_arguments(decoder: &mut Decoder<'_>) -> Result<ActionArguments, CommandCodecError> {
     let count = definite(decoder.array()?)?;
     let capacity = to_usize(count)?;
     if capacity > MAX_ARGUMENTS {
@@ -371,14 +362,14 @@ fn decode_arguments(
         expect_array(decoder, 2)?;
         let id = ParameterId::parse(decoder.str()?)?;
         if previous.as_ref().is_some_and(|previous| previous >= &id) {
-            return Err(ActionInvocationCodecError::NonCanonicalArguments);
+            return Err(CommandCodecError::NonCanonicalArguments);
         }
         let value = decode_argument(decoder)?;
         previous = Some(id.clone());
         values.insert(id, value);
     }
     if values.len() != capacity {
-        return Err(ActionInvocationCodecError::NonCanonicalArguments);
+        return Err(CommandCodecError::NonCanonicalArguments);
     }
     Ok(ActionArguments::new(values)?)
 }
@@ -386,7 +377,7 @@ fn decode_arguments(
 fn encode_argument(
     encoder: &mut Encoder<Vec<u8>>,
     value: &ActionArgument,
-) -> Result<(), ActionInvocationCodecError> {
+) -> Result<(), CommandCodecError> {
     match value {
         ActionArgument::Scalar(value) => encode_scalar(encoder, value),
         ActionArgument::Scalars(values) => {
@@ -402,9 +393,7 @@ fn encode_argument(
     }
 }
 
-fn decode_argument(
-    decoder: &mut Decoder<'_>,
-) -> Result<ActionArgument, ActionInvocationCodecError> {
+fn decode_argument(decoder: &mut Decoder<'_>) -> Result<ActionArgument, CommandCodecError> {
     let length = definite(decoder.array()?)?;
     let tag = decoder.u8()?;
     if tag != 0 {
@@ -413,7 +402,7 @@ fn decode_argument(
         )?));
     }
     if length != 2 {
-        return Err(ActionInvocationCodecError::WrongValueLength { tag, length });
+        return Err(CommandCodecError::WrongValueLength { tag, length });
     }
     let count = definite(decoder.array()?)?;
     let capacity = to_usize(count)?;
@@ -432,7 +421,7 @@ fn decode_argument(
 fn encode_scalar(
     encoder: &mut Encoder<Vec<u8>>,
     value: &ArgumentScalar,
-) -> Result<(), ActionInvocationCodecError> {
+) -> Result<(), CommandCodecError> {
     match value {
         ArgumentScalar::Bool(value) => {
             encoder.array(2)?.u8(1)?.bool(*value)?;
@@ -495,11 +484,11 @@ fn encode_scalar(
     Ok(())
 }
 
-fn decode_scalar(decoder: &mut Decoder<'_>) -> Result<ArgumentScalar, ActionInvocationCodecError> {
+fn decode_scalar(decoder: &mut Decoder<'_>) -> Result<ArgumentScalar, CommandCodecError> {
     let length = definite(decoder.array()?)?;
     let tag = decoder.u8()?;
     if tag == 0 {
-        return Err(ActionInvocationCodecError::NestedList);
+        return Err(CommandCodecError::NestedList);
     }
     decode_scalar_body(decoder, tag, length)
 }
@@ -508,15 +497,15 @@ fn decode_scalar_body(
     decoder: &mut Decoder<'_>,
     tag: u8,
     length: u64,
-) -> Result<ArgumentScalar, ActionInvocationCodecError> {
+) -> Result<ArgumentScalar, CommandCodecError> {
     let expected = match tag {
         1 | 2 | 3 | 5 | 6 | 10 | 11 => 2,
         4 | 8 | 9 => 3,
         7 => 5,
-        _ => return Err(ActionInvocationCodecError::UnknownValueTag(tag)),
+        _ => return Err(CommandCodecError::UnknownValueTag(tag)),
     };
     if length != expected {
-        return Err(ActionInvocationCodecError::WrongValueLength { tag, length });
+        return Err(CommandCodecError::WrongValueLength { tag, length });
     }
     match tag {
         1 => Ok(ArgumentScalar::Bool(decoder.bool()?)),
@@ -544,14 +533,14 @@ fn decode_scalar_body(
         ))),
         10 => Ok(ArgumentScalar::Selector(SelectorId::parse(decoder.str()?)?)),
         11 => Ok(ArgumentScalar::WindowsPath(decode_path(decoder)?)),
-        _ => Err(ActionInvocationCodecError::UnknownValueTag(tag)),
+        _ => Err(CommandCodecError::UnknownValueTag(tag)),
     }
 }
 
-fn decode_path(decoder: &mut Decoder<'_>) -> Result<WindowsPathInput, ActionInvocationCodecError> {
+fn decode_path(decoder: &mut Decoder<'_>) -> Result<WindowsPathInput, CommandCodecError> {
     let bytes = decoder.bytes()?;
     if bytes.len() % 2 != 0 {
-        return Err(ActionInvocationCodecError::OddPathBytes(bytes.len()));
+        return Err(CommandCodecError::OddPathBytes(bytes.len()));
     }
     let units = bytes
         .chunks_exact(2)
@@ -560,70 +549,67 @@ fn decode_path(decoder: &mut Decoder<'_>) -> Result<WindowsPathInput, ActionInvo
     Ok(WindowsPathInput::new(units.into_boxed_slice())?)
 }
 
-fn expect_array(
-    decoder: &mut Decoder<'_>,
-    expected: u64,
-) -> Result<(), ActionInvocationCodecError> {
+fn expect_array(decoder: &mut Decoder<'_>, expected: u64) -> Result<(), CommandCodecError> {
     let actual = definite(decoder.array()?)?;
     if actual == expected {
         Ok(())
     } else {
-        Err(ActionInvocationCodecError::WrongArrayLength { expected, actual })
+        Err(CommandCodecError::WrongArrayLength { expected, actual })
     }
 }
 
-fn bounded_map(decoder: &mut Decoder<'_>) -> Result<u64, ActionInvocationCodecError> {
+pub(super) fn bounded_map(decoder: &mut Decoder<'_>) -> Result<u64, CommandCodecError> {
     let count = definite(decoder.map()?)?;
     if count > MAX_FIELDS {
-        Err(ActionInvocationCodecError::TooManyFields(count))
+        Err(CommandCodecError::TooManyFields(count))
     } else {
         Ok(count)
     }
 }
 
-fn unique_key(
+pub(super) fn unique_key(
     decoder: &mut Decoder<'_>,
     seen: &mut [bool; 256],
-) -> Result<u8, ActionInvocationCodecError> {
+) -> Result<u8, CommandCodecError> {
     let key = decoder.u8()?;
     if std::mem::replace(&mut seen[usize::from(key)], true) {
-        Err(ActionInvocationCodecError::DuplicateKey(key))
+        Err(CommandCodecError::DuplicateKey(key))
     } else {
         Ok(key)
     }
 }
 
-fn required<T>(value: Option<T>, key: u8) -> Result<T, ActionInvocationCodecError> {
-    value.ok_or(ActionInvocationCodecError::MissingKey(key))
+pub(super) fn required<T>(value: Option<T>, key: u8) -> Result<T, CommandCodecError> {
+    value.ok_or(CommandCodecError::MissingKey(key))
 }
 
-fn decode_bytes<const N: usize>(
+pub(super) fn decode_bytes<const N: usize>(
     decoder: &mut Decoder<'_>,
-) -> Result<[u8; N], ActionInvocationCodecError> {
+) -> Result<[u8; N], CommandCodecError> {
     let bytes = decoder.bytes()?;
     bytes
         .try_into()
-        .map_err(|_| ActionInvocationCodecError::WrongByteLength {
+        .map_err(|_| CommandCodecError::WrongByteLength {
             expected: N,
             actual: bytes.len(),
         })
 }
 
-fn definite(length: Option<u64>) -> Result<u64, ActionInvocationCodecError> {
-    length.ok_or(ActionInvocationCodecError::IndefiniteCollection)
+pub(super) fn definite(length: Option<u64>) -> Result<u64, CommandCodecError> {
+    length.ok_or(CommandCodecError::IndefiniteCollection)
 }
 
-fn to_usize(value: u64) -> Result<usize, ActionInvocationCodecError> {
-    usize::try_from(value).map_err(|_| ActionInvocationCodecError::CollectionTooLarge)
+fn to_usize(value: u64) -> Result<usize, CommandCodecError> {
+    usize::try_from(value).map_err(|_| CommandCodecError::CollectionTooLarge)
 }
 
-fn to_u64(value: usize) -> Result<u64, ActionInvocationCodecError> {
-    u64::try_from(value).map_err(|_| ActionInvocationCodecError::CollectionTooLarge)
+fn to_u64(value: usize) -> Result<u64, CommandCodecError> {
+    u64::try_from(value).map_err(|_| CommandCodecError::CollectionTooLarge)
 }
 
-fn skip_bounded(decoder: &mut Decoder<'_>, depth: u8) -> Result<(), ActionInvocationCodecError> {
+pub(super) fn skip_bounded(decoder: &mut Decoder<'_>, depth: u8) -> Result<(), CommandCodecError> {
     if depth >= MAX_NESTING_DEPTH {
-        return Err(ActionInvocationCodecError::NestingTooDeep);
+        return Err(CommandCodecError::NestingTooDeep);
     }
     match decoder.datatype()? {
         Type::Bool => {
@@ -666,37 +652,47 @@ fn skip_bounded(decoder: &mut Decoder<'_>, depth: u8) -> Result<(), ActionInvoca
             skip_bounded(decoder, depth + 1)?;
         }
         Type::BytesIndef | Type::StringIndef | Type::ArrayIndef | Type::MapIndef => {
-            return Err(ActionInvocationCodecError::IndefiniteCollection);
+            return Err(CommandCodecError::IndefiniteCollection);
         }
         Type::Break | Type::Unknown(_) => {
-            return Err(ActionInvocationCodecError::UnsupportedType);
+            return Err(CommandCodecError::UnsupportedType);
         }
     }
     Ok(())
 }
 
-fn ensure_skipped_bound(count: u64) -> Result<(), ActionInvocationCodecError> {
+fn ensure_skipped_bound(count: u64) -> Result<(), CommandCodecError> {
     if count > MAX_SKIPPED_ITEMS {
-        Err(ActionInvocationCodecError::SkippedCollectionTooLarge(count))
+        Err(CommandCodecError::SkippedCollectionTooLarge(count))
     } else {
         Ok(())
     }
 }
 
 #[derive(Debug, Error)]
-pub enum ActionInvocationCodecError {
-    #[error("action invocation is {0} bytes; maximum is {MAX_INVOCATION_BYTES}")]
+pub enum CommandCodecError {
+    #[error("command payload is {0} bytes; maximum is {MAX_COMMAND_PAYLOAD_BYTES}")]
     PayloadTooLarge(usize),
     #[error("CBOR collections must use definite lengths")]
     IndefiniteCollection,
-    #[error("invocation map has {0} fields; maximum is {MAX_FIELDS}")]
+    #[error("command map has {0} fields; maximum is {MAX_FIELDS}")]
     TooManyFields(u64),
-    #[error("invocation repeats numeric key {0}")]
+    #[error("command repeats numeric key {0}")]
     DuplicateKey(u8),
-    #[error("invocation is missing numeric key {0}")]
+    #[error("command is missing numeric key {0}")]
     MissingKey(u8),
-    #[error("invocation contains trailing bytes")]
+    #[error("command contains trailing bytes")]
     TrailingBytes,
+    #[error("unknown invocation lease reply tag {0}")]
+    UnknownLeaseReplyTag(u8),
+    #[error("unknown invocation lease rejection code {0}")]
+    UnknownLeaseRejection(u8),
+    #[error("invocation lease count must be nonzero")]
+    ZeroLeaseCount,
+    #[error("invocation lease reply field 1 has the wrong CBOR type")]
+    WrongLeaseReplyFieldType,
+    #[error("invocation lease reply tag {tag} cannot contain numeric key {key}")]
+    UnexpectedLeaseReplyField { tag: u8, key: u8 },
     #[error("expected array length {expected}, received {actual}")]
     WrongArrayLength { expected: u64, actual: u64 },
     #[error("expected {expected} bytes, received {actual}")]
