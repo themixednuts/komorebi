@@ -11,6 +11,7 @@ use crate::VersionRanges;
 use crate::VersionSetError;
 
 mod codec;
+mod outcome_codec;
 mod welcome_codec;
 
 #[cfg(test)]
@@ -162,6 +163,81 @@ impl Hello {
 #[derive(Clone, Copy, Debug, Default)]
 pub struct BootstrapCodec;
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct UnsupportedVersion {
+    protocol_versions: VersionRanges<ProtocolVersion>,
+    catalog_schemas: VersionRanges<CatalogSchemaVersion>,
+}
+
+impl UnsupportedVersion {
+    #[must_use]
+    pub fn new(
+        protocol_versions: VersionRanges<ProtocolVersion>,
+        catalog_schemas: VersionRanges<CatalogSchemaVersion>,
+    ) -> Self {
+        Self {
+            protocol_versions,
+            catalog_schemas,
+        }
+    }
+
+    #[must_use]
+    pub const fn protocol_versions(&self) -> &VersionRanges<ProtocolVersion> {
+        &self.protocol_versions
+    }
+
+    #[must_use]
+    pub const fn catalog_schemas(&self) -> &VersionRanges<CatalogSchemaVersion> {
+        &self.catalog_schemas
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[repr(u16)]
+pub enum ProtocolFaultCode {
+    InvalidFraming = 1,
+    MalformedBootstrap = 2,
+    SequenceViolation = 3,
+    LimitExceeded = 4,
+    InternalFault = 5,
+}
+
+impl ProtocolFaultCode {
+    fn decode(value: u16) -> Result<Self, BootstrapCodecError> {
+        match value {
+            1 => Ok(Self::InvalidFraming),
+            2 => Ok(Self::MalformedBootstrap),
+            3 => Ok(Self::SequenceViolation),
+            4 => Ok(Self::LimitExceeded),
+            5 => Ok(Self::InternalFault),
+            _ => Err(BootstrapCodecError::UnknownProtocolFaultCode(value)),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ProtocolFault {
+    code: ProtocolFaultCode,
+    trace_id: crate::TraceId,
+}
+
+impl ProtocolFault {
+    #[must_use]
+    pub const fn new(code: ProtocolFaultCode, trace_id: crate::TraceId) -> Self {
+        Self { code, trace_id }
+    }
+
+    #[must_use]
+    pub const fn code(self) -> ProtocolFaultCode {
+        self.code
+    }
+
+    #[must_use]
+    pub const fn trace_id(self) -> crate::TraceId {
+        self.trace_id
+    }
+}
+
 #[derive(Debug, Error)]
 pub enum BootstrapCodecError {
     #[error("bootstrap CBOR collections must use definite lengths")]
@@ -190,6 +266,8 @@ pub enum BootstrapCodecError {
     WrongIdentifierLength(usize),
     #[error("unknown requested role hint {0}")]
     UnknownRoleHint(u8),
+    #[error("unknown protocol fault code {0}")]
+    UnknownProtocolFaultCode(u16),
     #[error("collection length is outside the local address space")]
     CollectionTooLarge,
     #[error("unknown bootstrap field exceeds nesting depth {MAX_NESTING_DEPTH}")]

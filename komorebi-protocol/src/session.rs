@@ -49,6 +49,7 @@ macro_rules! opaque_id {
 
 opaque_id!(ManagerEpoch);
 opaque_id!(ConnectionId);
+opaque_id!(TraceId);
 
 #[derive(Clone, Copy, Debug, Error, Eq, PartialEq)]
 pub enum IdentifierError {

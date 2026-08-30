@@ -106,7 +106,7 @@ impl BootstrapCodec {
     }
 }
 
-fn encode_protocol_ranges(
+pub(super) fn encode_protocol_ranges(
     encoder: &mut Encoder<Vec<u8>>,
     ranges: &[VersionRange<ProtocolVersion>],
 ) -> Result<(), BootstrapCodecError> {
@@ -130,7 +130,7 @@ pub(super) fn encode_protocol_version(
     Ok(())
 }
 
-fn encode_catalog_ranges(
+pub(super) fn encode_catalog_ranges(
     encoder: &mut Encoder<Vec<u8>>,
     ranges: &[VersionRange<CatalogSchemaVersion>],
 ) -> Result<(), BootstrapCodecError> {
@@ -144,13 +144,13 @@ fn encode_catalog_ranges(
     Ok(())
 }
 
-fn decode_protocol_ranges(
+pub(super) fn decode_protocol_ranges(
     decoder: &mut Decoder<'_>,
 ) -> Result<VersionRanges<ProtocolVersion>, BootstrapCodecError> {
     decode_ranges(decoder, decode_protocol_version)
 }
 
-fn decode_catalog_ranges(
+pub(super) fn decode_catalog_ranges(
     decoder: &mut Decoder<'_>,
 ) -> Result<VersionRanges<CatalogSchemaVersion>, BootstrapCodecError> {
     decode_ranges(decoder, |decoder| {
