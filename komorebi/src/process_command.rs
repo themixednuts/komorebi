@@ -74,7 +74,6 @@ use crate::transparency_manager;
 use crate::window::RuleDebug;
 use crate::window::Window;
 use crate::window_manager::WindowManager;
-use crate::winevent_listener;
 use stackbar_manager::STACKBAR_FOCUSED_TEXT_COLOUR;
 use stackbar_manager::STACKBAR_LABEL;
 use stackbar_manager::STACKBAR_MODE;
@@ -665,7 +664,6 @@ impl WindowManager {
                         let mut wm = StaticConfig::preload(
                             config,
                             self.manager_epoch,
-                            winevent_listener::event_rx(),
                             self.command_listener.try_clone().ok(),
                         )?;
 
@@ -1255,12 +1253,8 @@ pub fn read_commands_tcp(
 mod tests {
     use crate::Rect;
     use crate::SocketMessage;
-    use crate::WindowManagerEvent;
     use crate::monitor;
     use crate::window_manager::WindowManager;
-    use crossbeam_channel::Receiver;
-    use crossbeam_channel::Sender;
-    use crossbeam_channel::bounded;
     use komorebi_protocol::ManagerEpoch;
     use std::io::BufRead;
     use std::io::BufReader;
@@ -1275,20 +1269,15 @@ mod tests {
         ManagerEpoch::new([1; 16]).expect("test epoch is non-nil")
     }
 
-    fn window_manager(
-        receiver: Receiver<WindowManagerEvent>,
-        socket_path: PathBuf,
-    ) -> WindowManager {
-        WindowManager::new(manager_epoch(), receiver, Some(socket_path))
+    fn window_manager(socket_path: PathBuf) -> WindowManager {
+        WindowManager::new(manager_epoch(), Some(socket_path))
             .expect("test manager should bind its socket")
     }
 
     fn paused_manager() -> (WindowManager, PathBuf) {
-        let (_sender, receiver): (Sender<WindowManagerEvent>, Receiver<WindowManagerEvent>) =
-            bounded(1);
         let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
         let socket_path = PathBuf::from(&socket_name);
-        let mut wm = window_manager(receiver, socket_path.clone());
+        let mut wm = window_manager(socket_path.clone());
         let m = monitor::new(
             0,
             Rect::default(),
@@ -1328,11 +1317,9 @@ mod tests {
 
     #[test]
     fn test_receive_socket_message() {
-        let (_sender, receiver): (Sender<WindowManagerEvent>, Receiver<WindowManagerEvent>) =
-            bounded(1);
         let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
         let socket_path = PathBuf::from(&socket_name);
-        let mut wm = window_manager(receiver, socket_path.clone());
+        let mut wm = window_manager(socket_path.clone());
         let m = monitor::new(
             0,
             Rect::default(),
@@ -1368,11 +1355,9 @@ mod tests {
 
     #[test]
     fn live_cycle_focus_workspace_advances_index() {
-        let (_sender, receiver): (Sender<WindowManagerEvent>, Receiver<WindowManagerEvent>) =
-            bounded(1);
         let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
         let socket_path = PathBuf::from(&socket_name);
-        let mut wm = window_manager(receiver, socket_path.clone());
+        let mut wm = window_manager(socket_path.clone());
         let m = monitor::new(
             0,
             Rect::default(),
@@ -1407,11 +1392,9 @@ mod tests {
 
     #[test]
     fn live_focus_monitor_workspace_number_selects_pair() {
-        let (_sender, receiver): (Sender<WindowManagerEvent>, Receiver<WindowManagerEvent>) =
-            bounded(1);
         let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
         let socket_path = PathBuf::from(&socket_name);
-        let mut wm = window_manager(receiver, socket_path.clone());
+        let mut wm = window_manager(socket_path.clone());
         let m = monitor::new(
             0,
             Rect::default(),
@@ -1434,11 +1417,9 @@ mod tests {
 
     #[test]
     fn paused_focus_window_is_rejected_instead_of_ignored() {
-        let (_sender, receiver): (Sender<WindowManagerEvent>, Receiver<WindowManagerEvent>) =
-            bounded(1);
         let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
         let socket_path = PathBuf::from(&socket_name);
-        let mut wm = window_manager(receiver, socket_path.clone());
+        let mut wm = window_manager(socket_path.clone());
         let m = monitor::new(
             0,
             Rect::default(),
@@ -1468,11 +1449,9 @@ mod tests {
 
     #[test]
     fn paused_move_window_is_rejected_instead_of_ignored() {
-        let (_sender, receiver): (Sender<WindowManagerEvent>, Receiver<WindowManagerEvent>) =
-            bounded(1);
         let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
         let socket_path = PathBuf::from(&socket_name);
-        let mut wm = window_manager(receiver, socket_path.clone());
+        let mut wm = window_manager(socket_path.clone());
         let m = monitor::new(
             0,
             Rect::default(),
@@ -1502,11 +1481,9 @@ mod tests {
 
     #[test]
     fn paused_change_layout_is_rejected_instead_of_applied() {
-        let (_sender, receiver): (Sender<WindowManagerEvent>, Receiver<WindowManagerEvent>) =
-            bounded(1);
         let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
         let socket_path = PathBuf::from(&socket_name);
-        let mut wm = window_manager(receiver, socket_path.clone());
+        let mut wm = window_manager(socket_path.clone());
         let m = monitor::new(
             0,
             Rect::default(),
@@ -1544,11 +1521,9 @@ mod tests {
 
     #[test]
     fn change_layout_commits_the_focused_workspace_layout() {
-        let (_sender, receiver): (Sender<WindowManagerEvent>, Receiver<WindowManagerEvent>) =
-            bounded(1);
         let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
         let socket_path = PathBuf::from(&socket_name);
-        let mut wm = window_manager(receiver, socket_path.clone());
+        let mut wm = window_manager(socket_path.clone());
         let m = monitor::new(
             0,
             Rect::default(),
@@ -1581,11 +1556,9 @@ mod tests {
 
     #[test]
     fn paused_toggle_float_is_rejected_instead_of_ignored() {
-        let (_sender, receiver): (Sender<WindowManagerEvent>, Receiver<WindowManagerEvent>) =
-            bounded(1);
         let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
         let socket_path = PathBuf::from(&socket_name);
-        let mut wm = window_manager(receiver, socket_path.clone());
+        let mut wm = window_manager(socket_path.clone());
         let m = monitor::new(
             0,
             Rect::default(),
@@ -1612,11 +1585,9 @@ mod tests {
 
     #[test]
     fn paused_resize_window_axis_is_rejected_instead_of_applied() {
-        let (_sender, receiver): (Sender<WindowManagerEvent>, Receiver<WindowManagerEvent>) =
-            bounded(1);
         let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
         let socket_path = PathBuf::from(&socket_name);
-        let mut wm = window_manager(receiver, socket_path.clone());
+        let mut wm = window_manager(socket_path.clone());
         let m = monitor::new(
             0,
             Rect::default(),
@@ -1649,11 +1620,9 @@ mod tests {
 
     #[test]
     fn paused_cycle_focus_window_is_rejected_instead_of_ignored() {
-        let (_sender, receiver): (Sender<WindowManagerEvent>, Receiver<WindowManagerEvent>) =
-            bounded(1);
         let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
         let socket_path = PathBuf::from(&socket_name);
-        let mut wm = window_manager(receiver, socket_path.clone());
+        let mut wm = window_manager(socket_path.clone());
         let m = monitor::new(
             0,
             Rect::default(),
@@ -1683,11 +1652,9 @@ mod tests {
 
     #[test]
     fn paused_cycle_move_window_is_rejected_instead_of_ignored() {
-        let (_sender, receiver): (Sender<WindowManagerEvent>, Receiver<WindowManagerEvent>) =
-            bounded(1);
         let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
         let socket_path = PathBuf::from(&socket_name);
-        let mut wm = window_manager(receiver, socket_path.clone());
+        let mut wm = window_manager(socket_path.clone());
         let m = monitor::new(
             0,
             Rect::default(),
@@ -1847,11 +1814,9 @@ mod tests {
 
     #[test]
     fn live_toggle_mouse_follows_focus_flips_setting() {
-        let (_sender, receiver): (Sender<WindowManagerEvent>, Receiver<WindowManagerEvent>) =
-            bounded(1);
         let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
         let socket_path = PathBuf::from(&socket_name);
-        let mut wm = window_manager(receiver, socket_path.clone());
+        let mut wm = window_manager(socket_path.clone());
         let m = monitor::new(
             0,
             Rect::default(),
@@ -1874,11 +1839,9 @@ mod tests {
 
     #[test]
     fn live_new_workspace_advances_focus() {
-        let (_sender, receiver): (Sender<WindowManagerEvent>, Receiver<WindowManagerEvent>) =
-            bounded(1);
         let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
         let socket_path = PathBuf::from(&socket_name);
-        let mut wm = window_manager(receiver, socket_path.clone());
+        let mut wm = window_manager(socket_path.clone());
         let m = monitor::new(
             0,
             Rect::default(),
@@ -1901,11 +1864,9 @@ mod tests {
 
     #[test]
     fn live_toggle_tiling_flips_focused_workspace() {
-        let (_sender, receiver): (Sender<WindowManagerEvent>, Receiver<WindowManagerEvent>) =
-            bounded(1);
         let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
         let socket_path = PathBuf::from(&socket_name);
-        let mut wm = window_manager(receiver, socket_path.clone());
+        let mut wm = window_manager(socket_path.clone());
         let m = monitor::new(
             0,
             Rect::default(),
@@ -2018,11 +1979,9 @@ mod tests {
 
     #[test]
     fn live_named_workspace_focus_after_naming() {
-        let (_sender, receiver): (Sender<WindowManagerEvent>, Receiver<WindowManagerEvent>) =
-            bounded(1);
         let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
         let socket_path = PathBuf::from(&socket_name);
-        let mut wm = window_manager(receiver, socket_path.clone());
+        let mut wm = window_manager(socket_path.clone());
         let m = monitor::new(
             0,
             Rect::default(),
@@ -2056,11 +2015,9 @@ mod tests {
 
     #[test]
     fn live_ensure_named_workspaces_names_the_ring() {
-        let (_sender, receiver): (Sender<WindowManagerEvent>, Receiver<WindowManagerEvent>) =
-            bounded(1);
         let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
         let socket_path = PathBuf::from(&socket_name);
-        let mut wm = window_manager(receiver, socket_path.clone());
+        let mut wm = window_manager(socket_path.clone());
         let m = monitor::new(
             0,
             Rect::default(),
@@ -2088,11 +2045,9 @@ mod tests {
 
     #[test]
     fn live_cross_monitor_move_behaviour_is_set() {
-        let (_sender, receiver): (Sender<WindowManagerEvent>, Receiver<WindowManagerEvent>) =
-            bounded(1);
         let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
         let socket_path = PathBuf::from(&socket_name);
-        let mut wm = window_manager(receiver, socket_path.clone());
+        let mut wm = window_manager(socket_path.clone());
         let m = monitor::new(
             0,
             Rect::default(),
@@ -2124,11 +2079,9 @@ mod tests {
 
     #[test]
     fn live_ensure_workspaces_grows_the_ring() {
-        let (_sender, receiver): (Sender<WindowManagerEvent>, Receiver<WindowManagerEvent>) =
-            bounded(1);
         let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
         let socket_path = PathBuf::from(&socket_name);
-        let mut wm = window_manager(receiver, socket_path.clone());
+        let mut wm = window_manager(socket_path.clone());
         let m = monitor::new(
             0,
             Rect::default(),

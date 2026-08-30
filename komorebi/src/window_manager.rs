@@ -14,7 +14,6 @@ use std::sync::atomic::Ordering;
 use color_eyre::eyre;
 use color_eyre::eyre::OptionExt;
 use color_eyre::eyre::bail;
-use crossbeam_channel::Receiver;
 use hotwatch::EventKind;
 use hotwatch::Hotwatch;
 use hotwatch::notify::ErrorKind as NotifyErrorKind;
@@ -93,7 +92,6 @@ pub struct WindowManager {
     pub manager_epoch: ManagerEpoch,
     pub monitors: Ring<Monitor>,
     pub monitor_usr_idx_map: HashMap<usize, usize>,
-    pub incoming_events: Receiver<WindowManagerEvent>,
     pub command_listener: UnixListener,
     pub is_paused: bool,
     pub work_area_offset: Option<Rect>,
@@ -152,7 +150,6 @@ impl WindowManager {
     #[tracing::instrument]
     pub fn new(
         manager_epoch: ManagerEpoch,
-        incoming: Receiver<WindowManagerEvent>,
         custom_socket_path: Option<PathBuf>,
     ) -> eyre::Result<Self> {
         let socket = custom_socket_path.unwrap_or_else(|| DATA_DIR.join("komorebi.sock"));
@@ -174,7 +171,6 @@ impl WindowManager {
             manager_epoch,
             monitors: Ring::default(),
             monitor_usr_idx_map: HashMap::new(),
-            incoming_events: incoming,
             command_listener: listener,
             is_paused: false,
             virtual_desktop_id: current_virtual_desktop(),
@@ -4826,8 +4822,6 @@ impl WindowManager {
 mod tests {
     use super::*;
     use crate::monitor;
-    use crossbeam_channel::Sender;
-    use crossbeam_channel::bounded;
     use komorebi_protocol::ManagerEpoch;
     use std::path::PathBuf;
     use uuid::Uuid;
@@ -4846,9 +4840,6 @@ mod tests {
     }
 
     fn setup_window_manager() -> (WindowManager, TestContext) {
-        let (_sender, receiver): (Sender<WindowManagerEvent>, Receiver<WindowManagerEvent>) =
-            bounded(1);
-
         // Temporary socket path for testing
         let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
         let socket_path = PathBuf::from(socket_name);
@@ -4856,7 +4847,6 @@ mod tests {
         // Create a new WindowManager instance
         let wm = WindowManager::new(
             ManagerEpoch::new([1; 16]).expect("test epoch is non-nil"),
-            receiver,
             Some(socket_path.clone()),
         );
 

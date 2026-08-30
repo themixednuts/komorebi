@@ -94,11 +94,9 @@ use crate::theme_manager;
 use crate::transparency_manager;
 use crate::window;
 use crate::window_manager::WindowManager;
-use crate::window_manager_event::WindowManagerEvent;
 use crate::windows_api::WindowsApi;
 use crate::workspace::Workspace;
 use color_eyre::eyre;
-use crossbeam_channel::Receiver;
 use hotwatch::EventKind;
 use hotwatch::Hotwatch;
 use komorebi_protocol::ManagerEpoch;
@@ -1309,7 +1307,6 @@ impl StaticConfig {
     pub fn preload(
         path: &PathBuf,
         manager_epoch: ManagerEpoch,
-        incoming: Receiver<WindowManagerEvent>,
         unix_listener: Option<UnixListener>,
     ) -> eyre::Result<WindowManager> {
         let mut value = Self::read(path)?;
@@ -1339,7 +1336,6 @@ impl StaticConfig {
             manager_epoch,
             monitors: Ring::default(),
             monitor_usr_idx_map: HashMap::new(),
-            incoming_events: incoming,
             command_listener: listener,
             is_paused: false,
             virtual_desktop_id: current_virtual_desktop(),

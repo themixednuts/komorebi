@@ -821,9 +821,6 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::window_manager_event::WindowManagerEvent;
-    use crossbeam_channel::Sender;
-    use crossbeam_channel::bounded;
     use komorebi_protocol::ManagerEpoch;
     use std::path::PathBuf;
     use uuid::Uuid;
@@ -879,9 +876,6 @@ mod tests {
     }
 
     fn setup_window_manager() -> (WindowManager, TestContext) {
-        let (_sender, receiver): (Sender<WindowManagerEvent>, Receiver<WindowManagerEvent>) =
-            bounded(1);
-
         // Temporary socket path for testing
         let socket_name = format!("komorebi-test-{}.sock", Uuid::new_v4());
         let socket_path = PathBuf::from(socket_name);
@@ -891,7 +885,7 @@ mod tests {
             Ok(epoch) => epoch,
             Err(error) => panic!("test epoch should be non-nil: {error}"),
         };
-        let wm = match WindowManager::new(manager_epoch, receiver, Some(socket_path.clone())) {
+        let wm = match WindowManager::new(manager_epoch, Some(socket_path.clone())) {
             Ok(manager) => manager,
             Err(e) => {
                 panic!("Failed to create WindowManager: {e}");

@@ -641,7 +641,6 @@ impl WindowManager {
 mod tests {
     use std::env::temp_dir;
 
-    use crossbeam_channel::bounded;
     use komorebi_protocol::ManagerEpoch;
     use komorebi_protocol::Revision;
     use komorebi_protocol::StateStamp;
@@ -651,14 +650,11 @@ mod tests {
     use crate::action::WorkspaceSelector;
     use crate::action::invoke::InvocationStatus;
     use crate::action::outcome::ActionResult;
-    use crate::window_manager_event::WindowManagerEvent;
 
     fn empty_manager() -> WindowManager {
-        let (_sender, receiver) = bounded::<WindowManagerEvent>(1);
         let socket = temp_dir().join(format!("komorebi-catalog-test-{}.sock", Uuid::new_v4()));
         WindowManager::new(
             ManagerEpoch::new([1; 16]).expect("test epoch is non-nil"),
-            receiver,
             Some(socket),
         )
         .expect("test manager should bind its socket")

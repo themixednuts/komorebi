@@ -286,15 +286,10 @@ async fn main() -> eyre::Result<()> {
         Arc::new(Mutex::new(StaticConfig::preload(
             config,
             manager_epoch,
-            winevent_listener::event_rx(),
             None,
         )?))
     } else {
-        Arc::new(Mutex::new(WindowManager::new(
-            manager_epoch,
-            winevent_listener::event_rx(),
-            None,
-        )?))
+        Arc::new(Mutex::new(WindowManager::new(manager_epoch, None)?))
     };
 
     wm.lock().init()?;
@@ -347,7 +342,7 @@ async fn main() -> eyre::Result<()> {
         listen_for_commands_tcp(wm.clone(), port);
     }
 
-    listen_for_events(wm.clone());
+    listen_for_events(wm.clone(), winevent_listener::event_rx());
 
     if CUSTOM_FFM.load(Ordering::SeqCst) {
         listen_for_movements(wm.clone());

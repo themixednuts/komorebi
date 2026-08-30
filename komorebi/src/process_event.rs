@@ -4,6 +4,7 @@ use std::sync::atomic::Ordering;
 
 use color_eyre::eyre;
 use color_eyre::eyre::OptionExt;
+use crossbeam_channel::Receiver;
 use crossbeam_utils::atomic::AtomicConsume;
 use parking_lot::Mutex;
 
@@ -96,9 +97,7 @@ mod destroy_focus_tests {
 }
 
 #[tracing::instrument]
-pub fn listen_for_events(wm: Arc<Mutex<WindowManager>>) {
-    let receiver = wm.lock().incoming_events.clone();
-
+pub fn listen_for_events(wm: Arc<Mutex<WindowManager>>, receiver: Receiver<WindowManagerEvent>) {
     std::thread::spawn(|| {
         loop {
             if let Ok((mdm, server)) = mdm_enrollment() {
