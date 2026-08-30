@@ -211,14 +211,6 @@ pub enum SocketMessage {
     AnimationFps(u64),
     AnimationStyle(AnimationStyle, Option<AnimationPrefix>),
     #[serde(alias = "ActiveWindowBorder")]
-    Border(bool),
-    #[serde(alias = "ActiveWindowBorderColour")]
-    BorderColour(WindowKind, u8, u8, u8),
-    #[serde(alias = "ActiveWindowBorderStyle")]
-    BorderStyle(BorderStyle),
-    BorderWidth(i32),
-    BorderOffset(i32),
-    BorderImplementation(BorderImplementation),
     Transparency(bool),
     ToggleTransparency,
     TransparencyAlpha(u8),

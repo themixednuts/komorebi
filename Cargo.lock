@@ -3650,6 +3650,8 @@ dependencies = [
  "komorebi-client",
  "random_word",
  "serde_json_lenient",
+ "thiserror 2.0.20",
+ "tokio",
  "windows 0.62.2",
  "windows-core 0.62.2",
 ]

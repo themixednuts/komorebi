@@ -12,5 +12,7 @@ eframe = { workspace = true }
 egui_extras = { workspace = true }
 random_word = { version = "0.5", features = ["en"] }
 serde_json = { workspace = true }
+thiserror = "2"
+tokio = { version = "=1.53.1", features = ["macros", "rt-multi-thread", "sync"] }
 windows-core = { workspace = true }
 windows = { workspace = true }

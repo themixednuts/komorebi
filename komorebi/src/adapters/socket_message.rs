@@ -7,12 +7,9 @@ use crate::action::WindowsPath;
 use crate::action::WorkspaceIndex;
 use crate::action::WorkspaceName;
 use crate::action::WorkspaceSelector;
-use crate::core::BorderOffset;
-use crate::core::BorderWidth;
 use crate::core::ResizeStep;
 use crate::core::SocketMessage;
 use crate::core::TransparencyAlpha;
-use komorebi_themes::colour::Rgb;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum SocketMessageClass {
@@ -56,12 +53,6 @@ pub fn classify(message: &SocketMessage) -> SocketMessageClass {
         | Transparency(_)
         | ToggleTransparency
         | TransparencyAlpha(_)
-        | Border(_)
-        | BorderColour(_, _, _, _)
-        | BorderStyle(_)
-        | BorderWidth(_)
-        | BorderOffset(_)
-        | BorderImplementation(_)
         | MoveContainerToLastWorkspace
         | SendContainerToLastWorkspace
         | MoveContainerToMonitorNumber(_)
@@ -258,27 +249,6 @@ pub fn to_builtin_action(message: &SocketMessage) -> Option<BuiltinAction> {
         SocketMessage::TransparencyAlpha(alpha) => Some(BuiltinAction::SetTransparencyAlpha {
             alpha: TransparencyAlpha::new(*alpha),
         }),
-        SocketMessage::Border(enabled) => {
-            Some(BuiltinAction::SetBorderEnabled { enabled: *enabled })
-        }
-        SocketMessage::BorderColour(window_kind, red, green, blue) => {
-            Some(BuiltinAction::SetBorderColour {
-                window_kind: *window_kind,
-                colour: Rgb::new(*red, *green, *blue),
-            })
-        }
-        SocketMessage::BorderWidth(width) => Some(BuiltinAction::SetBorderWidth {
-            width: BorderWidth::new(*width),
-        }),
-        SocketMessage::BorderOffset(offset) => Some(BuiltinAction::SetBorderOffset {
-            offset: BorderOffset::new(*offset),
-        }),
-        SocketMessage::BorderStyle(style) => Some(BuiltinAction::SetBorderStyle { style: *style }),
-        SocketMessage::BorderImplementation(implementation) => {
-            Some(BuiltinAction::SetBorderImplementation {
-                implementation: *implementation,
-            })
-        }
         SocketMessage::CycleFocusWindow(direction) => Some(BuiltinAction::CycleFocusWindow {
             direction: *direction,
         }),

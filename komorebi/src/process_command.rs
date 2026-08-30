@@ -205,12 +205,6 @@ impl WindowManager {
                 | SocketMessage::Transparency(..)
                 | SocketMessage::ToggleTransparency
                 | SocketMessage::TransparencyAlpha(..)
-                | SocketMessage::Border(..)
-                | SocketMessage::BorderColour(..)
-                | SocketMessage::BorderStyle(..)
-                | SocketMessage::BorderWidth(..)
-                | SocketMessage::BorderOffset(..)
-                | SocketMessage::BorderImplementation(..)
                 | SocketMessage::MoveContainerToLastWorkspace
                 | SocketMessage::SendContainerToLastWorkspace
                 | SocketMessage::MoveContainerToMonitorNumber(..)

@@ -1,5 +1,9 @@
 #![warn(clippy::all)]
 
+mod command;
+
+use command::CommandQueue;
+use command::CommandQueueError;
 use eframe::egui;
 use eframe::egui::Color32;
 use eframe::egui::ViewportBuilder;
@@ -19,10 +23,11 @@ use komorebi_client::State;
 use komorebi_client::Window;
 use komorebi_client::WindowKind;
 use std::collections::HashMap;
-use std::time::Duration;
 use windows::Win32::UI::WindowsAndMessaging::EnumWindows;
 
-fn main() {
+#[tokio::main]
+async fn main() {
+    let (commands, command_actor) = CommandQueue::start();
     let native_options = eframe::NativeOptions {
         viewport: ViewportBuilder::default()
             .with_always_on_top()
@@ -30,11 +35,17 @@ fn main() {
         ..Default::default()
     };
 
-    let _ = eframe::run_native(
+    let gui = eframe::run_native(
         "komorebi-gui",
         native_options,
-        Box::new(|cc| Ok(Box::new(KomorebiGui::new(cc)))),
+        Box::new(move |cc| Ok(Box::new(KomorebiGui::new(cc, commands)))),
     );
+    if let Err(error) = command_actor.await {
+        eprintln!("GUI command actor failed: {error}");
+    }
+    if let Err(error) = gui {
+        eprintln!("GUI failed: {error}");
+    }
 }
 
 struct BorderColours {
@@ -116,6 +127,7 @@ impl From<&komorebi_client::Workspace> for WorkspaceConfig {
 }
 
 struct KomorebiGui {
+    commands: CommandQueue,
     border_config: BorderConfig,
     stackbar_config: StackbarConfig,
     mouse_follows_focus: bool,
@@ -138,7 +150,7 @@ fn colour32(colour: Option<Colour>) -> Color32 {
 }
 
 impl KomorebiGui {
-    fn new(_cc: &eframe::CreationContext<'_>) -> Self {
+    fn new(_cc: &eframe::CreationContext<'_>, commands: CommandQueue) -> Self {
         // Customize egui here with cc.egui_ctx.set_fonts and cc.egui_ctx.set_visuals.
         // Restore app state using cc.storage (requires the "persistence" feature).
         // Use the cc.gl (a glow::Context) to create graphics shaders and buffers that you can use
@@ -204,6 +216,7 @@ impl KomorebiGui {
         };
 
         Self {
+            commands,
             border_config,
             mouse_follows_focus: state.mouse_follows_focus,
             monitors,
@@ -213,6 +226,16 @@ impl KomorebiGui {
             stackbar_config,
             debug_rule: None,
         }
+    }
+}
+
+const fn rgb(colour: Color32) -> Rgb {
+    Rgb::new(colour.r(), colour.g(), colour.b())
+}
+
+fn report_command(result: Result<(), CommandQueueError>) {
+    if let Err(error) = result {
+        eprintln!("could not queue GUI command: {error}");
     }
 }
 
@@ -326,10 +349,10 @@ impl eframe::App for KomorebiGui {
                         .toggle_value(&mut self.border_config.border_enabled, "Border")
                         .changed()
                     {
-                        komorebi_client::send_message(&SocketMessage::Border(
-                            self.border_config.border_enabled,
-                        ))
-                        .unwrap();
+                        report_command(
+                            self.commands
+                                .set_border_enabled(self.border_config.border_enabled),
+                        );
                     }
 
                     ui.collapsing("Colours", |ui| {
@@ -339,13 +362,10 @@ impl eframe::App for KomorebiGui {
                                 &mut self.border_config.border_colours.single,
                                 Alpha::Opaque,
                             ) {
-                                komorebi_client::send_message(&SocketMessage::BorderColour(
+                                report_command(self.commands.set_border_colour(
                                     WindowKind::Single,
-                                    self.border_config.border_colours.single.r(),
-                                    self.border_config.border_colours.single.g(),
-                                    self.border_config.border_colours.single.b(),
-                                ))
-                                .unwrap();
+                                    rgb(self.border_config.border_colours.single),
+                                ));
                             }
                         });
 
@@ -355,13 +375,10 @@ impl eframe::App for KomorebiGui {
                                 &mut self.border_config.border_colours.stack,
                                 Alpha::Opaque,
                             ) {
-                                komorebi_client::send_message(&SocketMessage::BorderColour(
+                                report_command(self.commands.set_border_colour(
                                     WindowKind::Stack,
-                                    self.border_config.border_colours.stack.r(),
-                                    self.border_config.border_colours.stack.g(),
-                                    self.border_config.border_colours.stack.b(),
-                                ))
-                                .unwrap();
+                                    rgb(self.border_config.border_colours.stack),
+                                ));
                             }
                         });
 
@@ -371,13 +388,10 @@ impl eframe::App for KomorebiGui {
                                 &mut self.border_config.border_colours.monocle,
                                 Alpha::Opaque,
                             ) {
-                                komorebi_client::send_message(&SocketMessage::BorderColour(
+                                report_command(self.commands.set_border_colour(
                                     WindowKind::Monocle,
-                                    self.border_config.border_colours.monocle.r(),
-                                    self.border_config.border_colours.monocle.g(),
-                                    self.border_config.border_colours.monocle.b(),
-                                ))
-                                .unwrap();
+                                    rgb(self.border_config.border_colours.monocle),
+                                ));
                             }
                         });
 
@@ -387,13 +401,10 @@ impl eframe::App for KomorebiGui {
                                 &mut self.border_config.border_colours.floating,
                                 Alpha::Opaque,
                             ) {
-                                komorebi_client::send_message(&SocketMessage::BorderColour(
+                                report_command(self.commands.set_border_colour(
                                     WindowKind::Floating,
-                                    self.border_config.border_colours.floating.r(),
-                                    self.border_config.border_colours.floating.g(),
-                                    self.border_config.border_colours.floating.b(),
-                                ))
-                                .unwrap();
+                                    rgb(self.border_config.border_colours.floating),
+                                ));
                             }
                         });
 
@@ -403,13 +414,10 @@ impl eframe::App for KomorebiGui {
                                 &mut self.border_config.border_colours.unfocused,
                                 Alpha::Opaque,
                             ) {
-                                komorebi_client::send_message(&SocketMessage::BorderColour(
+                                report_command(self.commands.set_border_colour(
                                     WindowKind::Unfocused,
-                                    self.border_config.border_colours.unfocused.r(),
-                                    self.border_config.border_colours.unfocused.g(),
-                                    self.border_config.border_colours.unfocused.b(),
-                                ))
-                                .unwrap();
+                                    rgb(self.border_config.border_colours.unfocused),
+                                ));
                             }
                         });
 
@@ -419,13 +427,10 @@ impl eframe::App for KomorebiGui {
                                 &mut self.border_config.border_colours.unfocused_locked,
                                 Alpha::Opaque,
                             ) {
-                                komorebi_client::send_message(&SocketMessage::BorderColour(
+                                report_command(self.commands.set_border_colour(
                                     WindowKind::UnfocusedLocked,
-                                    self.border_config.border_colours.unfocused_locked.r(),
-                                    self.border_config.border_colours.unfocused_locked.g(),
-                                    self.border_config.border_colours.unfocused_locked.b(),
-                                ))
-                                .unwrap();
+                                    rgb(self.border_config.border_colours.unfocused_locked),
+                                ));
                             }
                         })
                     });
@@ -444,14 +449,10 @@ impl eframe::App for KomorebiGui {
                                 .clicked()
                             {
                                 self.border_config.border_style = option;
-                                komorebi_client::send_message(&SocketMessage::BorderStyle(
-                                    self.border_config.border_style,
-                                ))
-                                .unwrap();
-
-                                std::thread::sleep(Duration::from_secs(1));
-
-                                komorebi_client::send_message(&SocketMessage::Retile).unwrap();
+                                report_command(
+                                    self.commands
+                                        .set_border_style(self.border_config.border_style),
+                                );
                             }
                         }
                     });
@@ -464,10 +465,10 @@ impl eframe::App for KomorebiGui {
                             ))
                             .changed()
                         {
-                            komorebi_client::send_message(&SocketMessage::BorderWidth(
-                                self.border_config.border_width,
-                            ))
-                            .unwrap();
+                            report_command(
+                                self.commands
+                                    .set_border_width(self.border_config.border_width),
+                            );
                         };
                     });
 
@@ -479,10 +480,10 @@ impl eframe::App for KomorebiGui {
                             ))
                             .changed()
                         {
-                            komorebi_client::send_message(&SocketMessage::BorderOffset(
-                                self.border_config.border_offset,
-                            ))
-                            .unwrap();
+                            report_command(
+                                self.commands
+                                    .set_border_offset(self.border_config.border_offset),
+                            );
                         };
                     });
                 });

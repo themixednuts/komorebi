@@ -72,54 +72,6 @@ fn migrated_socket_messages_become_the_same_builtin_action()
         })
     );
     assert_eq!(
-        to_builtin_action(&SocketMessage::Border(true)),
-        Some(BuiltinAction::SetBorderEnabled { enabled: true })
-    );
-    assert_eq!(
-        classify(&SocketMessage::Border(true)),
-        SocketMessageClass::Action
-    );
-    assert_eq!(
-        to_builtin_action(&SocketMessage::BorderColour(
-            crate::core::WindowKind::Stack,
-            1,
-            2,
-            3,
-        )),
-        Some(BuiltinAction::SetBorderColour {
-            window_kind: crate::core::WindowKind::Stack,
-            colour: Rgb::new(1, 2, 3),
-        })
-    );
-    assert_eq!(
-        to_builtin_action(&SocketMessage::BorderWidth(-50)),
-        Some(BuiltinAction::SetBorderWidth {
-            width: BorderWidth::new(-50),
-        })
-    );
-    assert_eq!(
-        to_builtin_action(&SocketMessage::BorderOffset(50)),
-        Some(BuiltinAction::SetBorderOffset {
-            offset: BorderOffset::new(50),
-        })
-    );
-    assert_eq!(
-        to_builtin_action(&SocketMessage::BorderStyle(
-            crate::core::BorderStyle::Rounded,
-        )),
-        Some(BuiltinAction::SetBorderStyle {
-            style: crate::core::BorderStyle::Rounded,
-        })
-    );
-    assert_eq!(
-        to_builtin_action(&SocketMessage::BorderImplementation(
-            crate::core::BorderImplementation::Windows,
-        )),
-        Some(BuiltinAction::SetBorderImplementation {
-            implementation: crate::core::BorderImplementation::Windows,
-        })
-    );
-    assert_eq!(
         to_builtin_action(&SocketMessage::CycleFocusWindow(
             crate::core::CycleDirection::Next
         )),
