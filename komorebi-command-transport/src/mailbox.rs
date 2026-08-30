@@ -163,6 +163,11 @@ impl<D, C> SessionMailboxPublishers<D, C> {
     pub const fn control_mut(&mut self) -> &mut LanePublisher<C> {
         &mut self.control
     }
+
+    #[must_use]
+    pub fn into_parts(self) -> (LanePublisher<D>, LanePublisher<C>) {
+        (self.data, self.control)
+    }
 }
 
 pub struct SessionMailboxReceivers<D, C> {
@@ -182,6 +187,11 @@ impl<D, C> SessionMailboxReceivers<D, C> {
 
     pub const fn control_mut(&mut self) -> &mut LaneReceiver<C> {
         &mut self.control
+    }
+
+    #[must_use]
+    pub fn into_parts(self) -> (LaneReceiver<D>, LaneReceiver<C>) {
+        (self.data, self.control)
     }
 }
 
