@@ -24,7 +24,7 @@ impl DurableInvocationLedger {
         &mut self,
         recovered_at: crate::model::LedgerTimestamp,
     ) -> Result<RecoveryReport, LedgerError> {
-        let records = self.schema.records;
+        let records = self.schema.invocations;
         self.db
             .transaction(SQLiteTransactionType::Immediate, |transaction| {
                 let rows: Vec<RecoveryCandidate> = transaction
@@ -52,9 +52,9 @@ impl DurableInvocationLedger {
                             report.restarted_before_commit.push(id);
                         }
                         StoredPhase::LogicalCommitted | StoredPhase::EffectDispatched => {
-                            let revision = row.logical_revision.ok_or_else(|| {
+                            let state = row.state_stamp.ok_or_else(|| {
                                 DrizzleError::ConversionError(
-                                    "committed invocation is missing its revision".into(),
+                                    "committed invocation is missing its state stamp".into(),
                                 )
                             })?;
                             let policy = row.recovery_policy.ok_or_else(|| {
@@ -82,7 +82,7 @@ impl DurableInvocationLedger {
                             } else {
                                 report.reconcile.push(RecoveryInvocation {
                                     invocation_id: id,
-                                    revision: revision.0,
+                                    state: state.0,
                                     policy: policy.into(),
                                     dispatch: if row.phase == StoredPhase::EffectDispatched {
                                         DispatchState::MayHaveOccurred

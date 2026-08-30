@@ -1,6 +1,3 @@
-use std::borrow::Cow;
-use std::num::NonZeroU64;
-
 use drizzle::error::DrizzleError;
 use drizzle::sqlite::prelude::OwnedSQLiteValue;
 use drizzle::sqlite::prelude::SQLiteValue;
@@ -10,26 +7,15 @@ use komorebi_protocol::InvocationDigest;
 use komorebi_protocol::InvocationIdentityError;
 use komorebi_protocol::InvocationNamespaceId;
 use komorebi_protocol::InvocationSequence;
+use komorebi_protocol::ManagerEpoch;
 use komorebi_protocol::PrincipalId;
+use komorebi_protocol::Revision;
+use komorebi_protocol::StateStamp;
 use rusqlite::types::FromSql;
 use rusqlite::types::FromSqlError;
 use rusqlite::types::FromSqlResult;
 use rusqlite::types::ValueRef;
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
-pub struct CommittedRevision(NonZeroU64);
-
-impl CommittedRevision {
-    #[must_use]
-    pub const fn new(value: NonZeroU64) -> Self {
-        Self(value)
-    }
-
-    #[must_use]
-    pub const fn get(self) -> u64 {
-        self.0.get()
-    }
-}
+use std::borrow::Cow;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) struct StoredNamespaceId(pub InvocationNamespaceId);
@@ -43,8 +29,8 @@ pub(crate) struct StoredDigest(pub InvocationDigest);
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub(crate) struct StoredSequence(pub InvocationSequence);
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
-pub(crate) struct StoredRevision(pub CommittedRevision);
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct StoredStateStamp(pub StateStamp);
 
 fn decode_blob<const N: usize>(
     value: SQLiteValueRef<'_>,
@@ -139,12 +125,73 @@ fixed_blob_column!(
     |sequence: InvocationSequence| sequence.get().to_be_bytes(),
     |bytes| InvocationSequence::try_from(u64::from_be_bytes(bytes)).map_err(identity_error)
 );
-fixed_blob_column!(
-    StoredRevision,
-    8,
-    "committed revision",
-    |revision: CommittedRevision| revision.get().to_be_bytes(),
-    |bytes| NonZeroU64::new(u64::from_be_bytes(bytes))
-        .map(CommittedRevision)
-        .ok_or_else(|| DrizzleError::ConversionError("committed revision is zero".into()))
-);
+impl DrizzleSQLiteColumn for StoredStateStamp {
+    type SQLType = drizzle::sqlite::types::Blob;
+
+    fn decode(value: SQLiteValueRef<'_>) -> Result<Self, DrizzleError> {
+        let bytes = decode_blob::<24>(value, "committed state stamp")?;
+        let epoch = ManagerEpoch::new(
+            bytes[..16]
+                .try_into()
+                .map_err(|_| DrizzleError::ConversionError("invalid manager epoch".into()))?,
+        )
+        .map_err(|error| DrizzleError::ConversionError(error.to_string().into()))?;
+        let revision = Revision::try_from(u64::from_be_bytes(
+            bytes[16..]
+                .try_into()
+                .map_err(|_| DrizzleError::ConversionError("invalid revision".into()))?,
+        ))
+        .map_err(|error| DrizzleError::ConversionError(error.to_string().into()))?;
+        Ok(Self(StateStamp::new(epoch, revision)))
+    }
+
+    fn encode(&self) -> SQLiteValue<'_> {
+        SQLiteValue::Blob(Cow::Owned(encode_state_stamp(self.0).to_vec()))
+    }
+
+    fn encode_owned(self) -> OwnedSQLiteValue {
+        OwnedSQLiteValue::Blob(Box::new(encode_state_stamp(self.0)))
+    }
+}
+
+impl FromSql for StoredStateStamp {
+    fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
+        decode_from_rusqlite(value)
+    }
+}
+
+fn encode_state_stamp(stamp: StateStamp) -> [u8; 24] {
+    let mut bytes = [0; 24];
+    bytes[..16].copy_from_slice(&stamp.epoch().into_bytes());
+    bytes[16..].copy_from_slice(&stamp.revision().get().to_be_bytes());
+    bytes
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn state_stamp_blob_round_trips_and_rejects_epochless_revisions() -> Result<(), DrizzleError> {
+        let stamp = StoredStateStamp(StateStamp::new(
+            ManagerEpoch::new([7; 16])
+                .map_err(|error| DrizzleError::ConversionError(error.to_string().into()))?,
+            Revision::try_from(13)
+                .map_err(|error| DrizzleError::ConversionError(error.to_string().into()))?,
+        ));
+        let OwnedSQLiteValue::Blob(encoded) = stamp.encode_owned() else {
+            return Err(DrizzleError::ConversionError(
+                "state stamp did not encode as BLOB".into(),
+            ));
+        };
+
+        assert_eq!(
+            StoredStateStamp::decode(SQLiteValueRef::Blob(&encoded))?,
+            stamp
+        );
+        assert!(StoredStateStamp::decode(SQLiteValueRef::Blob(&[0; 8])).is_err());
+        assert!(StoredStateStamp::decode(SQLiteValueRef::Blob(&[0; 24])).is_err());
+        assert!(StoredStateStamp::decode(SQLiteValueRef::Integer(13)).is_err());
+        Ok(())
+    }
+}

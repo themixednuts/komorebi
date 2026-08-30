@@ -7,12 +7,12 @@ use komorebi_protocol::InvocationLease;
 use komorebi_protocol::InvocationNamespaceId;
 use komorebi_protocol::InvocationSequence;
 use komorebi_protocol::PrincipalId;
+use komorebi_protocol::StateStamp;
 use thiserror::Error;
 
 use crate::document::CommittedEventDocument;
 use crate::document::InvocationDocument;
 use crate::document::OutcomeDocument;
-use crate::storage::CommittedRevision;
 
 pub const MAX_LIVE_RECORDS_PER_NAMESPACE: i64 = 65_536;
 pub const MINIMUM_TERMINAL_RETENTION: Duration = Duration::from_hours(24);
@@ -115,7 +115,7 @@ pub enum RecoveryPolicy {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct LogicalCommit {
-    pub revision: CommittedRevision,
+    pub state: StateStamp,
     pub recovery_policy: RecoveryPolicy,
     pub committed_event: CommittedEventDocument,
     pub committed_at: LedgerTimestamp,
@@ -144,7 +144,7 @@ pub struct InvocationStatus {
     pub invocation_id: InvocationId,
     pub digest: InvocationDigest,
     pub phase: DurablePhase,
-    pub logical_revision: Option<CommittedRevision>,
+    pub committed_state: Option<StateStamp>,
     pub terminal_kind: Option<TerminalKind>,
     pub outcome: Option<OutcomeDocument>,
     pub committed_event: Option<CommittedEventDocument>,
@@ -173,7 +173,7 @@ pub enum DispatchState {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RecoveryInvocation {
     pub invocation_id: InvocationId,
-    pub revision: CommittedRevision,
+    pub state: StateStamp,
     pub policy: RecoveryPolicy,
     pub dispatch: DispatchState,
     pub invocation: InvocationDocument,

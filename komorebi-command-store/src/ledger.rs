@@ -41,7 +41,7 @@ macro_rules! mark_system_terminal {
         let updated = $transaction
             .update($records)
             .set(
-                $crate::schema::UpdateInvocationRecords::default()
+                $crate::schema::UpdateInvocations::default()
                     .with_phase(StoredPhase::Terminal)
                     .with_terminal_kind($kind)
                     .with_terminal_at_ms($at_ms),
@@ -109,7 +109,7 @@ fn status_from_row(row: InvocationSnapshot) -> InvocationStatus {
         invocation_id: row_id(&row),
         digest: row.digest.0,
         phase: row.phase.into(),
-        logical_revision: row.logical_revision.map(|revision| revision.0),
+        committed_state: row.state_stamp.map(|stamp| stamp.0),
         terminal_kind: row.terminal_kind.map(Into::into),
         outcome: row.outcome,
         committed_event: row.committed_event,

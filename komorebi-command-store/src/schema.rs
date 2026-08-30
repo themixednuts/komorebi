@@ -6,8 +6,8 @@ use crate::document::OutcomeDocument;
 use crate::storage::StoredDigest;
 use crate::storage::StoredNamespaceId;
 use crate::storage::StoredPrincipalId;
-use crate::storage::StoredRevision;
 use crate::storage::StoredSequence;
+use crate::storage::StoredStateStamp;
 
 // Integer representations are explicit because these values are durable ABI,
 // not declaration-order discriminants.
@@ -41,10 +41,10 @@ pub(crate) enum StoredTerminalKind {
     RestartedBeforeCommit = 6,
 }
 
-#[SQLiteTable(NAME = "invocation_namespaces", STRICT)]
-pub(crate) struct InvocationNamespaces {
+#[SQLiteTable(NAME = "invocation_leases", STRICT)]
+pub(crate) struct InvocationLeases {
     #[column(primary, blob)]
-    pub namespace: StoredNamespaceId,
+    pub namespace_id: StoredNamespaceId,
     #[column(blob)]
     pub principal: StoredPrincipalId,
     #[column(blob)]
@@ -55,8 +55,8 @@ pub(crate) struct InvocationNamespaces {
     pub record_count: i64,
 }
 
-#[SQLiteTable(NAME = "invocation_records", STRICT)]
-pub(crate) struct InvocationRecords {
+#[SQLiteTable(NAME = "invocations", STRICT)]
+pub(crate) struct Invocations {
     #[column(primary, blob)]
     pub namespace: StoredNamespaceId,
     #[column(primary, blob)]
@@ -71,8 +71,8 @@ pub(crate) struct InvocationRecords {
     pub phase: StoredPhase,
     #[column(integer, enum)]
     pub recovery_policy: Option<StoredRecoveryPolicy>,
-    #[column(blob)]
-    pub logical_revision: Option<StoredRevision>,
+    #[column(blob, check = "state_stamp IS NULL OR length(state_stamp) = 24")]
+    pub state_stamp: Option<StoredStateStamp>,
     #[column(integer, enum)]
     pub terminal_kind: Option<StoredTerminalKind>,
     #[column(blob)]
@@ -87,39 +87,39 @@ pub(crate) struct InvocationRecords {
 }
 
 #[derive(Debug, SQLiteFromRow)]
-#[from(InvocationRecords)]
+#[from(Invocations)]
 pub(crate) struct RecoveryCandidate {
     pub namespace: StoredNamespaceId,
     pub sequence: StoredSequence,
     pub invocation: InvocationDocument,
     pub phase: StoredPhase,
     pub recovery_policy: Option<StoredRecoveryPolicy>,
-    pub logical_revision: Option<StoredRevision>,
+    pub state_stamp: Option<StoredStateStamp>,
     pub committed_event: Option<CommittedEventDocument>,
 }
 
 #[derive(Debug, SQLiteFromRow)]
-#[from(InvocationRecords)]
+#[from(Invocations)]
 pub(crate) struct InvocationSnapshot {
     pub namespace: StoredNamespaceId,
     pub sequence: StoredSequence,
     pub principal: StoredPrincipalId,
     pub digest: StoredDigest,
     pub phase: StoredPhase,
-    pub logical_revision: Option<StoredRevision>,
+    pub state_stamp: Option<StoredStateStamp>,
     pub terminal_kind: Option<StoredTerminalKind>,
     pub outcome: Option<OutcomeDocument>,
     pub committed_event: Option<CommittedEventDocument>,
 }
 
 #[derive(Clone, Copy, Debug, SQLiteFromRow)]
-#[from(InvocationRecords)]
+#[from(Invocations)]
 pub(crate) struct InvocationPhase {
     pub phase: StoredPhase,
 }
 
 #[derive(Clone, Copy, Debug, SQLiteFromRow)]
-#[from(InvocationRecords)]
+#[from(Invocations)]
 pub(crate) struct CompactionCandidate {
     pub namespace: StoredNamespaceId,
     pub sequence: StoredSequence,
@@ -128,21 +128,18 @@ pub(crate) struct CompactionCandidate {
 }
 
 #[SQLiteIndex]
-pub(crate) struct InvocationRecoveryIdx(InvocationRecords::phase);
+pub(crate) struct InvocationsRecoveryIdx(Invocations::phase);
 
 #[SQLiteIndex]
-pub(crate) struct InvocationCompactionIdx(
-    InvocationRecords::namespace,
-    InvocationRecords::terminal_at_ms,
-);
+pub(crate) struct InvocationsCompactionIdx(Invocations::namespace, Invocations::terminal_at_ms);
 
 // Drizzle's derive emits an explicit `Clone` implementation for this `Copy`
 // schema handle; the generated implementation is outside our control.
 #[allow(clippy::expl_impl_clone_on_copy)]
 #[derive(SQLiteSchema)]
 pub(crate) struct CommandStoreSchema {
-    pub namespaces: InvocationNamespaces,
-    pub records: InvocationRecords,
-    pub recovery_idx: InvocationRecoveryIdx,
-    pub compaction_idx: InvocationCompactionIdx,
+    pub leases: InvocationLeases,
+    pub invocations: Invocations,
+    pub recovery_idx: InvocationsRecoveryIdx,
+    pub compaction_idx: InvocationsCompactionIdx,
 }

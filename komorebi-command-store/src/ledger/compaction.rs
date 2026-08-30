@@ -14,9 +14,9 @@ use crate::model::CompactionBlock;
 use crate::model::CompactionDecision;
 use crate::model::TerminalRetention;
 use crate::schema::CompactionCandidate;
-use crate::schema::SelectInvocationNamespaces;
+use crate::schema::SelectInvocationLeases;
 use crate::schema::StoredPhase;
-use crate::schema::UpdateInvocationNamespaces;
+use crate::schema::UpdateInvocationLeases;
 use crate::storage::StoredNamespaceId;
 use crate::storage::StoredPrincipalId;
 use crate::storage::StoredSequence;
@@ -40,17 +40,17 @@ impl DurableInvocationLedger {
         let retention_ms = i64::try_from(retention.duration().as_millis())
             .map_err(|_| LedgerError::RetentionOverflow)?;
         let cutoff_ms = now.as_unix_millis().saturating_sub(retention_ms);
-        let namespaces = self.schema.namespaces;
-        let records = self.schema.records;
+        let namespaces = self.schema.leases;
+        let records = self.schema.invocations;
         let namespace_key = StoredNamespaceId(namespace);
         let principal_key = StoredPrincipalId(principal);
 
         self.db
             .transaction(SQLiteTransactionType::Immediate, |transaction| {
-                let namespace_row: SelectInvocationNamespaces = match transaction
+                let namespace_row: SelectInvocationLeases = match transaction
                     .select(())
                     .from(namespaces)
-                    .r#where(eq(namespaces.namespace, namespace_key))
+                    .r#where(eq(namespaces.namespace_id, namespace_key))
                     .get()
                 {
                     Ok(namespace_row) => namespace_row,
@@ -107,12 +107,12 @@ impl DurableInvocationLedger {
                 let updated = transaction
                     .update(namespaces)
                     .set(
-                        UpdateInvocationNamespaces::default()
+                        UpdateInvocationLeases::default()
                             .with_minimum_accepted(next_minimum)
                             .with_record_count(record_count),
                     )
                     .r#where(and(
-                        eq(namespaces.namespace, namespace_key),
+                        eq(namespaces.namespace_id, namespace_key),
                         eq(namespaces.principal, principal_key),
                     ))
                     .execute()?;

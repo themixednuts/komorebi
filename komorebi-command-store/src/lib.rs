@@ -37,4 +37,3 @@ pub use model::TerminalRecord;
 pub use model::TerminalRetention;
 pub use model::TimeError;
 pub use model::TransitionDecision;
-pub use storage::CommittedRevision;

@@ -12,9 +12,9 @@ use crate::model::LeaseDecision;
 use crate::model::LeaseRequest;
 use crate::model::MAX_LIVE_RECORDS_PER_NAMESPACE;
 use crate::model::NamespaceRegistration;
-use crate::schema::InsertInvocationNamespaces;
-use crate::schema::SelectInvocationNamespaces;
-use crate::schema::UpdateInvocationNamespaces;
+use crate::schema::InsertInvocationLeases;
+use crate::schema::SelectInvocationLeases;
+use crate::schema::UpdateInvocationLeases;
 use crate::storage::StoredNamespaceId;
 use crate::storage::StoredPrincipalId;
 use crate::storage::StoredSequence;
@@ -30,16 +30,16 @@ impl DurableInvocationLedger {
         namespace: InvocationNamespaceId,
         principal: PrincipalId,
     ) -> Result<NamespaceRegistration, LedgerError> {
-        let table = self.schema.namespaces;
+        let table = self.schema.leases;
         let namespace = StoredNamespaceId(namespace);
         let principal = StoredPrincipalId(principal);
 
         self.db
             .transaction(SQLiteTransactionType::Immediate, |transaction| {
-                let existing: Result<SelectInvocationNamespaces, DrizzleError> = transaction
+                let existing: Result<SelectInvocationLeases, DrizzleError> = transaction
                     .select(())
                     .from(table)
-                    .r#where(eq(table.namespace, namespace))
+                    .r#where(eq(table.namespace_id, namespace))
                     .get();
 
                 match existing {
@@ -55,7 +55,7 @@ impl DurableInvocationLedger {
                         );
                         transaction
                             .insert(table)
-                            .values([InsertInvocationNamespaces::new(
+                            .values([InsertInvocationLeases::new(
                                 namespace, principal, first, first, 0,
                             )])
                             .execute()?;
@@ -73,16 +73,16 @@ impl DurableInvocationLedger {
     ///
     /// Returns [`LedgerError`] if the typed durable transaction fails.
     pub fn lease(&mut self, request: LeaseRequest) -> Result<LeaseDecision, LedgerError> {
-        let table = self.schema.namespaces;
+        let table = self.schema.leases;
         let namespace = StoredNamespaceId(request.namespace);
         let principal = StoredPrincipalId(request.principal);
 
         self.db
             .transaction(SQLiteTransactionType::Immediate, |transaction| {
-                let existing: SelectInvocationNamespaces = match transaction
+                let existing: SelectInvocationLeases = match transaction
                     .select(())
                     .from(table)
-                    .r#where(eq(table.namespace, namespace))
+                    .r#where(eq(table.namespace_id, namespace))
                     .get()
                 {
                     Ok(existing) => existing,
@@ -105,12 +105,9 @@ impl DurableInvocationLedger {
                 };
                 let updated = transaction
                     .update(table)
-                    .set(
-                        UpdateInvocationNamespaces::default()
-                            .with_next_sequence(StoredSequence(next)),
-                    )
+                    .set(UpdateInvocationLeases::default().with_next_sequence(StoredSequence(next)))
                     .r#where(and(
-                        eq(table.namespace, namespace),
+                        eq(table.namespace_id, namespace),
                         eq(table.principal, principal),
                     ))
                     .execute()?;

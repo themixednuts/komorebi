@@ -1,12 +1,10 @@
 use std::error::Error;
 use std::num::NonZeroU16;
 use std::num::NonZeroU32;
-use std::num::NonZeroU64;
 #[cfg(windows)]
 use std::os::windows::ffi::OsStringExt;
 
 use komorebi_command_store::CommittedEventDocument;
-use komorebi_command_store::CommittedRevision;
 use komorebi_command_store::CompactionDecision;
 use komorebi_command_store::DispatchState;
 use komorebi_command_store::DurableInvocationLedger;
@@ -55,6 +53,13 @@ fn canonical_invocation(
         komorebi_protocol::StateStamp::new(epoch, revision),
         arguments,
         None,
+    ))
+}
+
+fn committed_state() -> Result<komorebi_protocol::StateStamp, Box<dyn Error>> {
+    Ok(komorebi_protocol::StateStamp::new(
+        komorebi_protocol::ManagerEpoch::new([9; 16])?,
+        komorebi_protocol::Revision::try_from(1)?,
     ))
 }
 
@@ -193,7 +198,7 @@ fn terminal_status_survives_reopen_on_a_unicode_windows_path() -> Result<(), Box
         ledger.commit_logical(
             reservation,
             LogicalCommit {
-                revision: CommittedRevision::new(NonZeroU64::MIN),
+                state: committed_state()?,
                 recovery_policy: RecoveryPolicy::ObserveAndConverge,
                 committed_event: event.clone(),
                 committed_at: LedgerTimestamp::from_unix_millis(2)?,
@@ -224,6 +229,7 @@ fn terminal_status_survives_reopen_on_a_unicode_windows_path() -> Result<(), Box
         return Err("terminal invocation was not retained".into());
     };
     assert_eq!(status.phase, DurablePhase::Terminal);
+    assert_eq!(status.committed_state, Some(committed_state()?));
     assert_eq!(status.terminal_kind, Some(TerminalKind::Succeeded));
     assert_eq!(status.outcome, Some(outcome));
     assert_eq!(status.committed_event, Some(event));
@@ -284,7 +290,7 @@ fn restart_never_blindly_replays_an_ambiguous_effect() -> Result<(), Box<dyn Err
         ledger.commit_logical(
             logical,
             LogicalCommit {
-                revision: CommittedRevision::new(NonZeroU64::MIN),
+                state: committed_state()?,
                 recovery_policy: RecoveryPolicy::NeverReplay,
                 committed_event: CommittedEventDocument::new(NonZeroU16::MIN, [6])?,
                 committed_at: LedgerTimestamp::from_unix_millis(2)?,
@@ -306,7 +312,7 @@ fn restart_never_blindly_replays_an_ambiguous_effect() -> Result<(), Box<dyn Err
         ledger.commit_logical(
             dispatched,
             LogicalCommit {
-                revision: CommittedRevision::new(NonZeroU64::MIN),
+                state: committed_state()?,
                 recovery_policy: RecoveryPolicy::NeverReplay,
                 committed_event: CommittedEventDocument::new(NonZeroU16::MIN, [7])?,
                 committed_at: LedgerTimestamp::from_unix_millis(2)?,
@@ -326,6 +332,7 @@ fn restart_never_blindly_replays_an_ambiguous_effect() -> Result<(), Box<dyn Err
     assert_eq!(report.indeterminate, [dispatched_id]);
     assert_eq!(report.reconcile.len(), 1);
     assert_eq!(report.reconcile[0].invocation_id, logical_id);
+    assert_eq!(report.reconcile[0].state, committed_state()?);
     assert_eq!(report.reconcile[0].dispatch, DispatchState::NotStarted);
     assert_eq!(report.reconcile[0].committed_event.payload(), [6]);
     assert!(matches!(

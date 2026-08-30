@@ -21,20 +21,20 @@ use crate::model::ReservationRequest;
 use crate::model::StatusDecision;
 use crate::model::TerminalRecord;
 use crate::model::TransitionDecision;
-use crate::schema::InsertInvocationRecords;
+use crate::schema::InsertInvocations;
 use crate::schema::InvocationPhase;
 use crate::schema::InvocationSnapshot;
-use crate::schema::SelectInvocationNamespaces;
+use crate::schema::SelectInvocationLeases;
 use crate::schema::StoredPhase;
 use crate::schema::StoredRecoveryPolicy;
 use crate::schema::StoredTerminalKind;
-use crate::schema::UpdateInvocationNamespaces;
-use crate::schema::UpdateInvocationRecords;
+use crate::schema::UpdateInvocationLeases;
+use crate::schema::UpdateInvocations;
 use crate::storage::StoredDigest;
 use crate::storage::StoredNamespaceId;
 use crate::storage::StoredPrincipalId;
-use crate::storage::StoredRevision;
 use crate::storage::StoredSequence;
+use crate::storage::StoredStateStamp;
 
 impl DurableInvocationLedger {
     /// Canonicalizes and durably reserves one authenticated invocation.
@@ -72,8 +72,8 @@ impl DurableInvocationLedger {
         &mut self,
         request: ReservationRequest,
     ) -> Result<ReservationDecision, LedgerError> {
-        let namespaces = self.schema.namespaces;
-        let records = self.schema.records;
+        let namespaces = self.schema.leases;
+        let records = self.schema.invocations;
         let id = request.invocation_id;
         let namespace = StoredNamespaceId(id.namespace());
         let sequence = StoredSequence(id.sequence());
@@ -98,10 +98,10 @@ impl DurableInvocationLedger {
                     Err(error) => return Err(error),
                 }
 
-                let namespace_row: SelectInvocationNamespaces = match transaction
+                let namespace_row: SelectInvocationLeases = match transaction
                     .select(())
                     .from(namespaces)
-                    .r#where(eq(namespaces.namespace, namespace))
+                    .r#where(eq(namespaces.namespace_id, namespace))
                     .get()
                 {
                     Ok(namespace) => namespace,
@@ -125,7 +125,7 @@ impl DurableInvocationLedger {
 
                 transaction
                     .insert(records)
-                    .values([InsertInvocationRecords::new(
+                    .values([InsertInvocations::new(
                         namespace,
                         sequence,
                         principal,
@@ -138,11 +138,11 @@ impl DurableInvocationLedger {
                 let updated = transaction
                     .update(namespaces)
                     .set(
-                        UpdateInvocationNamespaces::default()
+                        UpdateInvocationLeases::default()
                             .with_record_count(namespace_row.record_count + 1),
                     )
                     .r#where(and(
-                        eq(namespaces.namespace, namespace),
+                        eq(namespaces.namespace_id, namespace),
                         eq(namespaces.principal, principal),
                     ))
                     .execute()?;
@@ -171,9 +171,9 @@ impl DurableInvocationLedger {
         commit: LogicalCommit,
     ) -> Result<TransitionDecision, LedgerError> {
         let policy = StoredRecoveryPolicy::from(commit.recovery_policy);
-        let update = UpdateInvocationRecords::default()
+        let update = UpdateInvocations::default()
             .with_phase(StoredPhase::LogicalCommitted)
-            .with_logical_revision(StoredRevision(commit.revision))
+            .with_state_stamp(StoredStateStamp(commit.state))
             .with_recovery_policy(policy)
             .with_committed_event(commit.committed_event)
             .with_logical_committed_at_ms(commit.committed_at.as_unix_millis());
@@ -190,7 +190,7 @@ impl DurableInvocationLedger {
         invocation_id: InvocationId,
         cancelled_at: crate::model::LedgerTimestamp,
     ) -> Result<TransitionDecision, LedgerError> {
-        let update = UpdateInvocationRecords::default()
+        let update = UpdateInvocations::default()
             .with_phase(StoredPhase::Terminal)
             .with_terminal_kind(StoredTerminalKind::CancelledBeforeCommit)
             .with_terminal_at_ms(cancelled_at.as_unix_millis());
@@ -208,7 +208,7 @@ impl DurableInvocationLedger {
         invocation_id: InvocationId,
         dispatched_at: crate::model::LedgerTimestamp,
     ) -> Result<TransitionDecision, LedgerError> {
-        let update = UpdateInvocationRecords::default()
+        let update = UpdateInvocations::default()
             .with_phase(StoredPhase::EffectDispatched)
             .with_effect_dispatched_at_ms(dispatched_at.as_unix_millis());
         self.transition_from(invocation_id, StoredPhase::LogicalCommitted, update)
@@ -224,7 +224,7 @@ impl DurableInvocationLedger {
         invocation_id: InvocationId,
         terminal: TerminalRecord,
     ) -> Result<TransitionDecision, LedgerError> {
-        let records = self.schema.records;
+        let records = self.schema.invocations;
         let terminal_kind = StoredTerminalKind::from(terminal.kind);
         self.db
             .transaction(SQLiteTransactionType::Immediate, |transaction| {
@@ -250,7 +250,7 @@ impl DurableInvocationLedger {
                 let updated = transaction
                     .update(records)
                     .set(
-                        UpdateInvocationRecords::default()
+                        UpdateInvocations::default()
                             .with_phase(StoredPhase::Terminal)
                             .with_terminal_kind(terminal_kind)
                             .with_outcome(terminal.outcome)
@@ -282,7 +282,7 @@ impl DurableInvocationLedger {
         principal: PrincipalId,
         invocation_id: InvocationId,
     ) -> Result<StatusDecision, LedgerError> {
-        let records = self.schema.records;
+        let records = self.schema.invocations;
         let record: Result<InvocationSnapshot, DrizzleError> = self
             .db
             .select(InvocationSnapshot::Select)
@@ -295,13 +295,13 @@ impl DurableInvocationLedger {
             }
             Ok(_) => Ok(StatusDecision::PrincipalConflict),
             Err(error) if is_missing(&error) => {
-                let namespaces = self.schema.namespaces;
-                let namespace: SelectInvocationNamespaces = match self
+                let namespaces = self.schema.leases;
+                let namespace: SelectInvocationLeases = match self
                     .db
                     .select(())
                     .from(namespaces)
                     .r#where(eq(
-                        namespaces.namespace,
+                        namespaces.namespace_id,
                         StoredNamespaceId(invocation_id.namespace()),
                     ))
                     .get()
@@ -328,9 +328,9 @@ impl DurableInvocationLedger {
         &mut self,
         invocation_id: InvocationId,
         expected: StoredPhase,
-        update: UpdateInvocationRecords<'_, drizzle::core::NonEmpty>,
+        update: UpdateInvocations<'_, drizzle::core::NonEmpty>,
     ) -> Result<TransitionDecision, LedgerError> {
-        let records = self.schema.records;
+        let records = self.schema.invocations;
         self.db
             .transaction(SQLiteTransactionType::Immediate, |transaction| {
                 let updated = transaction
