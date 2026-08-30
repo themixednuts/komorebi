@@ -3,7 +3,14 @@ use crate::FrameError;
 use crate::FrameKind;
 use crate::StreamId;
 
-pub const HEADER_BYTES: usize = 24;
+macro_rules! header_bytes {
+    ($bytes:literal) => {
+        pub const HEADER_BYTES: usize = $bytes;
+        pub(crate) const HEADER_WIRE_BYTES: u32 = $bytes;
+    };
+}
+
+header_bytes!(24);
 pub const MAX_FRAME_PAYLOAD_BYTES: usize = 1024 * 1024;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

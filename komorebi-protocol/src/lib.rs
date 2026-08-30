@@ -2,6 +2,7 @@
 
 mod bootstrap;
 mod error;
+mod flow;
 mod frame;
 mod identity;
 mod request;
@@ -24,6 +25,13 @@ pub use bootstrap::UNSUPPORTED_VERSION_FRAME_KIND;
 pub use bootstrap::UnsupportedVersion;
 pub use bootstrap::WELCOME_FRAME_KIND;
 pub use error::FrameError;
+pub use flow::AcknowledgedCredit;
+pub use flow::DeliveryPermit;
+pub use flow::DeliverySequence;
+pub use flow::FlowController;
+pub use flow::FlowError;
+pub use flow::FrameCost;
+pub use flow::LaneLimits;
 pub use frame::Frame;
 pub use frame::FrameHeader;
 pub use frame::HEADER_BYTES;
