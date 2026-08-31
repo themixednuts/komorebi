@@ -19,8 +19,15 @@ geometry. Renderers receive no lifecycle state and cannot reorder these effects.
 `WindowsAppBarApi` is the only `SHAppBarMessage` adapter. GPUI exposes its
 native window through `HasWindowHandle`; the UI thread converts that borrowed
 handle to `BorrowedAppBarWindow` for the duration of a native call. The borrow
-never escapes the UI-thread callback and the adapter never owns or destroys the
-GPUI window.
+is thread-affine, and the adapter never owns or destroys the GPUI window.
+
+`WindowsAppBarBinding` installs a documented comctl32 window subclass. The
+callback classifies only registered AppBar messages, `ABN_POSCHANGED`,
+`WM_DISPLAYCHANGE`, `WM_DPICHANGED`, and `WM_NCDESTROY`; every other message is
+forwarded through `DefSubclassProc`. Native notifications received during an
+AppBar call only set typed pending flags and post one coalesced wake message.
+The later wake owns all mutable host access, so synchronous Win32 reentrancy
+cannot alias Rust state.
 
 ## Registration
 
@@ -50,6 +57,8 @@ window positioning. This prevents a bar flash at an unnegotiated rectangle.
 
 ```text
 ABN_POSCHANGED | WM_DISPLAYCHANGE | WM_DPICHANGED | geometry update
+  -> WindowsAppBarBinding: set pending signal and post one registered wake
+  -> AppBarHost::position_event_received
   -> AppBarLifecycle::invalidate_position
     -> Schedule: post one private position message
     -> Coalesced: no second message

@@ -80,6 +80,15 @@ where
         self.request_position()
     }
 
+    pub fn position_event_received(&mut self) -> Result<(), AppBarHostError<P::Error>> {
+        match self.lifecycle.invalidate_position() {
+            PositionInvalidation::Schedule | PositionInvalidation::Coalesced => {
+                self.position_requested()
+            }
+            PositionInvalidation::Destroyed => Err(AppBarHostError::Destroyed),
+        }
+    }
+
     pub fn geometry_changed(
         &mut self,
         geometry: AppBarGeometry,

@@ -61,12 +61,14 @@ impl PhysicalRect {
         self.bottom
     }
 
-    const fn width(self) -> u32 {
-        self.width.get()
+    #[must_use]
+    pub const fn width(self) -> NonZeroU32 {
+        self.width
     }
 
-    const fn height(self) -> u32 {
-        self.height.get()
+    #[must_use]
+    pub const fn height(self) -> NonZeroU32 {
+        self.height
     }
 }
 
@@ -130,8 +132,8 @@ impl AppBarGeometry {
         negotiated: PhysicalRect,
     ) -> Result<PhysicalRect, PhysicalRectError> {
         let axis_span = match self.edge {
-            AppBarEdge::Left | AppBarEdge::Right => negotiated.width(),
-            AppBarEdge::Top | AppBarEdge::Bottom => negotiated.height(),
+            AppBarEdge::Left | AppBarEdge::Right => negotiated.width().get(),
+            AppBarEdge::Top | AppBarEdge::Bottom => negotiated.height().get(),
         };
         let thickness = self.thickness.get().min(axis_span);
         let thickness = i64::from(thickness);

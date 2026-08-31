@@ -1,8 +1,10 @@
 use std::ffi::c_void;
+use std::marker::PhantomData;
 use std::mem::size_of;
 use std::num::NonZeroIsize;
 use std::num::NonZeroU32;
 use std::num::NonZeroU64;
+use std::rc::Rc;
 
 use thiserror::Error;
 use windows::Win32::Foundation::CloseHandle;
@@ -10,6 +12,7 @@ use windows::Win32::Foundation::FILETIME;
 use windows::Win32::Foundation::HANDLE;
 use windows::Win32::Foundation::HWND;
 use windows::Win32::Foundation::RECT;
+use windows::Win32::Foundation::WPARAM;
 use windows::Win32::System::Threading::GetProcessTimes;
 use windows::Win32::System::Threading::OpenProcess;
 use windows::Win32::System::Threading::PROCESS_QUERY_LIMITED_INFORMATION;
@@ -21,11 +24,15 @@ use windows::Win32::UI::Shell::ABM_NEW;
 use windows::Win32::UI::Shell::ABM_QUERYPOS;
 use windows::Win32::UI::Shell::ABM_REMOVE;
 use windows::Win32::UI::Shell::ABM_SETPOS;
+use windows::Win32::UI::Shell::ABN_POSCHANGED;
 use windows::Win32::UI::Shell::APPBARDATA;
 use windows::Win32::UI::Shell::SHAppBarMessage;
 use windows::Win32::UI::WindowsAndMessaging::GetShellWindow;
 use windows::Win32::UI::WindowsAndMessaging::GetWindowThreadProcessId;
 use windows::Win32::UI::WindowsAndMessaging::RegisterWindowMessageW;
+use windows::Win32::UI::WindowsAndMessaging::WM_DISPLAYCHANGE;
+use windows::Win32::UI::WindowsAndMessaging::WM_DPICHANGED;
+use windows::Win32::UI::WindowsAndMessaging::WM_NCDESTROY;
 use windows::core::PCWSTR;
 use windows::core::w;
 
@@ -72,6 +79,15 @@ pub struct WindowsAppBarMessages {
     taskbar_created: TaskbarCreatedMessage,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum WindowsAppBarSignal {
+    PositionInvalidated,
+    PositionRequested,
+    ShellRecreated,
+    Destroying,
+    Forward,
+}
+
 impl WindowsAppBarMessages {
     pub fn register() -> Result<Self, WindowsAppBarError> {
         Ok(Self {
@@ -104,10 +120,31 @@ impl WindowsAppBarMessages {
     pub const fn taskbar_created(self) -> TaskbarCreatedMessage {
         self.taskbar_created
     }
+
+    #[must_use]
+    pub const fn classify(self, message: u32, wparam: WPARAM) -> WindowsAppBarSignal {
+        if (message == self.callback.id() && wparam.0 == ABN_POSCHANGED as usize)
+            || message == WM_DISPLAYCHANGE
+            || message == WM_DPICHANGED
+        {
+            WindowsAppBarSignal::PositionInvalidated
+        } else if message == self.position.id() {
+            WindowsAppBarSignal::PositionRequested
+        } else if message == self.taskbar_created.id() {
+            WindowsAppBarSignal::ShellRecreated
+        } else if message == WM_NCDESTROY {
+            WindowsAppBarSignal::Destroying
+        } else {
+            WindowsAppBarSignal::Forward
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct BorrowedAppBarWindow(HWND);
+pub struct BorrowedAppBarWindow {
+    hwnd: HWND,
+    _thread_affine: PhantomData<Rc<()>>,
+}
 
 impl BorrowedAppBarWindow {
     /// Borrows a live UI-thread-owned Win32 window for an `AppBar` call.
@@ -117,7 +154,14 @@ impl BorrowedAppBarWindow {
     /// `raw` must identify a live top-level window and all methods using this
     /// value must run on that window's owning thread.
     pub unsafe fn from_raw(raw: NonZeroIsize) -> Self {
-        Self(HWND(raw.get() as *mut c_void))
+        Self {
+            hwnd: HWND(raw.get() as *mut c_void),
+            _thread_affine: PhantomData,
+        }
+    }
+
+    pub(crate) const fn hwnd(self) -> HWND {
+        self.hwnd
     }
 }
 
@@ -210,7 +254,7 @@ fn appbar_data(window: BorrowedAppBarWindow) -> Result<APPBARDATA, WindowsAppBar
     Ok(APPBARDATA {
         cbSize: u32::try_from(size_of::<APPBARDATA>())
             .map_err(|_| WindowsAppBarError::StructureSizeOverflow)?,
-        hWnd: window.0,
+        hWnd: window.hwnd(),
         ..Default::default()
     })
 }
@@ -264,6 +308,8 @@ pub enum WindowsAppBarError {
     NativeCallFailed(&'static str),
     #[error("APPBARDATA size does not fit the Windows ABI field")]
     StructureSizeOverflow,
+    #[error("AppBar geometry span does not fit the Windows positioning API")]
+    GeometrySpanOverflow,
     #[error(transparent)]
     Geometry(#[from] PhysicalRectError),
     #[error(transparent)]

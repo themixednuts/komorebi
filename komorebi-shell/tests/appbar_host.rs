@@ -213,6 +213,36 @@ fn native_invalidations_coalesce_before_the_position_message() -> Result<(), Box
 }
 
 #[test]
+fn delivered_native_invalidation_repositions_without_an_extra_message() -> Result<(), Box<dyn Error>>
+{
+    let platform = FakePlatform::new([shell(10, 100)?]);
+    let calls = platform.call_log();
+    let mut host = AppBarHost::new(platform);
+    host.start()?;
+    host.position_requested()?;
+
+    host.position_event_received()?;
+
+    let calls = calls.borrow();
+    assert_eq!(
+        calls
+            .iter()
+            .filter(|call| **call == Call::SchedulePosition)
+            .count(),
+        1
+    );
+    assert_eq!(
+        calls
+            .iter()
+            .filter(|call| **call == Call::ReserveAndPosition)
+            .count(),
+        2
+    );
+    assert_eq!(calls.iter().filter(|call| **call == Call::Show).count(), 1);
+    Ok(())
+}
+
+#[test]
 fn explorer_generation_controls_reregistration_and_shutdown_removal() -> Result<(), Box<dyn Error>>
 {
     let first = shell(10, 100)?;

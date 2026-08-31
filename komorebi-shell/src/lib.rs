@@ -20,6 +20,10 @@ mod web_search;
 #[cfg(windows)]
 mod windows_appbar;
 #[cfg(windows)]
+mod windows_appbar_binding;
+#[cfg(windows)]
+mod windows_appbar_platform;
+#[cfg(windows)]
 mod windows_application;
 #[cfg(windows)]
 mod windows_file;
@@ -147,6 +151,16 @@ pub use windows_appbar::WindowsAppBarApi;
 pub use windows_appbar::WindowsAppBarError;
 #[cfg(windows)]
 pub use windows_appbar::WindowsAppBarMessages;
+#[cfg(windows)]
+pub use windows_appbar::WindowsAppBarSignal;
+#[cfg(windows)]
+pub use windows_appbar_binding::WindowsAppBarBinding;
+#[cfg(windows)]
+pub use windows_appbar_binding::WindowsAppBarInstallError;
+#[cfg(windows)]
+pub use windows_appbar_binding::WindowsAppBarRuntimeError;
+#[cfg(windows)]
+pub use windows_appbar_platform::WindowsAppBarPlatform;
 #[cfg(windows)]
 pub use windows_application::ApplicationDiscoveryError;
 #[cfg(windows)]
