@@ -1,6 +1,7 @@
 #![windows_subsystem = "windows"]
 
 use komorebi_protocol::RoleHint;
+use komorebi_search::ContentSearchLimit;
 use komorebi_search::FileSearchLimit;
 use komorebi_search::FileSearchQueueCapacity;
 use komorebi_search::FileSearchService;
@@ -8,7 +9,7 @@ use komorebi_settings::SettingsStore;
 use komorebi_shell::CommandPalette;
 use komorebi_shell::FileActivationQueueCapacity;
 use komorebi_shell::FileActivationService;
-use komorebi_shell::PaletteFileSearchBroker;
+use komorebi_shell::PaletteSearchBroker;
 use komorebi_shell::SessionLifetime;
 use komorebi_shell::ShellSession;
 use komorebi_shell::WebActivationQueueCapacity;
@@ -22,6 +23,7 @@ mod palette_window;
 const WEB_ACTIVATION_CAPACITY: usize = 1;
 const FILE_SEARCH_CAPACITY: usize = 4;
 const FILE_RESULT_LIMIT: usize = 32;
+const CONTENT_RESULT_LIMIT: usize = 32;
 const FILE_ACTIVATION_CAPACITY: usize = 1;
 
 #[tokio::main]
@@ -53,10 +55,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .ok_or_else(|| std::io::Error::other("file-search capacity is invalid"))?;
     let file_result_limit = FileSearchLimit::new(FILE_RESULT_LIMIT)
         .ok_or_else(|| std::io::Error::other("file-result limit is invalid"))?;
+    let content_result_limit = ContentSearchLimit::new(CONTENT_RESULT_LIMIT)
+        .ok_or_else(|| std::io::Error::other("content-result limit is invalid"))?;
     let file_activation_capacity = FileActivationQueueCapacity::new(FILE_ACTIVATION_CAPACITY)
         .ok_or_else(|| std::io::Error::other("file-activation capacity is invalid"))?;
     let file_service = FileSearchService::start(file_root, file_search_capacity).await?;
-    let file_search = PaletteFileSearchBroker::configured(file_service.client(), file_result_limit);
+    let search = PaletteSearchBroker::configured(
+        file_service.client(),
+        file_result_limit,
+        content_result_limit,
+    );
     let file_activation_service = FileActivationService::start(
         file_service.client(),
         WindowsFileLauncher,
@@ -69,7 +77,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         palette,
         session.handle(),
         web,
-        file_search,
+        search,
         file_activation_service.client(),
     );
     file_activation_service.shutdown().await?;

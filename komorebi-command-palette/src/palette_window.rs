@@ -34,6 +34,7 @@ use gpui_component::input::MoveUp;
 use gpui_component::scroll::ScrollableElement as _;
 use komorebi_protocol::ActionAvailability;
 use komorebi_protocol::ActionCategory;
+use komorebi_search::ContentSearchMatch;
 use komorebi_search::FileSearchMatch;
 use komorebi_shell::CommandPalette;
 use komorebi_shell::FileActivationClient;
@@ -42,8 +43,9 @@ use komorebi_shell::PaletteContent;
 use komorebi_shell::PaletteController;
 use komorebi_shell::PaletteEffect;
 use komorebi_shell::PaletteFailure;
-use komorebi_shell::PaletteFileSearch;
-use komorebi_shell::PaletteFileSearchBroker;
+use komorebi_shell::PaletteSearch;
+use komorebi_shell::PaletteSearchBroker;
+use komorebi_shell::PaletteSearchStatus;
 use komorebi_shell::PaletteSelectionMove;
 use komorebi_shell::PaletteStatus;
 use komorebi_shell::PaletteSubmission;
@@ -57,7 +59,7 @@ struct CommandPaletteView {
     query: gpui::Entity<InputState>,
     shell: ShellHandle,
     web: WebSearchBroker,
-    file_search: PaletteFileSearchBroker,
+    search: PaletteSearchBroker,
     file_activation: FileActivationClient,
     invocation: Option<Task<()>>,
     query_task: Option<Task<()>>,
@@ -69,13 +71,15 @@ impl CommandPaletteView {
         palette: CommandPalette,
         shell: ShellHandle,
         web: WebSearchBroker,
-        file_search: PaletteFileSearchBroker,
+        search: PaletteSearchBroker,
         file_activation: FileActivationClient,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Self {
         let controller = PaletteController::new(palette);
-        let query = cx.new(|cx| InputState::new(window, cx).placeholder("Search commands"));
+        let query = cx.new(|cx| {
+            InputState::new(window, cx).placeholder("Search commands and files · ? content · ! web")
+        });
         let input_subscription = cx.subscribe_in(
             &query,
             window,
@@ -85,7 +89,7 @@ impl CommandPaletteView {
                         .controller
                         .update_query(input.read(cx).value().as_ref());
                     if let Some(search) = search {
-                        this.search_files(search, cx);
+                        this.search_index(search, cx);
                     }
                     cx.notify();
                 }
@@ -99,7 +103,7 @@ impl CommandPaletteView {
             query,
             shell,
             web,
-            file_search,
+            search,
             file_activation,
             invocation: None,
             query_task: None,
@@ -172,12 +176,12 @@ impl CommandPaletteView {
         }));
     }
 
-    fn search_files(&mut self, search: PaletteFileSearch, cx: &mut Context<Self>) {
-        let files = self.file_search.clone();
+    fn search_index(&mut self, search: PaletteSearch, cx: &mut Context<Self>) {
+        let broker = self.search.clone();
         self.query_task = Some(cx.spawn(async move |this, cx| {
-            let completion = search.submit(&files).await;
+            let completion = search.submit(&broker).await;
             _ = this.update(cx, |this, cx| {
-                _ = this.controller.complete_file_search(completion);
+                _ = this.controller.complete_search(completion);
                 cx.notify();
             });
         }));
@@ -307,17 +311,65 @@ impl CommandPaletteView {
             )
             .into_any_element()
     }
-}
 
-impl Render for CommandPaletteView {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn content_row(
+        position: usize,
+        content: &ContentSearchMatch,
+        selected: bool,
+        cx: &mut Context<Self>,
+    ) -> gpui::AnyElement {
+        let location = format!(
+            "{}:{}:{}",
+            content.display_path(),
+            content.line_number(),
+            content.byte_column().saturating_add(1)
+        );
+        div()
+            .id(("palette-content", position))
+            .flex()
+            .items_center()
+            .gap_3()
+            .px_4()
+            .py_3()
+            .border_b_1()
+            .border_color(rgb(0x28_31_3d))
+            .when(selected, |row| row.bg(rgb(0x22_30_42)))
+            .cursor_pointer()
+            .on_click(cx.listener(move |this, _, window, cx| {
+                this.select_and_activate(position, window, cx);
+            }))
+            .child(
+                div()
+                    .w(px(96.0))
+                    .flex_none()
+                    .text_xs()
+                    .text_color(rgb(0x87_98_ad))
+                    .child("content"),
+            )
+            .child(
+                div()
+                    .flex_1()
+                    .min_w_0()
+                    .flex()
+                    .flex_col()
+                    .gap_1()
+                    .child(
+                        div()
+                            .font_weight(gpui::FontWeight::SEMIBOLD)
+                            .child(location),
+                    )
+                    .child(
+                        div()
+                            .text_sm()
+                            .text_color(rgb(0xa9_b6_c8))
+                            .child(content.line_content().to_owned()),
+                    ),
+            )
+            .into_any_element()
+    }
+
+    fn result_rows(&self, cx: &mut Context<Self>) -> Vec<gpui::AnyElement> {
         let selected = self.controller.selected_position();
-        let (web_prompt, web_terms) = match self.controller.content() {
-            PaletteContent::Actions => (false, None),
-            PaletteContent::WebPrompt => (true, None),
-            PaletteContent::WebSearch(request) => (false, Some(request.terms().to_owned())),
-        };
-        let no_results = !web_prompt && web_terms.is_none() && self.controller.is_empty();
         let mut rows = self
             .controller
             .actions()
@@ -329,7 +381,40 @@ impl Render for CommandPaletteView {
             let position = action_count + offset;
             Self::file_row(position, file, selected == Some(position), cx)
         }));
-        let status = status_message(self.controller.status());
+        let file_count = self.controller.files().count();
+        rows.extend(
+            self.controller
+                .content_results()
+                .enumerate()
+                .map(|(offset, content)| {
+                    let position = action_count + file_count + offset;
+                    Self::content_row(position, content, selected == Some(position), cx)
+                }),
+        );
+        rows
+    }
+
+    fn is_searching(&self) -> bool {
+        matches!(
+            self.controller.search_status(),
+            PaletteSearchStatus::Loading
+        )
+    }
+}
+
+impl Render for CommandPaletteView {
+    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let (content_prompt, web_prompt, web_terms) = match self.controller.content() {
+            PaletteContent::Actions | PaletteContent::ContentSearch(_) => (false, false, None),
+            PaletteContent::ContentPrompt => (true, false, None),
+            PaletteContent::WebPrompt => (false, true, None),
+            PaletteContent::WebSearch(request) => (false, false, Some(request.terms().to_owned())),
+        };
+        let has_prompt = content_prompt || web_prompt || web_terms.is_some();
+        let no_results = !has_prompt && !self.is_searching() && self.controller.is_empty();
+        let rows = self.result_rows(cx);
+        let status = status_message(self.controller.status())
+            .or_else(|| search_status_message(self.controller.search_status()));
 
         div()
             .on_action(cx.listener(Self::select_previous))
@@ -388,12 +473,20 @@ impl Render for CommandPaletteView {
                                 .child("Type search terms after !"),
                         )
                     })
+                    .when(content_prompt, |list| {
+                        list.child(
+                            div()
+                                .p_8()
+                                .text_color(rgb(0x87_98_ad))
+                                .child("Type search terms after ?"),
+                        )
+                    })
                     .when(no_results, |list| {
                         list.child(
                             div()
                                 .p_8()
                                 .text_color(rgb(0x87_98_ad))
-                                .child("No actions or files match this search."),
+                                .child("No results match this search."),
                         )
                     }),
             )
@@ -409,6 +502,24 @@ impl Render for CommandPaletteView {
                         .child(message),
                 )
             })
+    }
+}
+
+fn search_status_message(status: PaletteSearchStatus<'_>) -> Option<(String, Rgba)> {
+    match status {
+        PaletteSearchStatus::Hidden
+        | PaletteSearchStatus::Files(_)
+        | PaletteSearchStatus::Content(_) => None,
+        PaletteSearchStatus::Loading => {
+            Some(("Searching the file index…".to_owned(), rgb(0x8f_b9_ec)))
+        }
+        PaletteSearchStatus::Failed(error) => {
+            Some((format!("Indexed search failed: {error}"), rgb(0xe4_8f_8f)))
+        }
+        PaletteSearchStatus::RevisionsExhausted => Some((
+            "The palette exhausted its query identity space.".to_owned(),
+            rgb(0xe4_8f_8f),
+        )),
     }
 }
 
@@ -480,7 +591,7 @@ pub(crate) fn run_palette(
     palette: CommandPalette,
     shell: ShellHandle,
     web: WebSearchBroker,
-    file_search: PaletteFileSearchBroker,
+    search: PaletteSearchBroker,
     file_activation: FileActivationClient,
 ) {
     Application::new().run(move |cx: &mut App| {
@@ -506,7 +617,7 @@ pub(crate) fn run_palette(
                 let palette = palette.clone();
                 let shell = shell.clone();
                 let web = web.clone();
-                let file_search = file_search.clone();
+                let search = search.clone();
                 let file_activation = file_activation.clone();
                 move |window, cx| {
                     window.set_window_title(TITLE);
@@ -515,7 +626,7 @@ pub(crate) fn run_palette(
                             palette,
                             shell,
                             web,
-                            file_search,
+                            search,
                             file_activation,
                             window,
                             cx,

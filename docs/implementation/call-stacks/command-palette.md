@@ -34,6 +34,8 @@ Query parsing is a total typed transition:
 trimmed input
   -> empty                 -> PaletteQuery::Browse
   -> ordinary non-empty    -> PaletteQuery::Search(PaletteSearchTerms)
+  -> `?` without terms     -> PaletteQuery::ContentPrompt [not searchable]
+  -> `?` with terms        -> PaletteQuery::ContentSearch(ContentSearchTerms)
   -> `!` without terms     -> PaletteQuery::WebPrompt [not activatable]
   -> `!` with terms        -> PaletteQuery::WebSearch(WebSearchTerms)
 ```
@@ -355,23 +357,40 @@ GPUI InputEvent::Change(raw query)
   -> PaletteController::update_query(&str)
     -> local action matches immediately [hot-local]
     -> nonempty local terms
-      -> PaletteFileSearch { PaletteQueryRevision, owned terms }
+      -> PaletteSearch::Files { PaletteQueryRevision, owned terms }
   <- optional typed query effect + immediately renderable action rows
-    -> PaletteFileSearch::submit(&PaletteFileSearchBroker)
+    -> PaletteSearch::submit(&PaletteSearchBroker)
       -> configured broker -> FileSearchClient::search [owned blocking worker]
       -> unconfigured broker -> typed Unavailable completion [no effect]
-    <- PaletteFileSearchCompletion { revision, typed result }
-      -> PaletteController::complete_file_search
+    <- PaletteSearchCompletion { revision, typed result }
+      -> PaletteController::complete_search
         -> current loading revision -> apply bounded opaque file rows
         -> superseded revision -> IgnoredStale
   <- controller-borrowed presentation rows
+
+GPUI InputEvent::Change(`? terms`)
+  -> PaletteController::update_query
+    -> PaletteQuery::ContentSearch(ContentSearchTerms) [nonempty owned type]
+    -> PaletteSearch::Content { PaletteQueryRevision, terms }
+      -> PaletteSearch::submit(&PaletteSearchBroker)
+        -> FileSearchClient::search_content [same owned blocking index]
+        <- bounded ContentSearchMatch rows with OpaquePathId
+      -> PaletteController::complete_search [same latest-query fence]
+  <- path, line, byte-column, and bounded line projection for presentation
+
+GPUI Enter/click on content row
+  -> PaletteController::activate
+    -> PaletteEffect::File(PaletteFileInvocation { OpaquePathId })
+      -> existing FileActivationService resolution-and-launch stack
 ```
 
 `PaletteQueryRevision` and `PaletteAttemptId` are different domain identities:
 query revisions fence replaceable read-only search results, while attempt IDs
 fence non-repeatable activation outcomes. GPUI owns result interest only. It may
 discard a superseded task, but it cannot cancel or corrupt work already admitted
-to the index owner.
+to the index owner. File-name and content queries share one closed broker because
+they share the same exact-path index, queue, lifetime, and stale-result policy;
+their result variants remain distinct and cannot be mixed by a renderer.
 
 Activation uses a separate owned actor because native launch is non-repeatable:
 

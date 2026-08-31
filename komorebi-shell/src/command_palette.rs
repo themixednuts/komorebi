@@ -8,6 +8,7 @@ use komorebi_protocol::ActionUnavailability;
 use komorebi_protocol::CatalogSnapshot;
 use komorebi_protocol::CatalogStamp;
 use komorebi_protocol::PermittedUse;
+use komorebi_search::ContentSearchTerms;
 use neo_frizbee::Config;
 use neo_frizbee::Matcher;
 use neo_frizbee::radix_sort_matches;
@@ -19,12 +20,16 @@ const MINIMUM_TYPOS: u16 = 2;
 const MAXIMUM_TYPOS: u16 = 6;
 
 /// A parsed palette query whose variants determine which authority may handle it.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum PaletteQuery<'query> {
     /// No query: present the default first-party result set.
     Browse,
     /// Search local first-party providers without granting activation authority.
     Search(PaletteSearchTerms<'query>),
+    /// The content prefix is present, but no terms exist and no search is valid.
+    ContentPrompt,
+    /// Search the exact-path file index through its content-search authority.
+    ContentSearch(ContentSearchTerms),
     /// The web prefix is present, but no terms exist and no launch is valid.
     WebPrompt,
     /// Search the web through the dedicated brokered URL-launch path.
@@ -35,18 +40,23 @@ impl<'query> PaletteQuery<'query> {
     #[must_use]
     pub fn parse(input: &'query str) -> Self {
         let input = input.trim();
-        let Some(web_terms) = input.strip_prefix('!') else {
-            return if input.is_empty() {
-                Self::Browse
+        if let Some(web_terms) = input.strip_prefix('!') {
+            let web_terms = web_terms.trim();
+            return if web_terms.is_empty() {
+                Self::WebPrompt
             } else {
-                Self::Search(PaletteSearchTerms(input))
+                Self::WebSearch(WebSearchTerms(web_terms))
             };
-        };
-        let web_terms = web_terms.trim();
-        if web_terms.is_empty() {
-            Self::WebPrompt
+        }
+        if let Some(content_terms) = input.strip_prefix('?') {
+            let content_terms = content_terms.trim();
+            return ContentSearchTerms::new(content_terms)
+                .map_or(Self::ContentPrompt, Self::ContentSearch);
+        }
+        if input.is_empty() {
+            Self::Browse
         } else {
-            Self::WebSearch(WebSearchTerms(web_terms))
+            Self::Search(PaletteSearchTerms(input))
         }
     }
 }
@@ -77,6 +87,8 @@ impl<'query> WebSearchTerms<'query> {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum PaletteResults {
     Actions(PaletteMatches),
+    ContentPrompt,
+    ContentSearch(ContentSearchTerms),
     WebPrompt,
     WebSearch(WebSearchRequest),
 }
@@ -161,6 +173,8 @@ impl CommandPalette {
         match query {
             PaletteQuery::Browse => PaletteResults::Actions(self.search("")),
             PaletteQuery::Search(terms) => PaletteResults::Actions(self.search(terms.as_str())),
+            PaletteQuery::ContentPrompt => PaletteResults::ContentPrompt,
+            PaletteQuery::ContentSearch(terms) => PaletteResults::ContentSearch(terms),
             PaletteQuery::WebPrompt => PaletteResults::WebPrompt,
             PaletteQuery::WebSearch(terms) => {
                 PaletteResults::WebSearch(WebSearchRequest::from_validated(terms))

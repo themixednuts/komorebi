@@ -24,6 +24,7 @@ use komorebi_protocol::PermittedUse;
 use komorebi_protocol::Revision;
 use komorebi_protocol::StateStamp;
 use komorebi_protocol::UndoPolicy;
+use komorebi_search::ContentSearchLimit;
 use komorebi_search::FileSearchLimit;
 use komorebi_search::FileSearchQueueCapacity;
 use komorebi_search::FileSearchService;
@@ -38,11 +39,11 @@ use komorebi_shell::PaletteCompletionDisposition;
 use komorebi_shell::PaletteContent;
 use komorebi_shell::PaletteController;
 use komorebi_shell::PaletteEffect;
-use komorebi_shell::PaletteFileSearchBroker;
-use komorebi_shell::PaletteFileSearchCompletionDisposition;
 use komorebi_shell::PaletteMatches;
 use komorebi_shell::PaletteQuery;
 use komorebi_shell::PaletteResults;
+use komorebi_shell::PaletteSearchBroker;
+use komorebi_shell::PaletteSearchCompletionDisposition;
 use komorebi_shell::PaletteSelectionMove;
 use komorebi_shell::PaletteStatus;
 use komorebi_shell::PaletteSubmission;
@@ -67,9 +68,10 @@ impl WebUriLauncher for SuccessfulWebLauncher {
 fn action_results(palette: &CommandPalette, input: &str) -> Result<PaletteMatches, &'static str> {
     match palette.query(PaletteQuery::parse(input)) {
         PaletteResults::Actions(matches) => Ok(matches),
-        PaletteResults::WebPrompt | PaletteResults::WebSearch(_) => {
-            Err("query should produce local action results")
-        }
+        PaletteResults::ContentPrompt
+        | PaletteResults::ContentSearch(_)
+        | PaletteResults::WebPrompt
+        | PaletteResults::WebSearch(_) => Err("query should produce local action results"),
     }
 }
 
@@ -223,6 +225,12 @@ fn palette_query_parser_makes_web_activation_explicit_and_non_empty()
         return Err("a non-empty bang query should be a web search".into());
     };
     assert_eq!(search.as_str(), "rust wtf-16 paths");
+
+    assert_eq!(PaletteQuery::parse("  ?  "), PaletteQuery::ContentPrompt);
+    let PaletteQuery::ContentSearch(search) = PaletteQuery::parse(" ?  native compositor ") else {
+        return Err("a non-empty question query should search indexed file contents".into());
+    };
+    assert_eq!(search.as_str(), "native compositor");
     Ok(())
 }
 
@@ -251,6 +259,12 @@ fn palette_query_results_preserve_source_specific_activation_data()
         return Err("web terms should produce a broker request".into());
     };
     assert_eq!(request.terms(), "windows reactor");
+    let PaletteResults::ContentSearch(terms) =
+        palette.query(PaletteQuery::parse("? compositor ownership"))
+    else {
+        return Err("content terms should retain indexed-search authority".into());
+    };
+    assert_eq!(terms.as_str(), "compositor ownership");
     Ok(())
 }
 
@@ -435,9 +449,10 @@ async fn palette_applies_file_results_from_its_typed_query_effect()
         FileSearchQueueCapacity::new(1).ok_or("one is a valid capacity")?,
     )
     .await?;
-    let broker = PaletteFileSearchBroker::configured(
+    let broker = PaletteSearchBroker::configured(
         files.client(),
         FileSearchLimit::new(8).ok_or("eight is a valid limit")?,
+        ContentSearchLimit::new(8).ok_or("eight is a valid content limit")?,
     );
     let mut controller = PaletteController::new(CommandPalette::project(&catalog()?));
 
@@ -446,8 +461,8 @@ async fn palette_applies_file_results_from_its_typed_query_effect()
         .ok_or("nonempty local terms should request file search")?;
     let completion = search.submit(&broker).await;
     assert_eq!(
-        controller.complete_file_search(completion),
-        PaletteFileSearchCompletionDisposition::Applied
+        controller.complete_search(completion),
+        PaletteSearchCompletionDisposition::Applied
     );
     assert_eq!(
         controller
@@ -470,7 +485,7 @@ async fn palette_applies_file_results_from_its_typed_query_effect()
 }
 
 #[tokio::test]
-async fn palette_ignores_file_results_from_a_superseded_query()
+async fn palette_ignores_results_from_a_superseded_provider_query()
 -> Result<(), Box<dyn std::error::Error>> {
     let directory = tempfile::tempdir()?;
     std::fs::write(directory.path().join("alpha.rs"), b"alpha")?;
@@ -480,9 +495,10 @@ async fn palette_ignores_file_results_from_a_superseded_query()
         FileSearchQueueCapacity::new(2).ok_or("two is a valid capacity")?,
     )
     .await?;
-    let broker = PaletteFileSearchBroker::configured(
+    let broker = PaletteSearchBroker::configured(
         files.client(),
         FileSearchLimit::new(8).ok_or("eight is a valid limit")?,
+        ContentSearchLimit::new(8).ok_or("eight is a valid content limit")?,
     );
     let mut controller = PaletteController::new(CommandPalette::project(&catalog()?));
 
@@ -490,25 +506,89 @@ async fn palette_ignores_file_results_from_a_superseded_query()
         .update_query("alpha")
         .ok_or("first local query should request file search")?;
     let beta = controller
-        .update_query("beta")
-        .ok_or("second local query should request file search")?;
+        .update_query("? beta")
+        .ok_or("second query should request content search")?;
     assert_eq!(
-        controller.complete_file_search(alpha.submit(&broker).await),
-        PaletteFileSearchCompletionDisposition::IgnoredStale
+        controller.complete_search(alpha.submit(&broker).await),
+        PaletteSearchCompletionDisposition::IgnoredStale
     );
     assert_eq!(controller.files().count(), 0);
     assert_eq!(
-        controller.complete_file_search(beta.submit(&broker).await),
-        PaletteFileSearchCompletionDisposition::Applied
+        controller.complete_search(beta.submit(&broker).await),
+        PaletteSearchCompletionDisposition::Applied
     );
     assert_eq!(
         controller
-            .files()
-            .map(komorebi_search::FileSearchMatch::display_path)
+            .content_results()
+            .map(komorebi_search::ContentSearchMatch::display_path)
             .collect::<Vec<_>>(),
         ["beta.rs"]
     );
 
+    files.shutdown().await?;
+    Ok(())
+}
+
+#[tokio::test]
+async fn palette_applies_indexed_content_results_from_an_explicit_content_query()
+-> Result<(), Box<dyn std::error::Error>> {
+    let directory = tempfile::tempdir()?;
+    let exact_path = directory.path().join("renderer-notes.md");
+    std::fs::write(
+        &exact_path,
+        b"first line\nnative compositor owns the visual\nlast line",
+    )?;
+    let files = FileSearchService::start(
+        directory.path().to_path_buf(),
+        FileSearchQueueCapacity::new(1).ok_or("one is a valid capacity")?,
+    )
+    .await?;
+    let broker = PaletteSearchBroker::configured(
+        files.client(),
+        FileSearchLimit::new(8).ok_or("eight is a valid file limit")?,
+        ContentSearchLimit::new(8).ok_or("eight is a valid content limit")?,
+    );
+    let launcher = RecordingFileLauncher::default();
+    let activation = FileActivationService::start(
+        files.client(),
+        launcher.clone(),
+        FileActivationQueueCapacity::new(1).ok_or("one is a valid activation capacity")?,
+    );
+    let mut controller = PaletteController::new(CommandPalette::project(&catalog()?));
+
+    let search = controller
+        .update_query("? native compositor")
+        .ok_or("explicit content terms should request indexed search")?;
+    assert_eq!(
+        controller.complete_search(search.submit(&broker).await),
+        PaletteSearchCompletionDisposition::Applied
+    );
+    let result = controller
+        .content_results()
+        .next()
+        .ok_or("matching indexed content should be visible")?;
+    assert_eq!(result.display_path(), "renderer-notes.md");
+    assert_eq!(result.line_number().get(), 2);
+    assert_eq!(result.line_content(), "native compositor owns the visual");
+    assert_eq!(controller.selected_position(), Some(0));
+    let Some(PaletteEffect::File(invocation)) = controller.activate() else {
+        return Err("selected content should emit exact-file activation".into());
+    };
+    let submission = invocation.submit(&activation.client()).await;
+    assert_eq!(
+        controller.complete(submission.complete().await),
+        PaletteCompletionDisposition::Applied
+    );
+    assert_eq!(
+        launcher
+            .paths
+            .lock()
+            .map_err(|_| "recording launcher lock was poisoned")?
+            .as_slice(),
+        [exact_path]
+    );
+
+    activation.shutdown().await?;
     files.shutdown().await?;
     Ok(())
 }
@@ -523,9 +603,10 @@ async fn one_controller_cursor_moves_across_action_and_file_rows()
         FileSearchQueueCapacity::new(1).ok_or("one is a valid capacity")?,
     )
     .await?;
-    let broker = PaletteFileSearchBroker::configured(
+    let broker = PaletteSearchBroker::configured(
         files.client(),
         FileSearchLimit::new(8).ok_or("eight is a valid limit")?,
+        ContentSearchLimit::new(8).ok_or("eight is a valid content limit")?,
     );
     let mut controller = PaletteController::new(CommandPalette::project(&catalog()?));
 
@@ -533,8 +614,8 @@ async fn one_controller_cursor_moves_across_action_and_file_rows()
         .update_query("focus window")
         .ok_or("local terms should request file search")?;
     assert_eq!(
-        controller.complete_file_search(search.submit(&broker).await),
-        PaletteFileSearchCompletionDisposition::Applied
+        controller.complete_search(search.submit(&broker).await),
+        PaletteSearchCompletionDisposition::Applied
     );
     let action_count = controller.actions().count();
     assert!(action_count > 0);
@@ -588,9 +669,10 @@ async fn selected_file_activation_resolves_and_launches_the_exact_index_path()
         FileSearchQueueCapacity::new(2).ok_or("two is a valid search capacity")?,
     )
     .await?;
-    let search = PaletteFileSearchBroker::configured(
+    let search = PaletteSearchBroker::configured(
         files.client(),
         FileSearchLimit::new(8).ok_or("eight is a valid limit")?,
+        ContentSearchLimit::new(8).ok_or("eight is a valid content limit")?,
     );
     let launcher = RecordingFileLauncher::default();
     let activation = FileActivationService::start(
@@ -604,8 +686,8 @@ async fn selected_file_activation_resolves_and_launches_the_exact_index_path()
         .update_query("launch me")
         .ok_or("local terms should request file search")?;
     assert_eq!(
-        controller.complete_file_search(query.submit(&search).await),
-        PaletteFileSearchCompletionDisposition::Applied
+        controller.complete_search(query.submit(&search).await),
+        PaletteSearchCompletionDisposition::Applied
     );
     let Some(PaletteEffect::File(invocation)) = controller.activate() else {
         return Err("selected file should emit brokered activation".into());
