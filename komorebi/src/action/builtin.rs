@@ -121,6 +121,7 @@ pub enum BuiltinActionKind {
     SetWorkspacePadding,
     SetWorkspaceTiling,
     SetWorkspaceMonocle,
+    SetWorkspaceActiveContainerLock,
     SetMonitorWorkspaceLayout,
     EnsureWorkspaces,
     ClearWorkspaceLayoutRules,
@@ -189,7 +190,7 @@ pub enum BuiltinActionKind {
 }
 
 impl BuiltinActionKind {
-    pub const ALL: [Self; 143] = [
+    pub const ALL: [Self; 144] = [
         Self::FocusWindow,
         Self::MoveWindow,
         Self::ResizeWindow,
@@ -268,6 +269,7 @@ impl BuiltinActionKind {
         Self::SetWorkspacePadding,
         Self::SetWorkspaceTiling,
         Self::SetWorkspaceMonocle,
+        Self::SetWorkspaceActiveContainerLock,
         Self::SetMonitorWorkspaceLayout,
         Self::EnsureWorkspaces,
         Self::ClearWorkspaceLayoutRules,
@@ -418,6 +420,7 @@ impl BuiltinActionKind {
             Self::SetWorkspacePadding => ActionId::SET_WORKSPACE_PADDING,
             Self::SetWorkspaceTiling => ActionId::SET_WORKSPACE_TILING,
             Self::SetWorkspaceMonocle => ActionId::SET_WORKSPACE_MONOCLE,
+            Self::SetWorkspaceActiveContainerLock => ActionId::SET_WORKSPACE_ACTIVE_CONTAINER_LOCK,
             Self::SetMonitorWorkspaceLayout => ActionId::SET_MONITOR_WORKSPACE_LAYOUT,
             Self::EnsureWorkspaces => ActionId::ENSURE_WORKSPACES,
             Self::ClearWorkspaceLayoutRules => ActionId::CLEAR_WORKSPACE_LAYOUT_RULES,
@@ -791,6 +794,11 @@ pub enum BuiltinAction {
         workspace: WorkspaceIndex,
         enabled: bool,
     },
+    SetWorkspaceActiveContainerLock {
+        monitor: MonitorIndex,
+        workspace: WorkspaceIndex,
+        locked: bool,
+    },
     SetMonitorWorkspaceLayout {
         monitor: MonitorIndex,
         workspace: WorkspaceIndex,
@@ -1124,6 +1132,9 @@ impl BuiltinAction {
             Self::SetWorkspacePadding { .. } => BuiltinActionKind::SetWorkspacePadding,
             Self::SetWorkspaceTiling { .. } => BuiltinActionKind::SetWorkspaceTiling,
             Self::SetWorkspaceMonocle { .. } => BuiltinActionKind::SetWorkspaceMonocle,
+            Self::SetWorkspaceActiveContainerLock { .. } => {
+                BuiltinActionKind::SetWorkspaceActiveContainerLock
+            }
             Self::SetMonitorWorkspaceLayout { .. } => BuiltinActionKind::SetMonitorWorkspaceLayout,
             Self::EnsureWorkspaces { .. } => BuiltinActionKind::EnsureWorkspaces,
             Self::ClearWorkspaceLayoutRules { .. } => BuiltinActionKind::ClearWorkspaceLayoutRules,

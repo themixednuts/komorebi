@@ -313,24 +313,31 @@ impl Komorebi {
         };
 
         let monitor_info = &*self.monitor_info.borrow();
-        let is_locked = monitor_info
+        let Some(workspace_idx) = monitor_info.focused_workspace_idx else {
+            return;
+        };
+        let Some(is_locked) = monitor_info
             .focused_container()
-            .map(|container| container.is_locked)
-            .unwrap_or_default();
+            .and_then(|container| container.lock_state.is_locked())
+        else {
+            return;
+        };
+        let monitor_idx = monitor_info.monitor_index;
 
         let (icon_font, txt_font) = (config.icon_font_id.clone(), config.text_font_id.clone());
-        if (bar.show_when_unlocked || is_locked) && monitor_info.focused_container().is_some() {
+        if bar.show_when_unlocked || is_locked {
             config.apply_on_widget(false, ui, |ui| {
                 let response = SelectableFrame::new(false).show(ui, |ui| {
                     (bar.renderer)(ctx, ui, is_locked, icon_font, txt_font)
                 });
                 if response.clicked()
-                    && let Err(error) = komorebi_client::send_batch([
-                        SocketMessage::FocusMonitorAtCursor,
-                        SocketMessage::ToggleLock,
-                    ])
+                    && let Err(error) = self.commands.set_workspace_active_container_lock(
+                        monitor_idx,
+                        workspace_idx,
+                        !is_locked,
+                    )
                 {
-                    tracing::error!(%error, "could not toggle container lock");
+                    tracing::error!(%error, "could not set active container lock");
                 }
             });
         }
@@ -928,7 +935,30 @@ pub struct ContainerInfo {
     pub windows: Vec<WindowInfo>,
     pub focused_window_idx: usize,
     pub is_focused: bool,
-    pub is_locked: bool,
+    pub lock_state: ContainerLockState,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ContainerLockState {
+    NotLockable,
+    Unlocked,
+    Locked,
+}
+
+impl ContainerLockState {
+    fn is_locked(self) -> Option<bool> {
+        match self {
+            Self::NotLockable => None,
+            Self::Unlocked => Some(false),
+            Self::Locked => Some(true),
+        }
+    }
+}
+
+impl From<bool> for ContainerLockState {
+    fn from(locked: bool) -> Self {
+        if locked { Self::Locked } else { Self::Unlocked }
+    }
 }
 
 impl ContainerInfo {
@@ -986,19 +1016,19 @@ impl ContainerInfo {
             windows: container.windows().iter().map(WindowInfo::from).collect(),
             focused_window_idx: container.focused_window_idx(),
             is_focused,
-            is_locked: container.locked,
+            lock_state: container.locked.into(),
         }
     }
 
     /// Creates a `ContainerInfo` from a single floating window.
     /// The window becomes the only entry in `windows`, is marked as focused
-    /// if applicable, and `is_locked` is set to false.
+    /// if applicable, and has no lock state because floating windows are not lockable.
     pub fn from_window(window: &Window) -> Self {
         Self {
             windows: vec![window.into()],
             focused_window_idx: 0,
             is_focused: window.is_focused(),
-            is_locked: false, // locked is only container feature
+            lock_state: ContainerLockState::NotLockable,
         }
     }
 }

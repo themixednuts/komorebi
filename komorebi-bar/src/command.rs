@@ -30,6 +30,7 @@ enum BarCommandKey {
     WorkspaceLayout(WorkspaceTarget),
     WorkspaceTiling(WorkspaceTarget),
     WorkspaceMonocle(WorkspaceTarget),
+    WorkspaceActiveContainerLock(WorkspaceTarget),
     FocusMonitorWorkspace,
     FocusStackWindow,
     ToggleWorkspaceLayer,
@@ -49,6 +50,9 @@ impl BarCommandKey {
             Self::WorkspaceLayout(_) => BuiltInActionId::SetMonitorWorkspaceLayout,
             Self::WorkspaceTiling(_) => BuiltInActionId::SetWorkspaceTiling,
             Self::WorkspaceMonocle(_) => BuiltInActionId::SetWorkspaceMonocle,
+            Self::WorkspaceActiveContainerLock(_) => {
+                BuiltInActionId::SetWorkspaceActiveContainerLock
+            }
             Self::FocusMonitorWorkspace => BuiltInActionId::FocusMonitorWorkspace,
             Self::FocusStackWindow => BuiltInActionId::FocusStackWindow,
             Self::ToggleWorkspaceLayer => BuiltInActionId::ToggleWorkspaceLayer,
@@ -63,6 +67,7 @@ impl BarCommandKey {
             | Self::WorkspaceLayout(_)
             | Self::WorkspaceTiling(_)
             | Self::WorkspaceMonocle(_)
+            | Self::WorkspaceActiveContainerLock(_)
             | Self::FocusMonitorWorkspace
             | Self::FocusStackWindow => DeliveryPolicy::Latest,
         }
@@ -156,6 +161,23 @@ impl CommandQueue {
                 BuiltInArgument::Monitor(target.monitor),
                 BuiltInArgument::Index(target.workspace),
                 BuiltInArgument::Enabled(enabled),
+            ],
+        )
+    }
+
+    pub fn set_workspace_active_container_lock(
+        &self,
+        monitor: usize,
+        workspace: usize,
+        locked: bool,
+    ) -> Result<(), CommandQueueError> {
+        let target = WorkspaceTarget::new(monitor, workspace)?;
+        self.send(
+            BarCommandKey::WorkspaceActiveContainerLock(target),
+            [
+                BuiltInArgument::Monitor(target.monitor),
+                BuiltInArgument::Index(target.workspace),
+                BuiltInArgument::Enabled(locked),
             ],
         )
     }
@@ -499,6 +521,31 @@ mod tests {
                 .collect::<Vec<_>>(),
             [(
                 BuiltInActionId::SetWorkspaceMonocle,
+                BuiltInArguments::new([
+                    BuiltInArgument::Monitor(2),
+                    BuiltInArgument::Index(3),
+                    BuiltInArgument::Enabled(true),
+                ])?,
+            )]
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn lock_control_enqueues_exact_workspace_active_container_state()
+    -> Result<(), CommandQueueError> {
+        let (queue, pending, _receiver) = queue_without_actor();
+
+        queue.set_workspace_active_container_lock(2, 3, true)?;
+
+        let queued = pending.lock().map_err(|_| CommandQueueError::Poisoned)?;
+        assert_eq!(
+            queued
+                .iter()
+                .map(|command| (command.key.action(), command.arguments.clone()))
+                .collect::<Vec<_>>(),
+            [(
+                BuiltInActionId::SetWorkspaceActiveContainerLock,
                 BuiltInArguments::new([
                     BuiltInArgument::Monitor(2),
                     BuiltInArgument::Index(3),

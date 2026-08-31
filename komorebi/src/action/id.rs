@@ -94,6 +94,8 @@ impl ActionId {
     pub const SET_WORKSPACE_PADDING: Self = Self("set-workspace-padding");
     pub const SET_WORKSPACE_TILING: Self = Self("set-workspace-tiling");
     pub const SET_WORKSPACE_MONOCLE: Self = Self("set-workspace-monocle");
+    pub const SET_WORKSPACE_ACTIVE_CONTAINER_LOCK: Self =
+        Self("set-workspace-active-container-lock");
     pub const SET_MONITOR_WORKSPACE_LAYOUT: Self = Self("set-monitor-workspace-layout");
     pub const ENSURE_WORKSPACES: Self = Self("ensure-workspaces");
     pub const CLEAR_WORKSPACE_LAYOUT_RULES: Self = Self("clear-workspace-layout-rules");

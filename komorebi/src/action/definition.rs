@@ -864,6 +864,7 @@ impl BuiltinActionKind {
             Self::SetWorkspacePadding => &SET_WORKSPACE_PADDING,
             Self::SetWorkspaceTiling => &SET_WORKSPACE_TILING,
             Self::SetWorkspaceMonocle => &SET_WORKSPACE_MONOCLE,
+            Self::SetWorkspaceActiveContainerLock => &SET_WORKSPACE_ACTIVE_CONTAINER_LOCK,
             Self::SetMonitorWorkspaceLayout => &SET_MONITOR_WORKSPACE_LAYOUT,
             Self::EnsureWorkspaces => &ENSURE_WORKSPACES,
             Self::ClearWorkspaceLayoutRules => &CLEAR_WORKSPACE_LAYOUT_RULES,
@@ -938,7 +939,7 @@ impl BuiltinActionKind {
 }
 
 #[must_use]
-pub fn definitions() -> [&'static ActionDefinition; 143] {
+pub fn definitions() -> [&'static ActionDefinition; 144] {
     BuiltinActionKind::ALL.map(BuiltinActionKind::definition)
 }
 

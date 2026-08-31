@@ -443,6 +443,11 @@ fn bind_builtin(
             workspace: WorkspaceIndex::new(args.usize(ParameterId::INDEX)?),
             enabled: args.boolean(ParameterId::ENABLED)?,
         },
+        K::SetWorkspaceActiveContainerLock => A::SetWorkspaceActiveContainerLock {
+            monitor: MonitorIndex::new(args.usize(ParameterId::MONITOR)?),
+            workspace: WorkspaceIndex::new(args.usize(ParameterId::INDEX)?),
+            locked: args.boolean(ParameterId::ENABLED)?,
+        },
         K::SetMonitorWorkspaceLayout => A::SetMonitorWorkspaceLayout {
             monitor: MonitorIndex::new(args.usize(ParameterId::MONITOR)?),
             workspace: WorkspaceIndex::new(args.usize(ParameterId::INDEX)?),

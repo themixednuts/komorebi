@@ -871,6 +871,13 @@ impl WindowManager {
             } => {
                 self.set_workspace_monocle(monitor.get(), workspace.get(), enabled)?;
             }
+            NativeEffect::SetWorkspaceActiveContainerLock {
+                monitor,
+                workspace,
+                locked,
+            } => {
+                self.set_workspace_active_container_locked(monitor.get(), workspace.get(), locked)?;
+            }
             NativeEffect::SetMonitorWorkspaceLayout {
                 monitor,
                 workspace,

@@ -272,6 +272,11 @@ pub enum ActionResult {
         workspace: WorkspaceIndex,
         enabled: bool,
     },
+    WorkspaceActiveContainerLockSet {
+        monitor: MonitorIndex,
+        workspace: WorkspaceIndex,
+        locked: bool,
+    },
     MonitorWorkspaceLayoutSet {
         monitor: MonitorIndex,
         workspace: WorkspaceIndex,
@@ -651,6 +656,11 @@ pub enum NativeEffect {
         monitor: MonitorIndex,
         workspace: WorkspaceIndex,
         enabled: bool,
+    },
+    SetWorkspaceActiveContainerLock {
+        monitor: MonitorIndex,
+        workspace: WorkspaceIndex,
+        locked: bool,
     },
     SetMonitorWorkspaceLayout {
         monitor: MonitorIndex,

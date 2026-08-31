@@ -658,6 +658,20 @@ pub const SET_WORKSPACE_MONOCLE: ActionDefinition = ActionDefinition {
     undo: UndoPolicy::None,
 };
 
+pub const SET_WORKSPACE_ACTIVE_CONTAINER_LOCK: ActionDefinition = ActionDefinition {
+    id: ActionId::SET_WORKSPACE_ACTIVE_CONTAINER_LOCK,
+    schema_version: ActionSchemaVersion::V1,
+    kind: BuiltinActionKind::SetWorkspaceActiveContainerLock,
+    category: ActionCategory::Workspace,
+    title: "Set active container lock",
+    description: "Set the lock state of the active lockable container on a workspace",
+    keywords: &["lock", "container", "workspace"],
+    parameters: MONITOR_WORKSPACE_FLAG,
+    permitted_uses: BOTH_USES,
+    confirmation: ConfirmationPolicy::None,
+    undo: UndoPolicy::None,
+};
+
 pub const SET_MONITOR_WORKSPACE_LAYOUT: ActionDefinition = ActionDefinition {
     id: ActionId::SET_MONITOR_WORKSPACE_LAYOUT,
     schema_version: ActionSchemaVersion::V1,

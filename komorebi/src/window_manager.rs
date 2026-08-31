@@ -3937,6 +3937,46 @@ impl WindowManager {
     }
 
     #[tracing::instrument(skip(self))]
+    pub fn set_workspace_active_container_locked(
+        &mut self,
+        monitor_idx: usize,
+        workspace_idx: usize,
+        locked: bool,
+    ) -> eyre::Result<()> {
+        let workspace = self
+            .monitors()
+            .get(monitor_idx)
+            .ok_or_eyre("there is no monitor")?
+            .workspaces()
+            .get(workspace_idx)
+            .ok_or_eyre("there is no workspace")?;
+        if workspace.monocle_container.is_none()
+            && (workspace.layer == WorkspaceLayer::Floating
+                || workspace.focused_container().is_none())
+        {
+            bail!("the workspace has no active lockable container");
+        }
+
+        self.focus_monitor_workspace(
+            monitor_idx,
+            workspace_idx,
+            CursorWarpPolicy::PreservePosition,
+        )?;
+
+        let workspace = self.focused_workspace_mut()?;
+        let container = if let Some(container) = workspace.monocle_container.as_mut() {
+            container
+        } else {
+            workspace
+                .focused_container_mut()
+                .ok_or_eyre("the workspace has no active lockable container")?
+        };
+        container.locked = locked;
+
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self))]
     pub fn float_window(&mut self) -> eyre::Result<()> {
         tracing::info!("floating window");
 
@@ -4856,6 +4896,9 @@ impl WindowManager {
         }
     }
 }
+
+#[cfg(test)]
+mod exact_workspace_state_tests;
 
 #[cfg(test)]
 mod tests {
