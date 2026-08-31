@@ -8,6 +8,7 @@ publish = false
 komorebi-command-transport = { path = "../komorebi-command-transport" }
 komorebi-layouts = { path = "../komorebi-layouts" }
 komorebi-protocol = { path = "../komorebi-protocol" }
+neo_frizbee = "=0.11.0"
 schemars = { workspace = true, optional = true }
 serde = { workspace = true }
 thiserror = "2"

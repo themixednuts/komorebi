@@ -1,6 +1,7 @@
 //! Renderer-neutral shell domain primitives.
 
 mod action_binding;
+mod command_palette;
 mod projection;
 mod session;
 mod shortcut_guide;
@@ -10,6 +11,11 @@ pub use action_binding::ActionBindingError;
 pub use action_binding::ActionInput;
 pub use action_binding::ActionInputScalar;
 pub use action_binding::BoundAction;
+pub use command_palette::CommandPalette;
+pub use command_palette::PaletteAction;
+pub use command_palette::PaletteActionState;
+pub use command_palette::PaletteMatches;
+pub use command_palette::PaletteSelectionMove;
 pub use projection::built_in_layout;
 pub use session::ActionInvocationError;
 pub use session::CatalogReadError;

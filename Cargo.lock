@@ -4908,6 +4908,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "komorebi-command-palette"
+version = "0.1.0"
+dependencies = [
+ "gpui",
+ "gpui-component",
+ "komorebi-protocol",
+ "komorebi-shell",
+ "tokio",
+]
+
+[[package]]
 name = "komorebi-command-store"
 version = "0.1.42"
 dependencies = [
@@ -4982,6 +4993,7 @@ dependencies = [
  "komorebi-command-transport",
  "komorebi-layouts",
  "komorebi-protocol",
+ "neo_frizbee",
  "schemars 1.2.2",
  "serde",
  "serde_json_lenient",
@@ -5802,6 +5814,12 @@ checksum = "ee6cda3051665f1fb8d9e08fc35c96d5a244fb1be711a03b71118828afc9a873"
 dependencies = [
  "jni-sys 0.3.1",
 ]
+
+[[package]]
+name = "neo_frizbee"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a2f6120a8da26bea3587731072111062c5d8c51ca3a3a75a716bd8b735d5882"
 
 [[package]]
 name = "net2"
