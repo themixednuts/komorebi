@@ -13,12 +13,12 @@ use windows::Win32::UI::Shell::RemoveWindowSubclass;
 use windows::Win32::UI::Shell::SetWindowSubclass;
 use windows::Win32::UI::WindowsAndMessaging::PostMessageW;
 
-use crate::AppBarGeometry;
 use crate::AppBarHost;
 use crate::AppBarHostError;
 use crate::BorrowedAppBarWindow;
 use crate::WindowsAppBarError;
 use crate::WindowsAppBarMessages;
+use crate::WindowsAppBarPlacement;
 use crate::WindowsAppBarPlatform;
 use crate::WindowsAppBarSignal;
 
@@ -32,11 +32,11 @@ pub struct WindowsAppBarBinding {
 impl WindowsAppBarBinding {
     pub fn install(
         window: BorrowedAppBarWindow,
-        geometry: AppBarGeometry,
+        placement: WindowsAppBarPlacement,
         report: impl Fn(WindowsAppBarRuntimeError) + 'static,
     ) -> Result<Self, WindowsAppBarInstallError> {
         let messages = WindowsAppBarMessages::register()?;
-        let platform = WindowsAppBarPlatform::new(window, messages, geometry);
+        let platform = WindowsAppBarPlatform::new(window, messages, placement);
         let mut state = Box::new(BindingState {
             host: RefCell::new(AppBarHost::new(platform)),
             window,
@@ -80,15 +80,15 @@ impl WindowsAppBarBinding {
         Ok(Self { state: Some(state) })
     }
 
-    pub fn geometry_changed(
+    pub fn placement_changed(
         &self,
-        geometry: AppBarGeometry,
+        placement: WindowsAppBarPlacement,
     ) -> Result<(), WindowsAppBarRuntimeError> {
         let state = self.state()?;
         state
             .host
             .borrow_mut()
-            .geometry_changed(geometry)
+            .geometry_changed(placement)
             .map_err(WindowsAppBarRuntimeError::Host)
     }
 

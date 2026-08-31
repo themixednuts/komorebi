@@ -38,6 +38,7 @@ use windows::core::w;
 
 use crate::AppBarEdge;
 use crate::AppBarGeometry;
+use crate::LogicalAppBarThicknessError;
 use crate::PhysicalRect;
 use crate::PhysicalRectError;
 use crate::ShellGeneration;
@@ -310,8 +311,14 @@ pub enum WindowsAppBarError {
     StructureSizeOverflow,
     #[error("AppBar geometry span does not fit the Windows positioning API")]
     GeometrySpanOverflow,
+    #[error("the AppBar window is not associated with a monitor")]
+    MonitorUnavailable,
+    #[error("the AppBar window DPI is unavailable")]
+    WindowDpiUnavailable,
     #[error(transparent)]
     Geometry(#[from] PhysicalRectError),
+    #[error(transparent)]
+    LogicalThickness(#[from] LogicalAppBarThicknessError),
     #[error(transparent)]
     Windows(#[from] windows::core::Error),
 }

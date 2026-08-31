@@ -1,5 +1,13 @@
+use std::mem::size_of;
+use std::num::NonZeroU32;
+
 use windows::Win32::Foundation::LPARAM;
 use windows::Win32::Foundation::WPARAM;
+use windows::Win32::Graphics::Gdi::GetMonitorInfoW;
+use windows::Win32::Graphics::Gdi::MONITOR_DEFAULTTONEAREST;
+use windows::Win32::Graphics::Gdi::MONITORINFO;
+use windows::Win32::Graphics::Gdi::MonitorFromWindow;
+use windows::Win32::UI::HiDpi::GetDpiForWindow;
 use windows::Win32::UI::WindowsAndMessaging::PostMessageW;
 use windows::Win32::UI::WindowsAndMessaging::SW_SHOWNOACTIVATE;
 use windows::Win32::UI::WindowsAndMessaging::SWP_NOACTIVATE;
@@ -8,10 +16,13 @@ use windows::Win32::UI::WindowsAndMessaging::SWP_NOZORDER;
 use windows::Win32::UI::WindowsAndMessaging::SetWindowPos;
 use windows::Win32::UI::WindowsAndMessaging::ShowWindow;
 
+use crate::AppBarEdge;
 use crate::AppBarGeometry;
 use crate::AppBarHostPlatform;
 use crate::AppBarVisibility;
 use crate::BorrowedAppBarWindow;
+use crate::LogicalAppBarThickness;
+use crate::PhysicalRect;
 use crate::ShellGeneration;
 use crate::WindowsAppBarApi;
 use crate::WindowsAppBarError;
@@ -20,7 +31,46 @@ use crate::WindowsAppBarMessages;
 pub struct WindowsAppBarPlatform {
     window: BorrowedAppBarWindow,
     messages: WindowsAppBarMessages,
-    geometry: AppBarGeometry,
+    placement: WindowsAppBarPlacement,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct WindowsAppBarPlacement {
+    edge: AppBarEdge,
+    thickness: LogicalAppBarThickness,
+}
+
+impl WindowsAppBarPlacement {
+    #[must_use]
+    pub const fn new(edge: AppBarEdge, thickness: LogicalAppBarThickness) -> Self {
+        Self { edge, thickness }
+    }
+
+    fn resolve(self, window: BorrowedAppBarWindow) -> Result<AppBarGeometry, WindowsAppBarError> {
+        // SAFETY: the thread-affine window is live for this platform adapter.
+        let monitor = unsafe { MonitorFromWindow(window.hwnd(), MONITOR_DEFAULTTONEAREST) };
+        if monitor.0.is_null() {
+            return Err(WindowsAppBarError::MonitorUnavailable);
+        }
+        let mut info = MONITORINFO {
+            cbSize: u32::try_from(size_of::<MONITORINFO>())
+                .map_err(|_| WindowsAppBarError::StructureSizeOverflow)?,
+            ..Default::default()
+        };
+        // SAFETY: `info` has the required size and valid writable storage.
+        unsafe { GetMonitorInfoW(monitor, &raw mut info).ok()? };
+        // SAFETY: the thread-affine window is live for this platform adapter.
+        let dpi = NonZeroU32::new(unsafe { GetDpiForWindow(window.hwnd()) })
+            .ok_or(WindowsAppBarError::WindowDpiUnavailable)?;
+        let monitor = PhysicalRect::new(
+            info.rcMonitor.left,
+            info.rcMonitor.top,
+            info.rcMonitor.right,
+            info.rcMonitor.bottom,
+        )?;
+        let thickness = self.thickness.to_physical(dpi)?;
+        Ok(AppBarGeometry::new(monitor, self.edge, thickness))
+    }
 }
 
 impl WindowsAppBarPlatform {
@@ -28,18 +78,19 @@ impl WindowsAppBarPlatform {
     pub const fn new(
         window: BorrowedAppBarWindow,
         messages: WindowsAppBarMessages,
-        geometry: AppBarGeometry,
+        placement: WindowsAppBarPlacement,
     ) -> Self {
         Self {
             window,
             messages,
-            geometry,
+            placement,
         }
     }
 }
 
 impl AppBarHostPlatform for WindowsAppBarPlatform {
     type Error = WindowsAppBarError;
+    type Geometry = WindowsAppBarPlacement;
 
     fn shell_generation(&mut self) -> Result<ShellGeneration, Self::Error> {
         WindowsAppBarApi::shell_generation()
@@ -64,7 +115,8 @@ impl AppBarHostPlatform for WindowsAppBarPlatform {
     }
 
     fn position(&mut self, visibility: AppBarVisibility) -> Result<(), Self::Error> {
-        let rect = WindowsAppBarApi::reserve(self.window, self.geometry)?;
+        let geometry = self.placement.resolve(self.window)?;
+        let rect = WindowsAppBarApi::reserve(self.window, geometry)?;
         let width = i32::try_from(rect.width().get())
             .map_err(|_| WindowsAppBarError::GeometrySpanOverflow)?;
         let height = i32::try_from(rect.height().get())
@@ -93,7 +145,7 @@ impl AppBarHostPlatform for WindowsAppBarPlatform {
         WindowsAppBarApi::remove(self.window)
     }
 
-    fn update_geometry(&mut self, geometry: AppBarGeometry) {
-        self.geometry = geometry;
+    fn update_geometry(&mut self, placement: WindowsAppBarPlacement) {
+        self.placement = placement;
     }
 }

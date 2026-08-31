@@ -71,6 +71,7 @@ impl FakePlatform {
 
 impl AppBarHostPlatform for FakePlatform {
     type Error = TestError;
+    type Geometry = AppBarGeometry;
 
     fn shell_generation(&mut self) -> Result<ShellGeneration, Self::Error> {
         self.calls.borrow_mut().push(Call::ShellGeneration);

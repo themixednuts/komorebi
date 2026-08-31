@@ -5,6 +5,7 @@ use std::num::NonZeroU64;
 use komorebi_shell::AppBarEdge;
 use komorebi_shell::AppBarGeometry;
 use komorebi_shell::AppBarLifecycle;
+use komorebi_shell::LogicalAppBarThickness;
 use komorebi_shell::PhysicalRect;
 use komorebi_shell::PhysicalThickness;
 use komorebi_shell::PositionCompletion;
@@ -20,6 +21,30 @@ fn shell(process_id: u32, created: u64) -> Result<ShellGeneration, Box<dyn Error
         NonZeroU32::new(process_id).ok_or("process id must be nonzero")?,
         NonZeroU64::new(created).ok_or("creation time must be nonzero")?,
     ))
+}
+
+#[test]
+fn logical_appbar_thickness_is_validated_and_scales_with_window_dpi() -> Result<(), Box<dyn Error>>
+{
+    assert!(LogicalAppBarThickness::new(0.0).is_err());
+    assert!(LogicalAppBarThickness::new(-1.0).is_err());
+    assert!(LogicalAppBarThickness::new(f32::NAN).is_err());
+    assert!(LogicalAppBarThickness::new(f32::INFINITY).is_err());
+
+    let thickness = LogicalAppBarThickness::new(40.0)?;
+    assert_eq!(
+        thickness.to_physical(NonZeroU32::new(96).ok_or("zero DPI")?)?,
+        PhysicalThickness::new(40).ok_or("zero thickness")?
+    );
+    assert_eq!(
+        thickness.to_physical(NonZeroU32::new(144).ok_or("zero DPI")?)?,
+        PhysicalThickness::new(60).ok_or("zero thickness")?
+    );
+    assert_eq!(
+        thickness.to_physical(NonZeroU32::new(192).ok_or("zero DPI")?)?,
+        PhysicalThickness::new(80).ok_or("zero thickness")?
+    );
+    Ok(())
 }
 
 fn register(lifecycle: &mut AppBarLifecycle, shell: ShellGeneration) -> Result<(), Box<dyn Error>> {

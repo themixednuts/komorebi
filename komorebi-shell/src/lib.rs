@@ -3,6 +3,7 @@
 mod action_binding;
 mod action_input;
 mod appbar;
+mod appbar_geometry;
 mod appbar_host;
 mod application_activation;
 mod application_catalog;
@@ -34,12 +35,7 @@ pub use action_binding::ActionBinding;
 pub use action_binding::ActionBindingError;
 pub use action_input::ActionInput;
 pub use action_input::ActionInputScalar;
-pub use appbar::AppBarEdge;
-pub use appbar::AppBarGeometry;
 pub use appbar::AppBarLifecycle;
-pub use appbar::PhysicalRect;
-pub use appbar::PhysicalRectError;
-pub use appbar::PhysicalThickness;
 pub use appbar::PositionCompletion;
 pub use appbar::PositionInvalidation;
 pub use appbar::PositionPass;
@@ -50,6 +46,13 @@ pub use appbar::RegistrationRemoval;
 pub use appbar::RegistrationRemovalAttempt;
 pub use appbar::RegistrationRemovalCompletion;
 pub use appbar::ShellGeneration;
+pub use appbar_geometry::AppBarEdge;
+pub use appbar_geometry::AppBarGeometry;
+pub use appbar_geometry::LogicalAppBarThickness;
+pub use appbar_geometry::LogicalAppBarThicknessError;
+pub use appbar_geometry::PhysicalRect;
+pub use appbar_geometry::PhysicalRectError;
+pub use appbar_geometry::PhysicalThickness;
 pub use appbar_host::AppBarHost;
 pub use appbar_host::AppBarHostError;
 pub use appbar_host::AppBarHostPlatform;
@@ -159,6 +162,8 @@ pub use windows_appbar_binding::WindowsAppBarBinding;
 pub use windows_appbar_binding::WindowsAppBarInstallError;
 #[cfg(windows)]
 pub use windows_appbar_binding::WindowsAppBarRuntimeError;
+#[cfg(windows)]
+pub use windows_appbar_platform::WindowsAppBarPlacement;
 #[cfg(windows)]
 pub use windows_appbar_platform::WindowsAppBarPlatform;
 #[cfg(windows)]

@@ -2,7 +2,6 @@ use std::error::Error;
 
 use thiserror::Error;
 
-use crate::AppBarGeometry;
 use crate::AppBarLifecycle;
 use crate::PositionCompletion;
 use crate::PositionInvalidation;
@@ -19,13 +18,14 @@ pub enum AppBarVisibility {
 
 pub trait AppBarHostPlatform {
     type Error: Error + 'static;
+    type Geometry;
 
     fn shell_generation(&mut self) -> Result<ShellGeneration, Self::Error>;
     fn register(&mut self) -> Result<(), Self::Error>;
     fn schedule_position(&mut self) -> Result<(), Self::Error>;
     fn position(&mut self, visibility: AppBarVisibility) -> Result<(), Self::Error>;
     fn remove(&mut self) -> Result<(), Self::Error>;
-    fn update_geometry(&mut self, geometry: AppBarGeometry);
+    fn update_geometry(&mut self, geometry: Self::Geometry);
 }
 
 #[must_use = "an AppBar host must be shut down to release its native reservation"]
@@ -91,7 +91,7 @@ where
 
     pub fn geometry_changed(
         &mut self,
-        geometry: AppBarGeometry,
+        geometry: P::Geometry,
     ) -> Result<(), AppBarHostError<P::Error>> {
         self.platform.update_geometry(geometry);
         self.request_position()

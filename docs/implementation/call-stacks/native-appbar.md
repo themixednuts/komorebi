@@ -14,7 +14,8 @@ creation time so PID reuse cannot suppress required re-registration.
 `AppBarHost<P>` is the renderer-neutral coordinator. `P` implements the narrow
 `AppBarHostPlatform` effects: identify Explorer, register, enqueue one position
 message, atomically position-and-optionally-reveal, remove, and accept new
-geometry. Renderers receive no lifecycle state and cannot reorder these effects.
+placement intent. Renderers receive no lifecycle state and cannot reorder these
+effects.
 
 `WindowsAppBarApi` is the only `SHAppBarMessage` adapter. GPUI exposes its
 native window through `HasWindowHandle`; the UI thread converts that borrowed
@@ -52,6 +53,10 @@ return path.
 
 The first visible frame follows successful `ABM_QUERYPOS`, `ABM_SETPOS`, and
 window positioning. This prevents a bar flash at an unnegotiated rectangle.
+`WindowsAppBarPlacement` retains only a validated logical thickness and edge.
+Every position pass resolves the HWND's current monitor rectangle and DPI before
+negotiation, so display topology and per-monitor DPI changes cannot reuse stale
+physical geometry.
 
 ## Native invalidation
 
