@@ -120,7 +120,6 @@ pub fn classify(message: &SocketMessage) -> SocketMessageClass {
         | CloseWorkspace
         | FocusWorkspaceNumber(_)
         | FocusWorkspaceNumbers(_)
-        | FocusMonitorWorkspaceNumber(_, _)
         | FocusNamedWorkspace(_)
         | NamedWorkspaceContainerPadding(_, _)
         | FocusedWorkspaceContainerPadding(_)
@@ -281,12 +280,6 @@ pub fn to_builtin_action(message: &SocketMessage) -> Option<BuiltinAction> {
         SocketMessage::FocusWorkspaceNumbers(index) => {
             Some(BuiltinAction::FocusWorkspaceOnAllMonitors {
                 index: WorkspaceIndex::new(*index),
-            })
-        }
-        SocketMessage::FocusMonitorWorkspaceNumber(monitor, workspace) => {
-            Some(BuiltinAction::FocusMonitorWorkspace {
-                monitor: MonitorIndex::new(*monitor),
-                workspace: WorkspaceIndex::new(*workspace),
             })
         }
         SocketMessage::Close => Some(BuiltinAction::CloseWindow {

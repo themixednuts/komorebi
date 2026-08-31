@@ -105,13 +105,6 @@ fn migrated_socket_messages_become_the_same_builtin_action()
             index: WorkspaceIndex::new(3),
         })
     );
-    assert_eq!(
-        to_builtin_action(&SocketMessage::FocusMonitorWorkspaceNumber(1, 4)),
-        Some(BuiltinAction::FocusMonitorWorkspace {
-            monitor: MonitorIndex::new(1),
-            workspace: WorkspaceIndex::new(4),
-        })
-    );
     assert_eq!(classify(&SocketMessage::State), SocketMessageClass::Query);
     assert_eq!(
         classify(&SocketMessage::AddSubscriberSocket(

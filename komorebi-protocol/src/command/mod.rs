@@ -61,6 +61,7 @@ pub use builtin_argument::BuiltInArgumentsError;
 pub use builtin_argument::BuiltInAxis;
 pub use builtin_argument::BuiltInBorderImplementation;
 pub use builtin_argument::BuiltInBorderStyle;
+pub use builtin_argument::BuiltInCursorWarpPolicy;
 pub use builtin_argument::BuiltInCycle;
 pub use builtin_argument::BuiltInDirection;
 pub use builtin_argument::BuiltInHidingBehaviour;

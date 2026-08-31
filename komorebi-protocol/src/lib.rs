@@ -57,6 +57,7 @@ pub use command::BuiltInArgumentsError;
 pub use command::BuiltInAxis;
 pub use command::BuiltInBorderImplementation;
 pub use command::BuiltInBorderStyle;
+pub use command::BuiltInCursorWarpPolicy;
 pub use command::BuiltInCycle;
 pub use command::BuiltInDirection;
 pub use command::BuiltInHidingBehaviour;

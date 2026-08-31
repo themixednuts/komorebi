@@ -23,6 +23,7 @@ use action::built_in_sizing;
 use action::built_in_stackbar_mode;
 use action::built_in_text;
 use action::built_in_window_kind;
+use action::focus_monitor_workspace_arguments;
 use action::focused_window_arguments;
 use action::invoke_action;
 use action::scoped_animation_arguments;
@@ -3325,10 +3326,7 @@ if (Get-Command Get-CimInstance -ErrorAction SilentlyContinue) {
         SubCommand::FocusMonitorWorkspace(args) => {
             invoke_action(
                 BuiltInActionId::FocusMonitorWorkspace,
-                built_in_arguments([
-                    BuiltInArgument::Monitor(args.target_monitor.try_into()?),
-                    BuiltInArgument::Index(args.target_workspace.try_into()?),
-                ])?,
+                focus_monitor_workspace_arguments(args.target_monitor, args.target_workspace)?,
             )
             .await?;
         }

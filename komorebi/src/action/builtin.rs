@@ -501,6 +501,22 @@ pub enum WindowSelector {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
+pub enum CursorWarpPolicy {
+    FollowConfiguration,
+    PreservePosition,
+}
+
+impl CursorWarpPolicy {
+    #[must_use]
+    pub const fn should_warp(self, configured: bool) -> bool {
+        match self {
+            Self::FollowConfiguration => configured,
+            Self::PreservePosition => false,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct Pixels(i32);
 
@@ -640,6 +656,7 @@ pub enum BuiltinAction {
     FocusMonitorWorkspace {
         monitor: MonitorIndex,
         workspace: WorkspaceIndex,
+        cursor_warp: CursorWarpPolicy,
     },
     CloseWindow {
         window: WindowSelector,
@@ -1234,5 +1251,13 @@ mod tests {
         assert_eq!(WorkspaceName::parse(""), Err(WorkspaceNameError::Empty));
         assert_eq!(WorkspaceName::parse("   "), Err(WorkspaceNameError::Empty));
         assert_eq!(WorkspaceName::parse("chat").unwrap().as_str(), "chat");
+    }
+
+    #[test]
+    fn cursor_warp_policy_resolves_without_mutating_configuration() {
+        assert!(CursorWarpPolicy::FollowConfiguration.should_warp(true));
+        assert!(!CursorWarpPolicy::FollowConfiguration.should_warp(false));
+        assert!(!CursorWarpPolicy::PreservePosition.should_warp(true));
+        assert!(!CursorWarpPolicy::PreservePosition.should_warp(false));
     }
 }

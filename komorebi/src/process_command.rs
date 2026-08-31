@@ -255,7 +255,6 @@ impl WindowManager {
                 | SocketMessage::CloseWorkspace
                 | SocketMessage::FocusWorkspaceNumber(..)
                 | SocketMessage::FocusWorkspaceNumbers(..)
-                | SocketMessage::FocusMonitorWorkspaceNumber(..)
                 | SocketMessage::FocusNamedWorkspace(..)
                 | SocketMessage::NamedWorkspaceContainerPadding(..)
                 | SocketMessage::FocusedWorkspaceContainerPadding(..)
@@ -1172,7 +1171,7 @@ mod tests {
     }
 
     #[test]
-    fn live_focus_monitor_workspace_number_selects_pair() {
+    fn live_focus_monitor_workspace_selects_pair() {
         let mut wm = window_manager();
         let m = monitor::new(
             0,
@@ -1184,12 +1183,17 @@ mod tests {
             Some("TestMonitorID".to_string()),
         );
         wm.monitors_mut().push_back(m);
+        wm.mouse_follows_focus = true;
 
-        let stream = Vec::new();
-        wm.process_command(SocketMessage::FocusMonitorWorkspaceNumber(0, 3), stream)
-            .unwrap();
+        wm.admit_socket_action(crate::action::BuiltinAction::FocusMonitorWorkspace {
+            monitor: crate::action::MonitorIndex::new(0),
+            workspace: crate::action::WorkspaceIndex::new(3),
+            cursor_warp: crate::action::CursorWarpPolicy::PreservePosition,
+        })
+        .unwrap();
         assert_eq!(wm.focused_monitor_idx(), 0);
         assert_eq!(wm.focused_workspace_idx().unwrap(), 3);
+        assert!(wm.mouse_follows_focus);
     }
 
     #[test]
@@ -1484,7 +1488,6 @@ mod tests {
         ));
         assert_paused_rejects(SocketMessage::FocusMonitorAtCursor);
         assert_paused_rejects(SocketMessage::FocusWorkspaceNumbers(2));
-        assert_paused_rejects(SocketMessage::FocusMonitorWorkspaceNumber(0, 1));
     }
 
     #[test]

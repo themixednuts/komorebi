@@ -527,6 +527,7 @@ pub enum NativeEffect {
     FocusMonitorWorkspace {
         monitor: MonitorIndex,
         workspace: WorkspaceIndex,
+        cursor_warp: crate::action::CursorWarpPolicy,
     },
     CloseWindow,
     MinimizeWindow,

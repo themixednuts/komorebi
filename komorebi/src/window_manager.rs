@@ -62,6 +62,7 @@ use crate::SUBSCRIBERS;
 use crate::WORKSPACE_MATCHING_RULES;
 use crate::action::ActionSnapshot;
 use crate::action::CatalogState;
+use crate::action::CursorWarpPolicy;
 use crate::border_manager;
 use crate::border_manager::BORDER_OFFSET;
 use crate::border_manager::BORDER_WIDTH;
@@ -1582,6 +1583,7 @@ impl WindowManager {
         &mut self,
         monitor_idx: usize,
         workspace_idx: usize,
+        cursor_warp: CursorWarpPolicy,
     ) -> eyre::Result<()> {
         let focused_pair = (
             self.focused_monitor_idx(),
@@ -1590,7 +1592,7 @@ impl WindowManager {
 
         if focused_pair != (monitor_idx, workspace_idx) {
             self.focus_monitor(monitor_idx)?;
-            self.focus_workspace(workspace_idx)?;
+            self.focus_workspace_with_cursor_warp(workspace_idx, cursor_warp)?;
         }
         Ok(())
     }
@@ -4663,9 +4665,17 @@ impl WindowManager {
 
     #[tracing::instrument(skip(self))]
     pub fn focus_workspace(&mut self, idx: usize) -> eyre::Result<()> {
+        self.focus_workspace_with_cursor_warp(idx, CursorWarpPolicy::FollowConfiguration)
+    }
+
+    fn focus_workspace_with_cursor_warp(
+        &mut self,
+        idx: usize,
+        cursor_warp: CursorWarpPolicy,
+    ) -> eyre::Result<()> {
         tracing::info!("focusing workspace");
 
-        let mouse_follows_focus = self.mouse_follows_focus;
+        let mouse_follows_focus = cursor_warp.should_warp(self.mouse_follows_focus);
         let monitor = self
             .focused_monitor_mut()
             .ok_or_eyre("there is no workspace")?;

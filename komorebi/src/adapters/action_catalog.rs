@@ -306,6 +306,9 @@ const fn project_parameter_domain(value: definition::ParameterDomain) -> protoco
         definition::ParameterDomain::AnimationFps => protocol::ParameterDomain::AnimationFps,
         definition::ParameterDomain::AnimationStyle => protocol::ParameterDomain::AnimationStyle,
         definition::ParameterDomain::WorkAreaOffset => protocol::ParameterDomain::WorkAreaOffset,
+        definition::ParameterDomain::CursorWarpPolicy => {
+            protocol::ParameterDomain::CursorWarpPolicy
+        }
     }
 }
 

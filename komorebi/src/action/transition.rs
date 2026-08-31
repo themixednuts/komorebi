@@ -32,7 +32,11 @@ pub(super) fn resolve_contextual_inputs(
             let (monitor, workspace) = snapshot
                 .workspace_by_name(name)
                 .ok_or(Unavailability::UnknownWorkspace)?;
-            Ok(BuiltinAction::FocusMonitorWorkspace { monitor, workspace })
+            Ok(BuiltinAction::FocusMonitorWorkspace {
+                monitor,
+                workspace,
+                cursor_warp: crate::action::CursorWarpPolicy::FollowConfiguration,
+            })
         }
         BuiltinAction::MoveContainerToNamedWorkspace { name } => {
             let (monitor, workspace) = snapshot
@@ -579,9 +583,9 @@ pub(super) fn logical_result(action: &BuiltinAction, snapshot: &ActionSnapshot) 
         BuiltinAction::FocusWorkspaceOnAllMonitors { index } => {
             ActionResult::WorkspaceFocusedOnAllMonitors { index }
         }
-        BuiltinAction::FocusMonitorWorkspace { monitor, workspace } => {
-            ActionResult::MonitorWorkspaceFocused { monitor, workspace }
-        }
+        BuiltinAction::FocusMonitorWorkspace {
+            monitor, workspace, ..
+        } => ActionResult::MonitorWorkspaceFocused { monitor, workspace },
         BuiltinAction::CloseWindow { .. } => ActionResult::WindowClosed,
         BuiltinAction::MinimizeWindow { .. } => ActionResult::WindowMinimized,
         BuiltinAction::ForceFocus { .. } => ActionResult::FocusForced,
@@ -936,9 +940,15 @@ pub(super) fn effects(action: &BuiltinAction, snapshot: &ActionSnapshot) -> Vec<
         BuiltinAction::FocusWorkspaceOnAllMonitors { index } => {
             vec![NativeEffect::FocusWorkspaceOnAllMonitors { index }]
         }
-        BuiltinAction::FocusMonitorWorkspace { monitor, workspace } => {
-            vec![NativeEffect::FocusMonitorWorkspace { monitor, workspace }]
-        }
+        BuiltinAction::FocusMonitorWorkspace {
+            monitor,
+            workspace,
+            cursor_warp,
+        } => vec![NativeEffect::FocusMonitorWorkspace {
+            monitor,
+            workspace,
+            cursor_warp,
+        }],
         BuiltinAction::CloseWindow { .. } => vec![NativeEffect::CloseWindow],
         BuiltinAction::MinimizeWindow { .. } => vec![NativeEffect::MinimizeWindow],
         BuiltinAction::ForceFocus { .. } => vec![NativeEffect::ForceFocus],

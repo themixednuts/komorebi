@@ -228,8 +228,9 @@ impl ParameterId {
     pub const TOP: Self = Self("top");
     pub const RIGHT: Self = Self("right");
     pub const BOTTOM: Self = Self("bottom");
+    pub const CURSOR_WARP: Self = Self("cursor-warp");
 
-    pub const ALL: [Self; 48] = [
+    pub const ALL: [Self; 49] = [
         Self::DIRECTION,
         Self::AXIS,
         Self::DELTA,
@@ -278,6 +279,7 @@ impl ParameterId {
         Self::TOP,
         Self::RIGHT,
         Self::BOTTOM,
+        Self::CURSOR_WARP,
     ];
 
     #[must_use]

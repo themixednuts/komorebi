@@ -148,7 +148,7 @@ pub const FOCUS_MONITOR_WORKSPACE: ActionDefinition = ActionDefinition {
     title: "Focus monitor workspace",
     description: "Focus a workspace on a specific monitor",
     keywords: &["monitor", "workspace", "focus"],
-    parameters: MONITOR_WORKSPACE,
+    parameters: MONITOR_WORKSPACE_CURSOR_WARP,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
     undo: UndoPolicy::None,

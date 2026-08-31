@@ -90,6 +90,7 @@ known_ids! {
     Top => "top",
     Right => "right",
     Bottom => "bottom",
+    CursorWarp => "cursor-warp",
 }
 
 known_ids! {
@@ -188,6 +189,12 @@ known_ids! {
     BuiltInImplementation, ChoiceId,
     Komorebi => "komorebi",
     Windows => "windows",
+}
+
+known_ids! {
+    BuiltInCursorWarpPolicy, ChoiceId,
+    FollowConfiguration => "follow-configuration",
+    PreservePosition => "preserve-position",
 }
 
 known_ids! {
@@ -388,6 +395,7 @@ pub enum BuiltInArgument {
     Top(i32),
     Right(i32),
     Bottom(i32),
+    CursorWarp(BuiltInCursorWarpPolicy),
 }
 
 impl BuiltInArgument {
@@ -474,6 +482,7 @@ impl BuiltInArgument {
             Self::Top(value) => signed(BuiltInParameterId::Top, value),
             Self::Right(value) => signed(BuiltInParameterId::Right, value),
             Self::Bottom(value) => signed(BuiltInParameterId::Bottom, value),
+            Self::CursorWarp(value) => choice(BuiltInParameterId::CursorWarp, value.into_wire()),
         })
     }
 }
@@ -615,6 +624,29 @@ mod tests {
             arguments.values().get(&ParameterId::parse("alpha")?),
             Some(ActionArgument::Scalar(ArgumentScalar::Unsigned(200)))
         ));
+        Ok(())
+    }
+
+    #[test]
+    fn cursor_warp_policy_encodes_as_a_closed_choice() -> Result<(), Box<dyn std::error::Error>> {
+        for (policy, expected) in [
+            (
+                BuiltInCursorWarpPolicy::FollowConfiguration,
+                "follow-configuration",
+            ),
+            (
+                BuiltInCursorWarpPolicy::PreservePosition,
+                "preserve-position",
+            ),
+        ] {
+            let arguments = BuiltInArguments::new([BuiltInArgument::CursorWarp(policy)])?
+                .into_action_arguments();
+            assert!(matches!(
+                arguments.values().get(&ParameterId::parse("cursor-warp")?),
+                Some(ActionArgument::Scalar(ArgumentScalar::Choice(value)))
+                    if value.as_str() == expected
+            ));
+        }
         Ok(())
     }
 

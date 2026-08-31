@@ -693,8 +693,12 @@ impl WindowManager {
             NativeEffect::FocusWorkspaceOnAllMonitors { index } => {
                 self.focus_workspace_on_all_monitors(index.get())?;
             }
-            NativeEffect::FocusMonitorWorkspace { monitor, workspace } => {
-                self.focus_monitor_workspace(monitor.get(), workspace.get())?;
+            NativeEffect::FocusMonitorWorkspace {
+                monitor,
+                workspace,
+                cursor_warp,
+            } => {
+                self.focus_monitor_workspace(monitor.get(), workspace.get(), cursor_warp)?;
             }
             NativeEffect::CloseWindow => {
                 self.close_foreground_window()?;

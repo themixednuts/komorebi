@@ -15,6 +15,7 @@ use komorebi_client::command::BuiltInArgument;
 use komorebi_client::command::BuiltInArguments;
 use komorebi_client::command::BuiltInArgumentsError;
 use komorebi_client::command::BuiltInBorderStyle;
+use komorebi_client::command::BuiltInCursorWarpPolicy;
 use komorebi_client::command::BuiltInStackbarLabel;
 use komorebi_client::command::BuiltInStackbarMode;
 use komorebi_client::command::BuiltInWindowKind;
@@ -37,6 +38,7 @@ struct GuiCommand {
 enum GuiCommandKey {
     Singleton(BuiltInActionId),
     MonitorWorkAreaOffset(u64),
+    FocusMonitorWorkspace,
     Workspace(WorkspaceCommandKind, WorkspaceTarget),
 }
 
@@ -267,6 +269,23 @@ impl CommandQueue {
                 BuiltInArgument::Monitor(target.monitor),
                 BuiltInArgument::Index(target.workspace),
                 BuiltInArgument::Layout(built_in_layout(layout)),
+            ],
+        )
+    }
+
+    pub fn focus_monitor_workspace(
+        &self,
+        monitor: usize,
+        workspace: usize,
+    ) -> Result<(), CommandQueueError> {
+        let target = WorkspaceTarget::new(monitor, workspace)?;
+        self.send_with_key(
+            GuiCommandKey::FocusMonitorWorkspace,
+            BuiltInActionId::FocusMonitorWorkspace,
+            [
+                BuiltInArgument::Monitor(target.monitor),
+                BuiltInArgument::Index(target.workspace),
+                BuiltInArgument::CursorWarp(BuiltInCursorWarpPolicy::PreservePosition),
             ],
         )
     }
@@ -567,6 +586,39 @@ mod tests {
                         workspace: 0,
                     },
                 ),
+            ]
+        );
+    }
+
+    #[test]
+    fn mailbox_keeps_only_the_latest_focus_destination() {
+        let mut pending = VecDeque::new();
+        enqueue(&mut pending, command(BuiltInActionId::SetBorderWidth));
+        enqueue(
+            &mut pending,
+            GuiCommand {
+                key: GuiCommandKey::FocusMonitorWorkspace,
+                action: BuiltInActionId::FocusMonitorWorkspace,
+                arguments: BuiltInArguments::default(),
+            },
+        );
+        enqueue(
+            &mut pending,
+            GuiCommand {
+                key: GuiCommandKey::FocusMonitorWorkspace,
+                action: BuiltInActionId::FocusMonitorWorkspace,
+                arguments: BuiltInArguments::default(),
+            },
+        );
+
+        assert_eq!(
+            pending
+                .iter()
+                .map(|command| command.key)
+                .collect::<Vec<_>>(),
+            [
+                GuiCommandKey::Singleton(BuiltInActionId::SetBorderWidth),
+                GuiCommandKey::FocusMonitorWorkspace,
             ]
         );
     }

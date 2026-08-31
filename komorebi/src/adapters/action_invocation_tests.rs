@@ -176,6 +176,9 @@ fn scalar(
         D::AnimationFps => protocol::ArgumentScalar::Unsigned(60),
         D::AnimationStyle => protocol::ArgumentScalar::Choice(protocol::ChoiceId::parse("linear")?),
         D::WorkAreaOffset => protocol::ArgumentScalar::Signed(0),
+        D::CursorWarpPolicy => {
+            protocol::ArgumentScalar::Choice(protocol::ChoiceId::parse("follow-configuration")?)
+        }
     })
 }
 

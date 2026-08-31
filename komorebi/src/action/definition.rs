@@ -73,6 +73,7 @@ pub enum ParameterDomain {
     AnimationFps,
     AnimationStyle,
     WorkAreaOffset,
+    CursorWarpPolicy,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -186,6 +187,24 @@ const MONITOR_WORKSPACE: &[ParameterDefinition] = &[
     ParameterDefinition {
         id: ParameterId::INDEX,
         domain: ParameterDomain::Index,
+        cardinality: ArgumentCardinality::RequiredScalar,
+    },
+];
+
+const MONITOR_WORKSPACE_CURSOR_WARP: &[ParameterDefinition] = &[
+    ParameterDefinition {
+        id: ParameterId::MONITOR,
+        domain: ParameterDomain::Index,
+        cardinality: ArgumentCardinality::RequiredScalar,
+    },
+    ParameterDefinition {
+        id: ParameterId::INDEX,
+        domain: ParameterDomain::Index,
+        cardinality: ArgumentCardinality::RequiredScalar,
+    },
+    ParameterDefinition {
+        id: ParameterId::CURSOR_WARP,
+        domain: ParameterDomain::CursorWarpPolicy,
         cardinality: ArgumentCardinality::RequiredScalar,
     },
 ];

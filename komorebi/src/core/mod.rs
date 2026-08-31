@@ -185,7 +185,6 @@ pub enum SocketMessage {
     CloseWorkspace,
     FocusWorkspaceNumber(usize),
     FocusWorkspaceNumbers(usize),
-    FocusMonitorWorkspaceNumber(usize, usize),
     FocusNamedWorkspace(String),
     NamedWorkspaceContainerPadding(String, i32),
     FocusedWorkspaceContainerPadding(i32),

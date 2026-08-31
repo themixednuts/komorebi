@@ -13,6 +13,7 @@ pub mod undo;
 
 pub use builtin::BuiltinAction;
 pub use builtin::BuiltinActionKind;
+pub use builtin::CursorWarpPolicy;
 pub use builtin::Pixels;
 pub use builtin::WindowSelector;
 pub use builtin::WorkspaceName;

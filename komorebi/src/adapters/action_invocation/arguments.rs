@@ -3,6 +3,7 @@ use std::num::NonZeroUsize;
 use komorebi_protocol as protocol;
 use thiserror::Error;
 
+use crate::action::CursorWarpPolicy;
 use crate::action::Pixels;
 use crate::action::WindowSelector;
 use crate::action::WindowsPath;
@@ -186,6 +187,17 @@ impl<'a> ValidatedArguments<'a> {
         match self.choice(id)? {
             "previous" => Ok(CycleDirection::Previous),
             "next" => Ok(CycleDirection::Next),
+            value => Err(unknown_choice(id, value)),
+        }
+    }
+
+    pub(super) fn cursor_warp_policy(
+        &self,
+        id: ParameterId,
+    ) -> Result<CursorWarpPolicy, ArgumentBindingError> {
+        match self.choice(id)? {
+            "follow-configuration" => Ok(CursorWarpPolicy::FollowConfiguration),
+            "preserve-position" => Ok(CursorWarpPolicy::PreservePosition),
             value => Err(unknown_choice(id, value)),
         }
     }

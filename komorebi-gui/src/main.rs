@@ -646,25 +646,12 @@ impl eframe::App for KomorebiGui {
                                         format!("Workspace {workspace_idx} ({})", workspace.name),
                                         |ui| {
                                             if ui.button("Focus").clicked() {
-                                                komorebi_client::send_message(
-                                                    &SocketMessage::MouseFollowsFocus(false),
-                                                )
-                                                .unwrap();
-
-                                                komorebi_client::send_message(
-                                                    &SocketMessage::FocusMonitorWorkspaceNumber(
+                                                report_command(
+                                                    self.commands.focus_monitor_workspace(
                                                         monitor_idx,
                                                         workspace_idx,
                                                     ),
-                                                )
-                                                .unwrap();
-
-                                                komorebi_client::send_message(
-                                                    &SocketMessage::MouseFollowsFocus(
-                                                        self.mouse_follows_focus,
-                                                    ),
-                                                )
-                                                .unwrap();
+                                                );
                                             }
 
                                             if ui

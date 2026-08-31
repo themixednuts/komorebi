@@ -317,6 +317,7 @@ fn bind_builtin(
         K::FocusMonitorWorkspace => A::FocusMonitorWorkspace {
             monitor: MonitorIndex::new(args.usize(ParameterId::MONITOR)?),
             workspace: WorkspaceIndex::new(args.usize(ParameterId::INDEX)?),
+            cursor_warp: args.cursor_warp_policy(ParameterId::CURSOR_WARP)?,
         },
         K::CloseWindow => A::CloseWindow {
             window: args.window_selector(ParameterId::WINDOW)?,

@@ -30,6 +30,7 @@ use komorebi_client::command::BuiltInArguments;
 use komorebi_client::command::BuiltInAxis;
 use komorebi_client::command::BuiltInBorderImplementation;
 use komorebi_client::command::BuiltInBorderStyle;
+use komorebi_client::command::BuiltInCursorWarpPolicy;
 use komorebi_client::command::BuiltInCycle;
 use komorebi_client::command::BuiltInDirection;
 use komorebi_client::command::BuiltInHidingBehaviour;
@@ -70,6 +71,17 @@ pub(super) fn built_in_arguments<const N: usize>(
     arguments: [BuiltInArgument; N],
 ) -> eyre::Result<BuiltInArguments> {
     Ok(BuiltInArguments::new(arguments)?)
+}
+
+pub(super) fn focus_monitor_workspace_arguments(
+    monitor: usize,
+    workspace: usize,
+) -> eyre::Result<BuiltInArguments> {
+    built_in_arguments([
+        BuiltInArgument::Monitor(monitor.try_into()?),
+        BuiltInArgument::Index(workspace.try_into()?),
+        BuiltInArgument::CursorWarp(BuiltInCursorWarpPolicy::FollowConfiguration),
+    ])
 }
 
 pub(super) fn work_area_arguments<const N: usize>(
@@ -288,5 +300,24 @@ pub(super) const fn built_in_identifier(value: ApplicationIdentifier) -> BuiltIn
         ApplicationIdentifier::Class => BuiltInIdentifier::Class,
         ApplicationIdentifier::Title => BuiltInIdentifier::Title,
         ApplicationIdentifier::Path => BuiltInIdentifier::Path,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn focus_monitor_workspace_uses_configured_cursor_policy()
+    -> Result<(), Box<dyn std::error::Error>> {
+        assert_eq!(
+            focus_monitor_workspace_arguments(2, 3)?,
+            built_in_arguments([
+                BuiltInArgument::Monitor(2),
+                BuiltInArgument::Index(3),
+                BuiltInArgument::CursorWarp(BuiltInCursorWarpPolicy::FollowConfiguration),
+            ])?
+        );
+        Ok(())
     }
 }

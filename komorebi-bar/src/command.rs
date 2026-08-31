@@ -8,6 +8,7 @@ use komorebi_client::command::BuiltInActionId;
 use komorebi_client::command::BuiltInArgument;
 use komorebi_client::command::BuiltInArguments;
 use komorebi_client::command::BuiltInArgumentsError;
+use komorebi_client::command::BuiltInCursorWarpPolicy;
 use komorebi_client::command::CommandClient;
 use komorebi_client::command::InvocationSubmissionReply;
 use komorebi_client::command::RoleHint;
@@ -26,6 +27,7 @@ struct BarCommand {
 enum BarCommandKey {
     MonitorWorkAreaOffset(u64),
     WorkspaceLayout(WorkspaceTarget),
+    FocusMonitorWorkspace,
 }
 
 impl BarCommandKey {
@@ -33,6 +35,7 @@ impl BarCommandKey {
         match self {
             Self::MonitorWorkAreaOffset(_) => BuiltInActionId::SetMonitorWorkAreaOffset,
             Self::WorkspaceLayout(_) => BuiltInActionId::SetMonitorWorkspaceLayout,
+            Self::FocusMonitorWorkspace => BuiltInActionId::FocusMonitorWorkspace,
         }
     }
 }
@@ -90,6 +93,22 @@ impl CommandQueue {
                 BuiltInArgument::Monitor(target.monitor),
                 BuiltInArgument::Index(target.workspace),
                 BuiltInArgument::Layout(built_in_layout(layout)),
+            ],
+        )
+    }
+
+    pub fn focus_monitor_workspace(
+        &self,
+        monitor: usize,
+        workspace: usize,
+    ) -> Result<(), CommandQueueError> {
+        let target = WorkspaceTarget::new(monitor, workspace)?;
+        self.send(
+            BarCommandKey::FocusMonitorWorkspace,
+            [
+                BuiltInArgument::Monitor(target.monitor),
+                BuiltInArgument::Index(target.workspace),
+                BuiltInArgument::CursorWarp(BuiltInCursorWarpPolicy::PreservePosition),
             ],
         )
     }
@@ -272,6 +291,28 @@ mod tests {
             [
                 BarCommandKey::WorkspaceLayout(second),
                 BarCommandKey::WorkspaceLayout(first),
+            ]
+        );
+    }
+
+    #[test]
+    fn mailbox_keeps_only_the_latest_focus_destination() {
+        let mut pending = VecDeque::new();
+        enqueue(
+            &mut pending,
+            command(BarCommandKey::MonitorWorkAreaOffset(0)),
+        );
+        enqueue(&mut pending, command(BarCommandKey::FocusMonitorWorkspace));
+        enqueue(&mut pending, command(BarCommandKey::FocusMonitorWorkspace));
+
+        assert_eq!(
+            pending
+                .iter()
+                .map(|command| command.key)
+                .collect::<Vec<_>>(),
+            [
+                BarCommandKey::MonitorWorkAreaOffset(0),
+                BarCommandKey::FocusMonitorWorkspace,
             ]
         );
     }

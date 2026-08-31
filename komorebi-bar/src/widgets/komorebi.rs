@@ -216,9 +216,14 @@ impl Komorebi {
                     .show(ui, |ui| (bar.renderer)(bar, ctx, ui, workspace));
 
                 if response.clicked() {
-                    let message = FocusMonitorWorkspaceNumber(monitor_info.monitor_index, index);
-                    if Self::send_with_mouse_follow_off(monitor_info, message).is_ok() {
-                        monitor_info.focused_workspace_idx = Some(index);
+                    match self
+                        .commands
+                        .focus_monitor_workspace(monitor_info.monitor_index, index)
+                    {
+                        Ok(()) => monitor_info.focused_workspace_idx = Some(index),
+                        Err(error) => {
+                            tracing::error!(%error, "could not focus monitor workspace");
+                        }
                     }
                 }
             }

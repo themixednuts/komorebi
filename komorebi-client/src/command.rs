@@ -16,6 +16,7 @@ pub use komorebi_protocol::BuiltInArgumentsError;
 pub use komorebi_protocol::BuiltInAxis;
 pub use komorebi_protocol::BuiltInBorderImplementation;
 pub use komorebi_protocol::BuiltInBorderStyle;
+pub use komorebi_protocol::BuiltInCursorWarpPolicy;
 pub use komorebi_protocol::BuiltInCycle;
 pub use komorebi_protocol::BuiltInDirection;
 pub use komorebi_protocol::BuiltInHidingBehaviour;
