@@ -11,6 +11,15 @@ use fff_search::PaginationArgs;
 use fff_search::QueryParser;
 use thiserror::Error;
 
+mod service;
+
+pub use service::FileSearchClient;
+pub use service::FileSearchQueueCapacity;
+pub use service::FileSearchRequestError;
+pub use service::FileSearchService;
+pub use service::FileSearchShutdownError;
+pub use service::FileSearchStartError;
+
 /// A validated upper bound for one page of file-search results.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct FileSearchLimit(NonZeroUsize);

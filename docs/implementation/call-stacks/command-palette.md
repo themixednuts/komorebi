@@ -141,7 +141,7 @@ query parse
   -> !query -> WebQuery (never interpreted as a shell command)
 
 file selection: OpaquePathId
-  -> lossless path registry lookup -> PathBuf / WindowsPathInput
+  -> originating index identity check -> PathBuf / WindowsPathInput
     -> ShellExecuteExW adapter
 
 web selection: WebQuery
@@ -155,11 +155,10 @@ but never cancel a filesystem operation at a point that corrupts an index.
 
 ## File-index stack
 
-The first file slice is deliberately synchronous and immutable. It establishes
-the lossless identity boundary before adding a long-lived task owner. It does
-not enable FFF's watcher. The async provider slice will own index construction
-and replacement on one dedicated blocking worker because `FilePicker` is not
-`Sync`; renderer tasks will own only request/result interest.
+The file core is synchronous and immutable; `FileSearchService` owns it on one
+long-lived Tokio blocking worker because `FilePicker` is not `Sync`. The
+service does not enable FFF's watcher. Renderer tasks own only request/result
+interest.
 
 ```text
 FileIndex::build(PathBuf) [blocking worker boundary]
@@ -194,6 +193,42 @@ file activation
 index does not duplicate every path into a second registry. Rebuilding creates
 a new identity, so results from the retired index cannot activate against its
 replacement.
+
+The async ownership stack is:
+
+```text
+FileSearchService::start(PathBuf, FileSearchQueueCapacity)
+  -> tokio::task::spawn_blocking
+    -> FileIndex::build
+    -> readiness oneshot
+  <- FileSearchService { client, owned JoinHandle }
+
+FileSearchClient::search(query, limit)
+  -> acquire owned bounded-admission permit [cancellation-safe]
+  -> bounded Tokio mpsc Command::Search
+    -> blocking worker owns FileIndex::search
+      -> result oneshot
+  <- Vec<FileSearchMatch>
+
+FileSearchClient::resolve(OpaquePathId)
+  -> same bounded admission
+  -> blocking worker owns FileIndex::resolve
+  <- Option<PathBuf>
+
+FileSearchService::shutdown / Drop
+  -> close admission semaphore
+  -> reserved shutdown queue slot [no polling]
+  -> worker drops receiver and index
+  -> explicit shutdown awaits owned JoinHandle
+```
+
+The semaphore bounds queued plus executing requests; the Tokio channel has one
+additional slot reserved for shutdown. Cancelling a caller either prevents
+admission or drops its oneshot receiver. Once admitted, the worker completes
+the read-only operation, releases the permit, and accepts later requests. The
+service owner can therefore signal shutdown from `Drop` without a timer,
+best-effort retry loop, or full-queue deadlock. Executables own the Tokio
+runtime; this library neither creates one nor calls `block_on`.
 
 ## Proof obligations
 

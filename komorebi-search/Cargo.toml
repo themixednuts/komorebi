@@ -7,9 +7,11 @@ publish = false
 [dependencies]
 fff-search = { path = "../third-party/fff-search", default-features = false, features = ["ripgrep"] }
 thiserror = "2"
+tokio = { version = "=1.53.1", features = ["rt", "sync"] }
 
 [dev-dependencies]
 tempfile = "3"
+tokio = { version = "=1.53.1", features = ["macros", "rt-multi-thread"] }
 
 [lints.rust]
 unsafe_op_in_unsafe_fn = "deny"
