@@ -46,12 +46,13 @@ it inside a running extension. If the `JitEnabled` profile fails any containment
 proof, production uses `JitDisabled` until the design changes and the complete
 gate is rerun.
 
-The Windows worker build must also use one C runtime model end to end. The
-vendored `luajit-src` MSVC static build currently emits a `LIBCMT` conflict when
-linked into Rust's default dynamic-CRT executable. Production may either patch
-the pinned LuaJIT build to use `/MD` or build the isolated worker consistently
-with static CRT. Suppressing `LNK4098` with `/NODEFAULTLIB` is not an accepted
-fix because it can hide allocator/runtime ownership mismatches.
+The Windows worker build uses one C runtime model end to end. The pinned
+[`luajit-src` fix](https://github.com/themixednuts/luajit-src-rs/commit/cdcd7669aa294b43836cba5bfb2f3eb64b03ee25)
+reads Cargo's target features: it builds LuaJIT with `/MD` for Rust's normal
+dynamic-CRT target and retains `/MT` only when `crt-static` is selected. A clean
+worker rebuild links without `LNK4098`. Suppressing the warning with
+`/NODEFAULTLIB` remains forbidden because it can hide allocator/runtime
+ownership mismatches.
 
 ## Type-generation contract
 

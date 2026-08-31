@@ -96,3 +96,6 @@ strip = true
 
 [workspace.metadata.crane]
 name = "komorebi-workspace"
+
+[patch.crates-io]
+luajit-src = { git = "https://github.com/themixednuts/luajit-src-rs", rev = "cdcd7669aa294b43836cba5bfb2f3eb64b03ee25" }
