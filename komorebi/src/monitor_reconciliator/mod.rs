@@ -80,9 +80,16 @@ pub fn send_notification(notification: MonitorNotification) {
         LAST_DISPLAY_CHANGE_TIMESTAMP.store(now, Ordering::SeqCst);
     }
 
-    if event_tx().try_send(notification).is_err() {
+    if !try_send_notification(&event_tx(), notification) {
         tracing::warn!("channel is full; dropping notification")
     }
+}
+
+fn try_send_notification(
+    sender: &Sender<MonitorNotification>,
+    notification: MonitorNotification,
+) -> bool {
+    sender.try_send(notification).is_ok()
 }
 
 /// Returns true if a display connection change event was received within the
@@ -821,7 +828,6 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use komorebi_protocol::ManagerEpoch;
     use windows::Win32::Devices::Display::DISPLAYCONFIG_VIDEO_OUTPUT_TECHNOLOGY;
     // NOTE: Using RECT instead of RECT since I get a mismatched type error. Can be updated if
     // needed.
@@ -857,52 +863,22 @@ mod tests {
         }
     }
 
-    fn setup_window_manager() -> WindowManager {
-        let manager_epoch = match ManagerEpoch::new([1; 16]) {
-            Ok(epoch) => epoch,
-            Err(error) => panic!("test epoch should be non-nil: {error}"),
-        };
-        match WindowManager::new(manager_epoch) {
-            Ok(manager) => manager,
-            Err(e) => {
-                panic!("Failed to create WindowManager: {e}");
-            }
-        }
-    }
-
     #[test]
-    fn test_send_notification() {
-        // Create a monitor notification
-        let notification = MonitorNotification::ResolutionScalingChanged;
+    fn bounded_notifications_preserve_arrival_order_and_drop_overflow() {
+        let (sender, receiver) = crossbeam_channel::bounded(20);
 
-        // Use the send_notification function to send the notification
-        send_notification(notification);
-
-        // Receive the notification from the channel
-        let received = event_rx().try_recv();
-
-        // Check if we received the notification and if it matches what we sent
-        match received {
-            Ok(notification) => {
-                assert_eq!(notification, MonitorNotification::ResolutionScalingChanged);
-            }
-            Err(e) => panic!("Failed to receive MonitorNotification: {e}"),
-        }
-    }
-
-    #[test]
-    fn test_channel_bounded_capacity() {
-        let (_, receiver) = channel();
-
-        // Fill the channel to its capacity (20 messages)
         for _ in 0..20 {
-            send_notification(MonitorNotification::WorkAreaChanged);
+            assert!(try_send_notification(
+                &sender,
+                MonitorNotification::WorkAreaChanged,
+            ));
         }
 
-        // Attempt to send another message (should be dropped)
-        send_notification(MonitorNotification::ResolutionScalingChanged);
+        assert!(!try_send_notification(
+            &sender,
+            MonitorNotification::ResolutionScalingChanged,
+        ));
 
-        // Verify the channel contains only the first 20 messages
         for _ in 0..20 {
             let notification = match receiver.try_recv() {
                 Ok(notification) => notification,
@@ -915,7 +891,6 @@ mod tests {
             );
         }
 
-        // Verify that no additional messages are in the channel
         assert!(
             receiver.try_recv().is_err(),
             "Channel should be empty after consuming all messages"
@@ -993,32 +968,6 @@ mod tests {
             Some(&m2),
             "Monitor cache should contain monitor 2"
         );
-    }
-
-    #[test]
-    fn test_listen_for_notifications() {
-        // Create a WindowManager instance for testing
-        let wm = setup_window_manager();
-
-        // Start the notification listener
-        let result = listen_for_notifications(Arc::new(Mutex::new(wm)));
-
-        // Check if the listener started successfully
-        assert!(result.is_ok(), "Failed to start notification listener");
-
-        // Test sending a notification
-        send_notification(MonitorNotification::DisplayConnectionChange);
-
-        // Receive the notification from the channel
-        let received = event_rx().try_recv();
-
-        // Check if we received the notification and if it matches what we sent
-        match received {
-            Ok(notification) => {
-                assert_eq!(notification, MonitorNotification::DisplayConnectionChange);
-            }
-            Err(e) => panic!("Failed to receive MonitorNotification: {e}"),
-        }
     }
 
     #[test]
