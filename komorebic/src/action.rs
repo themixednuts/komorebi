@@ -21,46 +21,48 @@ use komorebi_client::OperationDirection;
 use komorebi_client::Sizing;
 use komorebi_client::StackbarMode;
 use komorebi_client::WindowKind;
-use komorebi_client::command::BoundedText;
-use komorebi_client::command::BuiltInActionId;
-use komorebi_client::command::BuiltInAnimationPrefix;
-use komorebi_client::command::BuiltInAnimationStyle;
-use komorebi_client::command::BuiltInArgument;
-use komorebi_client::command::BuiltInArguments;
-use komorebi_client::command::BuiltInAxis;
-use komorebi_client::command::BuiltInBorderImplementation;
-use komorebi_client::command::BuiltInBorderStyle;
-use komorebi_client::command::BuiltInCursorWarpPolicy;
-use komorebi_client::command::BuiltInCycle;
-use komorebi_client::command::BuiltInDirection;
-use komorebi_client::command::BuiltInHidingBehaviour;
-use komorebi_client::command::BuiltInIdentifier;
-use komorebi_client::command::BuiltInImplementation;
-use komorebi_client::command::BuiltInMonocleBehaviour;
-use komorebi_client::command::BuiltInMoveBehaviour;
-use komorebi_client::command::BuiltInNamedAnimationStyle;
-use komorebi_client::command::BuiltInOperationBehaviour;
-use komorebi_client::command::BuiltInSelector;
-use komorebi_client::command::BuiltInSizing;
-use komorebi_client::command::BuiltInStackbarMode;
-use komorebi_client::command::BuiltInWindowKind;
-use komorebi_client::command::BuiltInWorkspaceTarget;
-use komorebi_client::command::CommandClient;
-use komorebi_client::command::InvocationSubmissionReply;
-use komorebi_client::command::RoleHint;
-use komorebi_client::command::SessionLifetime;
-use komorebi_client::command::WindowsPathInput;
+use komorebi_protocol::BoundedText;
+use komorebi_protocol::BuiltInActionId;
+use komorebi_protocol::BuiltInAnimationPrefix;
+use komorebi_protocol::BuiltInAnimationStyle;
+use komorebi_protocol::BuiltInArgument;
+use komorebi_protocol::BuiltInArguments;
+use komorebi_protocol::BuiltInAxis;
+use komorebi_protocol::BuiltInBorderImplementation;
+use komorebi_protocol::BuiltInBorderStyle;
+use komorebi_protocol::BuiltInCursorWarpPolicy;
+use komorebi_protocol::BuiltInCycle;
+use komorebi_protocol::BuiltInDirection;
+use komorebi_protocol::BuiltInHidingBehaviour;
+use komorebi_protocol::BuiltInIdentifier;
+use komorebi_protocol::BuiltInImplementation;
+use komorebi_protocol::BuiltInMonocleBehaviour;
+use komorebi_protocol::BuiltInMoveBehaviour;
+use komorebi_protocol::BuiltInNamedAnimationStyle;
+use komorebi_protocol::BuiltInOperationBehaviour;
+use komorebi_protocol::BuiltInSelector;
+use komorebi_protocol::BuiltInSizing;
+use komorebi_protocol::BuiltInStackbarMode;
+use komorebi_protocol::BuiltInWindowKind;
+use komorebi_protocol::BuiltInWorkspaceTarget;
+use komorebi_protocol::InvocationSubmissionReply;
+use komorebi_protocol::RoleHint;
+use komorebi_protocol::WindowsPathInput;
+use komorebi_shell::SessionLifetime;
+use komorebi_shell::ShellSession;
 
 pub(super) async fn invoke_action(
     action: BuiltInActionId,
     arguments: BuiltInArguments,
 ) -> eyre::Result<()> {
-    let mut client =
-        CommandClient::connect(RoleHint::OwnerControl, SessionLifetime::OneShot).await?;
-    match client
-        .invoke_builtin(action, arguments.into_action_arguments())
-        .await?
-    {
+    let session = ShellSession::start(RoleHint::OwnerControl, SessionLifetime::OneShot)?;
+    let outcome = session
+        .dispatcher()
+        .invoke_builtin(action, arguments.into_action_arguments())?
+        .outcome()
+        .await;
+    session.shutdown().await?;
+    match outcome? {
         InvocationSubmissionReply::Accepted(_) | InvocationSubmissionReply::Retained(_) => Ok(()),
         InvocationSubmissionReply::Rejected(reason) => {
             Err(eyre::eyre!("command was rejected: {reason:?}"))

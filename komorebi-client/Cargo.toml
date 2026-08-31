@@ -7,8 +7,6 @@ edition = "2024"
 
 [dependencies]
 komorebi = { path = "../komorebi", default-features = false }
-komorebi-command-transport = { path = "../komorebi-command-transport" }
-komorebi-protocol = { path = "../komorebi-protocol" }
 
 uds_windows = { workspace = true }
 serde_json = { workspace = true }

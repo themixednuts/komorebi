@@ -4,19 +4,21 @@ use std::sync::Mutex;
 
 use komorebi_client::DefaultLayout;
 use komorebi_client::Rect;
-use komorebi_client::command::BuiltInActionId;
-use komorebi_client::command::BuiltInArgument;
-use komorebi_client::command::BuiltInArguments;
-use komorebi_client::command::BuiltInArgumentsError;
-use komorebi_client::command::BuiltInCursorWarpPolicy;
-use komorebi_client::command::BuiltInWorkspaceTarget;
-use komorebi_client::command::CommandClient;
-use komorebi_client::command::InvocationSubmissionReply;
-use komorebi_client::command::RoleHint;
-use komorebi_client::command::SessionLifetime;
-use komorebi_client::command::built_in_layout;
+use komorebi_protocol::BuiltInActionId;
+use komorebi_protocol::BuiltInArgument;
+use komorebi_protocol::BuiltInArguments;
+use komorebi_protocol::BuiltInArgumentsError;
+use komorebi_protocol::BuiltInCursorWarpPolicy;
+use komorebi_protocol::BuiltInWorkspaceTarget;
+use komorebi_protocol::InvocationSubmissionReply;
+use komorebi_protocol::RoleHint;
 use komorebi_shell::ActionBinding;
-use komorebi_shell::ActionBindingError;
+use komorebi_shell::ActionDispatchError;
+use komorebi_shell::ActionDispatcher;
+use komorebi_shell::ActionInvocationError;
+use komorebi_shell::SessionLifetime;
+use komorebi_shell::ShellSession;
+use komorebi_shell::built_in_layout;
 use tokio::sync::watch;
 use tokio::task::JoinHandle;
 
@@ -302,7 +304,14 @@ fn enqueue(pending: &mut VecDeque<BarCommand>, command: BarCommand) {
 }
 
 async fn run(pending: Arc<Mutex<VecDeque<BarCommand>>>, mut changed: watch::Receiver<u64>) {
-    let mut client = None;
+    let session = match ShellSession::start(RoleHint::OwnerControl, SessionLifetime::Persistent) {
+        Ok(session) => session,
+        Err(error) => {
+            tracing::error!(%error, "could not start bar command session");
+            return;
+        }
+    };
+    let dispatcher = session.dispatcher();
     while changed.changed().await.is_ok() {
         let commands = match pending.lock() {
             Ok(mut pending) => pending.drain(..).collect::<Vec<_>>(),
@@ -312,7 +321,7 @@ async fn run(pending: Arc<Mutex<VecDeque<BarCommand>>>, mut changed: watch::Rece
             }
         };
         for command in commands {
-            match dispatch(&mut client, command).await {
+            match dispatch(&dispatcher, command).await {
                 Ok(
                     InvocationSubmissionReply::Accepted(_) | InvocationSubmissionReply::Retained(_),
                 ) => {}
@@ -320,54 +329,35 @@ async fn run(pending: Arc<Mutex<VecDeque<BarCommand>>>, mut changed: watch::Rece
                     tracing::error!("bar command was rejected: {reason:?}");
                 }
                 Err(error) => {
-                    client = None;
                     tracing::error!("bar command failed: {error}");
                 }
             }
         }
     }
+    if let Err(error) = session.shutdown().await {
+        tracing::error!(%error, "bar command session failed to stop");
+    }
 }
 
 async fn dispatch(
-    current: &mut Option<CommandClient>,
+    dispatcher: &ActionDispatcher,
     command: BarCommand,
 ) -> Result<InvocationSubmissionReply, CommandDispatchError> {
-    if let Some(client) = current.as_mut() {
-        client.refresh_catalog().await?;
-        return invoke(client, command).await;
-    }
-
-    let mut client =
-        CommandClient::connect(RoleHint::OwnerControl, SessionLifetime::Persistent).await?;
-    let reply = invoke(&mut client, command).await?;
-    *current = Some(client);
-    Ok(reply)
-}
-
-async fn invoke(
-    client: &mut CommandClient,
-    command: BarCommand,
-) -> Result<InvocationSubmissionReply, CommandDispatchError> {
-    Ok(match command {
+    let ticket = match command {
         BarCommand::BuiltIn { key, arguments } => {
-            client
-                .invoke_builtin(key.action(), arguments.into_action_arguments())
-                .await?
+            dispatcher.invoke_builtin(key.action(), arguments.into_action_arguments())?
         }
-        BarCommand::Binding(binding) => {
-            let bound = binding.bind(client.catalog())?;
-            let (action, arguments) = bound.into_parts();
-            client.invoke(&action, arguments).await?
-        }
-    })
+        BarCommand::Binding(binding) => dispatcher.invoke_binding(binding)?,
+    };
+    Ok(ticket.outcome().await?)
 }
 
 #[derive(Debug, thiserror::Error)]
 enum CommandDispatchError {
     #[error(transparent)]
-    Client(#[from] komorebi_client::command::CommandClientError),
+    Dispatch(#[from] ActionDispatchError),
     #[error(transparent)]
-    Binding(#[from] ActionBindingError),
+    Invocation(#[from] ActionInvocationError),
 }
 
 #[derive(Debug, thiserror::Error)]

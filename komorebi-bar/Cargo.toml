@@ -7,6 +7,7 @@ edition = "2024"
 
 [dependencies]
 komorebi-client = { path = "../komorebi-client", default-features = false }
+komorebi-protocol = { path = "../komorebi-protocol" }
 komorebi-shell = { path = "../komorebi-shell", default-features = false }
 komorebi-themes = { path = "../komorebi-themes", default-features = false }
 

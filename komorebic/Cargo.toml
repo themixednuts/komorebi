@@ -9,6 +9,8 @@ edition = "2024"
 
 [dependencies]
 komorebi-client = { path = "../komorebi-client", default-features = false }
+komorebi-protocol = { path = "../komorebi-protocol" }
+komorebi-shell = { path = "../komorebi-shell" }
 
 chrono = { workspace = true }
 clap = { workspace = true }

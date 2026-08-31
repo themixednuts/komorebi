@@ -1,8 +1,6 @@
 #![warn(clippy::all)]
 #![allow(clippy::missing_errors_doc)]
 
-pub mod command;
-
 pub use komorebi::AnimationsConfig;
 pub use komorebi::AppSpecificConfigurationPath;
 pub use komorebi::AspectRatio;

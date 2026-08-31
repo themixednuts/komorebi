@@ -3578,6 +3578,7 @@ dependencies = [
  "hotwatch",
  "image 0.25.10",
  "komorebi-client",
+ "komorebi-protocol",
  "komorebi-shell",
  "komorebi-themes",
  "lazy_static",
@@ -3611,8 +3612,6 @@ name = "komorebi-client"
 version = "0.1.42"
 dependencies = [
  "komorebi",
- "komorebi-command-transport",
- "komorebi-protocol",
  "serde_json_lenient",
  "thiserror 2.0.20",
  "uds_windows",
@@ -3650,6 +3649,8 @@ dependencies = [
  "eframe",
  "egui_extras",
  "komorebi-client",
+ "komorebi-protocol",
+ "komorebi-shell",
  "random_word",
  "serde_json_lenient",
  "thiserror 2.0.20",
@@ -3688,11 +3689,16 @@ dependencies = [
 name = "komorebi-shell"
 version = "0.1.0"
 dependencies = [
+ "komorebi-command-transport",
+ "komorebi-layouts",
  "komorebi-protocol",
  "schemars 1.2.2",
  "serde",
  "serde_json_lenient",
+ "serial_test",
  "thiserror 2.0.20",
+ "tokio",
+ "tokio-util",
 ]
 
 [[package]]
@@ -3731,6 +3737,8 @@ dependencies = [
  "dunce",
  "fs-tail",
  "komorebi-client",
+ "komorebi-protocol",
+ "komorebi-shell",
  "lazy_static",
  "miette",
  "open",
@@ -7289,6 +7297,7 @@ dependencies = [
  "bytes",
  "futures-core",
  "futures-sink",
+ "futures-util",
  "libc",
  "pin-project-lite",
  "tokio",

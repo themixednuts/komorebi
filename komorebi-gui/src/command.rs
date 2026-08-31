@@ -9,21 +9,24 @@ use komorebi_client::Rgb;
 use komorebi_client::StackbarLabel;
 use komorebi_client::StackbarMode;
 use komorebi_client::WindowKind;
-use komorebi_client::command::BoundedText;
-use komorebi_client::command::BuiltInActionId;
-use komorebi_client::command::BuiltInArgument;
-use komorebi_client::command::BuiltInArguments;
-use komorebi_client::command::BuiltInArgumentsError;
-use komorebi_client::command::BuiltInBorderStyle;
-use komorebi_client::command::BuiltInCursorWarpPolicy;
-use komorebi_client::command::BuiltInStackbarLabel;
-use komorebi_client::command::BuiltInStackbarMode;
-use komorebi_client::command::BuiltInWindowKind;
-use komorebi_client::command::CommandClient;
-use komorebi_client::command::InvocationSubmissionReply;
-use komorebi_client::command::RoleHint;
-use komorebi_client::command::SessionLifetime;
-use komorebi_client::command::built_in_layout;
+use komorebi_protocol::BoundedText;
+use komorebi_protocol::BuiltInActionId;
+use komorebi_protocol::BuiltInArgument;
+use komorebi_protocol::BuiltInArguments;
+use komorebi_protocol::BuiltInArgumentsError;
+use komorebi_protocol::BuiltInBorderStyle;
+use komorebi_protocol::BuiltInCursorWarpPolicy;
+use komorebi_protocol::BuiltInStackbarLabel;
+use komorebi_protocol::BuiltInStackbarMode;
+use komorebi_protocol::BuiltInWindowKind;
+use komorebi_protocol::InvocationSubmissionReply;
+use komorebi_protocol::RoleHint;
+use komorebi_shell::ActionDispatchError;
+use komorebi_shell::ActionDispatcher;
+use komorebi_shell::ActionInvocationError;
+use komorebi_shell::SessionLifetime;
+use komorebi_shell::ShellSession;
+use komorebi_shell::built_in_layout;
 use tokio::sync::watch;
 use tokio::task::JoinHandle;
 
@@ -397,7 +400,14 @@ fn enqueue(pending: &mut VecDeque<GuiCommand>, command: GuiCommand) {
 }
 
 async fn run(pending: Arc<Mutex<VecDeque<GuiCommand>>>, mut changed: watch::Receiver<u64>) {
-    let mut client = None;
+    let session = match ShellSession::start(RoleHint::OwnerControl, SessionLifetime::Persistent) {
+        Ok(session) => session,
+        Err(error) => {
+            eprintln!("could not start GUI command session: {error}");
+            return;
+        }
+    };
+    let dispatcher = session.dispatcher();
     while changed.changed().await.is_ok() {
         let commands = match pending.lock() {
             Ok(mut pending) => pending.drain(..).collect::<Vec<_>>(),
@@ -407,7 +417,7 @@ async fn run(pending: Arc<Mutex<VecDeque<GuiCommand>>>, mut changed: watch::Rece
             }
         };
         for command in commands {
-            match dispatch(&mut client, command).await {
+            match dispatch(&dispatcher, command).await {
                 Ok(
                     InvocationSubmissionReply::Accepted(_) | InvocationSubmissionReply::Retained(_),
                 ) => {}
@@ -415,32 +425,32 @@ async fn run(pending: Arc<Mutex<VecDeque<GuiCommand>>>, mut changed: watch::Rece
                     eprintln!("GUI command was rejected: {reason:?}");
                 }
                 Err(error) => {
-                    client = None;
                     eprintln!("GUI command failed: {error}");
                 }
             }
         }
     }
+    if let Err(error) = session.shutdown().await {
+        eprintln!("GUI command session failed to stop: {error}");
+    }
 }
 
 async fn dispatch(
-    current: &mut Option<CommandClient>,
+    dispatcher: &ActionDispatcher,
     command: GuiCommand,
-) -> Result<InvocationSubmissionReply, komorebi_client::command::CommandClientError> {
-    if let Some(client) = current.as_mut() {
-        client.refresh_catalog().await?;
-        return client
-            .invoke_builtin(command.action, command.arguments.into_action_arguments())
-            .await;
-    }
+) -> Result<InvocationSubmissionReply, CommandDispatchError> {
+    Ok(dispatcher
+        .invoke_builtin(command.action, command.arguments.into_action_arguments())?
+        .outcome()
+        .await?)
+}
 
-    let mut client =
-        CommandClient::connect(RoleHint::OwnerControl, SessionLifetime::Persistent).await?;
-    let reply = client
-        .invoke_builtin(command.action, command.arguments.into_action_arguments())
-        .await?;
-    *current = Some(client);
-    Ok(reply)
+#[derive(Debug, thiserror::Error)]
+enum CommandDispatchError {
+    #[error(transparent)]
+    Dispatch(#[from] ActionDispatchError),
+    #[error(transparent)]
+    Invocation(#[from] ActionInvocationError),
 }
 
 const fn built_in_window_kind(value: WindowKind) -> BuiltInWindowKind {

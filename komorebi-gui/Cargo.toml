@@ -7,6 +7,8 @@ edition = "2024"
 
 [dependencies]
 komorebi-client = { path = "../komorebi-client", default-features = false }
+komorebi-protocol = { path = "../komorebi-protocol" }
+komorebi-shell = { path = "../komorebi-shell" }
 
 eframe = { workspace = true }
 egui_extras = { workspace = true }

@@ -5,12 +5,17 @@ edition = "2024"
 publish = false
 
 [dependencies]
+komorebi-command-transport = { path = "../komorebi-command-transport" }
+komorebi-layouts = { path = "../komorebi-layouts" }
 komorebi-protocol = { path = "../komorebi-protocol" }
 schemars = { workspace = true, optional = true }
 serde = { workspace = true }
 thiserror = "2"
+tokio = { version = "=1.53.1", features = ["macros", "rt", "sync"] }
+tokio-util = { version = "0.7", features = ["rt"] }
 
 [dev-dependencies]
+serial_test = "3"
 serde_json = { workspace = true }
 
 [features]
