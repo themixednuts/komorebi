@@ -29,6 +29,7 @@ enum BarCommandKey {
     MonitorWorkAreaOffset(u64),
     WorkspaceLayout(WorkspaceTarget),
     WorkspaceTiling(WorkspaceTarget),
+    WorkspaceMonocle(WorkspaceTarget),
     FocusMonitorWorkspace,
     FocusStackWindow,
     ToggleWorkspaceLayer,
@@ -47,6 +48,7 @@ impl BarCommandKey {
             Self::MonitorWorkAreaOffset(_) => BuiltInActionId::SetMonitorWorkAreaOffset,
             Self::WorkspaceLayout(_) => BuiltInActionId::SetMonitorWorkspaceLayout,
             Self::WorkspaceTiling(_) => BuiltInActionId::SetWorkspaceTiling,
+            Self::WorkspaceMonocle(_) => BuiltInActionId::SetWorkspaceMonocle,
             Self::FocusMonitorWorkspace => BuiltInActionId::FocusMonitorWorkspace,
             Self::FocusStackWindow => BuiltInActionId::FocusStackWindow,
             Self::ToggleWorkspaceLayer => BuiltInActionId::ToggleWorkspaceLayer,
@@ -60,6 +62,7 @@ impl BarCommandKey {
             Self::MonitorWorkAreaOffset(_)
             | Self::WorkspaceLayout(_)
             | Self::WorkspaceTiling(_)
+            | Self::WorkspaceMonocle(_)
             | Self::FocusMonitorWorkspace
             | Self::FocusStackWindow => DeliveryPolicy::Latest,
         }
@@ -132,6 +135,23 @@ impl CommandQueue {
         let target = WorkspaceTarget::new(monitor, workspace)?;
         self.send(
             BarCommandKey::WorkspaceTiling(target),
+            [
+                BuiltInArgument::Monitor(target.monitor),
+                BuiltInArgument::Index(target.workspace),
+                BuiltInArgument::Enabled(enabled),
+            ],
+        )
+    }
+
+    pub fn set_workspace_monocle(
+        &self,
+        monitor: usize,
+        workspace: usize,
+        enabled: bool,
+    ) -> Result<(), CommandQueueError> {
+        let target = WorkspaceTarget::new(monitor, workspace)?;
+        self.send(
+            BarCommandKey::WorkspaceMonocle(target),
             [
                 BuiltInArgument::Monitor(target.monitor),
                 BuiltInArgument::Index(target.workspace),
@@ -459,6 +479,30 @@ mod tests {
                     BuiltInArgument::Monitor(2),
                     BuiltInArgument::Index(3),
                     BuiltInArgument::Enabled(false),
+                ])?,
+            )]
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn monocle_control_enqueues_exact_workspace_state() -> Result<(), CommandQueueError> {
+        let (queue, pending, _receiver) = queue_without_actor();
+
+        queue.set_workspace_monocle(2, 3, true)?;
+
+        let queued = pending.lock().map_err(|_| CommandQueueError::Poisoned)?;
+        assert_eq!(
+            queued
+                .iter()
+                .map(|command| (command.key.action(), command.arguments.clone()))
+                .collect::<Vec<_>>(),
+            [(
+                BuiltInActionId::SetWorkspaceMonocle,
+                BuiltInArguments::new([
+                    BuiltInArgument::Monitor(2),
+                    BuiltInArgument::Index(3),
+                    BuiltInArgument::Enabled(true),
                 ])?,
             )]
         );

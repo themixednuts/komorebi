@@ -203,6 +203,7 @@ pub(super) const fn policy(kind: BuiltinActionKind) -> OfferPolicy {
         | BuiltinActionKind::SetContainerPadding
         | BuiltinActionKind::SetWorkspacePadding
         | BuiltinActionKind::SetWorkspaceTiling
+        | BuiltinActionKind::SetWorkspaceMonocle
         | BuiltinActionKind::SetMonitorWorkspaceLayout
         | BuiltinActionKind::EnsureWorkspaces
         | BuiltinActionKind::ClearWorkspaceLayoutRules

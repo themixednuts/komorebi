@@ -438,6 +438,11 @@ fn bind_builtin(
             workspace: WorkspaceIndex::new(args.usize(ParameterId::INDEX)?),
             tile: args.boolean(ParameterId::ENABLED)?,
         },
+        K::SetWorkspaceMonocle => A::SetWorkspaceMonocle {
+            monitor: MonitorIndex::new(args.usize(ParameterId::MONITOR)?),
+            workspace: WorkspaceIndex::new(args.usize(ParameterId::INDEX)?),
+            enabled: args.boolean(ParameterId::ENABLED)?,
+        },
         K::SetMonitorWorkspaceLayout => A::SetMonitorWorkspaceLayout {
             monitor: MonitorIndex::new(args.usize(ParameterId::MONITOR)?),
             workspace: WorkspaceIndex::new(args.usize(ParameterId::INDEX)?),

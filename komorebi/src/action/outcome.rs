@@ -267,6 +267,11 @@ pub enum ActionResult {
         workspace: WorkspaceIndex,
         tile: bool,
     },
+    WorkspaceMonocleSet {
+        monitor: MonitorIndex,
+        workspace: WorkspaceIndex,
+        enabled: bool,
+    },
     MonitorWorkspaceLayoutSet {
         monitor: MonitorIndex,
         workspace: WorkspaceIndex,
@@ -641,6 +646,11 @@ pub enum NativeEffect {
         monitor: MonitorIndex,
         workspace: WorkspaceIndex,
         tile: bool,
+    },
+    SetWorkspaceMonocle {
+        monitor: MonitorIndex,
+        workspace: WorkspaceIndex,
+        enabled: bool,
     },
     SetMonitorWorkspaceLayout {
         monitor: MonitorIndex,

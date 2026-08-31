@@ -864,6 +864,13 @@ impl WindowManager {
             } => {
                 self.set_workspace_tiling(monitor.get(), workspace.get(), tile)?;
             }
+            NativeEffect::SetWorkspaceMonocle {
+                monitor,
+                workspace,
+                enabled,
+            } => {
+                self.set_workspace_monocle(monitor.get(), workspace.get(), enabled)?;
+            }
             NativeEffect::SetMonitorWorkspaceLayout {
                 monitor,
                 workspace,

@@ -644,6 +644,20 @@ pub const SET_WORKSPACE_TILING: ActionDefinition = ActionDefinition {
     undo: UndoPolicy::None,
 };
 
+pub const SET_WORKSPACE_MONOCLE: ActionDefinition = ActionDefinition {
+    id: ActionId::SET_WORKSPACE_MONOCLE,
+    schema_version: ActionSchemaVersion::V1,
+    kind: BuiltinActionKind::SetWorkspaceMonocle,
+    category: ActionCategory::Workspace,
+    title: "Set workspace monocle",
+    description: "Enable or disable monocle on a workspace",
+    keywords: &["monocle", "workspace"],
+    parameters: MONITOR_WORKSPACE_FLAG,
+    permitted_uses: BOTH_USES,
+    confirmation: ConfirmationPolicy::None,
+    undo: UndoPolicy::None,
+};
+
 pub const SET_MONITOR_WORKSPACE_LAYOUT: ActionDefinition = ActionDefinition {
     id: ActionId::SET_MONITOR_WORKSPACE_LAYOUT,
     schema_version: ActionSchemaVersion::V1,

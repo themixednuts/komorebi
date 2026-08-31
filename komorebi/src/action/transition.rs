@@ -259,6 +259,7 @@ pub(super) fn directional_gap(
         | BuiltinAction::SetContainerPadding { .. }
         | BuiltinAction::SetWorkspacePadding { .. }
         | BuiltinAction::SetWorkspaceTiling { .. }
+        | BuiltinAction::SetWorkspaceMonocle { .. }
         | BuiltinAction::SetMonitorWorkspaceLayout { .. }
         | BuiltinAction::EnsureWorkspaces { .. }
         | BuiltinAction::ClearWorkspaceLayoutRules { .. }
@@ -455,6 +456,7 @@ pub(super) fn apply_logical(snapshot: &mut ActionSnapshot, action: &BuiltinActio
         | BuiltinAction::SetContainerPadding { .. }
         | BuiltinAction::SetWorkspacePadding { .. }
         | BuiltinAction::SetWorkspaceTiling { .. }
+        | BuiltinAction::SetWorkspaceMonocle { .. }
         | BuiltinAction::SetMonitorWorkspaceLayout { .. }
         | BuiltinAction::EnsureWorkspaces { .. }
         | BuiltinAction::ClearWorkspaceLayoutRules { .. }
@@ -704,6 +706,15 @@ pub(super) fn logical_result(action: &BuiltinAction, snapshot: &ActionSnapshot) 
             monitor,
             workspace,
             tile,
+        },
+        BuiltinAction::SetWorkspaceMonocle {
+            monitor,
+            workspace,
+            enabled,
+        } => ActionResult::WorkspaceMonocleSet {
+            monitor,
+            workspace,
+            enabled,
         },
         BuiltinAction::SetMonitorWorkspaceLayout {
             monitor,
@@ -1085,6 +1096,15 @@ pub(super) fn effects(action: &BuiltinAction, snapshot: &ActionSnapshot) -> Vec<
             monitor,
             workspace,
             tile,
+        }],
+        BuiltinAction::SetWorkspaceMonocle {
+            monitor,
+            workspace,
+            enabled,
+        } => vec![NativeEffect::SetWorkspaceMonocle {
+            monitor,
+            workspace,
+            enabled,
         }],
         BuiltinAction::SetMonitorWorkspaceLayout {
             monitor,

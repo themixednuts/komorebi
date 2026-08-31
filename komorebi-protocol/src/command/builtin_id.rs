@@ -105,6 +105,7 @@ built_in_action_ids! {
     SetContainerPadding => "set-container-padding",
     SetWorkspacePadding => "set-workspace-padding",
     SetWorkspaceTiling => "set-workspace-tiling",
+    SetWorkspaceMonocle => "set-workspace-monocle",
     SetMonitorWorkspaceLayout => "set-monitor-workspace-layout",
     EnsureWorkspaces => "ensure-workspaces",
     ClearWorkspaceLayoutRules => "clear-workspace-layout-rules",

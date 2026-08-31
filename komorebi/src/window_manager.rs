@@ -3984,6 +3984,34 @@ impl WindowManager {
     }
 
     #[tracing::instrument(skip(self))]
+    pub fn set_workspace_monocle(
+        &mut self,
+        monitor_idx: usize,
+        workspace_idx: usize,
+        enabled: bool,
+    ) -> eyre::Result<()> {
+        self.monitors()
+            .get(monitor_idx)
+            .ok_or_eyre("there is no monitor")?
+            .workspaces()
+            .get(workspace_idx)
+            .ok_or_eyre("there is no workspace")?;
+
+        self.focus_monitor_workspace(
+            monitor_idx,
+            workspace_idx,
+            CursorWarpPolicy::PreservePosition,
+        )?;
+
+        let is_enabled = self.focused_workspace()?.monocle_container.is_some();
+        if is_enabled != enabled {
+            self.toggle_monocle()?;
+        }
+
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self))]
     pub fn monocle_on(&mut self) -> eyre::Result<()> {
         tracing::info!("enabling monocle");
 
@@ -6612,6 +6640,58 @@ mod tests {
         assert!(
             result.is_err(),
             "Expected an error when trying to restore a non-existent container from monocle"
+        );
+    }
+
+    #[test]
+    fn set_workspace_monocle_is_idempotent_when_already_disabled() {
+        let mut wm = setup_window_manager();
+        wm.monitors_mut().push_back(monitor::new(
+            0,
+            Rect::default(),
+            Rect::default(),
+            "TestMonitor".to_string(),
+            "TestDevice".to_string(),
+            "TestDeviceID".to_string(),
+            Some("TestMonitorID".to_string()),
+        ));
+
+        wm.set_workspace_monocle(0, 0, false)
+            .expect("already-disabled monocle should be a no-op");
+
+        assert!(
+            wm.focused_workspace()
+                .expect("test workspace should exist")
+                .monocle_container
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn set_workspace_monocle_validates_target_before_changing_focus() {
+        let mut wm = setup_window_manager();
+        let mut monitor = monitor::new(
+            0,
+            Rect::default(),
+            Rect::default(),
+            "TestMonitor".to_string(),
+            "TestDevice".to_string(),
+            "TestDeviceID".to_string(),
+            Some("TestMonitorID".to_string()),
+        );
+        let focused_workspace = monitor.new_workspace_idx();
+        monitor
+            .focus_workspace(focused_workspace)
+            .expect("test workspace should be created");
+        wm.monitors_mut().push_back(monitor);
+
+        let result = wm.set_workspace_monocle(0, focused_workspace + 1, true);
+
+        assert!(result.is_err());
+        assert_eq!(
+            wm.focused_workspace_idx()
+                .expect("focused workspace should still exist"),
+            focused_workspace
         );
     }
 

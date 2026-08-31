@@ -15,7 +15,6 @@ use eframe::egui::StrokeKind;
 use eframe::egui::Ui;
 use eframe::egui::Vec2;
 use eframe::egui::vec2;
-use komorebi_client::SocketMessage;
 use serde::Deserialize;
 use serde::Deserializer;
 use serde::Serialize;
@@ -115,13 +114,11 @@ impl KomorebiLayout {
                 }
             }
             KomorebiLayout::Monocle => {
-                if komorebi_client::send_batch([
-                    SocketMessage::FocusMonitorAtCursor,
-                    SocketMessage::ToggleMonocle,
-                ])
-                .is_err()
+                if let Some(workspace) = workspace_idx
+                    && let Err(error) =
+                        commands.set_workspace_monocle(monitor_idx, workspace, !is_current)
                 {
-                    tracing::error!("could not send message to komorebi: ToggleMonocle");
+                    tracing::error!(%error, "could not set workspace monocle");
                 }
             }
             KomorebiLayout::Floating => {

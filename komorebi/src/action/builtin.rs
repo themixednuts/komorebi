@@ -120,6 +120,7 @@ pub enum BuiltinActionKind {
     SetContainerPadding,
     SetWorkspacePadding,
     SetWorkspaceTiling,
+    SetWorkspaceMonocle,
     SetMonitorWorkspaceLayout,
     EnsureWorkspaces,
     ClearWorkspaceLayoutRules,
@@ -188,7 +189,7 @@ pub enum BuiltinActionKind {
 }
 
 impl BuiltinActionKind {
-    pub const ALL: [Self; 142] = [
+    pub const ALL: [Self; 143] = [
         Self::FocusWindow,
         Self::MoveWindow,
         Self::ResizeWindow,
@@ -266,6 +267,7 @@ impl BuiltinActionKind {
         Self::SetContainerPadding,
         Self::SetWorkspacePadding,
         Self::SetWorkspaceTiling,
+        Self::SetWorkspaceMonocle,
         Self::SetMonitorWorkspaceLayout,
         Self::EnsureWorkspaces,
         Self::ClearWorkspaceLayoutRules,
@@ -415,6 +417,7 @@ impl BuiltinActionKind {
             Self::SetContainerPadding => ActionId::SET_CONTAINER_PADDING,
             Self::SetWorkspacePadding => ActionId::SET_WORKSPACE_PADDING,
             Self::SetWorkspaceTiling => ActionId::SET_WORKSPACE_TILING,
+            Self::SetWorkspaceMonocle => ActionId::SET_WORKSPACE_MONOCLE,
             Self::SetMonitorWorkspaceLayout => ActionId::SET_MONITOR_WORKSPACE_LAYOUT,
             Self::EnsureWorkspaces => ActionId::ENSURE_WORKSPACES,
             Self::ClearWorkspaceLayoutRules => ActionId::CLEAR_WORKSPACE_LAYOUT_RULES,
@@ -783,6 +786,11 @@ pub enum BuiltinAction {
         workspace: WorkspaceIndex,
         tile: bool,
     },
+    SetWorkspaceMonocle {
+        monitor: MonitorIndex,
+        workspace: WorkspaceIndex,
+        enabled: bool,
+    },
     SetMonitorWorkspaceLayout {
         monitor: MonitorIndex,
         workspace: WorkspaceIndex,
@@ -1115,6 +1123,7 @@ impl BuiltinAction {
             Self::SetContainerPadding { .. } => BuiltinActionKind::SetContainerPadding,
             Self::SetWorkspacePadding { .. } => BuiltinActionKind::SetWorkspacePadding,
             Self::SetWorkspaceTiling { .. } => BuiltinActionKind::SetWorkspaceTiling,
+            Self::SetWorkspaceMonocle { .. } => BuiltinActionKind::SetWorkspaceMonocle,
             Self::SetMonitorWorkspaceLayout { .. } => BuiltinActionKind::SetMonitorWorkspaceLayout,
             Self::EnsureWorkspaces { .. } => BuiltinActionKind::EnsureWorkspaces,
             Self::ClearWorkspaceLayoutRules { .. } => BuiltinActionKind::ClearWorkspaceLayoutRules,
