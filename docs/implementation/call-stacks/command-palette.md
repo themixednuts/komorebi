@@ -42,11 +42,13 @@ The distinct non-empty term types prevent a local provider or URL broker from
 accepting the other source's input by accident. Parsing selects authority; it
 does not construct a URL or perform an effect.
 
-`fff-search` 0.10.6 stores paths as UTF-8 strings created with
-`to_string_lossy()` and reconstructs `PathBuf` values from those strings. Its
-file result cannot be an execution operand on Windows until the adapter can
-retain an opaque identity for the original `OsString`. Display text may be
-lossy; activation paths must remain lossless WTF-16.
+Upstream `fff-search` 0.10.7-nightly.f3647b7 stores paths as UTF-8 strings
+created with `to_string_lossy()` and reconstructs `PathBuf` values from those
+strings. The pinned source fork retains the exact `PathBuf` only when a Windows
+path cannot round-trip through UTF-8. Its lossy string remains a search and
+display projection. `komorebi-search` then seals the operand inside an opaque
+identity tied to one immutable index instance; no display string can become a
+file operand.
 
 ## Typed contract
 
@@ -151,6 +153,48 @@ File indexing and content search run in owned background tasks with explicit
 startup, cancellation, and join. Query updates may supersede result interest,
 but never cancel a filesystem operation at a point that corrupts an index.
 
+## File-index stack
+
+The first file slice is deliberately synchronous and immutable. It establishes
+the lossless identity boundary before adding a long-lived task owner. It does
+not enable FFF's watcher. The async provider slice will own index construction
+and replacement on one dedicated blocking worker because `FilePicker` is not
+`Sync`; renderer tasks will own only request/result interest.
+
+```text
+FileIndex::build(PathBuf) [blocking worker boundary]
+  -> fff_search::FilePicker::new(FilePickerOptions { watch: false, ... })
+    -> Windows canonicalization [PathBuf remains exact WTF-16]
+  -> FilePicker::collect_files()
+    -> walker FileItem creation
+      -> UTF-8 search projection
+      -> non-UTF-8 Windows path -> retain exact PathBuf
+  <- immutable FileIndex { picker, unforgeable index identity }
+
+FileIndex::search(&str, FileSearchLimit)
+  -> fff_search::QueryParser
+  -> FilePicker::fuzzy_search(... PaginationArgs)
+  <- FileSearchMatch {
+       display_path: String,       [presentation only]
+       id: OpaquePathId {
+         owner: index identity,
+         exact_path: PathBuf,      [private operand]
+       },
+     }
+
+file activation
+  -> FileIndex::resolve(&OpaquePathId)
+    -> foreign/stale index identity -> None [no effect]
+    -> matching identity -> &Path
+      -> future WindowsPathInput boundary
+        -> ShellExecuteExW adapter
+```
+
+`OpaquePathId` carries an exact path only for the bounded result page. The
+index does not duplicate every path into a second registry. Rebuilding creates
+a new identity, so results from the retired index cannot activate against its
+replacement.
+
 ## Proof obligations
 
 - Public integration tests prove typo-tolerant action ranking, exact metadata,
@@ -159,7 +203,8 @@ but never cancel a filesystem operation at a point that corrupts an index.
   manager admission through `ShellHandle` without a second command path.
 - Controller tests prove bounded selection, duplicate-activation suppression,
   attempt uniqueness, and stale-completion rejection.
-- The filesystem adapter must prove exact round trips for unpaired UTF-16
-  surrogates before any FFF-derived result can be opened.
+- The filesystem adapter proves exact round trips for unpaired UTF-16
+  surrogates in both the root and filename, including real file I/O through the
+  resolved ID.
 - The GPUI adapter must prove keyboard-only selection, dismissal, focus
   restoration, and one activation per Enter press.

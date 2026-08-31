@@ -1,0 +1,7 @@
+{
+  "git": {
+    "sha1": "f3647b79de052c9e3fb0f4edc19911e6e25024c3",
+    "dirty": true
+  },
+  "path_in_vcs": "crates/fff-core"
+}

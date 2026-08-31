@@ -10,6 +10,7 @@ members = [
   "komorebi-gui",
   "komorebi-layouts",
   "komorebi-protocol",
+  "komorebi-search",
   "komorebic",
   "komorebic-no-console",
   "komorebi-bar",
@@ -17,6 +18,7 @@ members = [
   "komorebi-shortcuts",
   "komorebi-shell",
 ]
+exclude = ["third-party/fff-search"]
 
 [workspace.dependencies]
 clap = { version = "4", features = ["derive", "wrap_help"] }
