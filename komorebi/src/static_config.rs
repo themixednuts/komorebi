@@ -40,6 +40,7 @@ use crate::animation::ANIMATION_ENABLED_GLOBAL;
 use crate::animation::ANIMATION_ENABLED_PER_ANIMATION;
 use crate::animation::ANIMATION_STYLE_GLOBAL;
 use crate::animation::ANIMATION_STYLE_PER_ANIMATION;
+#[cfg(feature = "schemars")]
 use crate::animation::DEFAULT_ANIMATION_FPS;
 use crate::animation::DEFAULT_GHOST_MOVEMENT;
 use crate::animation::GHOST_MOVEMENT_ENABLED;
@@ -492,10 +493,6 @@ pub enum AppSpecificConfigurationPath {
 #[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 /// The `komorebi.json` static configuration file reference for `v0.1.42`
 pub struct StaticConfig {
-    /// DEPRECATED from v0.1.22: no longer required
-    #[deprecated(note = "No longer required")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub invisible_borders: Option<Rect>,
     /// DISCOURAGED: Minimum width for a window to be eligible for tiling
     #[serde(skip_serializing_if = "Option::is_none")]
     pub minimum_window_width: Option<i32>,
@@ -789,7 +786,7 @@ impl StaticConfig {
     }
 
     pub fn deprecated(raw: &str) {
-        let deprecated_options = ["invisible_borders", "border_z_order"];
+        let deprecated_options = ["border_z_order"];
         let deprecated_variants = vec![
             ("Hide", "window_hiding_behaviour", "Cloak"),
             ("Minimize", "window_hiding_behaviour", "Cloak"),
@@ -882,8 +879,6 @@ impl From<&WindowManager> for StaticConfig {
         };
 
         Self {
-            #[allow(deprecated)]
-            invisible_borders: None,
             resize_step: Option::from(value.resize_step),
             window_container_behaviour: Option::from(
                 value.window_management_behaviour.current_behaviour,

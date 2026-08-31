@@ -31,6 +31,7 @@ use crate::core::Sizing;
 use crate::core::StackbarLabel;
 use crate::core::StackbarMode;
 use crate::core::WindowKind;
+use crate::core::WorkAreaOffset;
 
 pub(super) struct ValidatedArguments<'a> {
     values: &'a protocol::ActionArguments,
@@ -446,6 +447,15 @@ impl<'a> ValidatedArguments<'a> {
             )),
             _ => Err(ArgumentBindingError::InvalidAnimationStyle { parameter: id }),
         }
+    }
+
+    pub(super) fn work_area_offset(&self) -> Result<WorkAreaOffset, ArgumentBindingError> {
+        Ok(WorkAreaOffset::new(
+            self.i32(ParameterId::LEFT)?,
+            self.i32(ParameterId::TOP)?,
+            self.i32(ParameterId::RIGHT)?,
+            self.i32(ParameterId::BOTTOM)?,
+        ))
     }
 
     pub(super) fn application_identifier(

@@ -27,6 +27,7 @@ use action::built_in_window_kind;
 use action::focused_window_arguments;
 use action::invoke_action;
 use action::scoped_animation_arguments;
+use action::work_area_arguments;
 
 use chrono::Utc;
 use komorebi_client::PathExt;
@@ -90,7 +91,6 @@ use komorebi_client::HidingBehaviour;
 use komorebi_client::MoveBehaviour;
 use komorebi_client::OperationBehaviour;
 use komorebi_client::OperationDirection;
-use komorebi_client::Rect;
 use komorebi_client::ResizeStep;
 use komorebi_client::Sizing;
 use komorebi_client::SocketMessage;
@@ -431,18 +431,6 @@ struct ResizeAxis {
 struct SetResizeStep {
     /// Positive pixel step used by resize-edge and resize-axis
     step: ResizeStep,
-}
-
-#[derive(Parser)]
-struct InvisibleBorders {
-    /// Size of the left invisible border
-    left: i32,
-    /// Size of the top invisible border (usually 0)
-    top: i32,
-    /// Size of the right invisible border (usually left * 2)
-    right: i32,
-    /// Size of the bottom invisible border (usually the same as left)
-    bottom: i32,
 }
 
 #[derive(Parser)]
@@ -1297,9 +1285,6 @@ enum SubCommand {
     /// Set the positive pixel step used by resize-edge and resize-axis
     #[clap(arg_required_else_help = true)]
     ResizeStep(SetResizeStep),
-    /// Set the invisible border dimensions around each window
-    #[clap(arg_required_else_help = true)]
-    InvisibleBorders(InvisibleBorders),
     /// Set offsets to exclude parts of the work area from tiling
     #[clap(arg_required_else_help = true)]
     GlobalWorkAreaOffset(GlobalWorkAreaOffset),
@@ -2327,49 +2312,50 @@ async fn main() -> eyre::Result<()> {
             )
             .await?;
         }
-        SubCommand::InvisibleBorders(args) => {
-            send_message(&SocketMessage::InvisibleBorders(Rect {
-                left: args.left,
-                top: args.top,
-                right: args.right,
-                bottom: args.bottom,
-            }))?;
-        }
         SubCommand::MonitorWorkAreaOffset(args) => {
-            send_message(&SocketMessage::MonitorWorkAreaOffset(
-                args.monitor,
-                Rect {
-                    left: args.left,
-                    top: args.top,
-                    right: args.right,
-                    bottom: args.bottom,
-                },
-            ))?;
+            invoke_action(
+                BuiltInActionId::SetMonitorWorkAreaOffset,
+                work_area_arguments(
+                    [BuiltInArgument::Monitor(args.monitor.try_into()?)],
+                    args.left,
+                    args.top,
+                    args.right,
+                    args.bottom,
+                )?,
+            )
+            .await?;
         }
         SubCommand::GlobalWorkAreaOffset(args) => {
-            send_message(&SocketMessage::WorkAreaOffset(Rect {
-                left: args.left,
-                top: args.top,
-                right: args.right,
-                bottom: args.bottom,
-            }))?;
+            invoke_action(
+                BuiltInActionId::SetGlobalWorkAreaOffset,
+                work_area_arguments([], args.left, args.top, args.right, args.bottom)?,
+            )
+            .await?;
         }
 
         SubCommand::WorkspaceWorkAreaOffset(args) => {
-            send_message(&SocketMessage::WorkspaceWorkAreaOffset(
-                args.monitor,
-                args.workspace,
-                Rect {
-                    left: args.left,
-                    top: args.top,
-                    right: args.right,
-                    bottom: args.bottom,
-                },
-            ))?;
+            invoke_action(
+                BuiltInActionId::SetWorkspaceWorkAreaOffset,
+                work_area_arguments(
+                    [
+                        BuiltInArgument::Monitor(args.monitor.try_into()?),
+                        BuiltInArgument::Index(args.workspace.try_into()?),
+                    ],
+                    args.left,
+                    args.top,
+                    args.right,
+                    args.bottom,
+                )?,
+            )
+            .await?;
         }
 
         SubCommand::ToggleWindowBasedWorkAreaOffset => {
-            send_message(&SocketMessage::ToggleWindowBasedWorkAreaOffset)?;
+            invoke_action(
+                BuiltInActionId::ToggleWindowBasedWorkAreaOffset,
+                BuiltInArguments::default(),
+            )
+            .await?;
         }
         SubCommand::ContainerPadding(args) => {
             invoke_action(

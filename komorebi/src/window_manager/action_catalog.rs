@@ -18,6 +18,7 @@ use crate::action::InvocationId;
 use crate::action::InvocationOrigin;
 use crate::action::InvokeAction;
 use crate::action::MonitorIndex;
+use crate::action::MonitorWorkAreaConfiguration;
 use crate::action::NamedWorkspaceTarget;
 use crate::action::NativeEffect;
 use crate::action::NativeEffectFailure;
@@ -27,8 +28,11 @@ use crate::action::PrincipalId;
 use crate::action::ScopedAnimationValue;
 use crate::action::StackbarConfiguration;
 use crate::action::TransparencyConfiguration;
+use crate::action::WorkAreaConfiguration;
 use crate::action::WorkspaceIndex;
+use crate::action::WorkspaceLocation;
 use crate::action::WorkspaceName;
+use crate::action::WorkspaceWorkAreaConfiguration;
 use crate::action::id::WindowId;
 use crate::adapters::action_catalog::CatalogProjectionError;
 use crate::adapters::action_catalog::reply as project_catalog_reply;
@@ -55,6 +59,7 @@ use crate::core::StackbarHeight;
 use crate::core::StackbarTabWidth;
 use crate::core::TransparencyAlpha;
 use crate::core::WindowKind;
+use crate::core::WorkAreaOffset;
 use crate::stackbar_manager;
 use crate::transparency_manager;
 use crate::workspace::WorkspaceLayer;
@@ -171,11 +176,19 @@ impl WindowManager {
             .focused_workspace()
             .ok()
             .is_some_and(|workspace| workspace.layer == WorkspaceLayer::Floating);
+        let focused_workspace = self.focused_workspace_idx().ok().map(|workspace| {
+            WorkspaceLocation::new(
+                MonitorIndex::new(self.focused_monitor_idx()),
+                WorkspaceIndex::new(workspace),
+            )
+        });
         let animation = observe_animation_configuration();
+        let work_area = observe_work_area_configuration(self);
         ActionSnapshot {
             state: self.catalog.snapshot().state,
             paused: self.is_paused,
             focused_window,
+            focused_workspace,
             directional_targets: [
                 OperationDirection::Left,
                 OperationDirection::Right,
@@ -228,6 +241,7 @@ impl WindowManager {
                         .map(String::into_boxed_str),
                 },
                 animation: std::sync::Arc::new(animation),
+                work_area: std::sync::Arc::new(work_area),
             },
             focused_window_floating,
             named_workspaces: self.named_workspaces_for_catalog(),
@@ -571,6 +585,40 @@ impl WindowManager {
                     ANIMATION_STYLE_PER_ANIMATION.lock().clear();
                 }
             },
+            NativeEffect::SetGlobalWorkAreaOffset { offset } => {
+                self.work_area_offset = Some(offset.into());
+                self.retile_all(false)?;
+            }
+            NativeEffect::SetMonitorWorkAreaOffset { monitor, offset } => {
+                let target = self
+                    .monitors_mut()
+                    .get_mut(monitor.get())
+                    .ok_or_else(|| eyre::eyre!("target monitor disappeared before dispatch"))?;
+                target.work_area_offset = Some(offset.into());
+                self.retile_all(false)?;
+            }
+            NativeEffect::SetWorkspaceWorkAreaOffset { location, offset } => {
+                let target = self
+                    .monitors_mut()
+                    .get_mut(location.monitor().get())
+                    .and_then(|monitor| {
+                        monitor.workspaces_mut().get_mut(location.workspace().get())
+                    })
+                    .ok_or_else(|| eyre::eyre!("target workspace disappeared before dispatch"))?;
+                target.work_area_offset = Some(offset.into());
+                self.retile_all(false)?;
+            }
+            NativeEffect::SetWindowBasedWorkAreaOffset { location, enabled } => {
+                let target = self
+                    .monitors_mut()
+                    .get_mut(location.monitor().get())
+                    .and_then(|monitor| {
+                        monitor.workspaces_mut().get_mut(location.workspace().get())
+                    })
+                    .ok_or_else(|| eyre::eyre!("target workspace disappeared before dispatch"))?;
+                target.apply_window_based_work_area_offset = enabled;
+                self.retile_all(true)?;
+            }
             NativeEffect::CycleFocus { direction } => {
                 let focused_workspace = self.focused_workspace()?;
                 match focused_workspace.layer {
@@ -977,6 +1025,29 @@ fn observe_animation_configuration() -> AnimationConfiguration {
                 .map(AnimationStyleSnapshot::from),
         },
         fps: animation_fps(),
+    }
+}
+
+fn observe_work_area_configuration(manager: &WindowManager) -> WorkAreaConfiguration {
+    WorkAreaConfiguration {
+        global: manager.work_area_offset.map(WorkAreaOffset::from),
+        monitors: manager
+            .monitors()
+            .iter()
+            .map(|monitor| MonitorWorkAreaConfiguration {
+                offset: monitor.work_area_offset.map(WorkAreaOffset::from),
+                workspaces: monitor
+                    .workspaces()
+                    .iter()
+                    .map(|workspace| WorkspaceWorkAreaConfiguration {
+                        offset: workspace.work_area_offset.map(WorkAreaOffset::from),
+                        window_based: workspace.apply_window_based_work_area_offset,
+                    })
+                    .collect::<Vec<_>>()
+                    .into_boxed_slice(),
+            })
+            .collect::<Vec<_>>()
+            .into_boxed_slice(),
     }
 }
 

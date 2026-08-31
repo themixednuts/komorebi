@@ -86,6 +86,7 @@ pub enum ParameterDomain {
     AnimationDuration = 38,
     AnimationFps = 39,
     AnimationStyle = 40,
+    WorkAreaOffset = 41,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -272,6 +273,8 @@ pub enum ActionUnavailability {
     NoWindowInDirection = 3,
     Unauthorized = 4,
     UnknownWorkspace = 5,
+    NoFocusedWorkspace = 6,
+    UnknownMonitor = 7,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

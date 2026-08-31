@@ -786,32 +786,6 @@ if (!(Get-Process komorebi-bar -ErrorAction SilentlyContinue))
                         }));
                     }
                 }
-                SocketMessage::InvisibleBorders(_rect) => {}
-                SocketMessage::WorkAreaOffset(rect) => {
-                    self.work_area_offset = Option::from(rect);
-                    self.retile_all(false)?;
-                }
-                SocketMessage::MonitorWorkAreaOffset(monitor_idx, rect) => {
-                    if let Some(monitor) = self.monitors_mut().get_mut(monitor_idx) {
-                        monitor.work_area_offset = Option::from(rect);
-                        self.retile_all(false)?;
-                    }
-                }
-                SocketMessage::WorkspaceWorkAreaOffset(monitor_idx, workspace_idx, rect) => {
-                    if let Some(monitor) = self.monitors_mut().get_mut(monitor_idx)
-                        && let Some(workspace) = monitor.workspaces_mut().get_mut(workspace_idx)
-                    {
-                        workspace.work_area_offset = Option::from(rect);
-                        self.retile_all(false)?
-                    }
-                }
-                SocketMessage::ToggleWindowBasedWorkAreaOffset => {
-                    let workspace = self.focused_workspace_mut()?;
-                    workspace.apply_window_based_work_area_offset =
-                        !workspace.apply_window_based_work_area_offset;
-
-                    self.retile_all(true)?;
-                }
                 SocketMessage::QuickSave => {
                     let workspace = self.focused_workspace()?;
                     let resize = &workspace.resize_dimensions;

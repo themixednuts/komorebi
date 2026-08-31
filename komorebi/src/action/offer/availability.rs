@@ -26,6 +26,7 @@ pub(super) fn availability(
     let focus = match policy.focus {
         FocusRequirement::None => ActionAvailability::Available,
         FocusRequirement::FocusedWindow => focused_window(snapshot),
+        FocusRequirement::FocusedWorkspace => focused_workspace(snapshot),
         FocusRequirement::DirectionalTarget => directional_target(snapshot),
     };
     if focus != ActionAvailability::Available {
@@ -44,6 +45,14 @@ fn focused_window(snapshot: &ActionSnapshot) -> ActionAvailability {
         ActionAvailability::Available
     } else {
         ActionAvailability::Unavailable(Unavailability::NoFocusedWindow)
+    }
+}
+
+fn focused_workspace(snapshot: &ActionSnapshot) -> ActionAvailability {
+    if snapshot.focused_workspace.is_some() {
+        ActionAvailability::Available
+    } else {
+        ActionAvailability::Unavailable(Unavailability::NoFocusedWorkspace)
     }
 }
 

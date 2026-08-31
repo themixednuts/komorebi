@@ -1,5 +1,11 @@
 use super::*;
+use crate::action::MonitorIndex;
+use crate::action::MonitorWorkAreaConfiguration;
 use crate::action::Pixels;
+use crate::action::WorkAreaConfiguration;
+use crate::action::WorkspaceIndex;
+use crate::action::WorkspaceLocation;
+use crate::action::WorkspaceWorkAreaConfiguration;
 use crate::action::id::WindowId;
 use crate::animation::prefix::AnimationPrefix;
 use crate::core::AnimationDuration;
@@ -15,6 +21,7 @@ use crate::core::Sizing;
 use crate::core::StackbarHeight;
 use crate::core::TransparencyAlpha;
 use crate::core::WindowKind;
+use crate::core::WorkAreaOffset;
 use komorebi_themes::colour::Rgb;
 use std::sync::Arc;
 
@@ -41,13 +48,32 @@ fn stamp(revision: u64) -> StateStamp {
 }
 
 fn live_state() -> CatalogState {
+    let configuration = crate::action::ConfigurationSnapshot {
+        work_area: Arc::new(WorkAreaConfiguration {
+            global: None,
+            monitors: vec![MonitorWorkAreaConfiguration {
+                offset: None,
+                workspaces: vec![WorkspaceWorkAreaConfiguration {
+                    offset: None,
+                    window_based: false,
+                }]
+                .into_boxed_slice(),
+            }]
+            .into_boxed_slice(),
+        }),
+        ..Default::default()
+    };
     CatalogState::new(ActionSnapshot {
         state: stamp(10),
         paused: false,
         focused_window: Some(WindowId::new(1)),
+        focused_workspace: Some(WorkspaceLocation::new(
+            MonitorIndex::new(0),
+            WorkspaceIndex::new(0),
+        )),
         directional_targets: [OperationDirection::Left].into(),
         current_layout: DefaultLayout::BSP,
-        configuration: crate::action::ConfigurationSnapshot::default(),
+        configuration,
         focused_window_floating: false,
         named_workspaces: Vec::new(),
         bindings: Vec::new(),
@@ -488,6 +514,229 @@ fn scoped_animation_setting_changes_only_the_selected_override() {
     assert_eq!(configured.global, global);
     assert_eq!(configured.movement, Some(duration));
     assert_eq!(configured.transparency, None);
+}
+
+#[test]
+fn global_work_area_setting_commits_exact_offset_and_effect() {
+    let mut state = live_state();
+    let offset = WorkAreaOffset::new(-8, 24, 16, -4);
+    let request = InvokeAction {
+        invocation_id: invocation(20),
+        expected_state: stamp(10),
+        action: BuiltinAction::SetGlobalWorkAreaOffset { offset },
+        confirmation: None,
+    };
+
+    let ActionPreparation::Prepared(prepared) = state.prepare(&request, &context(), Instant::now())
+    else {
+        panic!("global work-area setting should prepare");
+    };
+    assert_eq!(
+        prepared.effects(),
+        &[PlannedEffect {
+            id: EffectId::new(0),
+            effect: NativeEffect::SetGlobalWorkAreaOffset { offset },
+        }]
+    );
+
+    state
+        .commit_prepared(prepared)
+        .expect("global work-area setting should commit");
+    assert_eq!(
+        state.snapshot().configuration.work_area.global,
+        Some(offset)
+    );
+}
+
+#[test]
+fn targeted_work_area_settings_change_only_the_selected_target() {
+    let mut monitor_state = live_state();
+    let monitor = MonitorIndex::new(0);
+    let monitor_offset = WorkAreaOffset::new(1, 2, 3, 4);
+    let monitor_request = InvokeAction {
+        invocation_id: invocation(21),
+        expected_state: stamp(10),
+        action: BuiltinAction::SetMonitorWorkAreaOffset {
+            monitor,
+            offset: monitor_offset,
+        },
+        confirmation: None,
+    };
+    let ActionPreparation::Prepared(prepared) =
+        monitor_state.prepare(&monitor_request, &context(), Instant::now())
+    else {
+        panic!("monitor work-area setting should prepare");
+    };
+    assert_eq!(
+        prepared.effects(),
+        &[PlannedEffect {
+            id: EffectId::new(0),
+            effect: NativeEffect::SetMonitorWorkAreaOffset {
+                monitor,
+                offset: monitor_offset,
+            },
+        }]
+    );
+    monitor_state
+        .commit_prepared(prepared)
+        .expect("monitor work-area setting should commit");
+    assert_eq!(
+        monitor_state
+            .snapshot()
+            .configuration
+            .work_area
+            .monitor(monitor)
+            .and_then(|configuration| configuration.offset),
+        Some(monitor_offset)
+    );
+    assert_eq!(
+        monitor_state
+            .snapshot()
+            .configuration
+            .work_area
+            .workspace(monitor, WorkspaceIndex::new(0))
+            .and_then(|configuration| configuration.offset),
+        None
+    );
+
+    let mut workspace_state = live_state();
+    let location = WorkspaceLocation::new(monitor, WorkspaceIndex::new(0));
+    let workspace_offset = WorkAreaOffset::new(-10, 20, -30, 40);
+    let workspace_request = InvokeAction {
+        invocation_id: invocation(22),
+        expected_state: stamp(10),
+        action: BuiltinAction::SetWorkspaceWorkAreaOffset {
+            monitor: location.monitor(),
+            workspace: location.workspace(),
+            offset: workspace_offset,
+        },
+        confirmation: None,
+    };
+    let ActionPreparation::Prepared(prepared) =
+        workspace_state.prepare(&workspace_request, &context(), Instant::now())
+    else {
+        panic!("workspace work-area setting should prepare");
+    };
+    assert_eq!(
+        prepared.effects(),
+        &[PlannedEffect {
+            id: EffectId::new(0),
+            effect: NativeEffect::SetWorkspaceWorkAreaOffset {
+                location,
+                offset: workspace_offset,
+            },
+        }]
+    );
+    workspace_state
+        .commit_prepared(prepared)
+        .expect("workspace work-area setting should commit");
+    assert_eq!(
+        workspace_state
+            .snapshot()
+            .configuration
+            .work_area
+            .workspace(location.monitor(), location.workspace())
+            .and_then(|configuration| configuration.offset),
+        Some(workspace_offset)
+    );
+    assert_eq!(
+        workspace_state
+            .snapshot()
+            .configuration
+            .work_area
+            .monitor(monitor)
+            .and_then(|configuration| configuration.offset),
+        None
+    );
+}
+
+#[test]
+fn window_based_work_area_toggle_commits_observed_target_and_value() {
+    let mut state = live_state();
+    let location = WorkspaceLocation::new(MonitorIndex::new(0), WorkspaceIndex::new(0));
+    let request = InvokeAction {
+        invocation_id: invocation(23),
+        expected_state: stamp(10),
+        action: BuiltinAction::ToggleWindowBasedWorkAreaOffset,
+        confirmation: None,
+    };
+
+    let ActionPreparation::Prepared(prepared) = state.prepare(&request, &context(), Instant::now())
+    else {
+        panic!("window-based work-area toggle should prepare");
+    };
+    assert_eq!(
+        prepared.logical_result(),
+        &ActionResult::WindowBasedWorkAreaOffsetToggled { enabled: true }
+    );
+    assert_eq!(
+        prepared.effects(),
+        &[PlannedEffect {
+            id: EffectId::new(0),
+            effect: NativeEffect::SetWindowBasedWorkAreaOffset {
+                location,
+                enabled: true,
+            },
+        }]
+    );
+
+    state
+        .commit_prepared(prepared)
+        .expect("window-based work-area toggle should commit");
+    assert!(
+        state
+            .snapshot()
+            .configuration
+            .work_area
+            .workspace(location.monitor(), location.workspace())
+            .is_some_and(|configuration| configuration.window_based)
+    );
+}
+
+#[test]
+fn unknown_work_area_targets_reject_without_changing_state() {
+    let state = live_state();
+    let before = state.snapshot().clone();
+    let unknown_monitor = InvokeAction {
+        invocation_id: invocation(24),
+        expected_state: stamp(10),
+        action: BuiltinAction::SetMonitorWorkAreaOffset {
+            monitor: MonitorIndex::new(1),
+            offset: WorkAreaOffset::default(),
+        },
+        confirmation: None,
+    };
+    let ActionPreparation::Rejected { source, .. } =
+        state.prepare(&unknown_monitor, &context(), Instant::now())
+    else {
+        panic!("unknown monitor should reject");
+    };
+    assert_eq!(
+        source,
+        ActionRejection::Unavailable(Unavailability::UnknownMonitor)
+    );
+    assert_eq!(state.snapshot(), &before);
+
+    let unknown_workspace = InvokeAction {
+        invocation_id: invocation(25),
+        expected_state: stamp(10),
+        action: BuiltinAction::SetWorkspaceWorkAreaOffset {
+            monitor: MonitorIndex::new(0),
+            workspace: WorkspaceIndex::new(1),
+            offset: WorkAreaOffset::default(),
+        },
+        confirmation: None,
+    };
+    let ActionPreparation::Rejected { source, .. } =
+        state.prepare(&unknown_workspace, &context(), Instant::now())
+    else {
+        panic!("unknown workspace should reject");
+    };
+    assert_eq!(
+        source,
+        ActionRejection::Unavailable(Unavailability::UnknownWorkspace)
+    );
+    assert_eq!(state.snapshot(), &before);
 }
 
 #[test]

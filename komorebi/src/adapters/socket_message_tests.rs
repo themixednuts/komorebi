@@ -187,6 +187,10 @@ fn socket_focus_admits_as_the_same_catalog_action() {
         state: stamp(1),
         paused: false,
         focused_window: Some(WindowId::new(9)),
+        focused_workspace: Some(crate::action::WorkspaceLocation::new(
+            crate::action::MonitorIndex::new(0),
+            crate::action::WorkspaceIndex::new(0),
+        )),
         directional_targets: [OperationDirection::Left].into(),
         current_layout: DefaultLayout::BSP,
         configuration: crate::action::ConfigurationSnapshot::default(),

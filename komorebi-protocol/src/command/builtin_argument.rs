@@ -86,6 +86,10 @@ known_ids! {
     Prefix => "prefix",
     Duration => "duration",
     Fps => "fps",
+    Left => "left",
+    Top => "top",
+    Right => "right",
+    Bottom => "bottom",
 }
 
 known_ids! {
@@ -380,6 +384,10 @@ pub enum BuiltInArgument {
     Duration(u64),
     Fps(NonZeroU64),
     AnimationStyle(BuiltInAnimationStyle),
+    Left(i32),
+    Top(i32),
+    Right(i32),
+    Bottom(i32),
 }
 
 impl BuiltInArgument {
@@ -462,6 +470,10 @@ impl BuiltInArgument {
                 BuiltInParameterId::Style,
                 ActionArgument::Scalars(value.try_into_scalars()?),
             ),
+            Self::Left(value) => signed(BuiltInParameterId::Left, value),
+            Self::Top(value) => signed(BuiltInParameterId::Top, value),
+            Self::Right(value) => signed(BuiltInParameterId::Right, value),
+            Self::Bottom(value) => signed(BuiltInParameterId::Bottom, value),
         })
     }
 }

@@ -282,18 +282,6 @@
         "$ref": "#/$defs/MatchingRule"
       }
     },
-    "invisible_borders": {
-      "description": "DEPRECATED from v0.1.22: no longer required",
-      "anyOf": [
-        {
-          "$ref": "#/$defs/Rect"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "deprecated": true
-    },
     "layered_applications": {
       "description": "Identify applications that have the `WS_EX_LAYERED` extended window style",
       "type": [

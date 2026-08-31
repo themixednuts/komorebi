@@ -3,6 +3,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 
 use komorebi_client::BorderStyle;
+use komorebi_client::Rect;
 use komorebi_client::Rgb;
 use komorebi_client::StackbarLabel;
 use komorebi_client::StackbarMode;
@@ -24,8 +25,15 @@ use tokio::task::JoinHandle;
 
 #[derive(Debug)]
 struct GuiCommand {
+    key: GuiCommandKey,
     action: BuiltInActionId,
     arguments: BuiltInArguments,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum GuiCommandKey {
+    Singleton(BuiltInActionId),
+    MonitorWorkAreaOffset(u64),
 }
 
 #[derive(Clone, Debug)]
@@ -129,6 +137,26 @@ impl CommandQueue {
         )
     }
 
+    pub fn set_monitor_work_area_offset(
+        &self,
+        monitor: usize,
+        offset: Rect,
+    ) -> Result<(), CommandQueueError> {
+        let monitor =
+            u64::try_from(monitor).map_err(|_| CommandQueueError::MonitorIndexOverflow(monitor))?;
+        self.send_with_key(
+            GuiCommandKey::MonitorWorkAreaOffset(monitor),
+            BuiltInActionId::SetMonitorWorkAreaOffset,
+            [
+                BuiltInArgument::Monitor(monitor),
+                BuiltInArgument::Left(offset.left),
+                BuiltInArgument::Top(offset.top),
+                BuiltInArgument::Right(offset.right),
+                BuiltInArgument::Bottom(offset.bottom),
+            ],
+        )
+    }
+
     fn send_colour(&self, action: BuiltInActionId, colour: Rgb) -> Result<(), CommandQueueError> {
         self.send(
             action,
@@ -145,10 +173,20 @@ impl CommandQueue {
         action: BuiltInActionId,
         arguments: [BuiltInArgument; N],
     ) -> Result<(), CommandQueueError> {
+        self.send_with_key(GuiCommandKey::Singleton(action), action, arguments)
+    }
+
+    fn send_with_key<const N: usize>(
+        &self,
+        key: GuiCommandKey,
+        action: BuiltInActionId,
+        arguments: [BuiltInArgument; N],
+    ) -> Result<(), CommandQueueError> {
         if self.changed.is_closed() {
             return Err(CommandQueueError::Closed);
         }
         let command = GuiCommand {
+            key,
             action,
             arguments: BuiltInArguments::new(arguments)?,
         };
@@ -168,7 +206,7 @@ impl CommandQueue {
 fn enqueue(pending: &mut VecDeque<GuiCommand>, command: GuiCommand) {
     if let Some(index) = pending
         .iter()
-        .position(|pending| pending.action == command.action)
+        .position(|pending| pending.key == command.key)
     {
         pending.remove(index);
     }
@@ -260,6 +298,8 @@ const fn built_in_stackbar_label(value: StackbarLabel) -> BuiltInStackbarLabel {
 pub enum CommandQueueError {
     #[error(transparent)]
     Arguments(#[from] BuiltInArgumentsError),
+    #[error("monitor index {0} cannot be represented by the command protocol")]
+    MonitorIndexOverflow(usize),
     #[error("gui command actor is closed")]
     Closed,
     #[error("gui command mailbox is poisoned")]
@@ -272,7 +312,16 @@ mod tests {
 
     fn command(action: BuiltInActionId) -> GuiCommand {
         GuiCommand {
+            key: GuiCommandKey::Singleton(action),
             action,
+            arguments: BuiltInArguments::default(),
+        }
+    }
+
+    fn monitor_work_area_command(monitor: u64) -> GuiCommand {
+        GuiCommand {
+            key: GuiCommandKey::MonitorWorkAreaOffset(monitor),
+            action: BuiltInActionId::SetMonitorWorkAreaOffset,
             arguments: BuiltInArguments::default(),
         }
     }
@@ -292,6 +341,25 @@ mod tests {
             [
                 BuiltInActionId::SetBorderOffset,
                 BuiltInActionId::SetBorderWidth,
+            ]
+        );
+    }
+
+    #[test]
+    fn mailbox_coalesces_work_area_offsets_per_monitor() {
+        let mut pending = VecDeque::new();
+        enqueue(&mut pending, monitor_work_area_command(0));
+        enqueue(&mut pending, monitor_work_area_command(1));
+        enqueue(&mut pending, monitor_work_area_command(0));
+
+        assert_eq!(
+            pending
+                .iter()
+                .map(|command| command.key)
+                .collect::<Vec<_>>(),
+            [
+                GuiCommandKey::MonitorWorkAreaOffset(1),
+                GuiCommandKey::MonitorWorkAreaOffset(0),
             ]
         );
     }

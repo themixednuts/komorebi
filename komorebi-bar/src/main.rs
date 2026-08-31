@@ -1,4 +1,5 @@
 mod bar;
+mod command;
 mod config;
 mod render;
 mod selected_frame;
@@ -6,6 +7,7 @@ mod ui;
 mod widgets;
 
 use crate::bar::Komobar;
+use crate::command::WorkAreaCommandQueue;
 use crate::config::KomobarConfig;
 use crate::config::Position;
 use crate::config::PositionConfig;
@@ -124,7 +126,8 @@ pub enum KomorebiEvent {
     Reconnect,
 }
 
-fn main() -> color_eyre::Result<()> {
+#[tokio::main]
+async fn main() -> color_eyre::Result<()> {
     unsafe { SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2) }?;
 
     let opts: Opts = Opts::parse();
@@ -302,8 +305,10 @@ fn main() -> color_eyre::Result<()> {
         ..Default::default()
     };
 
+    let (work_area_commands, command_actor) = WorkAreaCommandQueue::start();
+
     if let Some(rect) = &work_area_offset {
-        komorebi_client::send_message(&SocketMessage::MonitorWorkAreaOffset(monitor_index, *rect))?;
+        work_area_commands.set_monitor_offset(monitor_index, *rect)?;
         tracing::info!("work area offset applied to monitor: {}", monitor_index);
     }
 
@@ -331,14 +336,17 @@ fn main() -> color_eyre::Result<()> {
 
     tracing::info!("watching configuration file for changes");
 
-    eframe::run_native(
+    let app_commands = work_area_commands.clone();
+    let gui = eframe::run_native(
         "komorebi-bar",
         native_options,
-        Box::new(|cc| {
+        Box::new(move |cc| {
             let ctx_repainter = cc.egui_ctx.clone();
-            std::thread::spawn(move || loop {
-                std::thread::sleep(Duration::from_secs(1));
-                ctx_repainter.request_repaint();
+            std::thread::spawn(move || {
+                loop {
+                    std::thread::sleep(Duration::from_secs(1));
+                    ctx_repainter.request_repaint();
+                }
             });
 
             let ctx_komorebi = cc.egui_ctx.clone();
@@ -380,7 +388,7 @@ fn main() -> color_eyre::Result<()> {
                                 while komorebi_client::send_message(
                                     &SocketMessage::AddSubscriberSocket(subscriber_name.clone()),
                                 )
-                                    .is_err()
+                                .is_err()
                                 {
                                     std::thread::sleep(Duration::from_secs(1));
                                 }
@@ -388,7 +396,9 @@ fn main() -> color_eyre::Result<()> {
                                 tracing::info!("reconnected to komorebi");
 
                                 if let Err(error) = tx_gui.send(KomorebiEvent::Reconnect) {
-                                    tracing::error!("could not send komorebi reconnect event to gui thread: {error}")
+                                    tracing::error!(
+                                        "could not send komorebi reconnect event to gui thread: {error}"
+                                    )
                                 }
 
                                 ctx_komorebi.request_repaint();
@@ -403,14 +413,20 @@ fn main() -> color_eyre::Result<()> {
                                         Ok(notification) => {
                                             tracing::debug!("received notification from komorebi");
 
-                                            if let Err(error) = tx_gui.send(KomorebiEvent::Notification(Box::new(notification))) {
-                                                tracing::error!("could not send komorebi notification update to gui thread: {error}")
+                                            if let Err(error) = tx_gui.send(
+                                                KomorebiEvent::Notification(Box::new(notification)),
+                                            ) {
+                                                tracing::error!(
+                                                    "could not send komorebi notification update to gui thread: {error}"
+                                                )
                                             }
 
                                             ctx_komorebi.request_repaint();
                                         }
                                         Err(error) => {
-                                            tracing::error!("could not deserialize komorebi notification: {error}");
+                                            tracing::error!(
+                                                "could not deserialize komorebi notification: {error}"
+                                            );
                                         }
                                     }
                                 }
@@ -428,8 +444,19 @@ fn main() -> color_eyre::Result<()> {
                 }
             });
 
-            Ok(Box::new(Komobar::new(cc, rx_gui, rx_config, config)))
+            Ok(Box::new(Komobar::new(
+                cc,
+                rx_gui,
+                rx_config,
+                config,
+                app_commands,
+            )))
         }),
-    )
-        .map_err(|error| color_eyre::eyre::Error::msg(error.to_string()))
+    );
+    drop(work_area_commands);
+    widgets::systray::shutdown().await;
+    if let Err(error) = command_actor.await {
+        tracing::error!("bar work-area command actor failed: {error}");
+    }
+    gui.map_err(|error| color_eyre::eyre::Error::msg(error.to_string()))
 }

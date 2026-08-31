@@ -31,6 +31,7 @@ use crate::core::StackbarMode;
 use crate::core::StackbarTabWidth;
 use crate::core::TransparencyAlpha;
 use crate::core::WindowKind;
+use crate::core::WorkAreaOffset;
 use komorebi_themes::colour::Rgb;
 
 use super::id::ActionId;
@@ -180,10 +181,14 @@ pub enum BuiltinActionKind {
     SetAnimationDuration,
     SetAnimationFps,
     SetAnimationStyle,
+    SetGlobalWorkAreaOffset,
+    SetMonitorWorkAreaOffset,
+    SetWorkspaceWorkAreaOffset,
+    ToggleWindowBasedWorkAreaOffset,
 }
 
 impl BuiltinActionKind {
-    pub const ALL: [Self; 138] = [
+    pub const ALL: [Self; 142] = [
         Self::FocusWindow,
         Self::MoveWindow,
         Self::ResizeWindow,
@@ -322,6 +327,10 @@ impl BuiltinActionKind {
         Self::SetAnimationDuration,
         Self::SetAnimationFps,
         Self::SetAnimationStyle,
+        Self::SetGlobalWorkAreaOffset,
+        Self::SetMonitorWorkAreaOffset,
+        Self::SetWorkspaceWorkAreaOffset,
+        Self::ToggleWindowBasedWorkAreaOffset,
     ];
 
     #[must_use]
@@ -473,6 +482,10 @@ impl BuiltinActionKind {
             Self::SetAnimationDuration => ActionId::SET_ANIMATION_DURATION,
             Self::SetAnimationFps => ActionId::SET_ANIMATION_FPS,
             Self::SetAnimationStyle => ActionId::SET_ANIMATION_STYLE,
+            Self::SetGlobalWorkAreaOffset => ActionId::SET_GLOBAL_WORK_AREA_OFFSET,
+            Self::SetMonitorWorkAreaOffset => ActionId::SET_MONITOR_WORK_AREA_OFFSET,
+            Self::SetWorkspaceWorkAreaOffset => ActionId::SET_WORKSPACE_WORK_AREA_OFFSET,
+            Self::ToggleWindowBasedWorkAreaOffset => ActionId::TOGGLE_WINDOW_BASED_WORK_AREA_OFFSET,
         }
     }
 }
@@ -953,6 +966,19 @@ pub enum BuiltinAction {
         style: AnimationStyle,
         prefix: Option<AnimationPrefix>,
     },
+    SetGlobalWorkAreaOffset {
+        offset: WorkAreaOffset,
+    },
+    SetMonitorWorkAreaOffset {
+        monitor: MonitorIndex,
+        offset: WorkAreaOffset,
+    },
+    SetWorkspaceWorkAreaOffset {
+        monitor: MonitorIndex,
+        workspace: WorkspaceIndex,
+        offset: WorkAreaOffset,
+    },
+    ToggleWindowBasedWorkAreaOffset,
 }
 
 impl BuiltinAction {
@@ -1149,6 +1175,14 @@ impl BuiltinAction {
             Self::SetAnimationDuration { .. } => BuiltinActionKind::SetAnimationDuration,
             Self::SetAnimationFps { .. } => BuiltinActionKind::SetAnimationFps,
             Self::SetAnimationStyle { .. } => BuiltinActionKind::SetAnimationStyle,
+            Self::SetGlobalWorkAreaOffset { .. } => BuiltinActionKind::SetGlobalWorkAreaOffset,
+            Self::SetMonitorWorkAreaOffset { .. } => BuiltinActionKind::SetMonitorWorkAreaOffset,
+            Self::SetWorkspaceWorkAreaOffset { .. } => {
+                BuiltinActionKind::SetWorkspaceWorkAreaOffset
+            }
+            Self::ToggleWindowBasedWorkAreaOffset => {
+                BuiltinActionKind::ToggleWindowBasedWorkAreaOffset
+            }
         }
     }
 }

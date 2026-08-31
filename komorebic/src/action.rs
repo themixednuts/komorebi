@@ -74,6 +74,21 @@ pub(super) fn built_in_arguments<const N: usize>(
     Ok(BuiltInArguments::new(arguments)?)
 }
 
+pub(super) fn work_area_arguments<const N: usize>(
+    target: [BuiltInArgument; N],
+    left: i32,
+    top: i32,
+    right: i32,
+    bottom: i32,
+) -> eyre::Result<BuiltInArguments> {
+    Ok(BuiltInArguments::new(target.into_iter().chain([
+        BuiltInArgument::Left(left),
+        BuiltInArgument::Top(top),
+        BuiltInArgument::Right(right),
+        BuiltInArgument::Bottom(bottom),
+    ]))?)
+}
+
 pub(super) fn scoped_animation_arguments(
     value: BuiltInArgument,
     prefix: Option<AnimationPrefix>,

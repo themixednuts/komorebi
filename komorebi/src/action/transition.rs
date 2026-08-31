@@ -5,6 +5,8 @@ use super::offer::neighbor_in;
 use super::outcome::ActionResult;
 use super::outcome::NativeEffect;
 
+mod work_area;
+
 pub(super) fn resolve_contextual_inputs(
     snapshot: &ActionSnapshot,
     action: &BuiltinAction,
@@ -130,6 +132,10 @@ pub(super) fn resolve_contextual_inputs(
                 .ok_or(Unavailability::UnknownWorkspace)?;
             Ok(BuiltinAction::ClearWorkspaceLayoutRules { monitor, workspace })
         }
+        action @ (BuiltinAction::SetGlobalWorkAreaOffset { .. }
+        | BuiltinAction::SetMonitorWorkAreaOffset { .. }
+        | BuiltinAction::SetWorkspaceWorkAreaOffset { .. }
+        | BuiltinAction::ToggleWindowBasedWorkAreaOffset) => work_area::resolve(snapshot, action),
         other => Ok(other.clone()),
     }
 }
@@ -173,6 +179,10 @@ pub(super) fn directional_gap(
         | BuiltinAction::SetAnimationDuration { .. }
         | BuiltinAction::SetAnimationFps { .. }
         | BuiltinAction::SetAnimationStyle { .. }
+        | BuiltinAction::SetGlobalWorkAreaOffset { .. }
+        | BuiltinAction::SetMonitorWorkAreaOffset { .. }
+        | BuiltinAction::SetWorkspaceWorkAreaOffset { .. }
+        | BuiltinAction::ToggleWindowBasedWorkAreaOffset
         | BuiltinAction::SetWorkspaceLayout { .. }
         | BuiltinAction::ToggleWindowFloat { .. }
         | BuiltinAction::CycleFocusWindow { .. }
@@ -356,6 +366,10 @@ pub(super) fn apply_logical(snapshot: &mut ActionSnapshot, action: &BuiltinActio
                 .style
                 .set(prefix, style.into());
         }
+        action @ (BuiltinAction::SetGlobalWorkAreaOffset { .. }
+        | BuiltinAction::SetMonitorWorkAreaOffset { .. }
+        | BuiltinAction::SetWorkspaceWorkAreaOffset { .. }
+        | BuiltinAction::ToggleWindowBasedWorkAreaOffset) => work_area::apply(snapshot, &action),
         BuiltinAction::ToggleWindowFloat { .. } => {
             snapshot.focused_window_floating = !snapshot.focused_window_floating;
         }
@@ -526,6 +540,12 @@ pub(super) fn logical_result(action: &BuiltinAction, snapshot: &ActionSnapshot) 
         BuiltinAction::SetAnimationDuration { .. } => ActionResult::AnimationDurationSet,
         BuiltinAction::SetAnimationFps { .. } => ActionResult::AnimationFpsSet,
         BuiltinAction::SetAnimationStyle { .. } => ActionResult::AnimationStyleSet,
+        action @ (BuiltinAction::SetGlobalWorkAreaOffset { .. }
+        | BuiltinAction::SetMonitorWorkAreaOffset { .. }
+        | BuiltinAction::SetWorkspaceWorkAreaOffset { .. }
+        | BuiltinAction::ToggleWindowBasedWorkAreaOffset) => {
+            work_area::logical_result(snapshot, &action)
+        }
         BuiltinAction::SetWorkspaceLayout { layout, .. } => ActionResult::LayoutSet { layout },
         BuiltinAction::ToggleWindowFloat { .. } => ActionResult::FloatToggled {
             floating: snapshot.focused_window_floating,
@@ -869,6 +889,10 @@ pub(super) fn effects(action: &BuiltinAction, snapshot: &ActionSnapshot) -> Vec<
         BuiltinAction::SetAnimationStyle { style, prefix } => {
             vec![NativeEffect::SetAnimationStyle { style, prefix }]
         }
+        action @ (BuiltinAction::SetGlobalWorkAreaOffset { .. }
+        | BuiltinAction::SetMonitorWorkAreaOffset { .. }
+        | BuiltinAction::SetWorkspaceWorkAreaOffset { .. }
+        | BuiltinAction::ToggleWindowBasedWorkAreaOffset) => work_area::effects(snapshot, &action),
         BuiltinAction::SetWorkspaceLayout { layout, .. } => {
             vec![NativeEffect::SetLayout { layout }]
         }

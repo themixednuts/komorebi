@@ -8,7 +8,6 @@ use crate::render::RenderConfig;
 use crate::selected_frame::SelectableFrame;
 use crate::widgets::widget::BarWidget;
 use crossbeam_channel::Receiver;
-use crossbeam_channel::Sender;
 use crossbeam_channel::unbounded;
 use eframe::egui::CentralPanel;
 use eframe::egui::ColorImage;
@@ -326,9 +325,11 @@ struct GlobalSystrayState {
     icons: HashMap<String, CachedIcon>,
     /// Receiver for pre-processed events from the background thread
     event_rx: Option<Receiver<PreprocessedEvent>>,
-    /// Sender for commands to the background thread
-    command_tx: Option<Sender<SystrayCommand>>,
-    /// Whether the background thread has been started
+    /// Sender for commands to the systray task
+    command_tx: Option<tokio::sync::mpsc::UnboundedSender<SystrayCommand>>,
+    /// Task owned until application shutdown
+    task: Option<tokio::task::JoinHandle<()>>,
+    /// Whether the systray task has been started
     initialized: bool,
     /// Last time stale icon cleanup was performed
     last_cleanup: Option<Instant>,
@@ -378,7 +379,7 @@ fn preprocess_event(event: SystrayEvent) -> PreprocessedEvent {
     }
 }
 
-/// Initialize the global systray background thread (only runs once)
+/// Initialize the global systray task on the process runtime (only runs once).
 fn ensure_systray_initialized() {
     let mut state = SYSTRAY_STATE.lock();
 
@@ -386,94 +387,77 @@ fn ensure_systray_initialized() {
         return;
     }
 
-    state.initialized = true;
+    let Ok(runtime) = tokio::runtime::Handle::try_current() else {
+        tracing::error!("systray requires the komorebi-bar Tokio runtime");
+        return;
+    };
 
     let (event_tx, event_rx) = unbounded::<PreprocessedEvent>();
-    let (command_tx, command_rx) = unbounded::<SystrayCommand>();
+    let (command_tx, command_rx) = tokio::sync::mpsc::unbounded_channel();
 
     state.event_rx = Some(event_rx);
     state.command_tx = Some(command_tx);
+    state.initialized = true;
+    state.task = Some(runtime.spawn(run_systray(event_tx, command_rx)));
+}
 
-    // Drop the lock before spawning the thread
-    drop(state);
+async fn run_systray(
+    event_tx: crossbeam_channel::Sender<PreprocessedEvent>,
+    mut commands: tokio::sync::mpsc::UnboundedReceiver<SystrayCommand>,
+) {
+    let mut systray = match SystrayClient::new() {
+        Ok(systray) => systray,
+        Err(error) => {
+            tracing::error!("failed to initialize systray client: {error:?}");
+            return;
+        }
+    };
+    tracing::info!("systray client initialized");
 
-    // Spawn background thread with its own tokio runtime
-    thread::spawn(move || {
-        let rt = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .expect("Failed to create tokio runtime for systray");
+    for icon in systray.icons() {
+        if event_tx
+            .send(preprocess_event(SystrayEvent::IconAdd(icon)))
+            .is_err()
+        {
+            return;
+        }
+    }
 
-        rt.block_on(async move {
-            match SystrayClient::new() {
-                Ok(mut systray) => {
-                    tracing::info!("Systray client initialized successfully");
-
-                    // Send initial icons (pre-processed in background thread)
-                    for icon in systray.icons() {
-                        let event = SystrayEvent::IconAdd(icon.clone());
-                        let _ = event_tx.send(preprocess_event(event));
-                    }
-
-                    // Create an async channel receiver for commands
-                    let (async_cmd_tx, mut async_cmd_rx) =
-                        tokio::sync::mpsc::unbounded_channel::<SystrayCommand>();
-
-                    // Spawn a task to bridge crossbeam -> tokio channel
-                    let bridge_tx = async_cmd_tx.clone();
-                    std::thread::spawn(move || {
-                        while let Ok(cmd) = command_rx.recv() {
-                            if bridge_tx.send(cmd).is_err() {
-                                break;
-                            }
-                        }
-                    });
-
-                    loop {
-                        tokio::select! {
-                            // Handle systray events (pre-process before sending)
-                            event = systray.events() => {
-                                match event {
-                                    Some(event) => {
-                                        if event_tx.send(preprocess_event(event)).is_err() {
-                                            tracing::error!("Failed to send systray event to UI");
-                                            break;
-                                        }
-                                    }
-                                    None => {
-                                        tracing::info!("Systray events channel closed");
-                                        break;
-                                    }
-                                }
-                            }
-                            // Handle commands from UI
-                            Some(cmd) = async_cmd_rx.recv() => {
-                                match cmd {
-                                    SystrayCommand::SendAction(stable_id, action) => {
-                                        tracing::debug!(
-                                            "Processing systray action for {}: {:?}",
-                                            stable_id,
-                                            action
-                                        );
-                                        if let Err(e) = systray.send_action(&stable_id, &action) {
-                                            tracing::error!(
-                                                "Failed to send systray action to {}: {:?}",
-                                                stable_id,
-                                                e
-                                            );
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                Err(e) => {
-                    tracing::error!("Failed to initialize systray client: {:?}", e);
+    loop {
+        tokio::select! {
+            event = systray.events() => {
+                let Some(event) = event else {
+                    tracing::info!("systray event source closed");
+                    return;
+                };
+                if event_tx.send(preprocess_event(event)).is_err() {
+                    return;
                 }
             }
-        });
-    });
+            command = commands.recv() => {
+                let Some(SystrayCommand::SendAction(stable_id, action)) = command else {
+                    return;
+                };
+                if let Err(error) = systray.send_action(&stable_id, &action) {
+                    tracing::error!("failed to send systray action to {stable_id}: {error:?}");
+                }
+            }
+        }
+    }
+}
+
+pub(crate) async fn shutdown() {
+    let task = {
+        let mut state = SYSTRAY_STATE.lock();
+        state.command_tx = None;
+        state.initialized = false;
+        state.task.take()
+    };
+    if let Some(task) = task
+        && let Err(error) = task.await
+    {
+        tracing::error!("systray task failed: {error}");
+    }
 }
 
 pub struct Systray {

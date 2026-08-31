@@ -170,11 +170,6 @@ pub fn classify(message: &SocketMessage) -> SocketMessageClass {
         | CompleteConfiguration
         | AltFocusHack(_)
         | Theme(_)
-        | InvisibleBorders(_)
-        | WorkAreaOffset(_)
-        | MonitorWorkAreaOffset(_, _)
-        | WorkspaceWorkAreaOffset(_, _, _)
-        | ToggleWindowBasedWorkAreaOffset
         | InitialWorkspaceRule(_, _, _, _)
         | InitialNamedWorkspaceRule(_, _, _)
         | WorkspaceRule(_, _, _, _)

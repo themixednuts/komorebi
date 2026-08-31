@@ -1,5 +1,98 @@
 use super::*;
 
+const ANIMATION_ENABLED: &[ParameterDefinition] = &[
+    ParameterDefinition {
+        id: ParameterId::ENABLED,
+        domain: ParameterDomain::Flag,
+        cardinality: ArgumentCardinality::RequiredScalar,
+    },
+    ParameterDefinition {
+        id: ParameterId::PREFIX,
+        domain: ParameterDomain::AnimationPrefix,
+        cardinality: ArgumentCardinality::OptionalScalar,
+    },
+];
+const ANIMATION_DURATION: &[ParameterDefinition] = &[
+    ParameterDefinition {
+        id: ParameterId::DURATION,
+        domain: ParameterDomain::AnimationDuration,
+        cardinality: ArgumentCardinality::RequiredScalar,
+    },
+    ParameterDefinition {
+        id: ParameterId::PREFIX,
+        domain: ParameterDomain::AnimationPrefix,
+        cardinality: ArgumentCardinality::OptionalScalar,
+    },
+];
+const ANIMATION_FPS: &[ParameterDefinition] = &[ParameterDefinition {
+    id: ParameterId::FPS,
+    domain: ParameterDomain::AnimationFps,
+    cardinality: ArgumentCardinality::RequiredScalar,
+}];
+const ANIMATION_STYLE: &[ParameterDefinition] = &[
+    ParameterDefinition {
+        id: ParameterId::STYLE,
+        domain: ParameterDomain::AnimationStyle,
+        cardinality: ArgumentCardinality::RequiredList,
+    },
+    ParameterDefinition {
+        id: ParameterId::PREFIX,
+        domain: ParameterDomain::AnimationPrefix,
+        cardinality: ArgumentCardinality::OptionalScalar,
+    },
+];
+
+const WORK_AREA_EDGE: [ParameterDefinition; 4] = [
+    ParameterDefinition {
+        id: ParameterId::LEFT,
+        domain: ParameterDomain::WorkAreaOffset,
+        cardinality: ArgumentCardinality::RequiredScalar,
+    },
+    ParameterDefinition {
+        id: ParameterId::TOP,
+        domain: ParameterDomain::WorkAreaOffset,
+        cardinality: ArgumentCardinality::RequiredScalar,
+    },
+    ParameterDefinition {
+        id: ParameterId::RIGHT,
+        domain: ParameterDomain::WorkAreaOffset,
+        cardinality: ArgumentCardinality::RequiredScalar,
+    },
+    ParameterDefinition {
+        id: ParameterId::BOTTOM,
+        domain: ParameterDomain::WorkAreaOffset,
+        cardinality: ArgumentCardinality::RequiredScalar,
+    },
+];
+const WORK_AREA_OFFSET: &[ParameterDefinition] = &WORK_AREA_EDGE;
+const MONITOR_WORK_AREA_OFFSET: &[ParameterDefinition] = &[
+    ParameterDefinition {
+        id: ParameterId::MONITOR,
+        domain: ParameterDomain::Index,
+        cardinality: ArgumentCardinality::RequiredScalar,
+    },
+    WORK_AREA_EDGE[0],
+    WORK_AREA_EDGE[1],
+    WORK_AREA_EDGE[2],
+    WORK_AREA_EDGE[3],
+];
+const WORKSPACE_WORK_AREA_OFFSET: &[ParameterDefinition] = &[
+    ParameterDefinition {
+        id: ParameterId::MONITOR,
+        domain: ParameterDomain::Index,
+        cardinality: ArgumentCardinality::RequiredScalar,
+    },
+    ParameterDefinition {
+        id: ParameterId::INDEX,
+        domain: ParameterDomain::Index,
+        cardinality: ArgumentCardinality::RequiredScalar,
+    },
+    WORK_AREA_EDGE[0],
+    WORK_AREA_EDGE[1],
+    WORK_AREA_EDGE[2],
+    WORK_AREA_EDGE[3],
+];
+
 pub const SET_RESIZE_STEP: ActionDefinition = ActionDefinition {
     id: ActionId::SET_RESIZE_STEP,
     schema_version: ActionSchemaVersion::V1,
@@ -197,6 +290,38 @@ configuration_definition!(
     "Set the easing style globally or for one animation kind",
     ANIMATION_STYLE,
     "animation"
+);
+configuration_definition!(
+    SET_GLOBAL_WORK_AREA_OFFSET,
+    SetGlobalWorkAreaOffset,
+    "Set global work-area offset",
+    "Set signed edge offsets applied to every monitor work area",
+    WORK_AREA_OFFSET,
+    "work-area"
+);
+configuration_definition!(
+    SET_MONITOR_WORK_AREA_OFFSET,
+    SetMonitorWorkAreaOffset,
+    "Set monitor work-area offset",
+    "Set signed edge offsets applied to one monitor work area",
+    MONITOR_WORK_AREA_OFFSET,
+    "work-area"
+);
+configuration_definition!(
+    SET_WORKSPACE_WORK_AREA_OFFSET,
+    SetWorkspaceWorkAreaOffset,
+    "Set workspace work-area offset",
+    "Set signed edge offsets applied to one workspace work area",
+    WORKSPACE_WORK_AREA_OFFSET,
+    "work-area"
+);
+configuration_definition!(
+    TOGGLE_WINDOW_BASED_WORK_AREA_OFFSET,
+    ToggleWindowBasedWorkAreaOffset,
+    "Toggle window-based work-area offset",
+    "Toggle the window-count-based work-area offset on the focused workspace",
+    NONE,
+    "work-area"
 );
 configuration_definition!(
     SET_STACKBAR_LABEL,

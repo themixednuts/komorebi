@@ -135,6 +135,8 @@ pub(super) fn decode_unavailability(value: u8) -> Result<ActionUnavailability, C
         3 => Ok(ActionUnavailability::NoWindowInDirection),
         4 => Ok(ActionUnavailability::Unauthorized),
         5 => Ok(ActionUnavailability::UnknownWorkspace),
+        6 => Ok(ActionUnavailability::NoFocusedWorkspace),
+        7 => Ok(ActionUnavailability::UnknownMonitor),
         _ => Err(CommandCodecError::UnknownActionUnavailability(value)),
     }
 }

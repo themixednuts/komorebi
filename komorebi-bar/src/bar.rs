@@ -7,6 +7,7 @@ use crate::MAX_LABEL_WIDTH;
 use crate::MONITOR_LEFT;
 use crate::MONITOR_RIGHT;
 use crate::MONITOR_TOP;
+use crate::command::WorkAreaCommandQueue;
 use crate::config::KomobarConfig;
 use crate::config::KomobarTheme;
 use crate::config::MonitorConfigOrIndex;
@@ -162,6 +163,7 @@ pub struct Komobar {
     pub scale_factor: f32,
     pub size_rect: komorebi_client::Rect,
     pub work_area_offset: komorebi_client::Rect,
+    work_area_commands: WorkAreaCommandQueue,
     applied_theme_on_first_frame: bool,
     mouse_follows_focus: bool,
     input_config: InputConfig,
@@ -479,9 +481,10 @@ impl Komobar {
             {
                 if new_rect != prev_rect {
                     self.work_area_offset = *new_rect;
-                    if let Err(error) = komorebi_client::send_message(
-                        &SocketMessage::MonitorWorkAreaOffset(monitor_index, *new_rect),
-                    ) {
+                    if let Err(error) = self
+                        .work_area_commands
+                        .set_monitor_offset(monitor_index, *new_rect)
+                    {
                         tracing::error!(
                             "error applying work area offset to monitor '{}': {}",
                             monitor_index,
@@ -512,9 +515,10 @@ impl Komobar {
 
                 if new_rect != self.work_area_offset {
                     self.work_area_offset = new_rect;
-                    if let Err(error) = komorebi_client::send_message(
-                        &SocketMessage::MonitorWorkAreaOffset(monitor_index, new_rect),
-                    ) {
+                    if let Err(error) = self
+                        .work_area_commands
+                        .set_monitor_offset(monitor_index, new_rect)
+                    {
                         tracing::error!(
                             "error applying work area offset to monitor '{monitor_index}': {error}"
                         );
@@ -695,6 +699,7 @@ impl Komobar {
         rx_gui: Receiver<KomorebiEvent>,
         rx_config: Receiver<KomobarConfig>,
         config: KomobarConfig,
+        work_area_commands: WorkAreaCommandQueue,
     ) -> Self {
         let mut komobar = Self {
             hwnd: process_hwnd(),
@@ -713,6 +718,7 @@ impl Komobar {
             scale_factor: cc.egui_ctx.native_pixels_per_point().unwrap_or(1.0),
             size_rect: komorebi_client::Rect::default(),
             work_area_offset: komorebi_client::Rect::default(),
+            work_area_commands,
             applied_theme_on_first_frame: false,
             mouse_follows_focus: false,
             input_config: InputConfig {
@@ -1009,9 +1015,10 @@ impl eframe::App for Komobar {
             }
             Ok(KomorebiEvent::Reconnect) => {
                 if let Some(monitor_index) = self.monitor_index {
-                    if let Err(error) = komorebi_client::send_message(
-                        &SocketMessage::MonitorWorkAreaOffset(monitor_index, self.work_area_offset),
-                    ) {
+                    if let Err(error) = self
+                        .work_area_commands
+                        .set_monitor_offset(monitor_index, self.work_area_offset)
+                    {
                         tracing::error!(
                             "error applying work area offset to monitor '{}': {}",
                             monitor_index,

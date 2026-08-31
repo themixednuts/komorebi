@@ -72,6 +72,7 @@ pub enum ParameterDomain {
     AnimationDuration,
     AnimationFps,
     AnimationStyle,
+    WorkAreaOffset,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -701,48 +702,6 @@ const STACKBAR_FONT_FAMILY: &[ParameterDefinition] = &[ParameterDefinition {
     cardinality: ArgumentCardinality::OptionalScalar,
 }];
 
-const ANIMATION_ENABLED: &[ParameterDefinition] = &[
-    ParameterDefinition {
-        id: ParameterId::ENABLED,
-        domain: ParameterDomain::Flag,
-        cardinality: ArgumentCardinality::RequiredScalar,
-    },
-    ParameterDefinition {
-        id: ParameterId::PREFIX,
-        domain: ParameterDomain::AnimationPrefix,
-        cardinality: ArgumentCardinality::OptionalScalar,
-    },
-];
-const ANIMATION_DURATION: &[ParameterDefinition] = &[
-    ParameterDefinition {
-        id: ParameterId::DURATION,
-        domain: ParameterDomain::AnimationDuration,
-        cardinality: ArgumentCardinality::RequiredScalar,
-    },
-    ParameterDefinition {
-        id: ParameterId::PREFIX,
-        domain: ParameterDomain::AnimationPrefix,
-        cardinality: ArgumentCardinality::OptionalScalar,
-    },
-];
-const ANIMATION_FPS: &[ParameterDefinition] = &[ParameterDefinition {
-    id: ParameterId::FPS,
-    domain: ParameterDomain::AnimationFps,
-    cardinality: ArgumentCardinality::RequiredScalar,
-}];
-const ANIMATION_STYLE: &[ParameterDefinition] = &[
-    ParameterDefinition {
-        id: ParameterId::STYLE,
-        domain: ParameterDomain::AnimationStyle,
-        cardinality: ArgumentCardinality::RequiredList,
-    },
-    ParameterDefinition {
-        id: ParameterId::PREFIX,
-        domain: ParameterDomain::AnimationPrefix,
-        cardinality: ArgumentCardinality::OptionalScalar,
-    },
-];
-
 const fn def(
     id: ActionId,
     kind: BuiltinActionKind,
@@ -921,12 +880,18 @@ impl BuiltinActionKind {
             Self::SetAnimationDuration => &configuration::SET_ANIMATION_DURATION,
             Self::SetAnimationFps => &configuration::SET_ANIMATION_FPS,
             Self::SetAnimationStyle => &configuration::SET_ANIMATION_STYLE,
+            Self::SetGlobalWorkAreaOffset => &configuration::SET_GLOBAL_WORK_AREA_OFFSET,
+            Self::SetMonitorWorkAreaOffset => &configuration::SET_MONITOR_WORK_AREA_OFFSET,
+            Self::SetWorkspaceWorkAreaOffset => &configuration::SET_WORKSPACE_WORK_AREA_OFFSET,
+            Self::ToggleWindowBasedWorkAreaOffset => {
+                &configuration::TOGGLE_WINDOW_BASED_WORK_AREA_OFFSET
+            }
         }
     }
 }
 
 #[must_use]
-pub fn definitions() -> [&'static ActionDefinition; 138] {
+pub fn definitions() -> [&'static ActionDefinition; 142] {
     BuiltinActionKind::ALL.map(BuiltinActionKind::definition)
 }
 

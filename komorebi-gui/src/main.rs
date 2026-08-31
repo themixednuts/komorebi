@@ -596,7 +596,7 @@ impl eframe::App for KomorebiGui {
                         ),
                         |ui| {
                             ui.collapsing("Work Area Offset", |ui| {
-                                if ui
+                                let changed = ui
                                     .add(
                                         egui::Slider::new(
                                             &mut monitor.work_area_offset.left,
@@ -605,18 +605,7 @@ impl eframe::App for KomorebiGui {
                                         .text("Left"),
                                     )
                                     .drag_stopped()
-                                {
-                                    komorebi_client::send_message(
-                                        &SocketMessage::MonitorWorkAreaOffset(
-                                            monitor_idx,
-                                            monitor.work_area_offset,
-                                        ),
-                                    )
-                                    .unwrap();
-                                };
-
-                                if ui
-                                    .add(
+                                    | ui.add(
                                         egui::Slider::new(
                                             &mut monitor.work_area_offset.top,
                                             0..=500,
@@ -624,18 +613,7 @@ impl eframe::App for KomorebiGui {
                                         .text("Top"),
                                     )
                                     .drag_stopped()
-                                {
-                                    komorebi_client::send_message(
-                                        &SocketMessage::MonitorWorkAreaOffset(
-                                            monitor_idx,
-                                            monitor.work_area_offset,
-                                        ),
-                                    )
-                                    .unwrap();
-                                };
-
-                                if ui
-                                    .add(
+                                    | ui.add(
                                         egui::Slider::new(
                                             &mut monitor.work_area_offset.right,
                                             0..=500,
@@ -643,34 +621,21 @@ impl eframe::App for KomorebiGui {
                                         .text("Right"),
                                     )
                                     .drag_stopped()
-                                {
-                                    komorebi_client::send_message(
-                                        &SocketMessage::MonitorWorkAreaOffset(
-                                            monitor_idx,
-                                            monitor.work_area_offset,
-                                        ),
-                                    )
-                                    .unwrap();
-                                };
-
-                                if ui
-                                    .add(
+                                    | ui.add(
                                         egui::Slider::new(
                                             &mut monitor.work_area_offset.bottom,
                                             0..=500,
                                         )
                                         .text("Bottom"),
                                     )
-                                    .drag_stopped()
-                                {
-                                    komorebi_client::send_message(
-                                        &SocketMessage::MonitorWorkAreaOffset(
-                                            monitor_idx,
-                                            monitor.work_area_offset,
-                                        ),
-                                    )
-                                    .unwrap();
-                                };
+                                    .drag_stopped();
+
+                                if changed {
+                                    report_command(self.commands.set_monitor_work_area_offset(
+                                        monitor_idx,
+                                        monitor.work_area_offset,
+                                    ));
+                                }
                             });
 
                             ui.collapsing("Workspaces", |ui| {

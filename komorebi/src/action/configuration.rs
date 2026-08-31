@@ -1,6 +1,8 @@
 use crate::DEFAULT_RESIZE_STEP;
 use std::sync::Arc;
 
+use super::index::MonitorIndex;
+use super::index::WorkspaceIndex;
 use crate::animation::DEFAULT_ANIMATION_DURATION;
 use crate::animation::DEFAULT_ANIMATION_ENABLED;
 use crate::animation::DEFAULT_ANIMATION_STYLE;
@@ -26,6 +28,7 @@ use crate::core::StackbarLabel;
 use crate::core::StackbarMode;
 use crate::core::StackbarTabWidth;
 use crate::core::TransparencyAlpha;
+use crate::core::WorkAreaOffset;
 use komorebi_themes::colour::Rgb;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -35,6 +38,7 @@ pub struct ConfigurationSnapshot {
     pub transparency: TransparencyConfiguration,
     pub stackbar: StackbarConfiguration,
     pub animation: Arc<AnimationConfiguration>,
+    pub work_area: Arc<WorkAreaConfiguration>,
 }
 
 impl Default for ConfigurationSnapshot {
@@ -45,8 +49,60 @@ impl Default for ConfigurationSnapshot {
             transparency: TransparencyConfiguration::default(),
             stackbar: StackbarConfiguration::default(),
             animation: Arc::new(AnimationConfiguration::default()),
+            work_area: Arc::new(WorkAreaConfiguration::default()),
         }
     }
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct WorkAreaConfiguration {
+    pub global: Option<WorkAreaOffset>,
+    pub monitors: Box<[MonitorWorkAreaConfiguration]>,
+}
+
+impl WorkAreaConfiguration {
+    #[must_use]
+    pub fn monitor(&self, monitor: MonitorIndex) -> Option<&MonitorWorkAreaConfiguration> {
+        self.monitors.get(monitor.get())
+    }
+
+    pub fn monitor_mut(
+        &mut self,
+        monitor: MonitorIndex,
+    ) -> Option<&mut MonitorWorkAreaConfiguration> {
+        self.monitors.get_mut(monitor.get())
+    }
+
+    #[must_use]
+    pub fn workspace(
+        &self,
+        monitor: MonitorIndex,
+        workspace: WorkspaceIndex,
+    ) -> Option<&WorkspaceWorkAreaConfiguration> {
+        self.monitor(monitor)?.workspaces.get(workspace.get())
+    }
+
+    pub fn workspace_mut(
+        &mut self,
+        monitor: MonitorIndex,
+        workspace: WorkspaceIndex,
+    ) -> Option<&mut WorkspaceWorkAreaConfiguration> {
+        self.monitor_mut(monitor)?
+            .workspaces
+            .get_mut(workspace.get())
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct MonitorWorkAreaConfiguration {
+    pub offset: Option<WorkAreaOffset>,
+    pub workspaces: Box<[WorkspaceWorkAreaConfiguration]>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct WorkspaceWorkAreaConfiguration {
+    pub offset: Option<WorkAreaOffset>,
+    pub window_based: bool,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

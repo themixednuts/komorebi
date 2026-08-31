@@ -157,6 +157,11 @@ impl ActionId {
     pub const SET_ANIMATION_DURATION: Self = Self("set-animation-duration");
     pub const SET_ANIMATION_FPS: Self = Self("set-animation-fps");
     pub const SET_ANIMATION_STYLE: Self = Self("set-animation-style");
+    pub const SET_GLOBAL_WORK_AREA_OFFSET: Self = Self("set-global-work-area-offset");
+    pub const SET_MONITOR_WORK_AREA_OFFSET: Self = Self("set-monitor-work-area-offset");
+    pub const SET_WORKSPACE_WORK_AREA_OFFSET: Self = Self("set-workspace-work-area-offset");
+    pub const TOGGLE_WINDOW_BASED_WORK_AREA_OFFSET: Self =
+        Self("toggle-window-based-work-area-offset");
 
     #[must_use]
     pub const fn as_str(self) -> &'static str {
@@ -219,8 +224,12 @@ impl ParameterId {
     pub const PREFIX: Self = Self("prefix");
     pub const DURATION: Self = Self("duration");
     pub const FPS: Self = Self("fps");
+    pub const LEFT: Self = Self("left");
+    pub const TOP: Self = Self("top");
+    pub const RIGHT: Self = Self("right");
+    pub const BOTTOM: Self = Self("bottom");
 
-    pub const ALL: [Self; 44] = [
+    pub const ALL: [Self; 48] = [
         Self::DIRECTION,
         Self::AXIS,
         Self::DELTA,
@@ -265,6 +274,10 @@ impl ParameterId {
         Self::PREFIX,
         Self::DURATION,
         Self::FPS,
+        Self::LEFT,
+        Self::TOP,
+        Self::RIGHT,
+        Self::BOTTOM,
     ];
 
     #[must_use]

@@ -28,6 +28,29 @@ semantic_index!(WorkspaceIndex);
 semantic_index!(ContainerIndex);
 semantic_index!(StackIndex);
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+pub struct WorkspaceLocation {
+    monitor: MonitorIndex,
+    workspace: WorkspaceIndex,
+}
+
+impl WorkspaceLocation {
+    #[must_use]
+    pub const fn new(monitor: MonitorIndex, workspace: WorkspaceIndex) -> Self {
+        Self { monitor, workspace }
+    }
+
+    #[must_use]
+    pub const fn monitor(self) -> MonitorIndex {
+        self.monitor
+    }
+
+    #[must_use]
+    pub const fn workspace(self) -> WorkspaceIndex {
+        self.workspace
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

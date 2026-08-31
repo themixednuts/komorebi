@@ -20,6 +20,7 @@ use super::id::ActionId;
 use super::id::WindowId;
 use super::index::MonitorIndex;
 use super::index::WorkspaceIndex;
+use super::index::WorkspaceLocation;
 use komorebi_protocol::ManagerEpoch;
 use komorebi_protocol::Revision;
 use komorebi_protocol::StateStamp;
@@ -39,6 +40,7 @@ pub struct ActionSnapshot {
     pub state: StateStamp,
     pub paused: bool,
     pub focused_window: Option<WindowId>,
+    pub focused_workspace: Option<WorkspaceLocation>,
     pub directional_targets: DirectionSet,
     pub current_layout: DefaultLayout,
     pub configuration: ConfigurationSnapshot,
@@ -54,6 +56,7 @@ impl ActionSnapshot {
             state: StateStamp::initial(manager_epoch),
             paused: false,
             focused_window: None,
+            focused_workspace: None,
             directional_targets: DirectionSet::empty(),
             current_layout: DefaultLayout::BSP,
             configuration: ConfigurationSnapshot::default(),
@@ -127,6 +130,8 @@ pub enum Unavailability {
     NoWindowInDirection,
     Unauthorized,
     UnknownWorkspace,
+    NoFocusedWorkspace,
+    UnknownMonitor,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -146,6 +151,7 @@ pub enum ActionCurrentValue {
     BorderOffset(BorderOffset),
     BorderStyle(BorderStyle),
     BorderImplementation(BorderImplementation),
+    WindowBasedWorkAreaOffset(bool),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -221,6 +227,16 @@ fn current_value(
         policy::CurrentValueSource::BorderImplementation => Some(
             ActionCurrentValue::BorderImplementation(snapshot.configuration.border.implementation),
         ),
+        policy::CurrentValueSource::WindowBasedWorkAreaOffset => {
+            let location = snapshot.focused_workspace?;
+            snapshot
+                .configuration
+                .work_area
+                .workspace(location.monitor(), location.workspace())
+                .map(|configuration| {
+                    ActionCurrentValue::WindowBasedWorkAreaOffset(configuration.window_based)
+                })
+        }
         policy::CurrentValueSource::None => None,
     }
 }
@@ -238,7 +254,10 @@ pub fn current_layout_name(snapshot: &ActionSnapshot) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::action::MonitorWorkAreaConfiguration;
     use crate::action::ParameterId;
+    use crate::action::WorkAreaConfiguration;
+    use crate::action::WorkspaceWorkAreaConfiguration;
     use crate::action::definition::ParameterDomain;
     use crate::core::TransparencyAlpha;
 
@@ -250,13 +269,32 @@ mod tests {
     }
 
     fn live_snapshot() -> ActionSnapshot {
+        let configuration = ConfigurationSnapshot {
+            work_area: std::sync::Arc::new(WorkAreaConfiguration {
+                global: None,
+                monitors: vec![MonitorWorkAreaConfiguration {
+                    offset: None,
+                    workspaces: vec![WorkspaceWorkAreaConfiguration {
+                        offset: None,
+                        window_based: true,
+                    }]
+                    .into_boxed_slice(),
+                }]
+                .into_boxed_slice(),
+            }),
+            ..Default::default()
+        };
         ActionSnapshot {
             state: stamp(3),
             paused: false,
             focused_window: Some(WindowId::new(1)),
+            focused_workspace: Some(WorkspaceLocation::new(
+                MonitorIndex::new(0),
+                WorkspaceIndex::new(0),
+            )),
             directional_targets: [OperationDirection::Left].into(),
             current_layout: DefaultLayout::BSP,
-            configuration: ConfigurationSnapshot::default(),
+            configuration,
             focused_window_floating: false,
             named_workspaces: vec![NamedWorkspaceTarget {
                 name: WorkspaceName::parse("chat").unwrap(),
@@ -335,6 +373,20 @@ mod tests {
             Some(ActionCurrentValue::TransparencyAlpha(
                 TransparencyAlpha::new(177)
             ))
+        );
+    }
+
+    #[test]
+    fn window_based_work_area_toggle_exposes_focused_workspace_value() {
+        let snapshot = live_snapshot();
+
+        assert_eq!(
+            offer(
+                &snapshot,
+                BuiltinActionKind::ToggleWindowBasedWorkAreaOffset
+            )
+            .current_value,
+            Some(ActionCurrentValue::WindowBasedWorkAreaOffset(true))
         );
     }
 

@@ -9,9 +9,13 @@ use crate::action::BuiltinAction;
 use crate::action::BuiltinActionKind;
 use crate::action::DirectionSet;
 use crate::action::MonitorIndex;
+use crate::action::MonitorWorkAreaConfiguration;
 use crate::action::NamedWorkspaceTarget;
+use crate::action::WorkAreaConfiguration;
 use crate::action::WorkspaceIndex;
+use crate::action::WorkspaceLocation;
 use crate::action::WorkspaceName;
+use crate::action::WorkspaceWorkAreaConfiguration;
 use crate::action::id::WindowId;
 use crate::core::OperationDirection;
 
@@ -23,6 +27,22 @@ fn catalog() -> Result<protocol::CatalogSnapshot, Box<dyn std::error::Error>> {
     let epoch = protocol::ManagerEpoch::new([7; 16])?;
     let mut snapshot = ActionSnapshot::empty(epoch);
     snapshot.focused_window = Some(WindowId::new(42));
+    snapshot.focused_workspace = Some(WorkspaceLocation::new(
+        MonitorIndex::new(0),
+        WorkspaceIndex::new(0),
+    ));
+    snapshot.configuration.work_area = std::sync::Arc::new(WorkAreaConfiguration {
+        global: None,
+        monitors: vec![MonitorWorkAreaConfiguration {
+            offset: None,
+            workspaces: vec![WorkspaceWorkAreaConfiguration {
+                offset: None,
+                window_based: false,
+            }]
+            .into_boxed_slice(),
+        }]
+        .into_boxed_slice(),
+    });
     snapshot.directional_targets = DirectionSet::from([
         OperationDirection::Left,
         OperationDirection::Right,
@@ -155,6 +175,7 @@ fn scalar(
         D::AnimationDuration => protocol::ArgumentScalar::Unsigned(250),
         D::AnimationFps => protocol::ArgumentScalar::Unsigned(60),
         D::AnimationStyle => protocol::ArgumentScalar::Choice(protocol::ChoiceId::parse("linear")?),
+        D::WorkAreaOffset => protocol::ArgumentScalar::Signed(0),
     })
 }
 
@@ -445,5 +466,29 @@ fn animation_arguments_bind_exact_bezier_values_and_reject_zero_fps()
             action_invocation::ArgumentBindingError::Zero { .. }
         ))
     ));
+    Ok(())
+}
+
+#[test]
+fn signed_work_area_edges_bind_without_normalization() -> Result<(), Box<dyn std::error::Error>> {
+    let catalog = catalog()?;
+    let arguments = protocol::BuiltInArguments::new([
+        protocol::BuiltInArgument::Left(-8),
+        protocol::BuiltInArgument::Top(24),
+        protocol::BuiltInArgument::Right(-16),
+        protocol::BuiltInArgument::Bottom(4),
+    ])?
+    .into_action_arguments();
+    let request = invocation(
+        &catalog,
+        BuiltinActionKind::SetGlobalWorkAreaOffset,
+        arguments,
+    )?;
+
+    let bound = action_invocation::bind(&catalog, &request)?;
+    let BuiltinAction::SetGlobalWorkAreaOffset { offset } = bound.action else {
+        return Err("work-area offset bound to the wrong action".into());
+    };
+    assert_eq!(offset, crate::core::WorkAreaOffset::new(-8, 24, -16, 4));
     Ok(())
 }

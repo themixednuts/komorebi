@@ -70,6 +70,7 @@ pub use subscriber::SubscriberNameError;
 pub use subscriber::SubscriberRegistry;
 pub use transparency_alpha::TransparencyAlpha;
 pub use transparency_alpha::TransparencyAlphaError;
+pub use work_area_offset::WorkAreaOffset;
 
 pub const DEFAULT_TRANSPARENCY_ENABLED: bool = false;
 
@@ -83,6 +84,7 @@ pub mod resize_step;
 pub mod stackbar_configuration;
 pub mod subscriber;
 pub mod transparency_alpha;
+pub mod work_area_offset;
 
 // serde_as must be before derive
 #[serde_with::serde_as]
@@ -222,11 +224,6 @@ pub enum SocketMessage {
     Transparency(bool),
     ToggleTransparency,
     TransparencyAlpha(u8),
-    InvisibleBorders(Rect),
-    WorkAreaOffset(Rect),
-    MonitorWorkAreaOffset(usize, Rect),
-    WorkspaceWorkAreaOffset(usize, usize, Rect),
-    ToggleWindowBasedWorkAreaOffset,
     ResizeDelta(i32),
     InitialWorkspaceRule(ApplicationIdentifier, String, usize, usize),
     InitialNamedWorkspaceRule(ApplicationIdentifier, String, String),

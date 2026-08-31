@@ -27,6 +27,7 @@ use crate::core::StackbarMode;
 use crate::core::StackbarTabWidth;
 use crate::core::TransparencyAlpha;
 use crate::core::WindowKind;
+use crate::core::WorkAreaOffset;
 use komorebi_themes::colour::Rgb;
 
 use super::builtin::Pixels;
@@ -35,6 +36,7 @@ use super::index::ContainerIndex;
 use super::index::MonitorIndex;
 use super::index::StackIndex;
 use super::index::WorkspaceIndex;
+use super::index::WorkspaceLocation;
 use super::path::WindowsPath;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -93,6 +95,12 @@ pub enum ActionResult {
     AnimationDurationSet,
     AnimationFpsSet,
     AnimationStyleSet,
+    GlobalWorkAreaOffsetSet,
+    MonitorWorkAreaOffsetSet,
+    WorkspaceWorkAreaOffsetSet,
+    WindowBasedWorkAreaOffsetToggled {
+        enabled: bool,
+    },
     LayoutSet {
         layout: DefaultLayout,
     },
@@ -449,6 +457,21 @@ pub enum NativeEffect {
     SetAnimationStyle {
         style: AnimationStyle,
         prefix: Option<AnimationPrefix>,
+    },
+    SetGlobalWorkAreaOffset {
+        offset: WorkAreaOffset,
+    },
+    SetMonitorWorkAreaOffset {
+        monitor: MonitorIndex,
+        offset: WorkAreaOffset,
+    },
+    SetWorkspaceWorkAreaOffset {
+        location: WorkspaceLocation,
+        offset: WorkAreaOffset,
+    },
+    SetWindowBasedWorkAreaOffset {
+        location: WorkspaceLocation,
+        enabled: bool,
     },
     SetLayout {
         layout: DefaultLayout,

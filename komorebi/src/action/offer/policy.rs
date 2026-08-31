@@ -4,6 +4,7 @@ use crate::action::BuiltinActionKind;
 pub(super) enum FocusRequirement {
     None,
     FocusedWindow,
+    FocusedWorkspace,
     DirectionalTarget,
 }
 
@@ -26,6 +27,7 @@ pub(super) enum CurrentValueSource {
     BorderOffset,
     BorderStyle,
     BorderImplementation,
+    WindowBasedWorkAreaOffset,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -43,6 +45,12 @@ const AVAILABLE: OfferPolicy = OfferPolicy {
 
 const FOCUSED: OfferPolicy = OfferPolicy {
     focus: FocusRequirement::FocusedWindow,
+    choices: DynamicChoiceSource::None,
+    current_value: CurrentValueSource::None,
+};
+
+const FOCUSED_WORKSPACE: OfferPolicy = OfferPolicy {
+    focus: FocusRequirement::FocusedWorkspace,
     choices: DynamicChoiceSource::None,
     current_value: CurrentValueSource::None,
 };
@@ -232,5 +240,12 @@ pub(super) const fn policy(kind: BuiltinActionKind) -> OfferPolicy {
         | BuiltinActionKind::SetAnimationDuration
         | BuiltinActionKind::SetAnimationFps
         | BuiltinActionKind::SetAnimationStyle => AVAILABLE,
+        BuiltinActionKind::SetGlobalWorkAreaOffset
+        | BuiltinActionKind::SetMonitorWorkAreaOffset
+        | BuiltinActionKind::SetWorkspaceWorkAreaOffset => AVAILABLE,
+        BuiltinActionKind::ToggleWindowBasedWorkAreaOffset => OfferPolicy {
+            current_value: CurrentValueSource::WindowBasedWorkAreaOffset,
+            ..FOCUSED_WORKSPACE
+        },
     }
 }

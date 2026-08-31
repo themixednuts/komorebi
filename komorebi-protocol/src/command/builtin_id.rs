@@ -166,6 +166,10 @@ built_in_action_ids! {
     SetAnimationDuration => "set-animation-duration",
     SetAnimationFps => "set-animation-fps",
     SetAnimationStyle => "set-animation-style",
+    SetGlobalWorkAreaOffset => "set-global-work-area-offset",
+    SetMonitorWorkAreaOffset => "set-monitor-work-area-offset",
+    SetWorkspaceWorkAreaOffset => "set-workspace-work-area-offset",
+    ToggleWindowBasedWorkAreaOffset => "toggle-window-based-work-area-offset",
 }
 
 impl fmt::Display for BuiltInActionId {

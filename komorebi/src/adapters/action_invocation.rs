@@ -241,6 +241,19 @@ fn bind_builtin(
             style: args.animation_style(ParameterId::STYLE)?,
             prefix: args.animation_prefix(ParameterId::PREFIX)?,
         },
+        K::SetGlobalWorkAreaOffset => A::SetGlobalWorkAreaOffset {
+            offset: args.work_area_offset()?,
+        },
+        K::SetMonitorWorkAreaOffset => A::SetMonitorWorkAreaOffset {
+            monitor: MonitorIndex::new(args.usize(ParameterId::MONITOR)?),
+            offset: args.work_area_offset()?,
+        },
+        K::SetWorkspaceWorkAreaOffset => A::SetWorkspaceWorkAreaOffset {
+            monitor: MonitorIndex::new(args.usize(ParameterId::MONITOR)?),
+            workspace: WorkspaceIndex::new(args.usize(ParameterId::INDEX)?),
+            offset: args.work_area_offset()?,
+        },
+        K::ToggleWindowBasedWorkAreaOffset => A::ToggleWindowBasedWorkAreaOffset,
         K::SetWorkspaceLayout => A::SetWorkspaceLayout {
             workspace: args.workspace_selector(ParameterId::WORKSPACE)?,
             layout: args.layout(ParameterId::LAYOUT)?,

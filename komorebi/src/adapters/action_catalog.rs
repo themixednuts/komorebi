@@ -214,6 +214,9 @@ fn project_current_value(
                 border_implementation_name(implementation),
             )?))
         }
+        offer::ActionCurrentValue::WindowBasedWorkAreaOffset(enabled) => {
+            Ok(protocol::ArgumentScalar::Bool(enabled))
+        }
     }
 }
 
@@ -302,6 +305,7 @@ const fn project_parameter_domain(value: definition::ParameterDomain) -> protoco
         }
         definition::ParameterDomain::AnimationFps => protocol::ParameterDomain::AnimationFps,
         definition::ParameterDomain::AnimationStyle => protocol::ParameterDomain::AnimationStyle,
+        definition::ParameterDomain::WorkAreaOffset => protocol::ParameterDomain::WorkAreaOffset,
     }
 }
 
@@ -325,6 +329,10 @@ pub(crate) const fn project_unavailability(
         }
         offer::Unavailability::Unauthorized => protocol::ActionUnavailability::Unauthorized,
         offer::Unavailability::UnknownWorkspace => protocol::ActionUnavailability::UnknownWorkspace,
+        offer::Unavailability::NoFocusedWorkspace => {
+            protocol::ActionUnavailability::NoFocusedWorkspace
+        }
+        offer::Unavailability::UnknownMonitor => protocol::ActionUnavailability::UnknownMonitor,
     }
 }
 
