@@ -8,6 +8,7 @@ use komorebi_client::Rgb;
 use komorebi_client::StackbarLabel;
 use komorebi_client::StackbarMode;
 use komorebi_client::WindowKind;
+use komorebi_client::command::BoundedText;
 use komorebi_client::command::BuiltInActionId;
 use komorebi_client::command::BuiltInArgument;
 use komorebi_client::command::BuiltInArguments;
@@ -34,6 +35,30 @@ struct GuiCommand {
 enum GuiCommandKey {
     Singleton(BuiltInActionId),
     MonitorWorkAreaOffset(u64),
+    Workspace(WorkspaceCommandKind, WorkspaceTarget),
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum WorkspaceCommandKind {
+    Name,
+    ContainerPadding,
+    WorkspacePadding,
+}
+
+impl WorkspaceCommandKind {
+    const fn action(self) -> BuiltInActionId {
+        match self {
+            Self::Name => BuiltInActionId::SetWorkspaceName,
+            Self::ContainerPadding => BuiltInActionId::SetContainerPadding,
+            Self::WorkspacePadding => BuiltInActionId::SetWorkspacePadding,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct WorkspaceTarget {
+    monitor: u64,
+    workspace: u64,
 }
 
 #[derive(Clone, Debug)]
@@ -157,6 +182,85 @@ impl CommandQueue {
         )
     }
 
+    pub fn set_workspace_name(
+        &self,
+        monitor: usize,
+        workspace: usize,
+        name: &str,
+    ) -> Result<(), CommandQueueError> {
+        let target = WorkspaceTarget::new(monitor, workspace)?;
+        let name = BoundedText::new(name).map_err(BuiltInArgumentsError::from)?;
+        self.send_to_workspace(
+            target,
+            WorkspaceCommandKind::Name,
+            [
+                BuiltInArgument::Monitor(target.monitor),
+                BuiltInArgument::Index(target.workspace),
+                BuiltInArgument::Name(name),
+            ],
+        )
+    }
+
+    pub fn set_container_padding(
+        &self,
+        monitor: usize,
+        workspace: usize,
+        size: i32,
+    ) -> Result<(), CommandQueueError> {
+        self.set_workspace_padding_value(
+            WorkspaceCommandKind::ContainerPadding,
+            monitor,
+            workspace,
+            size,
+        )
+    }
+
+    pub fn set_workspace_padding(
+        &self,
+        monitor: usize,
+        workspace: usize,
+        size: i32,
+    ) -> Result<(), CommandQueueError> {
+        self.set_workspace_padding_value(
+            WorkspaceCommandKind::WorkspacePadding,
+            monitor,
+            workspace,
+            size,
+        )
+    }
+
+    fn set_workspace_padding_value(
+        &self,
+        kind: WorkspaceCommandKind,
+        monitor: usize,
+        workspace: usize,
+        size: i32,
+    ) -> Result<(), CommandQueueError> {
+        let target = WorkspaceTarget::new(monitor, workspace)?;
+        self.send_to_workspace(
+            target,
+            kind,
+            [
+                BuiltInArgument::Monitor(target.monitor),
+                BuiltInArgument::Index(target.workspace),
+                BuiltInArgument::Size(size),
+            ],
+        )
+    }
+
+    fn send_to_workspace<const N: usize>(
+        &self,
+        target: WorkspaceTarget,
+        kind: WorkspaceCommandKind,
+        arguments: [BuiltInArgument; N],
+    ) -> Result<(), CommandQueueError> {
+        self.send_with_key(
+            GuiCommandKey::Workspace(kind, target),
+            kind.action(),
+            arguments,
+        )
+    }
+
     fn send_colour(&self, action: BuiltInActionId, colour: Rgb) -> Result<(), CommandQueueError> {
         self.send(
             action,
@@ -200,6 +304,17 @@ impl CommandQueue {
             *revision = revision.wrapping_add(1);
         });
         Ok(())
+    }
+}
+
+impl WorkspaceTarget {
+    fn new(monitor: usize, workspace: usize) -> Result<Self, CommandQueueError> {
+        Ok(Self {
+            monitor: u64::try_from(monitor)
+                .map_err(|_| CommandQueueError::MonitorIndexOverflow(monitor))?,
+            workspace: u64::try_from(workspace)
+                .map_err(|_| CommandQueueError::WorkspaceIndexOverflow(workspace))?,
+        })
     }
 }
 
@@ -300,6 +415,8 @@ pub enum CommandQueueError {
     Arguments(#[from] BuiltInArgumentsError),
     #[error("monitor index {0} cannot be represented by the command protocol")]
     MonitorIndexOverflow(usize),
+    #[error("workspace index {0} cannot be represented by the command protocol")]
+    WorkspaceIndexOverflow(usize),
     #[error("gui command actor is closed")]
     Closed,
     #[error("gui command mailbox is poisoned")]
@@ -322,6 +439,14 @@ mod tests {
         GuiCommand {
             key: GuiCommandKey::MonitorWorkAreaOffset(monitor),
             action: BuiltInActionId::SetMonitorWorkAreaOffset,
+            arguments: BuiltInArguments::default(),
+        }
+    }
+
+    fn workspace_command(kind: WorkspaceCommandKind, monitor: u64, workspace: u64) -> GuiCommand {
+        GuiCommand {
+            key: GuiCommandKey::Workspace(kind, WorkspaceTarget { monitor, workspace }),
+            action: kind.action(),
             arguments: BuiltInArguments::default(),
         }
     }
@@ -362,6 +487,61 @@ mod tests {
                 GuiCommandKey::MonitorWorkAreaOffset(0),
             ]
         );
+    }
+
+    #[test]
+    fn mailbox_coalesces_each_action_per_workspace() {
+        let mut pending = VecDeque::new();
+        enqueue(
+            &mut pending,
+            workspace_command(WorkspaceCommandKind::ContainerPadding, 0, 0),
+        );
+        enqueue(
+            &mut pending,
+            workspace_command(WorkspaceCommandKind::ContainerPadding, 0, 1),
+        );
+        enqueue(
+            &mut pending,
+            workspace_command(WorkspaceCommandKind::ContainerPadding, 0, 0),
+        );
+
+        assert_eq!(
+            pending
+                .iter()
+                .map(|command| command.key)
+                .collect::<Vec<_>>(),
+            [
+                GuiCommandKey::Workspace(
+                    WorkspaceCommandKind::ContainerPadding,
+                    WorkspaceTarget {
+                        monitor: 0,
+                        workspace: 1,
+                    },
+                ),
+                GuiCommandKey::Workspace(
+                    WorkspaceCommandKind::ContainerPadding,
+                    WorkspaceTarget {
+                        monitor: 0,
+                        workspace: 0,
+                    },
+                ),
+            ]
+        );
+    }
+
+    #[test]
+    fn mailbox_keeps_distinct_workspace_actions_for_the_same_target() {
+        let mut pending = VecDeque::new();
+        enqueue(
+            &mut pending,
+            workspace_command(WorkspaceCommandKind::ContainerPadding, 0, 0),
+        );
+        enqueue(
+            &mut pending,
+            workspace_command(WorkspaceCommandKind::WorkspacePadding, 0, 0),
+        );
+
+        assert_eq!(pending.len(), 2);
     }
 
     #[tokio::test]

@@ -6594,40 +6594,6 @@
           "properties": {
             "content": {
               "type": "array",
-              "maxItems": 3,
-              "minItems": 3,
-              "prefixItems": [
-                {
-                  "type": "integer",
-                  "format": "uint",
-                  "minimum": 0
-                },
-                {
-                  "type": "integer",
-                  "format": "uint",
-                  "minimum": 0
-                },
-                {
-                  "type": "integer",
-                  "format": "int32"
-                }
-              ]
-            },
-            "type": {
-              "type": "string",
-              "const": "ContainerPadding"
-            }
-          },
-          "required": [
-            "type",
-            "content"
-          ]
-        },
-        {
-          "type": "object",
-          "properties": {
-            "content": {
-              "type": "array",
               "maxItems": 2,
               "minItems": 2,
               "prefixItems": [
@@ -6660,40 +6626,6 @@
             "type": {
               "type": "string",
               "const": "FocusedWorkspaceContainerPadding"
-            }
-          },
-          "required": [
-            "type",
-            "content"
-          ]
-        },
-        {
-          "type": "object",
-          "properties": {
-            "content": {
-              "type": "array",
-              "maxItems": 3,
-              "minItems": 3,
-              "prefixItems": [
-                {
-                  "type": "integer",
-                  "format": "uint",
-                  "minimum": 0
-                },
-                {
-                  "type": "integer",
-                  "format": "uint",
-                  "minimum": 0
-                },
-                {
-                  "type": "integer",
-                  "format": "int32"
-                }
-              ]
-            },
-            "type": {
-              "type": "string",
-              "const": "WorkspacePadding"
             }
           },
           "required": [
@@ -6797,39 +6729,6 @@
             "type": {
               "type": "string",
               "const": "NamedWorkspaceTiling"
-            }
-          },
-          "required": [
-            "type",
-            "content"
-          ]
-        },
-        {
-          "type": "object",
-          "properties": {
-            "content": {
-              "type": "array",
-              "maxItems": 3,
-              "minItems": 3,
-              "prefixItems": [
-                {
-                  "type": "integer",
-                  "format": "uint",
-                  "minimum": 0
-                },
-                {
-                  "type": "integer",
-                  "format": "uint",
-                  "minimum": 0
-                },
-                {
-                  "type": "string"
-                }
-              ]
-            },
-            "type": {
-              "type": "string",
-              "const": "WorkspaceName"
             }
           },
           "required": [

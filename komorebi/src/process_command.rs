@@ -257,15 +257,12 @@ impl WindowManager {
                 | SocketMessage::FocusWorkspaceNumbers(..)
                 | SocketMessage::FocusMonitorWorkspaceNumber(..)
                 | SocketMessage::FocusNamedWorkspace(..)
-                | SocketMessage::ContainerPadding(..)
                 | SocketMessage::NamedWorkspaceContainerPadding(..)
                 | SocketMessage::FocusedWorkspaceContainerPadding(..)
-                | SocketMessage::WorkspacePadding(..)
                 | SocketMessage::NamedWorkspacePadding(..)
                 | SocketMessage::FocusedWorkspacePadding(..)
                 | SocketMessage::WorkspaceTiling(..)
                 | SocketMessage::NamedWorkspaceTiling(..)
-                | SocketMessage::WorkspaceName(..)
                 | SocketMessage::WorkspaceLayout(..)
                 | SocketMessage::NamedWorkspaceLayout(..)
                 | SocketMessage::WorkspaceLayoutCustom(..)
@@ -1649,8 +1646,6 @@ mod tests {
     fn paused_padding_and_workspace_setup_actions_are_rejected() {
         assert_paused_rejects(SocketMessage::FocusedWorkspaceContainerPadding(8));
         assert_paused_rejects(SocketMessage::FocusedWorkspacePadding(8));
-        assert_paused_rejects(SocketMessage::ContainerPadding(0, 0, 8));
-        assert_paused_rejects(SocketMessage::WorkspacePadding(0, 0, 8));
         assert_paused_rejects(SocketMessage::WorkspaceTiling(0, 0, false));
         assert_paused_rejects(SocketMessage::WorkspaceLayout(
             0,
@@ -1715,7 +1710,6 @@ mod tests {
             0,
             vec!["code".into(), "chat".into()],
         ));
-        assert_paused_rejects(SocketMessage::WorkspaceName(0, 0, "code".into()));
         assert_paused_rejects(SocketMessage::LayoutRatios(Some(vec![0.5, 0.5]), None));
         assert_paused_rejects(SocketMessage::EagerFocus("wezterm-gui.exe".into()));
         assert_paused_rejects(SocketMessage::RemoveTitleBar(
@@ -1741,9 +1735,12 @@ mod tests {
         let stream = Vec::new();
         wm.process_command(SocketMessage::EnsureWorkspaces(0, 2), stream)
             .unwrap();
-        let stream = Vec::new();
-        wm.process_command(SocketMessage::WorkspaceName(0, 1, "chat".into()), stream)
-            .unwrap();
+        wm.admit_socket_action(crate::action::BuiltinAction::SetWorkspaceName {
+            monitor: crate::action::MonitorIndex::new(0),
+            workspace: crate::action::WorkspaceIndex::new(1),
+            name: crate::action::WorkspaceName::parse("chat").unwrap(),
+        })
+        .unwrap();
         assert_eq!(wm.focused_workspace_idx().unwrap(), 0);
 
         let stream = Vec::new();

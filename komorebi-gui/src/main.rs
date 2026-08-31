@@ -693,14 +693,13 @@ impl eframe::App for KomorebiGui {
                                                     .lost_focus()
                                                 {
                                                     workspace.name.clone_from(workspace_name);
-                                                    komorebi_client::send_message(
-                                                        &SocketMessage::WorkspaceName(
+                                                    report_command(
+                                                        self.commands.set_workspace_name(
                                                             monitor_idx,
                                                             workspace_idx,
-                                                            workspace.name.clone(),
+                                                            &workspace.name,
                                                         ),
-                                                    )
-                                                    .unwrap();
+                                                    );
                                                 }
                                             });
 
@@ -742,14 +741,13 @@ impl eframe::App for KomorebiGui {
                                                     ))
                                                     .drag_stopped()
                                                 {
-                                                    komorebi_client::send_message(
-                                                        &SocketMessage::ContainerPadding(
+                                                    report_command(
+                                                        self.commands.set_container_padding(
                                                             monitor_idx,
                                                             workspace_idx,
                                                             workspace.container_padding,
                                                         ),
-                                                    )
-                                                    .unwrap();
+                                                    );
                                                 };
                                             });
 
@@ -761,14 +759,13 @@ impl eframe::App for KomorebiGui {
                                                     ))
                                                     .drag_stopped()
                                                 {
-                                                    komorebi_client::send_message(
-                                                        &SocketMessage::WorkspacePadding(
+                                                    report_command(
+                                                        self.commands.set_workspace_padding(
                                                             monitor_idx,
                                                             workspace_idx,
                                                             workspace.workspace_padding,
                                                         ),
-                                                    )
-                                                    .unwrap();
+                                                    );
                                                 };
                                             });
                                         },

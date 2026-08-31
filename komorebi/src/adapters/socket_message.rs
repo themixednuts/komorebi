@@ -122,15 +122,12 @@ pub fn classify(message: &SocketMessage) -> SocketMessageClass {
         | FocusWorkspaceNumbers(_)
         | FocusMonitorWorkspaceNumber(_, _)
         | FocusNamedWorkspace(_)
-        | ContainerPadding(_, _, _)
         | NamedWorkspaceContainerPadding(_, _)
         | FocusedWorkspaceContainerPadding(_)
-        | WorkspacePadding(_, _, _)
         | NamedWorkspacePadding(_, _)
         | FocusedWorkspacePadding(_)
         | WorkspaceTiling(_, _, _)
         | NamedWorkspaceTiling(_, _)
-        | WorkspaceName(_, _, _)
         | WorkspaceLayout(_, _, _)
         | NamedWorkspaceLayout(_, _)
         | WorkspaceLayoutCustom(_, _, _)
@@ -438,20 +435,6 @@ pub fn to_builtin_action(message: &SocketMessage) -> Option<BuiltinAction> {
         SocketMessage::FocusedWorkspacePadding(size) => {
             Some(BuiltinAction::SetFocusedWorkspacePadding { size: *size })
         }
-        SocketMessage::ContainerPadding(monitor, workspace, size) => {
-            Some(BuiltinAction::SetContainerPadding {
-                monitor: MonitorIndex::new(*monitor),
-                workspace: WorkspaceIndex::new(*workspace),
-                size: *size,
-            })
-        }
-        SocketMessage::WorkspacePadding(monitor, workspace, size) => {
-            Some(BuiltinAction::SetWorkspacePadding {
-                monitor: MonitorIndex::new(*monitor),
-                workspace: WorkspaceIndex::new(*workspace),
-                size: *size,
-            })
-        }
         SocketMessage::WorkspaceTiling(monitor, workspace, tile) => {
             Some(BuiltinAction::SetWorkspaceTiling {
                 monitor: MonitorIndex::new(*monitor),
@@ -613,13 +596,6 @@ pub fn to_builtin_action(message: &SocketMessage) -> Option<BuiltinAction> {
             Some(BuiltinAction::EnsureNamedWorkspaces {
                 monitor: MonitorIndex::new(*monitor),
                 names,
-            })
-        }
-        SocketMessage::WorkspaceName(monitor, workspace, name) => {
-            Some(BuiltinAction::SetWorkspaceName {
-                monitor: MonitorIndex::new(*monitor),
-                workspace: WorkspaceIndex::new(*workspace),
-                name: WorkspaceName::parse(name.clone()).ok()?,
             })
         }
         SocketMessage::LayoutRatios(columns, rows) => Some(BuiltinAction::SetLayoutRatios {
