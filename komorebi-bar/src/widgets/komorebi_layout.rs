@@ -93,7 +93,7 @@ impl KomorebiLayout {
         if self.is_default() {
             !show_options
         } else {
-            self.on_click_option(commands, monitor_idx, workspace_idx);
+            self.on_click_option(commands, monitor_idx, workspace_idx, true);
             false
         }
     }
@@ -103,6 +103,7 @@ impl KomorebiLayout {
         commands: &CommandQueue,
         monitor_idx: usize,
         workspace_idx: Option<usize>,
+        is_current: bool,
     ) {
         match self {
             KomorebiLayout::Default(option) => {
@@ -124,13 +125,11 @@ impl KomorebiLayout {
                 }
             }
             KomorebiLayout::Floating => {
-                if komorebi_client::send_batch([
-                    SocketMessage::FocusMonitorAtCursor,
-                    SocketMessage::ToggleTiling,
-                ])
-                .is_err()
+                if let Some(workspace) = workspace_idx
+                    && let Err(error) =
+                        commands.set_workspace_tiling(monitor_idx, workspace, is_current)
                 {
-                    tracing::error!("could not send message to komorebi: ToggleTiling");
+                    tracing::error!(%error, "could not set workspace tiling");
                 }
             }
             KomorebiLayout::Paused => {
@@ -326,6 +325,7 @@ impl KomorebiLayout {
                                 commands,
                                 monitor_idx,
                                 Some(workspace_idx),
+                                is_selected,
                             );
                             show_options = false;
                         };

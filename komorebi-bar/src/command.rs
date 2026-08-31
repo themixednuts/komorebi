@@ -28,6 +28,7 @@ struct BarCommand {
 enum BarCommandKey {
     MonitorWorkAreaOffset(u64),
     WorkspaceLayout(WorkspaceTarget),
+    WorkspaceTiling(WorkspaceTarget),
     FocusMonitorWorkspace,
     FocusStackWindow,
     ToggleWorkspaceLayer,
@@ -45,6 +46,7 @@ impl BarCommandKey {
         match self {
             Self::MonitorWorkAreaOffset(_) => BuiltInActionId::SetMonitorWorkAreaOffset,
             Self::WorkspaceLayout(_) => BuiltInActionId::SetMonitorWorkspaceLayout,
+            Self::WorkspaceTiling(_) => BuiltInActionId::SetWorkspaceTiling,
             Self::FocusMonitorWorkspace => BuiltInActionId::FocusMonitorWorkspace,
             Self::FocusStackWindow => BuiltInActionId::FocusStackWindow,
             Self::ToggleWorkspaceLayer => BuiltInActionId::ToggleWorkspaceLayer,
@@ -57,6 +59,7 @@ impl BarCommandKey {
             Self::ToggleWorkspaceLayer | Self::TogglePause => DeliveryPolicy::Every,
             Self::MonitorWorkAreaOffset(_)
             | Self::WorkspaceLayout(_)
+            | Self::WorkspaceTiling(_)
             | Self::FocusMonitorWorkspace
             | Self::FocusStackWindow => DeliveryPolicy::Latest,
         }
@@ -116,6 +119,23 @@ impl CommandQueue {
                 BuiltInArgument::Monitor(target.monitor),
                 BuiltInArgument::Index(target.workspace),
                 BuiltInArgument::Layout(built_in_layout(layout)),
+            ],
+        )
+    }
+
+    pub fn set_workspace_tiling(
+        &self,
+        monitor: usize,
+        workspace: usize,
+        enabled: bool,
+    ) -> Result<(), CommandQueueError> {
+        let target = WorkspaceTarget::new(monitor, workspace)?;
+        self.send(
+            BarCommandKey::WorkspaceTiling(target),
+            [
+                BuiltInArgument::Monitor(target.monitor),
+                BuiltInArgument::Index(target.workspace),
+                BuiltInArgument::Enabled(enabled),
             ],
         )
     }
@@ -417,6 +437,30 @@ mod tests {
                 .map(|command| (command.key.action(), command.arguments.clone()))
                 .collect::<Vec<_>>(),
             [(BuiltInActionId::TogglePause, BuiltInArguments::default())]
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn floating_control_enqueues_exact_workspace_tiling_state() -> Result<(), CommandQueueError> {
+        let (queue, pending, _receiver) = queue_without_actor();
+
+        queue.set_workspace_tiling(2, 3, false)?;
+
+        let queued = pending.lock().map_err(|_| CommandQueueError::Poisoned)?;
+        assert_eq!(
+            queued
+                .iter()
+                .map(|command| (command.key.action(), command.arguments.clone()))
+                .collect::<Vec<_>>(),
+            [(
+                BuiltInActionId::SetWorkspaceTiling,
+                BuiltInArguments::new([
+                    BuiltInArgument::Monitor(2),
+                    BuiltInArgument::Index(3),
+                    BuiltInArgument::Enabled(false),
+                ])?,
+            )]
         );
         Ok(())
     }
