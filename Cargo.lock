@@ -5131,7 +5131,9 @@ name = "komorebi-extensions"
 version = "0.1.0"
 dependencies = [
  "mlua",
+ "parking_lot",
  "thiserror 2.0.20",
+ "tokio",
  "windows-core 0.62.2",
  "windows-sys 0.61.2",
 ]

@@ -51,6 +51,56 @@ fn plugin_program_rejects_binary_lua_before_it_reaches_the_vm() {
 }
 
 #[test]
+fn plugin_program_rejects_source_larger_than_the_broker_frame_budget() {
+    let oversized = vec![b' '; 1024 * 1024 + 1];
+
+    assert_eq!(
+        PluginProgram::new("oversized.lua", oversized),
+        Err(PluginProgramError::SourceTooLarge)
+    );
+}
+
+#[test]
+fn plugin_logging_is_bounded_before_reaching_the_sink() -> Result<(), Box<dyn std::error::Error>> {
+    let logs = RecordingLogs::default();
+    let vm = PluginVm::new(
+        manifest(PluginCapabilitySet::only([PluginCapability::Log]))?,
+        limits()?,
+        logs.clone(),
+    )?;
+    let oversized_message = "x".repeat(16 * 1024 + 1);
+    let source =
+        format!("return {{ on_load = function(context) context:info('{oversized_message}') end }}");
+
+    assert!(matches!(
+        vm.load(PluginProgram::new("oversized-log.lua", source)?),
+        Err(PluginVmError::LogMessageTooLarge)
+    ));
+    assert!(logs.0.lock().map_err(|error| error.to_string())?.is_empty());
+    Ok(())
+}
+
+#[test]
+fn plugin_logging_has_a_fixed_record_budget() -> Result<(), Box<dyn std::error::Error>> {
+    let logs = RecordingLogs::default();
+    let vm = PluginVm::new(
+        manifest(PluginCapabilitySet::only([PluginCapability::Log]))?,
+        limits()?,
+        logs.clone(),
+    )?;
+
+    assert!(matches!(
+        vm.load(PluginProgram::new(
+            "many-logs.lua",
+            "return { on_load = function(context) for i = 1, 65 do context:info('x') end end }",
+        )?),
+        Err(PluginVmError::LogBudgetExceeded)
+    ));
+    assert_eq!(logs.0.lock().map_err(|error| error.to_string())?.len(), 64);
+    Ok(())
+}
+
+#[test]
 fn committed_lua_types_match_the_closed_logging_api() {
     let generated = include_str!("../lua-types/mlua-typegen.lua");
 

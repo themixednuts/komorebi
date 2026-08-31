@@ -51,8 +51,8 @@ bypass source-level policy. Script bytes are never interpreted as a Windows
 path. Rust panics are resumed at the Rust boundary rather than made catchable
 by Lua.
 
-The current slice proves the in-process VM contract with consumer-owned fake
-ports. Untrusted source is still forbidden in the desktop host.
+The in-process VM contract remains independently testable with consumer-owned
+fake ports. Production source is admitted only to the isolated worker below.
 
 The native containment seam now proves the worker process itself:
 
@@ -77,11 +77,51 @@ PluginId
     <- VerifiedLpacWorker typestate | typed rejection
 ```
 
-This is a live Windows integration proof, not the finished broker. The next
-slice replaces the probe-only lifetime with an allowlisted broker channel and
-loads the VM only after the same proof succeeds. Once a call is admitted to
-that broker, the broker owns it through terminal completion; dropping UI or
-plugin result interest cannot split or duplicate its effect.
+The standalone probe remains a live Windows integration proof. The production
+host uses the same token, mitigation, and Job assertions before announcing
+readiness on its allowlisted broker channel.
+
+## Brokered worker session
+
+```text
+PluginHostService::start
+  -> tokio::task::spawn_blocking(run_plugin_owner)
+    -> LpacWorkerLauncher::launch_session
+      -> CreatePipe [broker/worker one-way pairs]
+      -> PROC_THREAD_ATTRIBUTE_HANDLE_LIST [worker ends only]
+      -> CreateProcessW [suspended LPAC, empty environment]
+      -> AssignProcessToJobObject
+      -> ResumeThread
+    -> WorkerSession::await_ready
+    -> WorkerSession::initialize
+      -> bounded, versioned wire request
+      -> worker_runtime::run
+        -> run_worker_containment_probe
+        -> PluginVm::new + PluginVm::load
+        -> bounded, versioned wire response
+  -> publish PluginHostClient only after the initial program loads
+
+PluginHostClient::reload
+  -> acquire bounded admission permit
+  -> mpsc::Sender<OwnerCommand>::send
+  -> blocking owner completes WorkerSession::reload
+  -> worker loads a replacement PluginVm
+  -> worker swaps the VM only after successful load
+  -> oneshot reply [caller cancellation drops result interest only]
+
+PluginHostService::shutdown
+  -> close admission
+  -> owner sends wire shutdown
+  -> worker acknowledges and exits
+  -> join blocking owner
+```
+
+The child command line carries only its two inherited numeric handle values.
+Plugin identity, capabilities, limits, source, and reloads cross the framed
+channel after containment attestation. The child receives no ambient standard
+handles and a generated four-entry environment: `LOCALAPPDATA`, `SystemRoot`,
+`TEMP`, and `TMP`. Windows supplies the AppContainer profile and system paths;
+the desktop process environment is never inherited.
 
 ## Type generation
 
@@ -107,5 +147,6 @@ validation branches or a hand-maintained union mapping.
   hand-maintained shadow API.
 - The native LPAC probe proves token identity, zero ambient capabilities,
   mitigation policy, Job containment, and deterministic termination.
-- The later broker integration proves exact handle allowlisting,
-  per-extension broker identity, capability dispatch, and hot reload.
+- The broker integration proves exact handle allowlisting, per-extension
+  identity, bounded framing, bounded structured logs, transactional reload,
+  and cancellation-safe owner admission.

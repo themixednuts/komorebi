@@ -1,5 +1,8 @@
 mod path;
+mod policy;
+mod profile;
 mod resources;
+mod session;
 
 use std::io;
 use std::mem::size_of;
@@ -9,45 +12,33 @@ use std::ptr;
 use thiserror::Error;
 use windows_sys::Win32::Foundation::WAIT_OBJECT_0;
 use windows_sys::Win32::Foundation::WAIT_TIMEOUT;
-use windows_sys::Win32::Security::SECURITY_CAPABILITIES;
 use windows_sys::Win32::System::JobObjects::AssignProcessToJobObject;
 use windows_sys::Win32::System::Threading::CREATE_SUSPENDED;
+use windows_sys::Win32::System::Threading::CREATE_UNICODE_ENVIRONMENT;
 use windows_sys::Win32::System::Threading::CreateProcessW;
 use windows_sys::Win32::System::Threading::EXTENDED_STARTUPINFO_PRESENT;
 use windows_sys::Win32::System::Threading::GetExitCodeProcess;
-use windows_sys::Win32::System::Threading::PROC_THREAD_ATTRIBUTE_ALL_APPLICATION_PACKAGES_POLICY;
-use windows_sys::Win32::System::Threading::PROC_THREAD_ATTRIBUTE_CHILD_PROCESS_POLICY;
-use windows_sys::Win32::System::Threading::PROC_THREAD_ATTRIBUTE_MITIGATION_POLICY;
-use windows_sys::Win32::System::Threading::PROC_THREAD_ATTRIBUTE_SECURITY_CAPABILITIES;
 use windows_sys::Win32::System::Threading::PROCESS_INFORMATION;
 use windows_sys::Win32::System::Threading::ResumeThread;
 use windows_sys::Win32::System::Threading::STARTUPINFOEXW;
 use windows_sys::Win32::System::Threading::WaitForSingleObject;
-use windows_sys::Win32::System::WindowsProgramming::PROCESS_CREATION_ALL_APPLICATION_PACKAGES_OPT_OUT;
-use windows_sys::Win32::System::WindowsProgramming::PROCESS_CREATION_CHILD_PROCESS_RESTRICTED;
 
 use self::path::WidePath;
 use self::path::WideString;
-use self::resources::AppContainerSid;
+use self::policy::with_process_policy;
+use self::profile::AppContainerEnvironment;
+use self::profile::AppContainerSid;
+use self::resources::BrokerPipes;
 use self::resources::OwnedHandle;
-use self::resources::ProcessAttributes;
 use self::resources::WorkerJob;
 use self::resources::terminate;
+pub use self::session::LpacSessionError;
+use self::session::NativeWorkerSession;
+use crate::PluginId;
 use crate::SandboxIdentity;
 
-const ATTRIBUTE_COUNT: u32 = 4;
 const PROBE_TIMEOUT_MILLIS: u32 = 15_000;
 const RESUME_FAILED: u32 = u32::MAX;
-// Public processthreadsapi.h SDK macros are C shift expressions, so windows-rs metadata cannot
-// generate them as Rust constants.
-const STRICT_HANDLE_CHECKS_ALWAYS_ON: u64 = 1 << 24;
-const WIN32K_SYSTEM_CALL_DISABLE_ALWAYS_ON: u64 = 1 << 28;
-const EXTENSION_POINT_DISABLE_ALWAYS_ON: u64 = 1 << 32;
-const PROHIBIT_DYNAMIC_CODE_ALWAYS_ON: u64 = 1 << 36;
-const CREATION_MITIGATIONS: u64 = STRICT_HANDLE_CHECKS_ALWAYS_ON
-    | WIN32K_SYSTEM_CALL_DISABLE_ALWAYS_ON
-    | EXTENSION_POINT_DISABLE_ALWAYS_ON
-    | PROHIBIT_DYNAMIC_CODE_ALWAYS_ON;
 
 /// Launches trusted extension-worker code before any untrusted source is admitted.
 pub struct LpacWorkerLauncher {
@@ -67,84 +58,95 @@ impl LpacWorkerLauncher {
         let sid = AppContainerSid::open_or_create(&identity)?;
         let job = WorkerJob::new()?;
 
-        let security_capabilities = SECURITY_CAPABILITIES {
-            AppContainerSid: sid.as_ptr(),
-            Capabilities: ptr::null_mut(),
-            CapabilityCount: 0,
-            Reserved: 0,
-        };
-        let all_packages_policy = PROCESS_CREATION_ALL_APPLICATION_PACKAGES_OPT_OUT;
-        let child_process_policy = PROCESS_CREATION_CHILD_PROCESS_RESTRICTED;
-        let mut attributes = ProcessAttributes::new(ATTRIBUTE_COUNT)?;
-        attributes.update(
-            PROC_THREAD_ATTRIBUTE_SECURITY_CAPABILITIES,
-            &security_capabilities,
-        )?;
-        attributes.update(
-            PROC_THREAD_ATTRIBUTE_ALL_APPLICATION_PACKAGES_POLICY,
-            &all_packages_policy,
-        )?;
-        attributes.update(
-            PROC_THREAD_ATTRIBUTE_CHILD_PROCESS_POLICY,
-            &child_process_policy,
-        )?;
-        attributes.update(
-            PROC_THREAD_ATTRIBUTE_MITIGATION_POLICY,
-            &CREATION_MITIGATIONS,
-        )?;
-
-        let mut startup = STARTUPINFOEXW::default();
-        startup.StartupInfo.cb = u32::try_from(size_of::<STARTUPINFOEXW>())
-            .map_err(|_| LpacLaunchError::StructureSizeOverflow)?;
-        startup.lpAttributeList = attributes.as_ptr();
-        let mut process_info = PROCESS_INFORMATION::default();
-        let created = unsafe {
-            // SAFETY: pointers refer to initialized storage alive through the call; the explicit
-            // application path is NUL-terminated and no handles are inherited.
-            CreateProcessW(
-                worker.as_ptr(),
-                ptr::null_mut(),
-                ptr::null(),
-                ptr::null(),
-                0,
-                EXTENDED_STARTUPINFO_PRESENT | CREATE_SUSPENDED,
-                ptr::null(),
-                ptr::null(),
-                &raw const startup.StartupInfo,
-                &raw mut process_info,
-            )
-        };
-        if created == 0 {
-            return Err(LpacLaunchError::windows("CreateProcessW"));
-        }
+        let process_info = with_process_policy(&sid, None, |attributes| {
+            let mut startup = STARTUPINFOEXW::default();
+            startup.StartupInfo.cb = u32::try_from(size_of::<STARTUPINFOEXW>())
+                .map_err(|_| LpacLaunchError::StructureSizeOverflow)?;
+            startup.lpAttributeList = attributes.as_ptr();
+            let mut process_info = PROCESS_INFORMATION::default();
+            let created = unsafe {
+                // SAFETY: pointers refer to initialized storage alive through the call; the
+                // explicit application path is NUL-terminated and no handles are inherited.
+                CreateProcessW(
+                    worker.as_ptr(),
+                    ptr::null_mut(),
+                    ptr::null(),
+                    ptr::null(),
+                    0,
+                    EXTENDED_STARTUPINFO_PRESENT | CREATE_SUSPENDED,
+                    ptr::null(),
+                    ptr::null(),
+                    &raw const startup.StartupInfo,
+                    &raw mut process_info,
+                )
+            };
+            if created == 0 {
+                Err(LpacLaunchError::windows("CreateProcessW"))
+            } else {
+                Ok(process_info)
+            }
+        })?;
         Self::verify_created_worker(process_info, &job)
+    }
+
+    pub(crate) fn launch_session(
+        &self,
+        worker: &Path,
+        plugin: PluginId,
+    ) -> Result<NativeWorkerSession, LpacLaunchError> {
+        let worker = WidePath::new(worker)?;
+        let identity = WideString::new(self.identity.as_str());
+        let sid = AppContainerSid::open_or_create(&identity)?;
+        let job = WorkerJob::new()?;
+        let pipes = BrokerPipes::new()?;
+        let worker_handles = pipes.worker_handles();
+
+        let read_handle = worker_handles[0] as usize;
+        let write_handle = worker_handles[1] as usize;
+        let mut command_line = WideString::new(&format!(
+            "komorebi-extension-worker --broker {read_handle} {write_handle}"
+        ));
+        let environment = AppContainerEnvironment::new(&sid)?;
+        let process_info = with_process_policy(&sid, Some(&worker_handles), |attributes| {
+            let mut startup = STARTUPINFOEXW::default();
+            startup.StartupInfo.cb = u32::try_from(size_of::<STARTUPINFOEXW>())
+                .map_err(|_| LpacLaunchError::StructureSizeOverflow)?;
+            startup.lpAttributeList = attributes.as_ptr();
+            let mut process_info = PROCESS_INFORMATION::default();
+            let created = unsafe {
+                // SAFETY: all pointers remain live through the call. Only the two handles in the
+                // explicit handle list are inheritable by the child.
+                CreateProcessW(
+                    worker.as_ptr(),
+                    command_line.as_mut_ptr(),
+                    ptr::null(),
+                    ptr::null(),
+                    1,
+                    EXTENDED_STARTUPINFO_PRESENT | CREATE_SUSPENDED | CREATE_UNICODE_ENVIRONMENT,
+                    environment.as_ptr().cast(),
+                    ptr::null(),
+                    &raw const startup.StartupInfo,
+                    &raw mut process_info,
+                )
+            };
+            if created == 0 {
+                Err(LpacLaunchError::windows("CreateProcessW"))
+            } else {
+                Ok(process_info)
+            }
+        })?;
+        let process = Self::activate_created_worker(process_info, &job)?;
+        let (reader, writer) = pipes.into_files();
+        Ok(NativeWorkerSession::new(
+            process, job, reader, writer, plugin,
+        ))
     }
 
     fn verify_created_worker(
         process_info: PROCESS_INFORMATION,
         job: &WorkerJob,
     ) -> Result<VerifiedLpacWorker, LpacLaunchError> {
-        let process = OwnedHandle::new(process_info.hProcess)?;
-        let thread = OwnedHandle::new(process_info.hThread)?;
-        if unsafe {
-            // SAFETY: both handles are live and owned for this call.
-            AssignProcessToJobObject(job.handle(), process.handle())
-        } == 0
-        {
-            let error = LpacLaunchError::windows("AssignProcessToJobObject");
-            terminate(process.handle());
-            return Err(error);
-        }
-        if unsafe {
-            // SAFETY: this is the suspended primary thread returned by CreateProcessW.
-            ResumeThread(thread.handle())
-        } == RESUME_FAILED
-        {
-            let error = LpacLaunchError::windows("ResumeThread");
-            terminate(process.handle());
-            return Err(error);
-        }
-        drop(thread);
+        let process = Self::activate_created_worker(process_info, job)?;
 
         let wait = unsafe {
             // SAFETY: the process handle remains live while waiting.
@@ -172,6 +174,34 @@ impl LpacWorkerLauncher {
         }
 
         Ok(VerifiedLpacWorker(()))
+    }
+
+    fn activate_created_worker(
+        process_info: PROCESS_INFORMATION,
+        job: &WorkerJob,
+    ) -> Result<OwnedHandle, LpacLaunchError> {
+        let process = OwnedHandle::new(process_info.hProcess)?;
+        let thread = OwnedHandle::new(process_info.hThread)?;
+        if unsafe {
+            // SAFETY: both handles are live and owned for this call.
+            AssignProcessToJobObject(job.handle(), process.handle())
+        } == 0
+        {
+            let error = LpacLaunchError::windows("AssignProcessToJobObject");
+            terminate(process.handle());
+            return Err(error);
+        }
+        if unsafe {
+            // SAFETY: this is the suspended primary thread returned by CreateProcessW.
+            ResumeThread(thread.handle())
+        } == RESUME_FAILED
+        {
+            let error = LpacLaunchError::windows("ResumeThread");
+            terminate(process.handle());
+            return Err(error);
+        }
+        drop(thread);
+        Ok(process)
     }
 }
 

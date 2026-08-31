@@ -14,6 +14,10 @@ impl WideString {
     pub(super) const fn as_ptr(&self) -> *const u16 {
         self.0.as_ptr()
     }
+
+    pub(super) const fn as_mut_ptr(&mut self) -> *mut u16 {
+        self.0.as_mut_ptr()
+    }
 }
 
 pub(super) struct WidePath(Vec<u16>);

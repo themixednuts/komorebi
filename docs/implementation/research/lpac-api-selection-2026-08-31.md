@@ -28,6 +28,16 @@ Encoding an undocumented FlatBuffer would create the hardcoded compatibility
 surface this project is explicitly avoiding. Keep the typed launcher boundary
 so the backend can change when Microsoft publishes a stable contract.
 
+## Worker environment
+
+Passing a custom environment containing only `SystemRoot` fails AppContainer
+creation with `ERROR_ENVVAR_NOT_FOUND`. Microsoft documents that an
+AppContainer profile supplies rerouted `LOCALAPPDATA`, `TEMP`, and `TMP`
+locations. The broker therefore builds exactly those three values from
+`GetAppContainerFolderPath` plus `SystemRoot` from
+`GetSystemWindowsDirectoryW`. It does not use a copied parent environment or
+inherit process-specific variables.
+
 ## Primary sources
 
 - [Launch an AppContainer](https://learn.microsoft.com/en-us/windows/win32/secauthz/implementing-an-appcontainer)
@@ -35,3 +45,4 @@ so the backend can change when Microsoft publishes a stable contract.
 - [TOKEN_INFORMATION_CLASS](https://learn.microsoft.com/en-us/windows/win32/api/winnt/ne-winnt-token_information_class)
 - [CheckTokenMembershipEx](https://learn.microsoft.com/en-us/windows/win32/api/securitybaseapi/nf-securitybaseapi-checktokenmembershipex)
 - [Create Process in Sandbox](https://learn.microsoft.com/en-us/windows/win32/secauthz/createprocessinsandbox)
+- [GetAppContainerFolderPath](https://learn.microsoft.com/en-us/windows/win32/api/userenv/nf-userenv-getappcontainerfolderpath)

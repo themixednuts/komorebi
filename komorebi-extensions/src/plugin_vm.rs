@@ -1,3 +1,5 @@
+mod logging;
+
 use std::sync::Arc;
 use std::sync::atomic::AtomicU64;
 use std::sync::atomic::Ordering;
@@ -8,20 +10,21 @@ use mlua::Lua;
 use mlua::LuaOptions;
 use mlua::StdLib;
 use mlua::Table;
-use mlua::UserData;
-use mlua::UserDataFields;
-use mlua::UserDataMethods;
 use mlua::Value;
 use mlua::VmState;
 use mlua::prelude::LuaChunkMode;
 use thiserror::Error;
 
 use crate::PluginCapability;
-use crate::PluginCapabilitySet;
-use crate::PluginId;
 use crate::PluginLimits;
 use crate::PluginManifest;
 use crate::PluginProgram;
+
+use self::logging::HostCallFailure;
+pub use self::logging::PluginContext;
+pub use self::logging::PluginLogLevel;
+pub use self::logging::PluginLogRecord;
+pub use self::logging::PluginLogSink;
 
 const HOOK_INTERVAL: u32 = 1_000;
 
@@ -29,85 +32,6 @@ const HOOK_INTERVAL: u32 = 1_000;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum PluginExecutionProfile {
     JitDisabled,
-}
-
-/// Structured severity accepted by the first brokered extension capability.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum PluginLogLevel {
-    Trace,
-    Debug,
-    Info,
-    Warn,
-    Error,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct PluginLogRecord {
-    plugin: PluginId,
-    level: PluginLogLevel,
-    message: Box<str>,
-}
-
-impl PluginLogRecord {
-    #[must_use]
-    pub const fn plugin(&self) -> &PluginId {
-        &self.plugin
-    }
-
-    #[must_use]
-    pub const fn level(&self) -> PluginLogLevel {
-        self.level
-    }
-
-    #[must_use]
-    pub fn message(&self) -> &str {
-        &self.message
-    }
-}
-
-pub trait PluginLogSink: Send + Sync + 'static {
-    fn emit(&self, record: PluginLogRecord);
-}
-
-/// Capability-checked object passed to every extension lifecycle callback.
-pub struct PluginContext {
-    plugin: PluginId,
-    capabilities: PluginCapabilitySet,
-    logs: Arc<dyn PluginLogSink>,
-}
-
-macro_rules! add_log_method {
-    ($methods:ident, $name:literal, $level:expr) => {
-        $methods.add_method($name, |_, context, message: String| {
-            if !context.capabilities.allows(PluginCapability::Log) {
-                return Err(mlua::Error::external(HostCallFailure::CapabilityDenied(
-                    PluginCapability::Log,
-                )));
-            }
-            context.logs.emit(PluginLogRecord {
-                plugin: context.plugin.clone(),
-                level: $level,
-                message: message.into_boxed_str(),
-            });
-            Ok(())
-        });
-    };
-}
-
-impl UserData for PluginContext {
-    fn add_fields<F: UserDataFields<Self>>(fields: &mut F) {
-        fields.add_field_method_get("plugin_id", |_, context| {
-            Ok(context.plugin.as_str().to_owned())
-        });
-    }
-
-    fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
-        add_log_method!(methods, "trace", PluginLogLevel::Trace);
-        add_log_method!(methods, "debug", PluginLogLevel::Debug);
-        add_log_method!(methods, "info", PluginLogLevel::Info);
-        add_log_method!(methods, "warn", PluginLogLevel::Warn);
-        add_log_method!(methods, "error", PluginLogLevel::Error);
-    }
 }
 
 /// One `LuaJIT` VM owned exclusively by one extension.
@@ -137,11 +61,7 @@ impl PluginVm {
         let environment =
             safe_environment(&lua).map_err(|error| PluginVmError::from_lua(&error))?;
         let context = lua
-            .create_userdata(PluginContext {
-                plugin,
-                capabilities,
-                logs: Arc::new(logs),
-            })
+            .create_userdata(PluginContext::new(plugin, capabilities, logs))
             .map_err(|error| PluginVmError::from_lua(&error))?;
 
         let absolute_memory_limit = lua
@@ -225,14 +145,6 @@ fn safe_environment(lua: &Lua) -> mlua::Result<Table> {
     Ok(environment)
 }
 
-#[derive(Clone, Copy, Debug, Eq, Error, PartialEq)]
-enum HostCallFailure {
-    #[error("plugin capability denied: {0:?}")]
-    CapabilityDenied(PluginCapability),
-    #[error("plugin instruction budget exhausted")]
-    InstructionBudgetExhausted,
-}
-
 #[derive(Debug, Error)]
 pub enum PluginVmError {
     #[error("plugin capability denied: {0:?}")]
@@ -247,6 +159,10 @@ pub enum PluginVmError {
     MemoryLimitUnavailable,
     #[error("plugin module must return a table containing on_load(context)")]
     MissingOnLoad,
+    #[error("plugin log message exceeds the 16 KiB broker boundary")]
+    LogMessageTooLarge,
+    #[error("plugin lifecycle exceeded its structured log budget")]
+    LogBudgetExceeded,
     #[error("LuaJIT rejected the plugin: {0}")]
     Lua(Box<str>),
 }
@@ -259,6 +175,8 @@ impl PluginVmError {
                     Self::CapabilityDenied(*capability)
                 }
                 HostCallFailure::InstructionBudgetExhausted => Self::InstructionBudgetExhausted,
+                HostCallFailure::LogMessageTooLarge => Self::LogMessageTooLarge,
+                HostCallFailure::LogBudgetExceeded => Self::LogBudgetExceeded,
             };
         }
         if matches!(error, mlua::Error::MemoryError(_)) {

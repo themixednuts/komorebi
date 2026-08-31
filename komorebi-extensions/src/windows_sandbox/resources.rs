@@ -1,23 +1,24 @@
+use std::fs::File;
 use std::io;
+use std::mem::ManuallyDrop;
 use std::mem::size_of;
+use std::os::windows::io::FromRawHandle;
 use std::ptr;
 
-use windows_core::HRESULT;
 use windows_sys::Win32::Foundation::CloseHandle;
-use windows_sys::Win32::Foundation::ERROR_ALREADY_EXISTS;
 use windows_sys::Win32::Foundation::ERROR_INSUFFICIENT_BUFFER;
 use windows_sys::Win32::Foundation::HANDLE;
+use windows_sys::Win32::Foundation::HANDLE_FLAG_INHERIT;
 use windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE;
-use windows_sys::Win32::Security::FreeSid;
-use windows_sys::Win32::Security::Isolation::CreateAppContainerProfile;
-use windows_sys::Win32::Security::Isolation::DeriveAppContainerSidFromAppContainerName;
-use windows_sys::Win32::Security::PSID;
+use windows_sys::Win32::Foundation::SetHandleInformation;
+use windows_sys::Win32::Security::SECURITY_ATTRIBUTES;
 use windows_sys::Win32::System::JobObjects::CreateJobObjectW;
 use windows_sys::Win32::System::JobObjects::JOB_OBJECT_LIMIT_ACTIVE_PROCESS;
 use windows_sys::Win32::System::JobObjects::JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
 use windows_sys::Win32::System::JobObjects::JOBOBJECT_EXTENDED_LIMIT_INFORMATION;
 use windows_sys::Win32::System::JobObjects::JobObjectExtendedLimitInformation;
 use windows_sys::Win32::System::JobObjects::SetInformationJobObject;
+use windows_sys::Win32::System::Pipes::CreatePipe;
 use windows_sys::Win32::System::Threading::DeleteProcThreadAttributeList;
 use windows_sys::Win32::System::Threading::InitializeProcThreadAttributeList;
 use windows_sys::Win32::System::Threading::LPPROC_THREAD_ATTRIBUTE_LIST;
@@ -25,63 +26,6 @@ use windows_sys::Win32::System::Threading::TerminateProcess;
 use windows_sys::Win32::System::Threading::UpdateProcThreadAttribute;
 
 use super::LpacLaunchError;
-use super::path::WideString;
-
-pub(super) struct AppContainerSid(PSID);
-
-impl AppContainerSid {
-    pub(super) fn open_or_create(identity: &WideString) -> Result<Self, LpacLaunchError> {
-        let display_name = WideString::new("Komorebi extension worker");
-        let description = WideString::new("Isolated Komorebi Lua extension worker");
-        let mut sid = ptr::null_mut();
-        let result = unsafe {
-            // SAFETY: strings are NUL-terminated and the output pointer is writable.
-            CreateAppContainerProfile(
-                identity.as_ptr(),
-                display_name.as_ptr(),
-                description.as_ptr(),
-                ptr::null(),
-                0,
-                &raw mut sid,
-            )
-        };
-        if result == HRESULT::from_win32(ERROR_ALREADY_EXISTS).0 {
-            let derive_result = unsafe {
-                // SAFETY: identity is NUL-terminated and the output pointer is writable.
-                DeriveAppContainerSidFromAppContainerName(identity.as_ptr(), &raw mut sid)
-            };
-            if derive_result < 0 {
-                return Err(LpacLaunchError::Hresult {
-                    operation: "DeriveAppContainerSidFromAppContainerName",
-                    hresult: derive_result,
-                });
-            }
-        } else if result < 0 {
-            return Err(LpacLaunchError::Hresult {
-                operation: "CreateAppContainerProfile",
-                hresult: result,
-            });
-        }
-        if sid.is_null() {
-            return Err(LpacLaunchError::InvalidHandle);
-        }
-        Ok(Self(sid))
-    }
-
-    pub(super) const fn as_ptr(&self) -> PSID {
-        self.0
-    }
-}
-
-impl Drop for AppContainerSid {
-    fn drop(&mut self) {
-        unsafe {
-            // SAFETY: allocated by an AppContainer SID API and freed once here.
-            FreeSid(self.0);
-        }
-    }
-}
-
 pub(super) struct ProcessAttributes {
     storage: Vec<usize>,
 }
@@ -197,6 +141,14 @@ impl OwnedHandle {
     pub(super) const fn handle(&self) -> HANDLE {
         self.0
     }
+
+    pub(super) fn into_file(self) -> File {
+        let owned = ManuallyDrop::new(self);
+        unsafe {
+            // SAFETY: ownership moves from `OwnedHandle` into exactly one `File`.
+            File::from_raw_handle(owned.0.cast())
+        }
+    }
 }
 
 impl Drop for OwnedHandle {
@@ -205,6 +157,78 @@ impl Drop for OwnedHandle {
             // SAFETY: this wrapper uniquely owns a live kernel handle.
             CloseHandle(self.0);
         }
+    }
+}
+
+pub(super) struct BrokerPipes {
+    broker_reader: OwnedHandle,
+    broker_writer: OwnedHandle,
+    worker_reader: OwnedHandle,
+    worker_writer: OwnedHandle,
+}
+
+impl BrokerPipes {
+    pub(super) fn new() -> Result<Self, LpacLaunchError> {
+        let (worker_reader, broker_writer) = inheritable_pipe()?;
+        let (broker_reader, worker_writer) = inheritable_pipe()?;
+        clear_inheritance(broker_reader.handle())?;
+        clear_inheritance(broker_writer.handle())?;
+        Ok(Self {
+            broker_reader,
+            broker_writer,
+            worker_reader,
+            worker_writer,
+        })
+    }
+
+    pub(super) const fn worker_handles(&self) -> [HANDLE; 2] {
+        [self.worker_reader.handle(), self.worker_writer.handle()]
+    }
+
+    pub(super) fn into_files(self) -> (File, File) {
+        let Self {
+            broker_reader,
+            broker_writer,
+            worker_reader,
+            worker_writer,
+        } = self;
+        drop(worker_reader);
+        drop(worker_writer);
+        (broker_reader.into_file(), broker_writer.into_file())
+    }
+}
+
+fn inheritable_pipe() -> Result<(OwnedHandle, OwnedHandle), LpacLaunchError> {
+    let length = u32::try_from(size_of::<SECURITY_ATTRIBUTES>())
+        .map_err(|_| LpacLaunchError::StructureSizeOverflow)?;
+    let attributes = SECURITY_ATTRIBUTES {
+        nLength: length,
+        lpSecurityDescriptor: ptr::null_mut(),
+        bInheritHandle: 1,
+    };
+    let mut read = ptr::null_mut();
+    let mut write = ptr::null_mut();
+    if unsafe {
+        // SAFETY: outputs are writable and attributes live through this synchronous call.
+        CreatePipe(&raw mut read, &raw mut write, &raw const attributes, 0)
+    } == 0
+    {
+        return Err(LpacLaunchError::windows("CreatePipe"));
+    }
+    let read = OwnedHandle::new(read)?;
+    let write = OwnedHandle::new(write)?;
+    Ok((read, write))
+}
+
+fn clear_inheritance(handle: HANDLE) -> Result<(), LpacLaunchError> {
+    if unsafe {
+        // SAFETY: handle is live and the mask changes only its inheritance flag.
+        SetHandleInformation(handle, HANDLE_FLAG_INHERIT, 0)
+    } == 0
+    {
+        Err(LpacLaunchError::windows("SetHandleInformation"))
+    } else {
+        Ok(())
     }
 }
 

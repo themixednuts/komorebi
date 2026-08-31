@@ -6,6 +6,7 @@ use thiserror::Error;
 
 const MAX_PLUGIN_ID_BYTES: usize = 64;
 const MAX_CHUNK_NAME_BYTES: usize = 256;
+const MAX_PLUGIN_SOURCE_BYTES: usize = 1024 * 1024;
 
 /// Stable extension identity used at every broker boundary.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -60,6 +61,21 @@ impl PluginCapability {
     const fn mask(self) -> u32 {
         1 << (self as u8)
     }
+
+    pub(crate) const fn code(self) -> u8 {
+        self as u8
+    }
+
+    pub(crate) const fn from_code(code: u8) -> Option<Self> {
+        match code {
+            0 => Some(Self::Log),
+            1 => Some(Self::InvokeAction),
+            2 => Some(Self::ObserveWindows),
+            3 => Some(Self::ReadFiles),
+            4 => Some(Self::WebRequest),
+            _ => None,
+        }
+    }
 }
 
 /// Closed authority set; unavailable combinations cannot acquire ambient handles.
@@ -67,6 +83,8 @@ impl PluginCapability {
 pub struct PluginCapabilitySet(u32);
 
 impl PluginCapabilitySet {
+    const KNOWN_BITS: u32 = (1 << 5) - 1;
+
     #[must_use]
     pub const fn empty() -> Self {
         Self(0)
@@ -84,6 +102,18 @@ impl PluginCapabilitySet {
     #[must_use]
     pub const fn allows(self, capability: PluginCapability) -> bool {
         self.0 & capability.mask() != 0
+    }
+
+    pub(crate) const fn bits(self) -> u32 {
+        self.0
+    }
+
+    pub(crate) const fn from_bits(bits: u32) -> Option<Self> {
+        if bits & !Self::KNOWN_BITS == 0 {
+            Some(Self(bits))
+        } else {
+            None
+        }
     }
 }
 
@@ -185,6 +215,9 @@ impl PluginProgram {
             return Err(PluginProgramError::InvalidName);
         }
         let source = source.as_ref();
+        if source.len() > MAX_PLUGIN_SOURCE_BYTES {
+            return Err(PluginProgramError::SourceTooLarge);
+        }
         std::str::from_utf8(source).map_err(|_| PluginProgramError::SourceNotUtf8)?;
         Ok(Self {
             name: name.into(),
@@ -195,12 +228,18 @@ impl PluginProgram {
     pub(crate) fn into_parts(self) -> (Box<str>, Box<[u8]>) {
         (self.name, self.source)
     }
+
+    pub(crate) fn as_parts(&self) -> (&str, &[u8]) {
+        (&self.name, &self.source)
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, Error, PartialEq)]
 pub enum PluginProgramError {
     #[error("chunk name must contain 1-256 bytes and no NUL")]
     InvalidName,
+    #[error("plugin source exceeds the 1 MiB broker boundary")]
+    SourceTooLarge,
     #[error("plugin source must be UTF-8 text, not Lua bytecode")]
     SourceNotUtf8,
 }
