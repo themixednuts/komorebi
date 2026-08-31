@@ -2,6 +2,7 @@
 
 mod action_binding;
 mod action_input;
+mod appbar;
 mod application_activation;
 mod application_catalog;
 mod bound_action;
@@ -26,6 +27,20 @@ pub use action_binding::ActionBinding;
 pub use action_binding::ActionBindingError;
 pub use action_input::ActionInput;
 pub use action_input::ActionInputScalar;
+pub use appbar::AppBarEdge;
+pub use appbar::AppBarGeometry;
+pub use appbar::AppBarLifecycle;
+pub use appbar::PhysicalRect;
+pub use appbar::PhysicalRectError;
+pub use appbar::PhysicalThickness;
+pub use appbar::PositionCompletion;
+pub use appbar::PositionInvalidation;
+pub use appbar::PositionPass;
+pub use appbar::RegistrationAttempt;
+pub use appbar::RegistrationCompletion;
+pub use appbar::RegistrationPlan;
+pub use appbar::RegistrationRemoval;
+pub use appbar::ShellGeneration;
 pub use application_activation::ApplicationActivationClient;
 pub use application_activation::ApplicationActivationCompletionError;
 pub use application_activation::ApplicationActivationQueueCapacity;
