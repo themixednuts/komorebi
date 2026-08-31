@@ -134,8 +134,8 @@ impl KomorebiLayout {
                 }
             }
             KomorebiLayout::Paused => {
-                if komorebi_client::send_message(&SocketMessage::TogglePause).is_err() {
-                    tracing::error!("could not send message to komorebi: TogglePause");
+                if let Err(error) = commands.toggle_pause() {
+                    tracing::error!(%error, "could not toggle pause");
                 }
             }
             KomorebiLayout::Custom => {}

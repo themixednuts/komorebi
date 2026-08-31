@@ -31,6 +31,13 @@ enum BarCommandKey {
     FocusMonitorWorkspace,
     FocusStackWindow,
     ToggleWorkspaceLayer,
+    TogglePause,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum DeliveryPolicy {
+    Latest,
+    Every,
 }
 
 impl BarCommandKey {
@@ -41,11 +48,18 @@ impl BarCommandKey {
             Self::FocusMonitorWorkspace => BuiltInActionId::FocusMonitorWorkspace,
             Self::FocusStackWindow => BuiltInActionId::FocusStackWindow,
             Self::ToggleWorkspaceLayer => BuiltInActionId::ToggleWorkspaceLayer,
+            Self::TogglePause => BuiltInActionId::TogglePause,
         }
     }
 
-    const fn coalesces(self) -> bool {
-        !matches!(self, Self::ToggleWorkspaceLayer)
+    const fn delivery(self) -> DeliveryPolicy {
+        match self {
+            Self::ToggleWorkspaceLayer | Self::TogglePause => DeliveryPolicy::Every,
+            Self::MonitorWorkAreaOffset(_)
+            | Self::WorkspaceLayout(_)
+            | Self::FocusMonitorWorkspace
+            | Self::FocusStackWindow => DeliveryPolicy::Latest,
+        }
     }
 }
 
@@ -144,6 +158,10 @@ impl CommandQueue {
         )
     }
 
+    pub fn toggle_pause(&self) -> Result<(), CommandQueueError> {
+        self.send(BarCommandKey::TogglePause, [])
+    }
+
     fn send<const N: usize>(
         &self,
         key: BarCommandKey,
@@ -181,7 +199,7 @@ impl WorkspaceTarget {
 }
 
 fn enqueue(pending: &mut VecDeque<BarCommand>, command: BarCommand) {
-    if command.key.coalesces()
+    if command.key.delivery() == DeliveryPolicy::Latest
         && let Some(index) = pending
             .iter()
             .position(|pending| pending.key == command.key)
@@ -263,6 +281,23 @@ pub enum CommandQueueError {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn queue_without_actor() -> (
+        CommandQueue,
+        Arc<Mutex<VecDeque<BarCommand>>>,
+        watch::Receiver<u64>,
+    ) {
+        let pending = Arc::new(Mutex::new(VecDeque::new()));
+        let (changed, receiver) = watch::channel(0);
+        (
+            CommandQueue {
+                pending: Arc::clone(&pending),
+                changed,
+            },
+            pending,
+            receiver,
+        )
+    }
 
     fn command(key: BarCommandKey) -> BarCommand {
         BarCommand {
@@ -367,6 +402,23 @@ mod tests {
                 BarCommandKey::ToggleWorkspaceLayer,
             ]
         );
+    }
+
+    #[test]
+    fn pause_control_enqueues_canonical_action() -> Result<(), CommandQueueError> {
+        let (queue, pending, _receiver) = queue_without_actor();
+
+        queue.toggle_pause()?;
+
+        let queued = pending.lock().map_err(|_| CommandQueueError::Poisoned)?;
+        assert_eq!(
+            queued
+                .iter()
+                .map(|command| (command.key.action(), command.arguments.clone()))
+                .collect::<Vec<_>>(),
+            [(BuiltInActionId::TogglePause, BuiltInArguments::default())]
+        );
+        Ok(())
     }
 
     #[tokio::test]

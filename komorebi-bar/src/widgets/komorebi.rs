@@ -33,7 +33,6 @@ use komorebi_client::Container;
 use komorebi_client::PathExt;
 use komorebi_client::Rect;
 use komorebi_client::SocketMessage;
-use komorebi_client::SocketMessage::*;
 use komorebi_client::State;
 use komorebi_client::Window;
 use komorebi_client::Workspace;
@@ -43,7 +42,6 @@ use serde::Serialize;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
-use std::io::Result as IoResult;
 use std::path::Path;
 use std::rc::Rc;
 use std::sync::atomic::Ordering;
@@ -276,7 +274,11 @@ impl Komorebi {
                         .show(ui, |ui| ui.add(Label::new(name).selectable(false)));
                     if response.clicked() {
                         let path = dunce::canonicalize(path).unwrap_or_else(|_| path.to_owned());
-                        let _ = Self::send_messages(&[ReplaceConfiguration(path)]);
+                        if let Err(error) = komorebi_client::send_message(
+                            &SocketMessage::ReplaceConfiguration(path),
+                        ) {
+                            tracing::error!(%error, "could not replace configuration");
+                        }
                     }
                 });
             }
@@ -319,12 +321,17 @@ impl Komorebi {
         let (icon_font, txt_font) = (config.icon_font_id.clone(), config.text_font_id.clone());
         if (bar.show_when_unlocked || is_locked) && monitor_info.focused_container().is_some() {
             config.apply_on_widget(false, ui, |ui| {
-                SelectableFrame::new(false)
-                    .show(ui, |ui| {
-                        (bar.renderer)(ctx, ui, is_locked, icon_font, txt_font)
-                    })
-                    .clicked()
-                    .then(|| Self::send_messages(&[FocusMonitorAtCursor, ToggleLock]));
+                let response = SelectableFrame::new(false).show(ui, |ui| {
+                    (bar.renderer)(ctx, ui, is_locked, icon_font, txt_font)
+                });
+                if response.clicked()
+                    && let Err(error) = komorebi_client::send_batch([
+                        SocketMessage::FocusMonitorAtCursor,
+                        SocketMessage::ToggleLock,
+                    ])
+                {
+                    tracing::error!(%error, "could not toggle container lock");
+                }
             });
         }
     }
@@ -360,14 +367,6 @@ impl Komorebi {
                 }
             }
         });
-    }
-
-    /// Sends a batch of messages to Komorebi, logging errors on failure.
-    fn send_messages(messages: &[SocketMessage]) -> IoResult<()> {
-        komorebi_client::send_batch(messages).map_err(|err| {
-            tracing::error!("Failed to send message(s): {:?}\nError: {}", messages, err);
-            err
-        })
     }
 }
 
