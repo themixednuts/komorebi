@@ -5130,11 +5130,15 @@ dependencies = [
 name = "komorebi-extensions"
 version = "0.1.0"
 dependencies = [
+ "dunce",
  "komorebi-protocol",
  "mlua",
+ "notify 9.0.0-rc.5",
  "parking_lot",
+ "tempfile",
  "thiserror 2.0.20",
  "tokio",
+ "tokio-util",
  "windows-core 0.62.2",
  "windows-sys 0.61.2",
 ]

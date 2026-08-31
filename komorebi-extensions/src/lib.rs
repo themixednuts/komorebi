@@ -3,6 +3,8 @@
 mod domain;
 mod host_domain;
 #[cfg(windows)]
+mod hot_reload;
+#[cfg(windows)]
 mod plugin_host;
 mod plugin_vm;
 mod sandbox;
@@ -29,6 +31,28 @@ pub use host_domain::PluginLoadFailure;
 pub use host_domain::PluginLoadReport;
 pub use host_domain::PluginOutput;
 pub use host_domain::PluginOutputSink;
+#[cfg(windows)]
+pub use hot_reload::PluginHotReloadEvent;
+#[cfg(windows)]
+pub use hot_reload::PluginHotReloadEventCapacity;
+#[cfg(windows)]
+pub use hot_reload::PluginHotReloadQuietPeriod;
+#[cfg(windows)]
+pub use hot_reload::PluginHotReloadService;
+#[cfg(windows)]
+pub use hot_reload::PluginHotReloadSettings;
+#[cfg(windows)]
+pub use hot_reload::PluginHotReloadShutdownError;
+#[cfg(windows)]
+pub use hot_reload::PluginHotReloadStartError;
+#[cfg(windows)]
+pub use hot_reload::PluginSourceFile;
+#[cfg(windows)]
+pub use hot_reload::PluginSourceLoadError;
+#[cfg(windows)]
+pub use hot_reload::PluginSourceOpenError;
+#[cfg(windows)]
+pub use hot_reload::PluginWatchFailure;
 #[cfg(windows)]
 pub use plugin_host::PluginHostClient;
 #[cfg(windows)]

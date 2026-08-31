@@ -9,15 +9,19 @@ komorebi-protocol = { path = "../komorebi-protocol" }
 mlua = { version = "=0.12.1", features = ["luajit", "vendored"] }
 parking_lot = { workspace = true }
 thiserror = "2"
-tokio = { version = "=1.53.1", features = ["rt", "sync"] }
+tokio = { version = "=1.53.1", features = ["fs", "rt", "sync", "time"] }
+tokio-util = { version = "0.7", features = ["rt"] }
 
 [target.'cfg(windows)'.dependencies]
+dunce = { workspace = true }
+notify = "=9.0.0-rc.5"
 windows-core = { workspace = true }
 windows-sys = { version = "=0.61.2", features = [
   "Win32_Foundation",
   "Win32_Security",
   "Win32_Security_Authorization",
   "Win32_Security_Isolation",
+  "Win32_Storage_FileSystem",
   "Win32_System_JobObjects",
   "Win32_System_Com",
   "Win32_System_Memory",
@@ -29,6 +33,7 @@ windows-sys = { version = "=0.61.2", features = [
 ] }
 
 [dev-dependencies]
+tempfile = "3"
 tokio = { version = "=1.53.1", features = ["macros", "rt-multi-thread"] }
 
 [[bin]]

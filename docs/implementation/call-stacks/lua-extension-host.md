@@ -128,6 +128,44 @@ PluginHostService::shutdown
   -> join blocking owner
 ```
 
+## Native hot reload
+
+```text
+PluginSourceFile::open(native Path, chunk name)
+  -> dunce::canonicalize [lossless PathBuf; no UTF-8 conversion]
+  -> PluginProgram chunk-name validation
+
+PluginHotReloadService::start
+  -> notify::ReadDirectoryChangesWatcher [Windows backend selected explicitly]
+    -> ReadDirectoryChangesW overlapped completion callback
+      -> exact source path | native rescan signal
+        -> bounded SignalLatch::push(Dirty) [duplicates coalesce]
+  -> PluginSourceFile::load
+  -> PluginHostService::start [initial LPAC VM]
+  -> Tokio reload owner
+    -> wait for native signal [no scan timer]
+    -> restartable caller-supplied quiet period
+    -> PluginSourceFile::load [Tokio file owner, UTF-8/source bounds]
+    -> PluginHostClient::reload [transactional worker replacement]
+    -> bounded PluginHotReloadEvent outcome
+
+PluginHotReloadService::shutdown
+  -> cancel reload owner
+  -> drop watcher [CancelIo + completion cleanup]
+  -> join owner task
+  -> PluginHostService::shutdown
+```
+
+The quiet timer never initiates a filesystem check. It exists only after a
+native change callback and coalesces the burst of write, metadata, and rename
+notifications produced by one editor save. The watcher stays on the parent
+directory and filters the exact source path, so an atomic replace of the file
+does not lose registration. Watch registration precedes the initial source
+load, so an edit during LPAC worker startup remains latched for the reload
+owner instead of falling into a load/watch race. Source paths remain native `PathBuf` values; no
+`to_string_lossy` or Unicode repair occurs. A rejected candidate reports an
+event and leaves both the watcher and the worker's last-good VM alive.
+
 The child command line carries only its two inherited numeric handle values.
 Plugin identity, capabilities, limits, source, and reloads cross the framed
 channel after containment attestation. The child receives no ambient standard
@@ -177,6 +215,10 @@ and therefore preserves unpaired surrogates end to end.
 - Removing the log capability produces a typed denial and no broker call.
 - Removing the action capability produces a typed denial and no action output.
 - A typed action and WTF-16 path survive the LPAC wire round trip byte-exactly.
+- Native hot reload ignores sibling files, observes atomic replacement without
+  re-registration, and preserves unpaired UTF-16 path units.
+- A rejected hot-reload candidate leaves the event owner and last-good worker
+  available for the next native source change.
 - The desktop shell rejects action values that do not match the live catalog.
 - Every ambient authority name is absent from the script environment.
 - Binary Lua chunks are rejected before VM execution and text mode is forced.
@@ -187,5 +229,5 @@ and therefore preserves unpaired surrogates end to end.
 - The native LPAC probe proves token identity, zero ambient capabilities,
   mitigation policy, Job containment, and deterministic termination.
 - The broker integration proves exact handle allowlisting, per-extension
-  identity, bounded framing, bounded structured logs, transactional reload,
+  identity, bounded framing, bounded structured outputs, transactional reload,
   and cancellation-safe owner admission.

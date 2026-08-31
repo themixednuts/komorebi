@@ -7,6 +7,13 @@ a second runtime or compatibility path. Extension APIs are registered once as
 typed Rust values and functions; scripts never construct transport messages,
 open filesystem or network handles, or load native modules directly.
 
+Source hot reload uses the Windows `ReadDirectoryChangesW` backend directly
+through `notify::ReadDirectoryChangesWatcher`. It is event-driven: no periodic
+scan or poll is retained. A caller-supplied nonzero quiet period only settles a
+real native notification burst before a transactional last-good VM reload.
+Native `PathBuf` identity is preserved through source registration and reads,
+including unpaired UTF-16 units and atomic editor replacement.
+
 LuaLS/EmmyLua metadata is generated from the real `mlua` registrations with
 the `mlua-typegen` tool in `E:\Projects\mlua-typegen`. Hand-maintained shadow
 declarations are not authoritative. The integration will run
