@@ -17,6 +17,8 @@ mod shortcut_guide;
 mod web_activation;
 mod web_search;
 #[cfg(windows)]
+mod windows_appbar;
+#[cfg(windows)]
 mod windows_application;
 #[cfg(windows)]
 mod windows_file;
@@ -124,6 +126,14 @@ pub use web_activation::WebUriLauncher;
 pub use web_search::WebSearchEndpoint;
 pub use web_search::WebSearchEndpointError;
 pub use web_search::WebSearchTarget;
+#[cfg(windows)]
+pub use windows_appbar::AppBarCallbackMessage;
+#[cfg(windows)]
+pub use windows_appbar::BorrowedAppBarWindow;
+#[cfg(windows)]
+pub use windows_appbar::WindowsAppBarApi;
+#[cfg(windows)]
+pub use windows_appbar::WindowsAppBarError;
 #[cfg(windows)]
 pub use windows_application::ApplicationDiscoveryError;
 #[cfg(windows)]

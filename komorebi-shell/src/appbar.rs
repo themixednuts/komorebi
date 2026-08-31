@@ -116,6 +116,11 @@ impl AppBarGeometry {
         }
     }
 
+    #[must_use]
+    pub const fn edge(self) -> AppBarEdge {
+        self.edge
+    }
+
     pub fn proposed_rect(self) -> Result<PhysicalRect, PhysicalRectError> {
         self.apply_thickness(self.monitor)
     }
