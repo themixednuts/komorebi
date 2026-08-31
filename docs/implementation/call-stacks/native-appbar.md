@@ -11,6 +11,11 @@ repair the work area with a timer.
 is legal. `ShellGeneration` combines Explorer's nonzero process ID and process
 creation time so PID reuse cannot suppress required re-registration.
 
+`AppBarHost<P>` is the renderer-neutral coordinator. `P` implements the narrow
+`AppBarHostPlatform` effects: identify Explorer, register, enqueue one position
+message, atomically position-and-optionally-reveal, remove, and accept new
+geometry. Renderers receive no lifecycle state and cannot reorder these effects.
+
 `WindowsAppBarApi` is the only `SHAppBarMessage` adapter. GPUI exposes its
 native window through `HasWindowHandle`; the UI thread converts that borrowed
 handle to `BorrowedAppBarWindow` for the duration of a native call. The borrow
@@ -21,8 +26,9 @@ GPUI window.
 
 ```text
 hidden GPUI bar HWND
-  -> query current ShellGeneration
-  -> AppBarLifecycle::begin_registration
+  -> AppBarHost::start
+    -> query current ShellGeneration
+    -> AppBarLifecycle::begin_registration
     -> AlreadyRegistered | Destroyed: no effect
     -> Register(RegistrationAttempt)
       -> SHAppBarMessage(ABM_NEW)
@@ -49,12 +55,14 @@ ABN_POSCHANGED | WM_DISPLAYCHANGE | WM_DPICHANGED | geometry update
     -> Coalesced: no second message
 
 private position message
+  -> AppBarHost::position_requested
   -> begin_position -> PositionPass
     -> WindowsAppBarApi::reserve
       -> SHAppBarMessage(ABM_QUERYPOS)
     -> AppBarGeometry::apply_thickness
       -> SHAppBarMessage(ABM_SETPOS)
     -> SetWindowPos(SWP_NOACTIVATE)
+    -> first pass only: ShowWindow(SW_SHOWNOACTIVATE)
     -> finish_position(PositionPass)
       -> Settled
       -> ScheduleAgain: post exactly one follow-up
@@ -68,9 +76,11 @@ drives convergence.
 
 `TaskbarCreated` causes a new Shell generation query. The same generation is
 suppressed; a changed generation receives exactly one `ABM_NEW`. Graceful
-shutdown consumes `RegistrationRemoval::Remove` to issue one `ABM_REMOVE`
-before destroying the window. Process supervision owns crash restart; the
-AppBar does not watchdog itself.
+shutdown consumes the proof carried by `RegistrationRemoval::Remove` to issue
+one `ABM_REMOVE` before destroying the window. Success permanently destroys the
+lifecycle; failure restores the registered state so an explicit shutdown retry
+can converge. Process supervision owns crash restart; the AppBar does not
+watchdog itself.
 
 ## Proven model invariants
 

@@ -12,6 +12,7 @@ use komorebi_shell::PositionInvalidation;
 use komorebi_shell::RegistrationCompletion;
 use komorebi_shell::RegistrationPlan;
 use komorebi_shell::RegistrationRemoval;
+use komorebi_shell::RegistrationRemovalCompletion;
 use komorebi_shell::ShellGeneration;
 
 fn shell(process_id: u32, created: u64) -> Result<ShellGeneration, Box<dyn Error>> {
@@ -98,8 +99,14 @@ fn destroy_reports_exactly_one_native_removal_and_closes_future_registration()
     let mut lifecycle = AppBarLifecycle::default();
     register(&mut lifecycle, current)?;
 
-    assert_eq!(lifecycle.destroy(), RegistrationRemoval::Remove);
-    assert_eq!(lifecycle.destroy(), RegistrationRemoval::None);
+    let RegistrationRemoval::Remove(attempt) = lifecycle.begin_destroy() else {
+        return Err("registered AppBar did not request native removal".into());
+    };
+    assert_eq!(
+        lifecycle.removal_succeeded(attempt),
+        RegistrationRemovalCompletion::Destroyed
+    );
+    assert_eq!(lifecycle.begin_destroy(), RegistrationRemoval::Complete);
     assert!(matches!(
         lifecycle.begin_registration(current),
         RegistrationPlan::Destroyed

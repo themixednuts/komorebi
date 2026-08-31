@@ -223,10 +223,22 @@ pub enum RegistrationCompletion {
     Stale,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum RegistrationRemoval {
-    Remove,
-    None,
+    Remove(RegistrationRemovalAttempt),
+    Complete,
+    InProgress,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct RegistrationRemovalAttempt {
+    shell: ShellGeneration,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum RegistrationRemovalCompletion {
+    Destroyed,
+    Stale,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -253,6 +265,7 @@ enum Registration {
     Detached,
     Registering(ShellGeneration),
     Registered(ShellGeneration),
+    Removing(ShellGeneration),
     Destroyed,
 }
 
@@ -281,13 +294,18 @@ impl Default for AppBarLifecycle {
 impl AppBarLifecycle {
     pub fn begin_registration(&mut self, shell: ShellGeneration) -> RegistrationPlan {
         match self.registration {
-            Registration::Registered(current) | Registration::Registering(current)
+            Registration::Registered(current)
+            | Registration::Registering(current)
+            | Registration::Removing(current)
                 if current == shell =>
             {
                 RegistrationPlan::AlreadyRegistered
             }
             Registration::Destroyed => RegistrationPlan::Destroyed,
-            Registration::Detached | Registration::Registering(_) | Registration::Registered(_) => {
+            Registration::Detached
+            | Registration::Registering(_)
+            | Registration::Registered(_)
+            | Registration::Removing(_) => {
                 self.registration = Registration::Registering(shell);
                 RegistrationPlan::Register(RegistrationAttempt { shell })
             }
@@ -325,19 +343,20 @@ impl AppBarLifecycle {
     pub fn invalidate_position(&mut self) -> PositionInvalidation {
         match self.registration {
             Registration::Destroyed => PositionInvalidation::Destroyed,
-            Registration::Detached | Registration::Registering(_) | Registration::Registered(_) => {
-                match self.position {
-                    Position::Settled => {
-                        self.position = Position::Queued;
-                        PositionInvalidation::Schedule
-                    }
-                    Position::Queued => PositionInvalidation::Coalesced,
-                    Position::Applying { .. } => {
-                        self.position = Position::Applying { invalidated: true };
-                        PositionInvalidation::Coalesced
-                    }
+            Registration::Detached
+            | Registration::Registering(_)
+            | Registration::Registered(_)
+            | Registration::Removing(_) => match self.position {
+                Position::Settled => {
+                    self.position = Position::Queued;
+                    PositionInvalidation::Schedule
                 }
-            }
+                Position::Queued => PositionInvalidation::Coalesced,
+                Position::Applying { .. } => {
+                    self.position = Position::Applying { invalidated: true };
+                    PositionInvalidation::Coalesced
+                }
+            },
         }
     }
 
@@ -349,6 +368,12 @@ impl AppBarLifecycle {
         }
         self.position = Position::Applying { invalidated: false };
         Some(PositionPass { _private: () })
+    }
+
+    pub(crate) fn position_scheduling_failed(&mut self) {
+        if self.position == Position::Queued {
+            self.position = Position::Settled;
+        }
     }
 
     #[allow(
@@ -370,22 +395,46 @@ impl AppBarLifecycle {
         }
     }
 
-    pub fn detach(&mut self) -> RegistrationRemoval {
-        let removal = if matches!(self.registration, Registration::Registered(_)) {
-            RegistrationRemoval::Remove
-        } else {
-            RegistrationRemoval::None
-        };
-        if self.registration != Registration::Destroyed {
-            self.registration = Registration::Detached;
-            self.position = Position::Settled;
+    pub fn begin_destroy(&mut self) -> RegistrationRemoval {
+        self.position = Position::Settled;
+        match self.registration {
+            Registration::Registered(shell) => {
+                self.registration = Registration::Removing(shell);
+                RegistrationRemoval::Remove(RegistrationRemovalAttempt { shell })
+            }
+            Registration::Removing(_) => RegistrationRemoval::InProgress,
+            Registration::Detached | Registration::Registering(_) | Registration::Destroyed => {
+                self.registration = Registration::Destroyed;
+                RegistrationRemoval::Complete
+            }
         }
-        removal
     }
 
-    pub fn destroy(&mut self) -> RegistrationRemoval {
-        let removal = self.detach();
-        self.registration = Registration::Destroyed;
-        removal
+    #[allow(
+        clippy::needless_pass_by_value,
+        reason = "consuming the proof token prevents duplicate removal completion"
+    )]
+    pub fn removal_succeeded(
+        &mut self,
+        attempt: RegistrationRemovalAttempt,
+    ) -> RegistrationRemovalCompletion {
+        let RegistrationRemovalAttempt { shell } = attempt;
+        if self.registration == Registration::Removing(shell) {
+            self.registration = Registration::Destroyed;
+            RegistrationRemovalCompletion::Destroyed
+        } else {
+            RegistrationRemovalCompletion::Stale
+        }
+    }
+
+    #[allow(
+        clippy::needless_pass_by_value,
+        reason = "consuming the proof token closes the failed removal attempt"
+    )]
+    pub fn removal_failed(&mut self, attempt: RegistrationRemovalAttempt) {
+        let RegistrationRemovalAttempt { shell } = attempt;
+        if self.registration == Registration::Removing(shell) {
+            self.registration = Registration::Registered(shell);
+        }
     }
 }
