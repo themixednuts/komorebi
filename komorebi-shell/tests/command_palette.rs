@@ -26,7 +26,19 @@ use komorebi_protocol::StateStamp;
 use komorebi_protocol::UndoPolicy;
 use komorebi_shell::CommandPalette;
 use komorebi_shell::PaletteActionState;
+use komorebi_shell::PaletteMatches;
+use komorebi_shell::PaletteQuery;
+use komorebi_shell::PaletteResults;
 use komorebi_shell::PaletteSelectionMove;
+
+fn action_results(palette: &CommandPalette, input: &str) -> Result<PaletteMatches, &'static str> {
+    match palette.query(PaletteQuery::parse(input)) {
+        PaletteResults::Actions(matches) => Ok(matches),
+        PaletteResults::WebPrompt | PaletteResults::WebSearch(_) => {
+            Err("query should produce local action results")
+        }
+    }
+}
 
 fn definition(
     id: &str,
@@ -119,23 +131,21 @@ fn palette_ranks_catalog_actions_and_exposes_typed_selection_states()
 
     assert_eq!(palette.actions().len(), 3);
     assert_eq!(
-        palette
-            .search("foc windw")
+        action_results(&palette, "foc windw")?
             .selected(&palette)
             .ok_or("focus search should match")?
             .action_id(),
         "focus-window"
     );
     assert_eq!(
-        palette
-            .search("neigbor")
+        action_results(&palette, "neigbor")?
             .selected(&palette)
             .ok_or("neighbor search should match")?
             .title(),
         "Focus window"
     );
 
-    let focus_results = palette.search("focus");
+    let focus_results = action_results(&palette, "focus")?;
     let focus = focus_results
         .selected(&palette)
         .ok_or("focus search should match")?;
@@ -144,7 +154,7 @@ fn palette_ranks_catalog_actions_and_exposes_typed_selection_states()
     };
     assert_eq!(binding.action().as_str(), "focus-window");
 
-    let close_results = palette.search("close");
+    let close_results = action_results(&palette, "close")?;
     let close = close_results
         .selected(&palette)
         .ok_or("close search should match")?;
@@ -153,7 +163,7 @@ fn palette_ranks_catalog_actions_and_exposes_typed_selection_states()
         PaletteActionState::Unavailable(ActionUnavailability::NoFocusedWindow)
     );
 
-    let move_results = palette.search("move");
+    let move_results = action_results(&palette, "move")?;
     let move_window = move_results
         .selected(&palette)
         .ok_or("move search should match")?;
@@ -168,7 +178,7 @@ fn palette_ranks_catalog_actions_and_exposes_typed_selection_states()
 #[test]
 fn palette_results_own_bounded_wraparound_selection() -> Result<(), Box<dyn std::error::Error>> {
     let palette = CommandPalette::project(&catalog()?);
-    let mut results = palette.search("");
+    let mut results = action_results(&palette, "")?;
 
     assert_eq!(
         results
@@ -204,9 +214,55 @@ fn palette_results_own_bounded_wraparound_selection() -> Result<(), Box<dyn std:
         "focus-window"
     );
 
-    let mut empty = palette.search("this cannot match any catalog action");
+    let mut empty = action_results(&palette, "this cannot match any catalog action")?;
     assert!(empty.selected(&palette).is_none());
     empty.move_selection(PaletteSelectionMove::Next);
     assert!(empty.selected(&palette).is_none());
+    Ok(())
+}
+
+#[test]
+fn palette_query_parser_makes_web_activation_explicit_and_non_empty()
+-> Result<(), Box<dyn std::error::Error>> {
+    assert_eq!(PaletteQuery::parse("   "), PaletteQuery::Browse);
+
+    let PaletteQuery::Search(search) = PaletteQuery::parse("  focus window  ") else {
+        return Err("ordinary text should search first-party providers".into());
+    };
+    assert_eq!(search.as_str(), "focus window");
+
+    assert_eq!(PaletteQuery::parse("  !  "), PaletteQuery::WebPrompt);
+    let PaletteQuery::WebSearch(search) = PaletteQuery::parse(" !  rust wtf-16 paths ") else {
+        return Err("a non-empty bang query should be a web search".into());
+    };
+    assert_eq!(search.as_str(), "rust wtf-16 paths");
+    Ok(())
+}
+
+#[test]
+fn palette_query_results_preserve_source_specific_activation_data()
+-> Result<(), Box<dyn std::error::Error>> {
+    let palette = CommandPalette::project(&catalog()?);
+
+    let PaletteResults::Actions(actions) = palette.query(PaletteQuery::parse("focus")) else {
+        return Err("local search should produce action matches".into());
+    };
+    assert_eq!(
+        actions
+            .selected(&palette)
+            .ok_or("focus search should select an action")?
+            .action_id(),
+        "focus-window"
+    );
+    assert_eq!(
+        palette.query(PaletteQuery::parse("!")),
+        PaletteResults::WebPrompt
+    );
+    let PaletteResults::WebSearch(request) =
+        palette.query(PaletteQuery::parse("! windows reactor"))
+    else {
+        return Err("web terms should produce a broker request".into());
+    };
+    assert_eq!(request.terms(), "windows reactor");
     Ok(())
 }

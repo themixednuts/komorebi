@@ -18,6 +18,82 @@ const QUERY_BYTES_PER_TYPO: usize = 4;
 const MINIMUM_TYPOS: u16 = 2;
 const MAXIMUM_TYPOS: u16 = 6;
 
+/// A parsed palette query whose variants determine which authority may handle it.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PaletteQuery<'query> {
+    /// No query: present the default first-party result set.
+    Browse,
+    /// Search local first-party providers without granting activation authority.
+    Search(PaletteSearchTerms<'query>),
+    /// The web prefix is present, but no terms exist and no launch is valid.
+    WebPrompt,
+    /// Search the web through the dedicated brokered URL-launch path.
+    WebSearch(WebSearchTerms<'query>),
+}
+
+impl<'query> PaletteQuery<'query> {
+    #[must_use]
+    pub fn parse(input: &'query str) -> Self {
+        let input = input.trim();
+        let Some(web_terms) = input.strip_prefix('!') else {
+            return if input.is_empty() {
+                Self::Browse
+            } else {
+                Self::Search(PaletteSearchTerms(input))
+            };
+        };
+        let web_terms = web_terms.trim();
+        if web_terms.is_empty() {
+            Self::WebPrompt
+        } else {
+            Self::WebSearch(WebSearchTerms(web_terms))
+        }
+    }
+}
+
+/// Non-empty search terms for local first-party palette providers.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct PaletteSearchTerms<'query>(&'query str);
+
+impl<'query> PaletteSearchTerms<'query> {
+    #[must_use]
+    pub const fn as_str(self) -> &'query str {
+        self.0
+    }
+}
+
+/// Non-empty terms accepted only by the brokered web-search provider.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct WebSearchTerms<'query>(&'query str);
+
+impl<'query> WebSearchTerms<'query> {
+    #[must_use]
+    pub const fn as_str(self) -> &'query str {
+        self.0
+    }
+}
+
+/// Renderer-neutral results whose variant retains the authority needed to activate it.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum PaletteResults {
+    Actions(PaletteMatches),
+    WebPrompt,
+    WebSearch(WebSearchRequest),
+}
+
+/// An owned, non-empty web query awaiting the configured URL-launch broker.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct WebSearchRequest {
+    terms: Box<str>,
+}
+
+impl WebSearchRequest {
+    #[must_use]
+    pub fn terms(&self) -> &str {
+        &self.terms
+    }
+}
+
 /// An immutable renderer-independent index of interactive manager actions.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CommandPalette {
@@ -64,7 +140,23 @@ impl CommandPalette {
         &self.actions
     }
 
+    /// Routes one parsed query without erasing source-specific activation data.
+    #[must_use]
+    pub fn query(&self, query: PaletteQuery<'_>) -> PaletteResults {
+        match query {
+            PaletteQuery::Browse => PaletteResults::Actions(self.search("")),
+            PaletteQuery::Search(terms) => PaletteResults::Actions(self.search(terms.as_str())),
+            PaletteQuery::WebPrompt => PaletteResults::WebPrompt,
+            PaletteQuery::WebSearch(terms) => PaletteResults::WebSearch(WebSearchRequest {
+                terms: terms.as_str().into(),
+            }),
+        }
+    }
+
     /// Returns typo-tolerant results in descending FFF matcher score order.
+    ///
+    /// Raw user input enters through [`Self::query`]; this source-specific port
+    /// exists for controllers that already hold validated local search terms.
     #[must_use]
     pub fn search(&self, query: &str) -> PaletteMatches {
         let query = query.trim();

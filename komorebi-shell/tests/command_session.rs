@@ -42,6 +42,8 @@ use komorebi_protocol::StateStamp;
 use komorebi_protocol::UndoPolicy;
 use komorebi_shell::CommandPalette;
 use komorebi_shell::PaletteActionState;
+use komorebi_shell::PaletteQuery;
+use komorebi_shell::PaletteResults;
 use komorebi_shell::SessionLifetime;
 use komorebi_shell::ShellSession;
 
@@ -194,8 +196,10 @@ async fn dropped_ticket_does_not_cancel_or_poison_the_owned_session()
         handle.invoke_builtin(BuiltInActionId::TogglePause, ActionArguments::default())?;
     drop(abandoned);
     let palette = CommandPalette::project(&observed_catalog);
-    let PaletteActionState::Ready(binding) = palette
-        .search("pause")
+    let PaletteResults::Actions(matches) = palette.query(PaletteQuery::parse("pause")) else {
+        return Err("pause query should search local actions".into());
+    };
+    let PaletteActionState::Ready(binding) = matches
         .selected(&palette)
         .ok_or("pause action should be searchable")?
         .state()

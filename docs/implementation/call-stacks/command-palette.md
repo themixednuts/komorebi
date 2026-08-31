@@ -22,9 +22,24 @@ Three designs were considered:
 The first vertical slice implements manager actions through the authorized
 `CatalogSnapshot`. The selected design reserves `fff-search` for files and
 content; action strings use `neo_frizbee`, the matcher used by `fff-search`,
-without pretending actions are filesystem entries. The next source slice will
-parse the reserved `!` web prefix and install its brokered URL-launch adapter;
-the current UI does not advertise or accept an inert placeholder mode.
+without pretending actions are filesystem entries. The typed query parser
+reserves the `!` web prefix. The next source slice installs its brokered
+URL-launch adapter; the current UI does not advertise or accept an inert
+placeholder mode.
+
+Query parsing is a total typed transition:
+
+```text
+trimmed input
+  -> empty                 -> PaletteQuery::Browse
+  -> ordinary non-empty    -> PaletteQuery::Search(PaletteSearchTerms)
+  -> `!` without terms     -> PaletteQuery::WebPrompt [not activatable]
+  -> `!` with terms        -> PaletteQuery::WebSearch(WebSearchTerms)
+```
+
+The distinct non-empty term types prevent a local provider or URL broker from
+accepting the other source's input by accident. Parsing selects authority; it
+does not construct a URL or perform an effect.
 
 `fff-search` 0.10.6 stores paths as UTF-8 strings created with
 `to_string_lossy()` and reconstructs `PathBuf` values from those strings. Its
