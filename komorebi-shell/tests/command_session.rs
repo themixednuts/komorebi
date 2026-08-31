@@ -132,6 +132,19 @@ async fn dropped_ticket_does_not_cancel_or_poison_the_owned_session()
             )
             .await?;
 
+        let request = session.receive_request().await?;
+        let target = request.reply_target();
+        assert_eq!(
+            request.into_request(),
+            SessionRequest::GetCatalog(CatalogQuery::new(Some(catalog_stamp)))
+        );
+        session
+            .send_reply(
+                target,
+                SessionReply::Catalog(CatalogReply::NotModified(catalog_stamp)),
+            )
+            .await?;
+
         for sequence in [first, first.next()?] {
             let request = session.receive_request().await?;
             let target = request.reply_target();
@@ -172,12 +185,14 @@ async fn dropped_ticket_does_not_cancel_or_poison_the_owned_session()
 
     ready.await?;
     let session = ShellSession::start(RoleHint::OwnerControl, SessionLifetime::Persistent)?;
-    let dispatcher = session.dispatcher();
+    let handle = session.handle();
+    let observed_catalog = handle.catalog_snapshot()?.snapshot().await?;
+    assert_eq!(observed_catalog.stamp(), catalog_stamp);
     let abandoned =
-        dispatcher.invoke_builtin(BuiltInActionId::TogglePause, ActionArguments::default())?;
+        handle.invoke_builtin(BuiltInActionId::TogglePause, ActionArguments::default())?;
     drop(abandoned);
     assert_eq!(
-        dispatcher
+        handle
             .invoke_builtin(BuiltInActionId::TogglePause, ActionArguments::default(),)?
             .outcome()
             .await?,

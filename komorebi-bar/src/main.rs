@@ -14,7 +14,7 @@ use crate::config::PositionConfig;
 use clap::Parser;
 use config::MonitorConfigOrIndex;
 use eframe::egui::ViewportBuilder;
-use font_loader::system_fonts;
+use font_kit::source::SystemSource;
 use hotwatch::EventKind;
 use hotwatch::Hotwatch;
 use komorebi_client::PathExt;
@@ -142,7 +142,7 @@ async fn main() -> color_eyre::Result<()> {
     }
 
     if opts.fonts {
-        for font in system_fonts::query_all() {
+        for font in SystemSource::new().all_families()? {
             println!("{font}");
         }
 

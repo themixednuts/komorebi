@@ -53,7 +53,7 @@ impl SessionLifetime {
 
 /// Owns one cancellation-safe command actor for a shell process.
 pub struct ShellSession {
-    dispatcher: ActionDispatcher,
+    handle: ShellHandle,
     cancellation: CancellationToken,
     actor: JoinHandle<()>,
 }
@@ -69,15 +69,15 @@ impl ShellSession {
         let cancellation = CancellationToken::new();
         let actor = runtime.spawn(run(receiver, cancellation.clone(), role_hint, lifetime));
         Ok(Self {
-            dispatcher: ActionDispatcher { sender },
+            handle: ShellHandle { sender },
             cancellation,
             actor,
         })
     }
 
     #[must_use]
-    pub fn dispatcher(&self) -> ActionDispatcher {
-        self.dispatcher.clone()
+    pub fn handle(&self) -> ShellHandle {
+        self.handle.clone()
     }
 
     /// Stops admission, lets the in-flight exchange finish, rejects queued
@@ -97,35 +97,44 @@ impl Drop for ShellSession {
 
 /// A cloneable, nonblocking entrypoint to one owned shell session.
 #[derive(Clone)]
-pub struct ActionDispatcher {
-    sender: mpsc::Sender<QueuedInvocation>,
+pub struct ShellHandle {
+    sender: mpsc::Sender<QueuedRequest>,
 }
 
-impl ActionDispatcher {
+impl ShellHandle {
     pub fn invoke_builtin(
         &self,
         action: BuiltInActionId,
         arguments: ActionArguments,
-    ) -> Result<InvocationTicket, ActionDispatchError> {
+    ) -> Result<InvocationTicket, ShellRequestError> {
         self.submit(RequestedAction::BuiltIn { action, arguments })
     }
 
     pub fn invoke_binding(
         &self,
         binding: ActionBinding,
-    ) -> Result<InvocationTicket, ActionDispatchError> {
+    ) -> Result<InvocationTicket, ShellRequestError> {
         self.submit(RequestedAction::Binding(binding))
     }
 
-    fn submit(&self, action: RequestedAction) -> Result<InvocationTicket, ActionDispatchError> {
+    /// Requests the latest authorized manager catalog through the owned actor.
+    pub fn catalog_snapshot(&self) -> Result<CatalogTicket, ShellRequestError> {
+        let (snapshot, receiver) = oneshot::channel();
+        self.send(QueuedRequest::Catalog { snapshot })?;
+        Ok(CatalogTicket { receiver })
+    }
+
+    fn submit(&self, action: RequestedAction) -> Result<InvocationTicket, ShellRequestError> {
         let (outcome, receiver) = oneshot::channel();
-        self.sender
-            .try_send(QueuedInvocation { action, outcome })
-            .map_err(|error| match error {
-                mpsc::error::TrySendError::Full(_) => ActionDispatchError::QueueFull,
-                mpsc::error::TrySendError::Closed(_) => ActionDispatchError::SessionClosed,
-            })?;
+        self.send(QueuedRequest::Invoke { action, outcome })?;
         Ok(InvocationTicket { receiver })
+    }
+
+    fn send(&self, request: QueuedRequest) -> Result<(), ShellRequestError> {
+        self.sender.try_send(request).map_err(|error| match error {
+            mpsc::error::TrySendError::Full(_) => ShellRequestError::QueueFull,
+            mpsc::error::TrySendError::Closed(_) => ShellRequestError::SessionClosed,
+        })
     }
 }
 
@@ -144,9 +153,42 @@ impl InvocationTicket {
     }
 }
 
-struct QueuedInvocation {
-    action: RequestedAction,
-    outcome: oneshot::Sender<Result<InvocationSubmissionReply, ActionInvocationError>>,
+/// Optional result interest for one accepted catalog read.
+pub struct CatalogTicket {
+    receiver: oneshot::Receiver<Result<CatalogSnapshot, CatalogReadError>>,
+}
+
+impl CatalogTicket {
+    /// Waits for the command actor's complete catalog-refresh outcome.
+    pub async fn snapshot(self) -> Result<CatalogSnapshot, CatalogReadError> {
+        match self.receiver.await {
+            Ok(snapshot) => snapshot,
+            Err(_) => Err(CatalogReadError::SessionStopped),
+        }
+    }
+}
+
+enum QueuedRequest {
+    Invoke {
+        action: RequestedAction,
+        outcome: oneshot::Sender<Result<InvocationSubmissionReply, ActionInvocationError>>,
+    },
+    Catalog {
+        snapshot: oneshot::Sender<Result<CatalogSnapshot, CatalogReadError>>,
+    },
+}
+
+impl QueuedRequest {
+    fn reject_for_shutdown(self) {
+        match self {
+            Self::Invoke { outcome, .. } => {
+                drop(outcome.send(Err(ActionInvocationError::SessionShuttingDown)));
+            }
+            Self::Catalog { snapshot } => {
+                drop(snapshot.send(Err(CatalogReadError::SessionShuttingDown)));
+            }
+        }
+    }
 }
 
 enum RequestedAction {
@@ -158,7 +200,7 @@ enum RequestedAction {
 }
 
 async fn run(
-    mut receiver: mpsc::Receiver<QueuedInvocation>,
+    mut receiver: mpsc::Receiver<QueuedRequest>,
     cancellation: CancellationToken,
     role_hint: RoleHint,
     lifetime: SessionLifetime,
@@ -170,7 +212,7 @@ async fn run(
             () = cancellation.cancelled() => {
                 receiver.close();
                 while let Some(request) = receiver.recv().await {
-                    drop(request.outcome.send(Err(ActionInvocationError::SessionShuttingDown)));
+                    request.reject_for_shutdown();
                 }
                 return;
             }
@@ -178,14 +220,33 @@ async fn run(
                 let Some(request) = request else {
                     return;
                 };
-                let outcome = dispatch(&mut connection, request.action, role_hint, lifetime).await;
-                drop(request.outcome.send(outcome));
+                match request {
+                    QueuedRequest::Invoke { action, outcome } => {
+                        let result = dispatch_action(
+                            &mut connection,
+                            action,
+                            role_hint,
+                            lifetime,
+                        )
+                        .await;
+                        drop(outcome.send(result));
+                    }
+                    QueuedRequest::Catalog { snapshot } => {
+                        let result = dispatch_catalog(
+                            &mut connection,
+                            role_hint,
+                            lifetime,
+                        )
+                        .await;
+                        drop(snapshot.send(result));
+                    }
+                }
             }
         }
     }
 }
 
-async fn dispatch(
+async fn dispatch_action(
     current: &mut Option<CommandConnection>,
     action: RequestedAction,
     role_hint: RoleHint,
@@ -200,6 +261,25 @@ async fn dispatch(
         *current = Some(connection);
     }
     outcome
+}
+
+async fn dispatch_catalog(
+    current: &mut Option<CommandConnection>,
+    role_hint: RoleHint,
+    lifetime: SessionLifetime,
+) -> Result<CatalogSnapshot, CatalogReadError> {
+    let mut connection = match current.take() {
+        Some(connection) => connection,
+        None => CommandConnection::connect(role_hint, lifetime).await?,
+    };
+    let result = connection
+        .refresh_catalog()
+        .await
+        .map(|()| connection.catalog().clone());
+    if result.is_ok() {
+        *current = Some(connection);
+    }
+    Ok(result?)
 }
 
 async fn invoke(
@@ -421,7 +501,7 @@ pub enum ShellSessionShutdownError {
 }
 
 #[derive(Clone, Copy, Debug, Error, Eq, PartialEq)]
-pub enum ActionDispatchError {
+pub enum ShellRequestError {
     #[error("the shell command queue is full")]
     QueueFull,
     #[error("the shell session is closed")]
@@ -437,6 +517,16 @@ pub enum ActionInvocationError {
     #[error("the shell session is shutting down")]
     SessionShuttingDown,
     #[error("the shell session stopped before reporting this invocation")]
+    SessionStopped,
+}
+
+#[derive(Debug, Error)]
+pub enum CatalogReadError {
+    #[error(transparent)]
+    Session(#[from] CommandSessionError),
+    #[error("the shell session is shutting down")]
+    SessionShuttingDown,
+    #[error("the shell session stopped before reporting this catalog")]
     SessionStopped,
 }
 

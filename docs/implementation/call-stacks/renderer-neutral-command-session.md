@@ -4,7 +4,7 @@
 
 The shell owns the authenticated command-session lifecycle shared by the bar,
 configuration UI, shortcuts UI, command palette, and script adapters. A caller
-submits work through an `ActionDispatcher` and optionally awaits an
+submits work through a `ShellHandle` and optionally awaits an
 `InvocationTicket`. It does not coordinate protocol negotiation, invocation-ID
 leases, catalog cache stamps, lease renewal, reconnects, or transport
 cancellation.
@@ -38,7 +38,7 @@ pub enum SessionLifetime {
 
 pub struct ShellSession { /* dispatcher, cancellation token, owned task */ }
 #[derive(Clone)]
-pub struct ActionDispatcher { /* bounded sender */ }
+pub struct ShellHandle { /* bounded sender */ }
 pub struct InvocationTicket { /* one result receiver */ }
 
 impl ShellSession {
@@ -46,20 +46,20 @@ impl ShellSession {
         role: RoleHint,
         lifetime: SessionLifetime,
     ) -> Result<Self, ShellSessionStartError>;
-    pub fn dispatcher(&self) -> ActionDispatcher;
+    pub fn handle(&self) -> ShellHandle;
     pub async fn shutdown(self) -> Result<(), ShellSessionShutdownError>;
 }
 
-impl ActionDispatcher {
+impl ShellHandle {
     pub fn invoke_builtin(
         &self,
         action: BuiltInActionId,
         arguments: ActionArguments,
-    ) -> Result<InvocationTicket, ActionDispatchError>;
+    ) -> Result<InvocationTicket, ShellRequestError>;
     pub fn invoke_binding(
         &self,
         binding: ActionBinding,
-    ) -> Result<InvocationTicket, ActionDispatchError>;
+    ) -> Result<InvocationTicket, ShellRequestError>;
 }
 
 impl InvocationTicket {
@@ -77,7 +77,7 @@ typed data; executable adapters decide how to present them.
 
 ```text
 renderer or plugin adapter: ActionBinding | BuiltInActionId + BuiltInArguments
-  -> ActionDispatcher::invoke_* -> InvocationTicket
+  -> ShellHandle::invoke_* -> InvocationTicket
     [nonblocking bounded enqueue; queue-full and closed are typed]
     -> shell session actor
       [owns request future even if InvocationTicket is dropped]

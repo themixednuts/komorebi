@@ -57,7 +57,7 @@ pub(super) async fn invoke_action(
 ) -> eyre::Result<()> {
     let session = ShellSession::start(RoleHint::OwnerControl, SessionLifetime::OneShot)?;
     let outcome = session
-        .dispatcher()
+        .handle()
         .invoke_builtin(action, arguments.into_action_arguments())?
         .outcome()
         .await;

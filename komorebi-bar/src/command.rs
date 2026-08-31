@@ -13,10 +13,10 @@ use komorebi_protocol::BuiltInWorkspaceTarget;
 use komorebi_protocol::InvocationSubmissionReply;
 use komorebi_protocol::RoleHint;
 use komorebi_shell::ActionBinding;
-use komorebi_shell::ActionDispatchError;
-use komorebi_shell::ActionDispatcher;
 use komorebi_shell::ActionInvocationError;
 use komorebi_shell::SessionLifetime;
+use komorebi_shell::ShellHandle;
+use komorebi_shell::ShellRequestError;
 use komorebi_shell::ShellSession;
 use komorebi_shell::built_in_layout;
 use tokio::sync::watch;
@@ -311,7 +311,7 @@ async fn run(pending: Arc<Mutex<VecDeque<BarCommand>>>, mut changed: watch::Rece
             return;
         }
     };
-    let dispatcher = session.dispatcher();
+    let handle = session.handle();
     while changed.changed().await.is_ok() {
         let commands = match pending.lock() {
             Ok(mut pending) => pending.drain(..).collect::<Vec<_>>(),
@@ -321,7 +321,7 @@ async fn run(pending: Arc<Mutex<VecDeque<BarCommand>>>, mut changed: watch::Rece
             }
         };
         for command in commands {
-            match dispatch(&dispatcher, command).await {
+            match dispatch(&handle, command).await {
                 Ok(
                     InvocationSubmissionReply::Accepted(_) | InvocationSubmissionReply::Retained(_),
                 ) => {}
@@ -340,14 +340,14 @@ async fn run(pending: Arc<Mutex<VecDeque<BarCommand>>>, mut changed: watch::Rece
 }
 
 async fn dispatch(
-    dispatcher: &ActionDispatcher,
+    handle: &ShellHandle,
     command: BarCommand,
 ) -> Result<InvocationSubmissionReply, CommandDispatchError> {
     let ticket = match command {
         BarCommand::BuiltIn { key, arguments } => {
-            dispatcher.invoke_builtin(key.action(), arguments.into_action_arguments())?
+            handle.invoke_builtin(key.action(), arguments.into_action_arguments())?
         }
-        BarCommand::Binding(binding) => dispatcher.invoke_binding(binding)?,
+        BarCommand::Binding(binding) => handle.invoke_binding(binding)?,
     };
     Ok(ticket.outcome().await?)
 }
@@ -355,7 +355,7 @@ async fn dispatch(
 #[derive(Debug, thiserror::Error)]
 enum CommandDispatchError {
     #[error(transparent)]
-    Dispatch(#[from] ActionDispatchError),
+    Dispatch(#[from] ShellRequestError),
     #[error(transparent)]
     Invocation(#[from] ActionInvocationError),
 }

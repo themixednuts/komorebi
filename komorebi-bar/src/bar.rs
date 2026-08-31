@@ -46,8 +46,9 @@ use eframe::egui::Style;
 use eframe::egui::TextStyle;
 use eframe::egui::Vec2;
 use eframe::egui::Visuals;
-use font_loader::system_fonts;
-use font_loader::system_fonts::FontPropertyBuilder;
+use font_kit::family_name::FamilyName;
+use font_kit::properties::Properties;
+use font_kit::source::SystemSource;
 use komorebi_client::Colour;
 use komorebi_client::MonitorNotification;
 use komorebi_client::NotificationEvent;
@@ -701,12 +702,15 @@ impl Komobar {
             }
         }
 
-        let property = FontPropertyBuilder::new().family(name).build();
-
-        if let Some((font, _)) = system_fonts::get(&property) {
-            fonts
-                .font_data
-                .insert(name.to_owned(), Arc::new(FontData::from_owned(font)));
+        if let Ok(handle) = SystemSource::new()
+            .select_best_match(&[FamilyName::Title(name.to_owned())], &Properties::new())
+            && let Ok(font) = handle.load()
+            && let Some(font) = font.copy_font_data()
+        {
+            fonts.font_data.insert(
+                name.to_owned(),
+                Arc::new(FontData::from_owned(font.as_ref().clone())),
+            );
 
             for family in [FontFamily::Proportional, FontFamily::Monospace] {
                 fonts
