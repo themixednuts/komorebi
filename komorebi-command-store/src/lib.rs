@@ -3,7 +3,6 @@
 mod document;
 mod ledger;
 mod model;
-mod path;
 mod schema;
 mod storage;
 

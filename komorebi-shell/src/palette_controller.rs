@@ -3,20 +3,20 @@ use std::num::NonZeroU128;
 
 use komorebi_protocol::ActionParameter;
 use komorebi_protocol::ActionUnavailability;
-use komorebi_protocol::InvocationRejection;
-use komorebi_protocol::InvocationSubmissionReply;
 
-use crate::ActionBinding;
-use crate::ActionInvocationError;
 use crate::CommandPalette;
-use crate::InvocationTicket;
 use crate::PaletteAction;
 use crate::PaletteActionState;
+use crate::PaletteCompletion;
+use crate::PaletteCompletionDisposition;
+use crate::PaletteEffect;
+use crate::PaletteFailure;
+use crate::PaletteInvocation;
 use crate::PaletteMatches;
 use crate::PaletteQuery;
 use crate::PaletteResults;
-use crate::ShellHandle;
-use crate::ShellRequestError;
+use crate::PaletteWebInvocation;
+use crate::WebSearchRequest;
 
 /// Renderer-neutral state and transitions for one command-palette surface.
 #[derive(Debug)]
@@ -60,6 +60,16 @@ impl PaletteController {
             .flat_map(|matches| matches.actions(&self.palette))
     }
 
+    /// Identifies the source-specific content currently presented by a renderer.
+    #[must_use]
+    pub fn content(&self) -> PaletteContent<'_> {
+        match &self.results {
+            PaletteResults::Actions(_) => PaletteContent::Actions,
+            PaletteResults::WebPrompt => PaletteContent::WebPrompt,
+            PaletteResults::WebSearch(request) => PaletteContent::WebSearch(request),
+        }
+    }
+
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.matches().is_none_or(PaletteMatches::is_empty)
@@ -93,6 +103,20 @@ impl PaletteController {
         if matches!(self.status, PaletteStatus::Submitting { .. }) {
             return None;
         }
+        match &self.results {
+            PaletteResults::WebPrompt => None,
+            PaletteResults::WebSearch(request) => {
+                let request = request.clone();
+                let attempt = self.begin_submission("Search the web".into())?;
+                Some(PaletteEffect::Web(PaletteWebInvocation::new(
+                    attempt, request,
+                )))
+            }
+            PaletteResults::Actions(_) => self.activate_action(),
+        }
+    }
+
+    fn activate_action(&mut self) -> Option<PaletteEffect> {
         let action = self.selected_action()?;
         let title = action.title().into();
         match action.state() {
@@ -111,31 +135,32 @@ impl PaletteController {
                 None
             }
             PaletteActionState::Ready(binding) => {
-                let Some(attempt) = self.next_attempt else {
-                    self.status = PaletteStatus::AttemptIdsExhausted;
-                    return None;
-                };
-                self.next_attempt = attempt.next();
-                self.status = PaletteStatus::Submitting {
-                    attempt,
-                    action: title,
-                };
-                Some(PaletteEffect::Invoke(PaletteInvocation {
-                    attempt,
-                    binding,
-                }))
+                let attempt = self.begin_submission(title)?;
+                Some(PaletteEffect::Invoke(PaletteInvocation::new(
+                    attempt, binding,
+                )))
             }
         }
+    }
+
+    fn begin_submission(&mut self, label: Box<str>) -> Option<PaletteAttemptId> {
+        let Some(attempt) = self.next_attempt else {
+            self.status = PaletteStatus::AttemptIdsExhausted;
+            return None;
+        };
+        self.next_attempt = attempt.next();
+        self.status = PaletteStatus::Submitting { attempt, label };
+        Some(attempt)
     }
 
     /// Applies a completion only when it belongs to the invocation still in flight.
     pub fn complete(&mut self, completion: PaletteCompletion) -> PaletteCompletionDisposition {
         let current = mem::replace(&mut self.status, PaletteStatus::Idle);
         match current {
-            PaletteStatus::Submitting { attempt, action } if attempt == completion.attempt => {
+            PaletteStatus::Submitting { attempt, label } if attempt == completion.attempt => {
                 self.status = match completion.result {
-                    Ok(()) => PaletteStatus::Succeeded { action },
-                    Err(failure) => PaletteStatus::Failed { action, failure },
+                    Ok(()) => PaletteStatus::Succeeded { label },
+                    Err(failure) => PaletteStatus::Failed { label, failure },
                 };
                 PaletteCompletionDisposition::Applied
             }
@@ -159,6 +184,14 @@ impl PaletteController {
             PaletteResults::WebPrompt | PaletteResults::WebSearch(_) => None,
         }
     }
+}
+
+/// Source-specific palette content without renderer or adapter types.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PaletteContent<'a> {
+    Actions,
+    WebPrompt,
+    WebSearch(&'a WebSearchRequest),
 }
 
 /// A unique activation attempt within one palette-controller lifetime.
@@ -187,125 +220,14 @@ pub enum PaletteStatus {
     },
     Submitting {
         attempt: PaletteAttemptId,
-        action: Box<str>,
+        label: Box<str>,
     },
     Succeeded {
-        action: Box<str>,
+        label: Box<str>,
     },
     Failed {
-        action: Box<str>,
+        label: Box<str>,
         failure: PaletteFailure,
     },
     AttemptIdsExhausted,
-}
-
-/// The terminal completion of one palette invocation attempt.
-#[derive(Debug)]
-pub struct PaletteCompletion {
-    attempt: PaletteAttemptId,
-    result: Result<(), PaletteFailure>,
-}
-
-impl PaletteCompletion {
-    #[must_use]
-    pub const fn succeeded(attempt: PaletteAttemptId) -> Self {
-        Self {
-            attempt,
-            result: Ok(()),
-        }
-    }
-
-    const fn failed(attempt: PaletteAttemptId, failure: PaletteFailure) -> Self {
-        Self {
-            attempt,
-            result: Err(failure),
-        }
-    }
-}
-
-/// A typed terminal failure produced by the shell invocation adapter.
-#[derive(Debug)]
-pub enum PaletteFailure {
-    Submission(ShellRequestError),
-    Rejected(InvocationRejection),
-    Execution(ActionInvocationError),
-}
-
-/// Whether a completion changed the currently visible controller state.
-#[must_use]
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum PaletteCompletionDisposition {
-    Applied,
-    IgnoredStale,
-}
-
-/// A side effect selected by a pure controller transition.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum PaletteEffect {
-    Invoke(PaletteInvocation),
-}
-
-/// One authorized action invocation carrying its stale-completion fence.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct PaletteInvocation {
-    attempt: PaletteAttemptId,
-    binding: ActionBinding,
-}
-
-impl PaletteInvocation {
-    #[must_use]
-    pub const fn attempt(&self) -> PaletteAttemptId {
-        self.attempt
-    }
-
-    #[must_use]
-    pub const fn binding(&self) -> &ActionBinding {
-        &self.binding
-    }
-
-    /// Submits through the owned shell session without exposing transport logic to a renderer.
-    #[must_use]
-    pub fn submit(self, shell: &ShellHandle) -> PaletteSubmission {
-        match shell.invoke_binding(self.binding) {
-            Ok(ticket) => PaletteSubmission::Pending(PendingPaletteInvocation {
-                attempt: self.attempt,
-                ticket,
-            }),
-            Err(error) => PaletteSubmission::Complete(PaletteCompletion::failed(
-                self.attempt,
-                PaletteFailure::Submission(error),
-            )),
-        }
-    }
-}
-
-/// The immediate result of handing an invocation to the owned shell session.
-pub enum PaletteSubmission {
-    Pending(PendingPaletteInvocation),
-    Complete(PaletteCompletion),
-}
-
-/// An owned wait for one action submission that remains cancellation-safe in `ShellSession`.
-pub struct PendingPaletteInvocation {
-    attempt: PaletteAttemptId,
-    ticket: InvocationTicket,
-}
-
-impl PendingPaletteInvocation {
-    /// Waits for the actor-owned operation and translates its terminal result.
-    pub async fn complete(self) -> PaletteCompletion {
-        let result = match self.ticket.outcome().await {
-            Ok(InvocationSubmissionReply::Accepted(_) | InvocationSubmissionReply::Retained(_)) => {
-                Ok(())
-            }
-            Ok(InvocationSubmissionReply::Rejected(reason)) => {
-                Err(PaletteFailure::Rejected(reason))
-            }
-            Err(error) => Err(PaletteFailure::Execution(error)),
-        };
-        PaletteCompletion {
-            attempt: self.attempt,
-            result,
-        }
-    }
 }

@@ -11,6 +11,8 @@ members = [
   "komorebi-layouts",
   "komorebi-protocol",
   "komorebi-search",
+  "komorebi-settings",
+  "komorebi-sqlite",
   "komorebic",
   "komorebic-no-console",
   "komorebi-bar",

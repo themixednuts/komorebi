@@ -7,7 +7,9 @@ publish = false
 [dependencies]
 gpui = "0.2.2"
 gpui-component = "0.5.1"
+dirs = { workspace = true }
 komorebi-protocol = { path = "../komorebi-protocol" }
+komorebi-settings = { path = "../komorebi-settings" }
 komorebi-shell = { path = "../komorebi-shell" }
 tokio = { version = "=1.53.1", features = ["macros", "rt-multi-thread"] }
 

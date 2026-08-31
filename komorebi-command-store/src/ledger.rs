@@ -9,13 +9,12 @@ use komorebi_protocol::InvocationProgress;
 use komorebi_protocol::InvocationStatus;
 use komorebi_protocol::InvocationTerminal;
 use komorebi_protocol::SettledInvocationKind;
+use komorebi_sqlite::open_durable;
 use thiserror::Error;
 
 use crate::model::DurableInvocationRecord;
 use crate::model::DurablePhase;
 use crate::model::RecoveryPolicy;
-use crate::path::configure_durability;
-use crate::path::open_sqlite;
 use crate::schema::CommandStoreSchema;
 use crate::schema::InvocationSnapshot;
 use crate::schema::StoredPhase;
@@ -84,8 +83,7 @@ impl DurableInvocationLedger {
     /// Returns [`LedgerError`] when the path cannot be opened, durability
     /// cannot be established, or migrations fail.
     pub fn open(path: &Path) -> Result<Self, LedgerError> {
-        let connection = open_sqlite(path)?;
-        configure_durability(&connection)?;
+        let connection = open_durable(path)?;
         let schema = CommandStoreSchema::new();
         let (db, _) = Drizzle::new(connection, schema);
         let migrations = drizzle::include_migrations!("./drizzle");

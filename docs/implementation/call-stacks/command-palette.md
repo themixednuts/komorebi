@@ -24,9 +24,9 @@ The first vertical slice implements manager actions through the authorized
 `CatalogSnapshot`. The selected design reserves `fff-search` for files and
 content; action strings use `neo_frizbee`, the matcher used by `fff-search`,
 without pretending actions are filesystem entries. The typed query parser
-reserves the `!` web prefix. The next source slice installs its brokered
-URL-launch adapter; the current UI does not advertise or accept an inert
-placeholder mode.
+reserves the `!` web prefix. Web activation is admitted through one owned
+broker and reaches the user's registered HTTPS handler through
+`Windows.System.Launcher`; renderers never construct or launch a URI.
 
 Query parsing is a total typed transition:
 
@@ -60,6 +60,7 @@ pub struct PaletteMatches { /* ordered action identities and bounded cursor */ }
 
 pub enum PaletteEffect {
     Invoke(PaletteInvocation),
+    Web(PaletteWebInvocation),
 }
 
 pub enum PaletteSubmission {
@@ -71,6 +72,13 @@ pub enum PaletteActionState<'a> {
     Ready(ActionBinding),
     RequiresInput(&'a [ActionParameter]),
     Unavailable(ActionUnavailability),
+}
+
+pub trait WebUriLauncher {
+    fn launch(
+        &self,
+        target: WebSearchTarget,
+    ) -> impl Future<Output = Result<WebLaunchDisposition, WebLaunchFailure>> + Send;
 }
 
 impl CommandPalette {
@@ -132,6 +140,84 @@ session actor still owns the admitted operation and converges it independently.
 The view retains at most one pending task because the controller suppresses a
 second activation while one attempt is submitting.
 
+## Web-search activation stack
+
+The configured endpoint is parsed once at the composition boundary. It must be
+HTTPS, contain a host, contain no credentials or fragment, and leave its one
+validated query key unset. `WebSearchTarget` can only be constructed from that
+endpoint and nonempty `WebSearchRequest`; URL encoding is owned by the `url`
+crate rather than renderer string concatenation.
+
+```text
+GPUI Enter on `!terms` [direct foreground user action]
+  -> PaletteController::activate() -> PaletteEffect::Web(PaletteWebInvocation)
+    -> PaletteWebInvocation::submit(&WebSearchBroker)
+      -> WebSearchBroker::Configured(WebActivationClient)
+      -> acquire owned bounded-admission permit [async, cancellation-safe]
+      -> bounded mpsc WebActivationCommand::Launch
+      <- WebActivationTicket [broker now owns the effect]
+        -> WebActivationService actor [single owner, ordered]
+          -> WebSearchEndpoint::target(&WebSearchRequest)
+            -> percent-encoded WebSearchTarget [HTTPS authority preserved]
+          -> WebUriLauncher::launch(WebSearchTarget) [consumer-owned port]
+            -> WindowsWebLauncher adapter
+              -> Windows.Foundation.Uri
+              -> Windows.System.Launcher::LaunchUriAsync [WinRT completion event]
+              <- launched | rejected | translated HRESULT failure
+        <- WebActivationTicket::complete
+      <- PendingPaletteInvocation::complete -> PaletteCompletion
+    -> PaletteController::complete [attempt fence]
+      -> Applied | IgnoredStale
+```
+
+There is no timer or polling loop. Cancelling before broker admission produces
+no effect. Once submission returns a ticket, dropping the GPUI task abandons
+only result observation; the broker finishes the native attempt and releases
+its permit. Shutdown closes admission, places a marker in its reserved channel
+slot, closes the receiver at that marker, drains every command already admitted
+behind it, and joins the task. A platform error is translated at
+`WindowsWebLauncher`; WinRT types and HRESULT wrappers do not cross the port.
+
+The broker does not query support before every launch. That would add a race and
+a second native round trip without changing launch authority. A read-only native
+test exercises `QueryUriSupportAsync` only as adapter evidence.
+
+## Durable web-search configuration stack
+
+The endpoint is durable configuration, not JSON state and not a compiled-in
+provider. `komorebi-settings` owns its typed Drizzle schema, generated migration,
+validation on load, and atomic singleton upsert. The composition root reads it
+once; the configured broker then owns the validated endpoint in memory for the
+process lifetime, so palette queries never touch SQLite.
+
+```text
+komorebi-command-palette::main [Tokio composition root]
+  -> %LOCALAPPDATA%/komorebi/settings.sqlite: PathBuf
+    -> SettingsStore::open(&Path)
+      -> komorebi_sqlite::open_durable
+        -> rusqlite::Connection::open
+        -> enable and verify WAL + synchronous=FULL + foreign_keys=ON
+      -> Drizzle<SettingsSchema>::migrate [build.rs-generated migrations]
+    -> SettingsStore::web_search
+      -> typed Drizzle select -> WebSearchRow: SQLiteFromRow
+      -> WebSearchEndpoint::new [authority validation]
+        -> Some(endpoint)
+          -> WebActivationService::start -> WebSearchBroker::Configured
+        -> None
+          -> WebSearchBroker::Unconfigured [explicit typed activation failure]
+```
+
+`SettingsStore::set_web_search` uses Drizzle's typed insert/conflict/update query
+API; it does not interpolate raw SQL or maintain manual migrations. The database
+is the durable source of truth and the broker is the hot in-memory projection,
+so there is no cache-invalidation protocol.
+
+SQLite internally passes even `sqlite3_open16` filenames through UTF-8. An
+unpaired-WTF-16 database path therefore cannot preserve its filesystem identity.
+The shared opener rejects such a path as `rusqlite::Error::InvalidPath`; it never
+normalizes or silently opens a different file. Exact user file operands remain
+opaque `PathBuf` values in the file-search stack and do not pass through SQLite.
+
 ## Future source stacks
 
 ```text
@@ -146,7 +232,7 @@ file selection: OpaquePathId
 
 web selection: WebQuery
   -> percent-encoded HTTPS search URL
-    -> broker policy -> ShellExecuteExW adapter
+    -> broker policy -> Windows.System.Launcher::LaunchUriAsync adapter
 ```
 
 File indexing and content search run in owned background tasks with explicit
@@ -257,7 +343,14 @@ runtime; this library neither creates one nor calls `block_on`.
 - A real command protocol integration test proves palette activation reaches
   manager admission through `ShellHandle` without a second command path.
 - Controller tests prove bounded selection, duplicate-activation suppression,
-  attempt uniqueness, and stale-completion rejection.
+  attempt uniqueness, source-specific web effects, and stale-completion
+  rejection.
+- Broker tests prove bounded admission, owned completion after UI interest is
+  dropped, terminal shutdown, endpoint authority validation, percent encoding,
+  and a registered native HTTPS handler without launching a browser.
+- Settings tests prove generated migration application, absent configuration,
+  durable typed upsert/reopen, endpoint validation, and rejection of an
+  unrepresentable SQLite path without creating a different file identity.
 - The filesystem adapter proves exact round trips for unpaired UTF-16
   surrogates in both the root and filename, including real file I/O through the
   resolved ID.

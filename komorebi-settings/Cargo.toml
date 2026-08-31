@@ -1,12 +1,12 @@
 [package]
-name = "komorebi-command-store"
-version = "0.1.42"
+name = "komorebi-settings"
+version = "0.1.0"
 edition = "2024"
 publish = false
 
 [dependencies]
 drizzle = { version = "=0.1.16", features = ["rusqlite", "serde"] }
-komorebi-protocol = { path = "../komorebi-protocol" }
+komorebi-shell = { path = "../komorebi-shell" }
 komorebi-sqlite = { path = "../komorebi-sqlite" }
 rusqlite = { version = "=0.39.0", features = ["bundled"] }
 thiserror = "2"

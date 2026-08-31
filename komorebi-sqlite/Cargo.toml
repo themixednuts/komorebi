@@ -1,23 +1,11 @@
 [package]
-name = "komorebi-command-store"
-version = "0.1.42"
+name = "komorebi-sqlite"
+version = "0.1.0"
 edition = "2024"
 publish = false
 
 [dependencies]
-drizzle = { version = "=0.1.16", features = ["rusqlite", "serde"] }
-komorebi-protocol = { path = "../komorebi-protocol" }
-komorebi-sqlite = { path = "../komorebi-sqlite" }
 rusqlite = { version = "=0.39.0", features = ["bundled"] }
-thiserror = "2"
-
-[build-dependencies]
-drizzle = { version = "=0.1.16", features = ["rusqlite", "serde"] }
-drizzle-migrations = "=0.1.16"
-rusqlite = { version = "=0.39.0", features = ["bundled"] }
-
-[dev-dependencies]
-tempfile = "3"
 
 [lints.rust]
 unsafe_op_in_unsafe_fn = "deny"

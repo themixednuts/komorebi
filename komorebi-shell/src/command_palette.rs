@@ -88,6 +88,21 @@ pub struct WebSearchRequest {
 }
 
 impl WebSearchRequest {
+    /// Creates an owned request from nonempty trimmed terms.
+    #[must_use]
+    pub fn new(terms: &str) -> Option<Self> {
+        let terms = terms.trim();
+        (!terms.is_empty()).then(|| Self {
+            terms: terms.into(),
+        })
+    }
+
+    fn from_validated(terms: WebSearchTerms<'_>) -> Self {
+        Self {
+            terms: terms.as_str().into(),
+        }
+    }
+
     #[must_use]
     pub fn terms(&self) -> &str {
         &self.terms
@@ -147,9 +162,9 @@ impl CommandPalette {
             PaletteQuery::Browse => PaletteResults::Actions(self.search("")),
             PaletteQuery::Search(terms) => PaletteResults::Actions(self.search(terms.as_str())),
             PaletteQuery::WebPrompt => PaletteResults::WebPrompt,
-            PaletteQuery::WebSearch(terms) => PaletteResults::WebSearch(WebSearchRequest {
-                terms: terms.as_str().into(),
-            }),
+            PaletteQuery::WebSearch(terms) => {
+                PaletteResults::WebSearch(WebSearchRequest::from_validated(terms))
+            }
         }
     }
 

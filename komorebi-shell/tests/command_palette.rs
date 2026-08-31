@@ -28,6 +28,7 @@ use komorebi_shell::CommandPalette;
 use komorebi_shell::PaletteActionState;
 use komorebi_shell::PaletteCompletion;
 use komorebi_shell::PaletteCompletionDisposition;
+use komorebi_shell::PaletteContent;
 use komorebi_shell::PaletteController;
 use komorebi_shell::PaletteEffect;
 use komorebi_shell::PaletteMatches;
@@ -35,6 +36,24 @@ use komorebi_shell::PaletteQuery;
 use komorebi_shell::PaletteResults;
 use komorebi_shell::PaletteSelectionMove;
 use komorebi_shell::PaletteStatus;
+use komorebi_shell::PaletteSubmission;
+use komorebi_shell::WebActivationQueueCapacity;
+use komorebi_shell::WebActivationService;
+use komorebi_shell::WebLaunchDisposition;
+use komorebi_shell::WebLaunchFailure;
+use komorebi_shell::WebSearchBroker;
+use komorebi_shell::WebSearchEndpoint;
+use komorebi_shell::WebSearchTarget;
+use komorebi_shell::WebUriLauncher;
+
+#[derive(Clone, Copy)]
+struct SuccessfulWebLauncher;
+
+impl WebUriLauncher for SuccessfulWebLauncher {
+    async fn launch(&self, _: WebSearchTarget) -> Result<WebLaunchDisposition, WebLaunchFailure> {
+        Ok(WebLaunchDisposition::Launched)
+    }
+}
 
 fn action_results(palette: &CommandPalette, input: &str) -> Result<PaletteMatches, &'static str> {
     match palette.query(PaletteQuery::parse(input)) {
@@ -292,8 +311,8 @@ fn palette_controller_owns_query_selection_and_single_action_activation()
     assert_eq!(invocation.binding().action().as_str(), "focus-window");
     assert!(matches!(
         controller.status(),
-        PaletteStatus::Submitting { attempt, action }
-            if *attempt == invocation.attempt() && action.as_ref() == "Focus window"
+        PaletteStatus::Submitting { attempt, label }
+            if *attempt == invocation.attempt() && label.as_ref() == "Focus window"
     ));
     assert!(controller.activate().is_none());
     Ok(())
@@ -314,7 +333,7 @@ fn palette_controller_rejects_stale_completion_without_overwriting_current_attem
     );
     assert!(matches!(
         controller.status(),
-        PaletteStatus::Succeeded { action } if action.as_ref() == "Focus window"
+        PaletteStatus::Succeeded { label } if label.as_ref() == "Focus window"
     ));
 
     let Some(PaletteEffect::Invoke(second)) = controller.activate() else {
@@ -359,5 +378,83 @@ fn palette_controller_exposes_bounded_rows_and_selection_for_renderers()
     assert!(controller.is_empty());
     assert_eq!(controller.actions().count(), 0);
     assert_eq!(controller.selected_position(), None);
+    Ok(())
+}
+
+#[test]
+fn palette_controller_emits_one_typed_web_activation_for_bang_terms()
+-> Result<(), Box<dyn std::error::Error>> {
+    let mut controller = PaletteController::new(CommandPalette::project(&catalog()?));
+
+    controller.update_query("! rust windows shell");
+    assert!(matches!(
+        controller.content(),
+        PaletteContent::WebSearch(request) if request.terms() == "rust windows shell"
+    ));
+
+    let Some(PaletteEffect::Web(invocation)) = controller.activate() else {
+        return Err("web terms should emit a brokered activation".into());
+    };
+    assert_eq!(invocation.request().terms(), "rust windows shell");
+    assert!(matches!(
+        controller.status(),
+        PaletteStatus::Submitting { attempt, label }
+            if *attempt == invocation.attempt() && label.as_ref() == "Search the web"
+    ));
+    assert!(controller.activate().is_none());
+    Ok(())
+}
+
+#[tokio::test]
+async fn palette_web_effect_completes_through_the_owned_broker()
+-> Result<(), Box<dyn std::error::Error>> {
+    let web = WebActivationService::start(
+        WebSearchEndpoint::new("https://search.example/results", "q")?,
+        SuccessfulWebLauncher,
+        WebActivationQueueCapacity::new(1).ok_or("one is a valid capacity")?,
+    );
+    let mut controller = PaletteController::new(CommandPalette::project(&catalog()?));
+    controller.update_query("! typed rust");
+    let Some(PaletteEffect::Web(invocation)) = controller.activate() else {
+        return Err("web terms should emit a brokered activation".into());
+    };
+
+    let broker = WebSearchBroker::Configured(web.client());
+    let submission = invocation.submit(&broker).await;
+    assert!(matches!(submission, PaletteSubmission::Pending(_)));
+    assert_eq!(
+        controller.complete(submission.complete().await),
+        PaletteCompletionDisposition::Applied
+    );
+    assert!(matches!(
+        controller.status(),
+        PaletteStatus::Succeeded { label } if label.as_ref() == "Search the web"
+    ));
+    web.shutdown().await?;
+    Ok(())
+}
+
+#[tokio::test]
+async fn unconfigured_web_search_completes_with_a_typed_failure()
+-> Result<(), Box<dyn std::error::Error>> {
+    let mut controller = PaletteController::new(CommandPalette::project(&catalog()?));
+    controller.update_query("! no implicit provider");
+    let Some(PaletteEffect::Web(invocation)) = controller.activate() else {
+        return Err("web terms should emit a brokered activation".into());
+    };
+
+    let submission = invocation.submit(&WebSearchBroker::Unconfigured).await;
+    assert!(matches!(submission, PaletteSubmission::Complete(_)));
+    assert_eq!(
+        controller.complete(submission.complete().await),
+        PaletteCompletionDisposition::Applied
+    );
+    assert!(matches!(
+        controller.status(),
+        PaletteStatus::Failed {
+            label,
+            failure: komorebi_shell::PaletteFailure::WebUnavailable,
+        } if label.as_ref() == "Search the web"
+    ));
     Ok(())
 }

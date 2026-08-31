@@ -1,5 +1,7 @@
 #![windows_subsystem = "windows"]
 
+use std::future::Future;
+
 use gpui::App;
 use gpui::AppContext as _;
 use gpui::Application;
@@ -9,6 +11,7 @@ use gpui::InteractiveElement as _;
 use gpui::IntoElement;
 use gpui::ParentElement as _;
 use gpui::Render;
+use gpui::Rgba;
 use gpui::StatefulInteractiveElement as _;
 use gpui::Styled as _;
 use gpui::Subscription;
@@ -34,8 +37,10 @@ use gpui_component::scroll::ScrollableElement as _;
 use komorebi_protocol::ActionAvailability;
 use komorebi_protocol::ActionCategory;
 use komorebi_protocol::RoleHint;
+use komorebi_settings::SettingsStore;
 use komorebi_shell::CommandPalette;
 use komorebi_shell::PaletteAction;
+use komorebi_shell::PaletteContent;
 use komorebi_shell::PaletteController;
 use komorebi_shell::PaletteEffect;
 use komorebi_shell::PaletteFailure;
@@ -45,13 +50,19 @@ use komorebi_shell::PaletteSubmission;
 use komorebi_shell::SessionLifetime;
 use komorebi_shell::ShellHandle;
 use komorebi_shell::ShellSession;
+use komorebi_shell::WebActivationQueueCapacity;
+use komorebi_shell::WebActivationService;
+use komorebi_shell::WebSearchBroker;
+use komorebi_shell::WindowsWebLauncher;
 
 const TITLE: &str = "komorebi command palette";
+const WEB_ACTIVATION_CAPACITY: usize = 1;
 
 struct CommandPaletteView {
     controller: PaletteController,
     query: gpui::Entity<InputState>,
     shell: ShellHandle,
+    web: WebSearchBroker,
     invocation: Option<Task<()>>,
     _subscriptions: Vec<Subscription>,
 }
@@ -60,6 +71,7 @@ impl CommandPaletteView {
     fn new(
         palette: CommandPalette,
         shell: ShellHandle,
+        web: WebSearchBroker,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Self {
@@ -83,6 +95,7 @@ impl CommandPaletteView {
             controller,
             query,
             shell,
+            web,
             invocation: None,
             _subscriptions: vec![input_subscription],
         }
@@ -122,22 +135,31 @@ impl CommandPaletteView {
             cx.notify();
             return;
         };
-        let PaletteEffect::Invoke(invocation) = effect;
-        match invocation.submit(&self.shell) {
-            PaletteSubmission::Complete(completion) => {
-                _ = self.controller.complete(completion);
+        match effect {
+            PaletteEffect::Invoke(invocation) => {
+                let submission = invocation.submit(&self.shell);
+                self.observe_submission(std::future::ready(submission), cx);
             }
-            PaletteSubmission::Pending(pending) => {
-                self.invocation = Some(cx.spawn(async move |this, cx| {
-                    let completion = pending.complete().await;
-                    _ = this.update(cx, |this, cx| {
-                        _ = this.controller.complete(completion);
-                        cx.notify();
-                    });
-                }));
+            PaletteEffect::Web(invocation) => {
+                let web = self.web.clone();
+                self.observe_submission(async move { invocation.submit(&web).await }, cx);
             }
         }
         cx.notify();
+    }
+
+    fn observe_submission(
+        &mut self,
+        submission: impl Future<Output = PaletteSubmission> + 'static,
+        cx: &mut Context<Self>,
+    ) {
+        self.invocation = Some(cx.spawn(async move |this, cx| {
+            let completion = submission.await.complete().await;
+            _ = this.update(cx, |this, cx| {
+                _ = this.controller.complete(completion);
+                cx.notify();
+            });
+        }));
     }
 
     fn row(
@@ -219,47 +241,19 @@ impl CommandPaletteView {
 impl Render for CommandPaletteView {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let selected = self.controller.selected_position();
+        let (web_prompt, web_terms) = match self.controller.content() {
+            PaletteContent::Actions => (false, None),
+            PaletteContent::WebPrompt => (true, None),
+            PaletteContent::WebSearch(request) => (false, Some(request.terms().to_owned())),
+        };
+        let no_actions = !web_prompt && web_terms.is_none() && self.controller.is_empty();
         let rows = self
             .controller
             .actions()
             .enumerate()
             .map(|(position, action)| Self::row(position, action, selected == Some(position), cx))
             .collect::<Vec<_>>();
-        let status = match self.controller.status() {
-            PaletteStatus::Idle => None,
-            PaletteStatus::RequiresInput { action, parameters } => Some((
-                format!(
-                    "{action} requires {} argument{}",
-                    parameters.len(),
-                    if parameters.len() == 1 { "" } else { "s" }
-                ),
-                rgb(0xe4_8f_8f),
-            )),
-            PaletteStatus::Unavailable { action, reason } => Some((
-                format!("{action} is unavailable: {reason:?}"),
-                rgb(0xe4_8f_8f),
-            )),
-            PaletteStatus::Submitting { action, .. } => {
-                Some((format!("Running {action}…"), rgb(0x8f_b9_ec)))
-            }
-            PaletteStatus::Succeeded { action } => Some((format!("Ran {action}"), rgb(0x6f_d9_9a))),
-            PaletteStatus::Failed { action, failure } => Some((
-                match failure {
-                    PaletteFailure::Submission(error) => {
-                        format!("Could not queue {action}: {error}")
-                    }
-                    PaletteFailure::Rejected(reason) => {
-                        format!("{action} was rejected: {reason:?}")
-                    }
-                    PaletteFailure::Execution(error) => format!("{action} failed: {error}"),
-                },
-                rgb(0xe4_8f_8f),
-            )),
-            PaletteStatus::AttemptIdsExhausted => Some((
-                "The palette exhausted its invocation identity space.".to_owned(),
-                rgb(0xe4_8f_8f),
-            )),
-        };
+        let status = status_message(self.controller.status());
 
         div()
             .on_action(cx.listener(Self::select_previous))
@@ -286,7 +280,39 @@ impl Render for CommandPaletteView {
                     .min_h_0()
                     .overflow_y_scrollbar()
                     .children(rows)
-                    .when(self.controller.is_empty(), |list| {
+                    .when_some(web_terms, |list, terms| {
+                        list.child(
+                            div()
+                                .id("palette-web-search")
+                                .flex()
+                                .items_center()
+                                .gap_3()
+                                .px_4()
+                                .py_3()
+                                .cursor_pointer()
+                                .on_click(cx.listener(|this, _, window, cx| {
+                                    this.activate_selected(window, cx);
+                                }))
+                                .child(
+                                    div()
+                                        .w(px(96.0))
+                                        .flex_none()
+                                        .text_xs()
+                                        .text_color(rgb(0x87_98_ad))
+                                        .child("web"),
+                                )
+                                .child(format!("Search the web for “{terms}”")),
+                        )
+                    })
+                    .when(web_prompt, |list| {
+                        list.child(
+                            div()
+                                .p_8()
+                                .text_color(rgb(0x87_98_ad))
+                                .child("Type search terms after !"),
+                        )
+                    })
+                    .when(no_actions, |list| {
                         list.child(
                             div()
                                 .p_8()
@@ -310,6 +336,53 @@ impl Render for CommandPaletteView {
     }
 }
 
+fn status_message(status: &PaletteStatus) -> Option<(String, Rgba)> {
+    match status {
+        PaletteStatus::Idle => None,
+        PaletteStatus::RequiresInput { action, parameters } => Some((
+            format!(
+                "{action} requires {} argument{}",
+                parameters.len(),
+                if parameters.len() == 1 { "" } else { "s" }
+            ),
+            rgb(0xe4_8f_8f),
+        )),
+        PaletteStatus::Unavailable { action, reason } => Some((
+            format!("{action} is unavailable: {reason:?}"),
+            rgb(0xe4_8f_8f),
+        )),
+        PaletteStatus::Submitting { label, .. } => {
+            Some((format!("Running {label}…"), rgb(0x8f_b9_ec)))
+        }
+        PaletteStatus::Succeeded { label } => Some((format!("Finished {label}"), rgb(0x6f_d9_9a))),
+        PaletteStatus::Failed { label, failure } => Some((
+            match failure {
+                PaletteFailure::Submission(error) => format!("Could not queue {label}: {error}"),
+                PaletteFailure::Rejected(reason) => {
+                    format!("{label} was rejected: {reason:?}")
+                }
+                PaletteFailure::Execution(error) => format!("{label} failed: {error}"),
+                PaletteFailure::WebSubmission(error) => {
+                    format!("Could not queue web search: {error}")
+                }
+                PaletteFailure::WebCompletion(error) => {
+                    format!("Web search stopped before completion: {error}")
+                }
+                PaletteFailure::WebLaunch(error) => {
+                    format!("Windows could not open web search: {error}")
+                }
+                PaletteFailure::WebRejected => "Windows declined the web-search launch.".to_owned(),
+                PaletteFailure::WebUnavailable => "Web search is not configured yet.".to_owned(),
+            },
+            rgb(0xe4_8f_8f),
+        )),
+        PaletteStatus::AttemptIdsExhausted => Some((
+            "The palette exhausted its invocation identity space.".to_owned(),
+            rgb(0xe4_8f_8f),
+        )),
+    }
+}
+
 const fn category_label(category: ActionCategory) -> &'static str {
     match category {
         ActionCategory::Window => "window",
@@ -318,7 +391,7 @@ const fn category_label(category: ActionCategory) -> &'static str {
     }
 }
 
-fn run_palette(palette: CommandPalette, shell: ShellHandle) {
+fn run_palette(palette: CommandPalette, shell: ShellHandle, web: WebSearchBroker) {
     Application::new().run(move |cx: &mut App| {
         gpui_component::init(cx);
         cx.on_window_closed(|cx| {
@@ -341,9 +414,11 @@ fn run_palette(palette: CommandPalette, shell: ShellHandle) {
             {
                 let palette = palette.clone();
                 let shell = shell.clone();
+                let web = web.clone();
                 move |window, cx| {
                     window.set_window_title(TITLE);
-                    let view = cx.new(|cx| CommandPaletteView::new(palette, shell, window, cx));
+                    let view =
+                        cx.new(|cx| CommandPaletteView::new(palette, shell, web, window, cx));
                     cx.new(|cx| Root::new(view, window, cx))
                 }
             },
@@ -358,10 +433,28 @@ fn run_palette(palette: CommandPalette, shell: ShellHandle) {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let data_directory = dirs::data_local_dir()
+        .ok_or_else(|| std::io::Error::other("Windows local data directory is unavailable"))?
+        .join("komorebi");
+    std::fs::create_dir_all(&data_directory)?;
+    let settings = SettingsStore::open(&data_directory.join("settings.sqlite"))?;
+    let web_capacity = WebActivationQueueCapacity::new(WEB_ACTIVATION_CAPACITY)
+        .ok_or_else(|| std::io::Error::other("web activation capacity is invalid"))?;
+    let web_service = settings
+        .web_search()?
+        .map(|endpoint| WebActivationService::start(endpoint, WindowsWebLauncher, web_capacity));
+    let web = web_service
+        .as_ref()
+        .map_or(WebSearchBroker::Unconfigured, |service| {
+            WebSearchBroker::Configured(service.client())
+        });
     let session = ShellSession::start(RoleHint::OwnerControl, SessionLifetime::Persistent)?;
     let catalog = session.handle().catalog_snapshot()?.snapshot().await?;
     let palette = CommandPalette::project(&catalog);
-    run_palette(palette, session.handle());
+    run_palette(palette, session.handle(), web);
+    if let Some(web_service) = web_service {
+        web_service.shutdown().await?;
+    }
     session.shutdown().await?;
     Ok(())
 }

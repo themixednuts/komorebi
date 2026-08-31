@@ -373,7 +373,7 @@ fn terminal_status_survives_reopen_on_a_unicode_windows_path() -> Result<(), Box
 
 #[cfg(windows)]
 #[test]
-fn sqlite_path_preserves_unpaired_utf16_surrogates() -> Result<(), Box<dyn Error>> {
+fn sqlite_path_rejects_unpaired_utf16_without_changing_identity() -> Result<(), Box<dyn Error>> {
     let directory = tempfile::tempdir()?;
     let filename = std::ffi::OsString::from_wide(&[
         u16::from(b'w'),
@@ -389,16 +389,11 @@ fn sqlite_path_preserves_unpaired_utf16_surrogates() -> Result<(), Box<dyn Error
         u16::from(b'e'),
     ]);
     let path = directory.path().join(filename);
-    let fixture = IdentityFixture::new()?;
-
-    let ledger = open_registered(&path, &fixture)?;
-    drop(ledger);
-
-    let mut reopened = DurableInvocationLedger::open(&path)?;
-    assert_eq!(
-        reopened.register_namespace(fixture.namespace, fixture.principal)?,
-        NamespaceRegistration::Existing
-    );
+    assert!(matches!(
+        DurableInvocationLedger::open(&path),
+        Err(LedgerError::SQLite(rusqlite::Error::InvalidPath(rejected))) if rejected == path
+    ));
+    assert_eq!(std::fs::read_dir(directory.path())?.count(), 0);
     Ok(())
 }
 
