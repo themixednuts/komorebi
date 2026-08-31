@@ -165,7 +165,6 @@ pub struct Komobar {
     pub work_area_offset: komorebi_client::Rect,
     commands: CommandQueue,
     applied_theme_on_first_frame: bool,
-    mouse_follows_focus: bool,
     input_config: InputConfig,
 }
 
@@ -475,17 +474,13 @@ impl Komobar {
             None => (0, None),
         };
 
-        let mapped_info = self.monitor_info.as_ref().map(|info| {
+        let mapped_monitor_index = self.monitor_info.as_ref().and_then(|info| {
             let monitor = info.borrow();
-            (
-                monitor.monitor_usr_idx_map.get(&usr_monitor_index).copied(),
-                monitor.mouse_follows_focus,
-            )
+            monitor.monitor_usr_idx_map.get(&usr_monitor_index).copied()
         });
 
-        if let Some(info) = mapped_info {
-            self.monitor_index = info.0;
-            self.mouse_follows_focus = info.1;
+        if let Some(monitor_index) = mapped_monitor_index {
+            self.monitor_index = Some(monitor_index);
         }
 
         if let Some(monitor_index) = self.monitor_index {
@@ -726,7 +721,6 @@ impl Komobar {
             work_area_offset: komorebi_client::Rect::default(),
             commands,
             applied_theme_on_first_frame: false,
-            mouse_follows_focus: false,
             input_config: InputConfig {
                 accumulated_scroll_delta: Vec2::new(0.0, 0.0),
                 act_on_vertical_scroll: false,
@@ -1339,7 +1333,7 @@ impl eframe::App for Komobar {
             if let Some(command) = pending_command
                 && !take_widget_clicked()
             {
-                command.execute(self.mouse_follows_focus);
+                command.execute();
             }
         });
     }

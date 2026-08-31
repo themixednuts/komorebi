@@ -242,7 +242,6 @@ pub enum SocketMessage {
     Query(StateQuery),
     FocusFollowsMouse(FocusFollowsMouseImplementation, bool),
     ToggleFocusFollowsMouse(FocusFollowsMouseImplementation),
-    MouseFollowsFocus(bool),
     ToggleMouseFollowsFocus,
     RemoveTitleBar(ApplicationIdentifier, String),
     ToggleTitleBars,

@@ -765,7 +765,6 @@ impl LockedContainerBar {
 pub struct MonitorInfo {
     pub workspaces: Vec<WorkspaceInfo>,
     pub layout: KomorebiLayout,
-    pub mouse_follows_focus: bool,
     pub work_area_offset: Option<Rect>,
     pub monitor_index: usize,
     pub monitor_usr_idx_map: HashMap<usize, usize>,
@@ -779,7 +778,6 @@ impl Default for MonitorInfo {
         Self {
             workspaces: Vec::new(),
             layout: KomorebiLayout::Default(komorebi_client::DefaultLayout::BSP),
-            mouse_follows_focus: true,
             work_area_offset: None,
             monitor_index: MONITOR_INDEX.load(Ordering::SeqCst),
             monitor_usr_idx_map: HashMap::new(),
@@ -825,7 +823,6 @@ impl MonitorInfo {
             // any further otherwise we'll get `OutOfBounds` panics.
             _ => return,
         };
-        self.mouse_follows_focus = state.mouse_follows_focus;
 
         let monitor = &state.monitors.elements()[self.monitor_index];
         self.work_area_offset = monitor.work_area_offset;

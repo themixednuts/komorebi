@@ -91,6 +91,13 @@ impl CommandQueue {
         )
     }
 
+    pub fn set_mouse_follows_focus(&self, enabled: bool) -> Result<(), CommandQueueError> {
+        self.send(
+            BuiltInActionId::SetMouseFollowsFocus,
+            [BuiltInArgument::Enabled(enabled)],
+        )
+    }
+
     pub fn set_border_colour(
         &self,
         window_kind: WindowKind,

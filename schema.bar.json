@@ -3403,19 +3403,12 @@
           ],
           "default": true
         },
-        "ignore_mouse_follows_focus": {
-          "description": "Wrap the {message} with a MouseFollowsFocus(false) and MouseFollowsFocus({original.value}) message",
-          "type": [
-            "boolean",
-            "null"
-          ],
-          "default": true
-        },
         "message": {
           "description": "The message to send to the komorebi client",
           "$ref": "#/$defs/SocketMessage"
         }
       },
+      "additionalProperties": false,
       "required": [
         "message"
       ]
@@ -4525,7 +4518,7 @@
       "description": "Mouse message",
       "anyOf": [
         {
-          "description": "Send a message to the komorebi client.\nBy default, a batch of messages are sent in the following order:\nFocusMonitorAtCursor =>\nMouseFollowsFocus(false) =>\n{message} =>\nMouseFollowsFocus({original.value})\n\nExample:\n```json\n\"on_extra2_click\": {\n  \"message\": {\n    \"type\": \"NewWorkspace\"\n  }\n},\n```\nor:\n```json\n\"on_middle_click\": {\n  \"focus_monitor_at_cursor\": false,\n  \"ignore_mouse_follows_focus\": false,\n  \"message\": {\n    \"type\": \"TogglePause\"\n  }\n}\n```\nor:\n```json\n\"on_scroll_up\": {\n  \"message\": {\n    \"type\": \"CycleFocusWorkspace\",\n    \"content\": \"Previous\"\n  }\n}\n```",
+          "description": "Send a message to the komorebi client.\nBy default, the target monitor is focused before the configured message is sent.\n\nExample:\n```json\n\"on_extra2_click\": {\n  \"message\": {\n    \"type\": \"NewWorkspace\"\n  }\n},\n```\nor:\n```json\n\"on_middle_click\": {\n  \"focus_monitor_at_cursor\": false,\n  \"message\": {\n    \"type\": \"TogglePause\"\n  }\n}\n```\nor:\n```json\n\"on_scroll_up\": {\n  \"message\": {\n    \"type\": \"CycleFocusWorkspace\",\n    \"content\": \"Previous\"\n  }\n}\n```",
           "$ref": "#/$defs/KomorebiMouseMessage"
         },
         {
@@ -7583,22 +7576,6 @@
             "type": {
               "type": "string",
               "const": "ToggleFocusFollowsMouse"
-            }
-          },
-          "required": [
-            "type",
-            "content"
-          ]
-        },
-        {
-          "type": "object",
-          "properties": {
-            "content": {
-              "type": "boolean"
-            },
-            "type": {
-              "type": "string",
-              "const": "MouseFollowsFocus"
             }
           },
           "required": [

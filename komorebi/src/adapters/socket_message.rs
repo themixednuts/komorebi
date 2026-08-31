@@ -135,7 +135,6 @@ pub fn classify(message: &SocketMessage) -> SocketMessageClass {
         | ClearNamedWorkspaceLayoutRules(_)
         | FocusFollowsMouse(_, _)
         | ToggleFocusFollowsMouse(_)
-        | MouseFollowsFocus(_)
         | ToggleMouseFollowsFocus
         | RemoveTitleBar(_, _)
         | ToggleTitleBars
@@ -393,9 +392,6 @@ pub fn to_builtin_action(message: &SocketMessage) -> Option<BuiltinAction> {
             })
         }
         SocketMessage::ToggleMouseFollowsFocus => Some(BuiltinAction::ToggleMouseFollowsFocus),
-        SocketMessage::MouseFollowsFocus(enabled) => {
-            Some(BuiltinAction::SetMouseFollowsFocus { enabled: *enabled })
-        }
         SocketMessage::ToggleWindowContainerBehaviour => {
             Some(BuiltinAction::ToggleWindowContainerBehaviour)
         }

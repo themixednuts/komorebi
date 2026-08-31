@@ -363,11 +363,7 @@ pub fn get_individual_spacing(
 /// Mouse message
 pub enum MouseMessage {
     /// Send a message to the komorebi client.
-    /// By default, a batch of messages are sent in the following order:
-    /// FocusMonitorAtCursor =>
-    /// MouseFollowsFocus(false) =>
-    /// {message} =>
-    /// MouseFollowsFocus({original.value})
+    /// By default, the target monitor is focused before the configured message is sent.
     ///
     /// Example:
     /// ```json
@@ -381,7 +377,6 @@ pub enum MouseMessage {
     /// ```json
     /// "on_middle_click": {
     ///   "focus_monitor_at_cursor": false,
-    ///   "ignore_mouse_follows_focus": false,
     ///   "message": {
     ///     "type": "TogglePause"
     ///   }
@@ -405,14 +400,12 @@ pub enum MouseMessage {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
+#[serde(deny_unknown_fields)]
 /// Komorebi socket mouse message
 pub struct KomorebiMouseMessage {
     /// Send the FocusMonitorAtCursor message
     #[cfg_attr(feature = "schemars", schemars(extend("default" = true)))]
     pub focus_monitor_at_cursor: Option<bool>,
-    /// Wrap the {message} with a MouseFollowsFocus(false) and MouseFollowsFocus({original.value}) message
-    #[cfg_attr(feature = "schemars", schemars(extend("default" = true)))]
-    pub ignore_mouse_follows_focus: Option<bool>,
     /// The message to send to the komorebi client
     pub message: komorebi_client::SocketMessage,
 }
@@ -468,7 +461,7 @@ impl MouseConfig {
 }
 
 impl MouseMessage {
-    pub fn execute(&self, mouse_follows_focus: bool) {
+    pub fn execute(&self) {
         match self {
             MouseMessage::Komorebi(config) => {
                 let mut messages = Vec::new();
@@ -477,13 +470,7 @@ impl MouseMessage {
                     messages.push(SocketMessage::FocusMonitorAtCursor);
                 }
 
-                if config.ignore_mouse_follows_focus.unwrap_or(true) {
-                    messages.push(SocketMessage::MouseFollowsFocus(false));
-                    messages.push(config.message.clone());
-                    messages.push(SocketMessage::MouseFollowsFocus(mouse_follows_focus));
-                } else {
-                    messages.push(config.message.clone());
-                }
+                messages.push(config.message.clone());
 
                 tracing::debug!("Sending messages: {messages:?}");
 
@@ -643,6 +630,7 @@ pub enum MediaDisplayFormat {
 
 #[cfg(test)]
 mod tests {
+    use super::KomorebiMouseMessage;
     use serde::Deserialize;
     use serde::Serialize;
     use serde_json::json;
@@ -693,5 +681,21 @@ mod tests {
         .to_string();
 
         assert!(serde_json::from_str::<ExampleConfig>(&raw).is_err())
+    }
+
+    #[test]
+    fn removed_mouse_follow_wrapper_is_rejected_at_the_config_boundary() {
+        let current = json!({
+            "focus_monitor_at_cursor": false,
+            "message": { "type": "TogglePause" }
+        });
+        assert!(serde_json::from_value::<KomorebiMouseMessage>(current).is_ok());
+
+        let removed = json!({
+            "focus_monitor_at_cursor": false,
+            "ignore_mouse_follows_focus": true,
+            "message": { "type": "TogglePause" }
+        });
+        assert!(serde_json::from_value::<KomorebiMouseMessage>(removed).is_err());
     }
 }

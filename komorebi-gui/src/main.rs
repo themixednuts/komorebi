@@ -337,10 +337,10 @@ impl eframe::App for KomorebiGui {
                         .toggle_value(&mut self.mouse_follows_focus, "Mouse Follows Focus")
                         .changed()
                     {
-                        komorebi_client::send_message(&SocketMessage::MouseFollowsFocus(
-                            self.mouse_follows_focus,
-                        ))
-                        .unwrap();
+                        report_command(
+                            self.commands
+                                .set_mouse_follows_focus(self.mouse_follows_focus),
+                        );
                     }
                 });
 

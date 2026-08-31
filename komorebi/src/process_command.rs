@@ -271,7 +271,6 @@ impl WindowManager {
                 | SocketMessage::ClearNamedWorkspaceLayoutRules(..)
                 | SocketMessage::FocusFollowsMouse(..)
                 | SocketMessage::ToggleFocusFollowsMouse(..)
-                | SocketMessage::MouseFollowsFocus(..)
                 | SocketMessage::ToggleMouseFollowsFocus
                 | SocketMessage::RemoveTitleBar(..)
                 | SocketMessage::ToggleTitleBars
@@ -1575,7 +1574,6 @@ mod tests {
             5,
         ));
         assert_paused_rejects(SocketMessage::ToggleMouseFollowsFocus);
-        assert_paused_rejects(SocketMessage::MouseFollowsFocus(true));
         assert_paused_rejects(SocketMessage::ToggleWindowContainerBehaviour);
         assert_paused_rejects(SocketMessage::ToggleFloatOverride);
         assert_paused_rejects(SocketMessage::ToggleWorkspaceWindowContainerBehaviour);
