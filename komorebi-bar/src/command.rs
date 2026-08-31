@@ -1,7 +1,8 @@
-use std::collections::BTreeMap;
+use std::collections::VecDeque;
 use std::sync::Arc;
 use std::sync::Mutex;
 
+use komorebi_client::DefaultLayout;
 use komorebi_client::Rect;
 use komorebi_client::command::BuiltInActionId;
 use komorebi_client::command::BuiltInArgument;
@@ -11,25 +12,47 @@ use komorebi_client::command::CommandClient;
 use komorebi_client::command::InvocationSubmissionReply;
 use komorebi_client::command::RoleHint;
 use komorebi_client::command::SessionLifetime;
+use komorebi_client::command::built_in_layout;
 use tokio::sync::watch;
 use tokio::task::JoinHandle;
 
 #[derive(Debug)]
-struct WorkAreaCommand {
+struct BarCommand {
+    key: BarCommandKey,
+    arguments: BuiltInArguments,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum BarCommandKey {
+    MonitorWorkAreaOffset(u64),
+    WorkspaceLayout(WorkspaceTarget),
+}
+
+impl BarCommandKey {
+    const fn action(self) -> BuiltInActionId {
+        match self {
+            Self::MonitorWorkAreaOffset(_) => BuiltInActionId::SetMonitorWorkAreaOffset,
+            Self::WorkspaceLayout(_) => BuiltInActionId::SetMonitorWorkspaceLayout,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct WorkspaceTarget {
     monitor: u64,
-    offset: Rect,
+    workspace: u64,
 }
 
 #[derive(Clone, Debug)]
-pub struct WorkAreaCommandQueue {
-    pending: Arc<Mutex<BTreeMap<u64, WorkAreaCommand>>>,
+pub struct CommandQueue {
+    pending: Arc<Mutex<VecDeque<BarCommand>>>,
     changed: watch::Sender<u64>,
 }
 
-impl WorkAreaCommandQueue {
+impl CommandQueue {
     #[must_use]
     pub fn start() -> (Self, JoinHandle<()>) {
-        let pending = Arc::new(Mutex::new(BTreeMap::new()));
+        let pending = Arc::new(Mutex::new(VecDeque::new()));
         let (changed, receiver) = watch::channel(0);
         let actor = tokio::spawn(run(Arc::clone(&pending), receiver));
         (Self { pending, changed }, actor)
@@ -39,17 +62,55 @@ impl WorkAreaCommandQueue {
         &self,
         monitor: usize,
         offset: Rect,
-    ) -> Result<(), WorkAreaCommandQueueError> {
+    ) -> Result<(), CommandQueueError> {
+        let monitor =
+            u64::try_from(monitor).map_err(|_| CommandQueueError::MonitorIndexOverflow(monitor))?;
+        self.send(
+            BarCommandKey::MonitorWorkAreaOffset(monitor),
+            [
+                BuiltInArgument::Monitor(monitor),
+                BuiltInArgument::Left(offset.left),
+                BuiltInArgument::Top(offset.top),
+                BuiltInArgument::Right(offset.right),
+                BuiltInArgument::Bottom(offset.bottom),
+            ],
+        )
+    }
+
+    pub fn set_workspace_layout(
+        &self,
+        monitor: usize,
+        workspace: usize,
+        layout: DefaultLayout,
+    ) -> Result<(), CommandQueueError> {
+        let target = WorkspaceTarget::new(monitor, workspace)?;
+        self.send(
+            BarCommandKey::WorkspaceLayout(target),
+            [
+                BuiltInArgument::Monitor(target.monitor),
+                BuiltInArgument::Index(target.workspace),
+                BuiltInArgument::Layout(built_in_layout(layout)),
+            ],
+        )
+    }
+
+    fn send<const N: usize>(
+        &self,
+        key: BarCommandKey,
+        arguments: [BuiltInArgument; N],
+    ) -> Result<(), CommandQueueError> {
         if self.changed.is_closed() {
-            return Err(WorkAreaCommandQueueError::Closed);
+            return Err(CommandQueueError::Closed);
         }
-        let monitor = u64::try_from(monitor)
-            .map_err(|_| WorkAreaCommandQueueError::MonitorIndexOverflow(monitor))?;
+        let command = BarCommand {
+            key,
+            arguments: BuiltInArguments::new(arguments)?,
+        };
         let mut pending = self
             .pending
             .lock()
-            .map_err(|_| WorkAreaCommandQueueError::Poisoned)?;
-        enqueue(&mut pending, WorkAreaCommand { monitor, offset });
+            .map_err(|_| CommandQueueError::Poisoned)?;
+        enqueue(&mut pending, command);
         drop(pending);
         self.changed.send_modify(|revision| {
             *revision = revision.wrapping_add(1);
@@ -58,20 +119,34 @@ impl WorkAreaCommandQueue {
     }
 }
 
-fn enqueue(pending: &mut BTreeMap<u64, WorkAreaCommand>, command: WorkAreaCommand) {
-    pending.insert(command.monitor, command);
+impl WorkspaceTarget {
+    fn new(monitor: usize, workspace: usize) -> Result<Self, CommandQueueError> {
+        Ok(Self {
+            monitor: u64::try_from(monitor)
+                .map_err(|_| CommandQueueError::MonitorIndexOverflow(monitor))?,
+            workspace: u64::try_from(workspace)
+                .map_err(|_| CommandQueueError::WorkspaceIndexOverflow(workspace))?,
+        })
+    }
 }
 
-async fn run(
-    pending: Arc<Mutex<BTreeMap<u64, WorkAreaCommand>>>,
-    mut changed: watch::Receiver<u64>,
-) {
+fn enqueue(pending: &mut VecDeque<BarCommand>, command: BarCommand) {
+    if let Some(index) = pending
+        .iter()
+        .position(|pending| pending.key == command.key)
+    {
+        pending.remove(index);
+    }
+    pending.push_back(command);
+}
+
+async fn run(pending: Arc<Mutex<VecDeque<BarCommand>>>, mut changed: watch::Receiver<u64>) {
     let mut client = None;
     while changed.changed().await.is_ok() {
         let commands = match pending.lock() {
-            Ok(mut pending) => std::mem::take(&mut *pending).into_values(),
+            Ok(mut pending) => pending.drain(..).collect::<Vec<_>>(),
             Err(error) => {
-                tracing::error!("bar work-area command mailbox failed: {error}");
+                tracing::error!("bar command mailbox failed: {error}");
                 return;
             }
         };
@@ -81,11 +156,11 @@ async fn run(
                     InvocationSubmissionReply::Accepted(_) | InvocationSubmissionReply::Retained(_),
                 ) => {}
                 Ok(InvocationSubmissionReply::Rejected(reason)) => {
-                    tracing::error!("bar work-area command was rejected: {reason:?}");
+                    tracing::error!("bar command was rejected: {reason:?}");
                 }
                 Err(error) => {
                     client = None;
-                    tracing::error!("bar work-area command failed: {error}");
+                    tracing::error!("bar command failed: {error}");
                 }
             }
         }
@@ -94,47 +169,41 @@ async fn run(
 
 async fn dispatch(
     current: &mut Option<CommandClient>,
-    command: WorkAreaCommand,
-) -> Result<InvocationSubmissionReply, WorkAreaCommandError> {
-    let arguments = BuiltInArguments::new([
-        BuiltInArgument::Monitor(command.monitor),
-        BuiltInArgument::Left(command.offset.left),
-        BuiltInArgument::Top(command.offset.top),
-        BuiltInArgument::Right(command.offset.right),
-        BuiltInArgument::Bottom(command.offset.bottom),
-    ])?
-    .into_action_arguments();
+    command: BarCommand,
+) -> Result<InvocationSubmissionReply, komorebi_client::command::CommandClientError> {
     if let Some(client) = current.as_mut() {
         client.refresh_catalog().await?;
-        return Ok(client
-            .invoke_builtin(BuiltInActionId::SetMonitorWorkAreaOffset, arguments)
-            .await?);
+        return client
+            .invoke_builtin(
+                command.key.action(),
+                command.arguments.into_action_arguments(),
+            )
+            .await;
     }
 
     let mut client =
         CommandClient::connect(RoleHint::OwnerControl, SessionLifetime::Persistent).await?;
     let reply = client
-        .invoke_builtin(BuiltInActionId::SetMonitorWorkAreaOffset, arguments)
+        .invoke_builtin(
+            command.key.action(),
+            command.arguments.into_action_arguments(),
+        )
         .await?;
     *current = Some(client);
     Ok(reply)
 }
 
 #[derive(Debug, thiserror::Error)]
-enum WorkAreaCommandError {
+pub enum CommandQueueError {
     #[error(transparent)]
     Arguments(#[from] BuiltInArgumentsError),
-    #[error(transparent)]
-    Client(#[from] komorebi_client::command::CommandClientError),
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, thiserror::Error)]
-pub enum WorkAreaCommandQueueError {
     #[error("monitor index {0} cannot be represented by the command protocol")]
     MonitorIndexOverflow(usize),
-    #[error("bar work-area command actor is closed")]
+    #[error("workspace index {0} cannot be represented by the command protocol")]
+    WorkspaceIndexOverflow(usize),
+    #[error("bar command actor is closed")]
     Closed,
-    #[error("bar work-area command mailbox is poisoned")]
+    #[error("bar command mailbox is poisoned")]
     Poisoned,
 }
 
@@ -142,44 +211,74 @@ pub enum WorkAreaCommandQueueError {
 mod tests {
     use super::*;
 
+    fn command(key: BarCommandKey) -> BarCommand {
+        BarCommand {
+            key,
+            arguments: BuiltInArguments::default(),
+        }
+    }
+
     #[test]
     fn mailbox_keeps_the_latest_offset_for_each_monitor() {
-        let mut pending = BTreeMap::new();
+        let mut pending = VecDeque::new();
         enqueue(
             &mut pending,
-            WorkAreaCommand {
-                monitor: 0,
-                offset: Rect::default(),
-            },
+            command(BarCommandKey::MonitorWorkAreaOffset(0)),
         );
         enqueue(
             &mut pending,
-            WorkAreaCommand {
-                monitor: 1,
-                offset: Rect::default(),
-            },
+            command(BarCommandKey::MonitorWorkAreaOffset(1)),
         );
-        let latest = Rect {
-            left: -1,
-            top: 2,
-            right: 3,
-            bottom: -4,
-        };
         enqueue(
             &mut pending,
-            WorkAreaCommand {
-                monitor: 0,
-                offset: latest,
-            },
+            command(BarCommandKey::MonitorWorkAreaOffset(0)),
         );
 
-        assert_eq!(pending.len(), 2);
-        assert_eq!(pending.get(&0).map(|command| command.offset), Some(latest));
+        assert_eq!(
+            pending
+                .iter()
+                .map(|command| command.key)
+                .collect::<Vec<_>>(),
+            [
+                BarCommandKey::MonitorWorkAreaOffset(1),
+                BarCommandKey::MonitorWorkAreaOffset(0),
+            ]
+        );
+    }
+
+    #[test]
+    fn mailbox_coalesces_workspace_layout_per_target() {
+        let mut pending = VecDeque::new();
+        let first = WorkspaceTarget {
+            monitor: 0,
+            workspace: 0,
+        };
+        let second = WorkspaceTarget {
+            monitor: 0,
+            workspace: 1,
+        };
+        enqueue(&mut pending, command(BarCommandKey::WorkspaceLayout(first)));
+        enqueue(
+            &mut pending,
+            command(BarCommandKey::WorkspaceLayout(second)),
+        );
+        enqueue(&mut pending, command(BarCommandKey::WorkspaceLayout(first)));
+
+        assert_eq!(
+            pending
+                .iter()
+                .map(|command| command.key)
+                .collect::<Vec<_>>(),
+            [
+                BarCommandKey::WorkspaceLayout(second),
+                BarCommandKey::WorkspaceLayout(first),
+            ]
+        );
     }
 
     #[tokio::test]
     async fn actor_exits_when_its_owned_queue_closes() -> Result<(), tokio::task::JoinError> {
-        let (queue, actor) = WorkAreaCommandQueue::start();
+        let (queue, actor) = CommandQueue::start();
         drop(queue);
         actor.await
     }

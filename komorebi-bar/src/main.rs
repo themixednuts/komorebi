@@ -7,7 +7,7 @@ mod ui;
 mod widgets;
 
 use crate::bar::Komobar;
-use crate::command::WorkAreaCommandQueue;
+use crate::command::CommandQueue;
 use crate::config::KomobarConfig;
 use crate::config::Position;
 use crate::config::PositionConfig;
@@ -305,10 +305,10 @@ async fn main() -> color_eyre::Result<()> {
         ..Default::default()
     };
 
-    let (work_area_commands, command_actor) = WorkAreaCommandQueue::start();
+    let (commands, command_actor) = CommandQueue::start();
 
     if let Some(rect) = &work_area_offset {
-        work_area_commands.set_monitor_offset(monitor_index, *rect)?;
+        commands.set_monitor_offset(monitor_index, *rect)?;
         tracing::info!("work area offset applied to monitor: {}", monitor_index);
     }
 
@@ -336,7 +336,7 @@ async fn main() -> color_eyre::Result<()> {
 
     tracing::info!("watching configuration file for changes");
 
-    let app_commands = work_area_commands.clone();
+    let app_commands = commands.clone();
     let gui = eframe::run_native(
         "komorebi-bar",
         native_options,
@@ -453,10 +453,10 @@ async fn main() -> color_eyre::Result<()> {
             )))
         }),
     );
-    drop(work_area_commands);
+    drop(commands);
     widgets::systray::shutdown().await;
     if let Err(error) = command_actor.await {
-        tracing::error!("bar work-area command actor failed: {error}");
+        tracing::error!("bar command actor failed: {error}");
     }
     gui.map_err(|error| color_eyre::eyre::Error::msg(error.to_string()))
 }

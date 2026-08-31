@@ -671,14 +671,11 @@ impl eframe::App for KomorebiGui {
                                                 .toggle_value(&mut workspace.tile, "Tiling")
                                                 .changed()
                                             {
-                                                komorebi_client::send_message(
-                                                    &SocketMessage::WorkspaceTiling(
-                                                        monitor_idx,
-                                                        workspace_idx,
-                                                        workspace.tile,
-                                                    ),
-                                                )
-                                                .unwrap();
+                                                report_command(self.commands.set_workspace_tiling(
+                                                    monitor_idx,
+                                                    workspace_idx,
+                                                    workspace.tile,
+                                                ));
                                             }
 
                                             ui.collapsing("Name", |ui| {
@@ -721,14 +718,13 @@ impl eframe::App for KomorebiGui {
                                                         .clicked()
                                                     {
                                                         workspace.layout = option;
-                                                        komorebi_client::send_message(
-                                                            &SocketMessage::WorkspaceLayout(
+                                                        report_command(
+                                                            self.commands.set_workspace_layout(
                                                                 monitor_idx,
                                                                 workspace_idx,
                                                                 workspace.layout,
                                                             ),
-                                                        )
-                                                        .unwrap();
+                                                        );
                                                     }
                                                 }
                                             });

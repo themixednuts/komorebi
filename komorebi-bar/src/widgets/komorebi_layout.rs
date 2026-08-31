@@ -1,3 +1,4 @@
+use crate::command::CommandQueue;
 use crate::config::DisplayFormat;
 use crate::render::RenderConfig;
 use crate::selected_frame::SelectableFrame;
@@ -84,6 +85,7 @@ impl KomorebiLayout {
 
     fn on_click(
         &mut self,
+        commands: &CommandQueue,
         show_options: &bool,
         monitor_idx: usize,
         workspace_idx: Option<usize>,
@@ -91,23 +93,24 @@ impl KomorebiLayout {
         if self.is_default() {
             !show_options
         } else {
-            self.on_click_option(monitor_idx, workspace_idx);
+            self.on_click_option(commands, monitor_idx, workspace_idx);
             false
         }
     }
 
-    fn on_click_option(&mut self, monitor_idx: usize, workspace_idx: Option<usize>) {
+    fn on_click_option(
+        &mut self,
+        commands: &CommandQueue,
+        monitor_idx: usize,
+        workspace_idx: Option<usize>,
+    ) {
         match self {
             KomorebiLayout::Default(option) => {
-                if let Some(ws_idx) = workspace_idx
-                    && komorebi_client::send_message(&SocketMessage::WorkspaceLayout(
-                        monitor_idx,
-                        ws_idx,
-                        *option,
-                    ))
-                    .is_err()
+                if let Some(workspace) = workspace_idx
+                    && let Err(error) =
+                        commands.set_workspace_layout(monitor_idx, workspace, *option)
                 {
-                    tracing::error!("could not send message to komorebi: WorkspaceLayout");
+                    tracing::error!("could not set workspace layout: {error}");
                 }
             }
             KomorebiLayout::Monocle => {
@@ -244,6 +247,7 @@ impl KomorebiLayout {
 
     pub fn show(
         &mut self,
+        commands: &CommandQueue,
         ctx: &Context,
         ui: &mut Ui,
         render_config: &mut RenderConfig,
@@ -273,7 +277,7 @@ impl KomorebiLayout {
                 .on_hover_text(self.to_string());
 
             if layout_frame.clicked() {
-                show_options = self.on_click(&show_options, monitor_idx, workspace_idx);
+                show_options = self.on_click(commands, &show_options, monitor_idx, workspace_idx);
             }
 
             if show_options && let Some(workspace_idx) = workspace_idx {
@@ -318,7 +322,11 @@ impl KomorebiLayout {
                             })
                             .clicked()
                         {
-                            layout_option.on_click_option(monitor_idx, Some(workspace_idx));
+                            layout_option.on_click_option(
+                                commands,
+                                monitor_idx,
+                                Some(workspace_idx),
+                            );
                             show_options = false;
                         };
                     }

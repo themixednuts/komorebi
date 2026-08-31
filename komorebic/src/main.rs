@@ -15,7 +15,6 @@ use action::built_in_direction;
 use action::built_in_hiding_behaviour;
 use action::built_in_identifier;
 use action::built_in_implementation;
-use action::built_in_layout;
 use action::built_in_monocle_behaviour;
 use action::built_in_move_behaviour;
 use action::built_in_operation_behaviour;
@@ -28,6 +27,7 @@ use action::focused_window_arguments;
 use action::invoke_action;
 use action::scoped_animation_arguments;
 use action::work_area_arguments;
+use komorebi_client::command::built_in_layout;
 
 use chrono::Utc;
 use komorebi_client::PathExt;

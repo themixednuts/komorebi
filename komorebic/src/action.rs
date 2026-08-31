@@ -12,7 +12,6 @@ use komorebi_client::Axis;
 use komorebi_client::BorderImplementation;
 use komorebi_client::BorderStyle;
 use komorebi_client::CycleDirection;
-use komorebi_client::DefaultLayout;
 use komorebi_client::FocusFollowsMouseImplementation;
 use komorebi_client::HidingBehaviour;
 use komorebi_client::MonocleFocusBehaviour;
@@ -36,7 +35,6 @@ use komorebi_client::command::BuiltInDirection;
 use komorebi_client::command::BuiltInHidingBehaviour;
 use komorebi_client::command::BuiltInIdentifier;
 use komorebi_client::command::BuiltInImplementation;
-use komorebi_client::command::BuiltInLayout;
 use komorebi_client::command::BuiltInMonocleBehaviour;
 use komorebi_client::command::BuiltInMoveBehaviour;
 use komorebi_client::command::BuiltInNamedAnimationStyle;
@@ -216,20 +214,6 @@ pub(super) const fn built_in_cycle(value: CycleDirection) -> BuiltInCycle {
     match value {
         CycleDirection::Previous => BuiltInCycle::Previous,
         CycleDirection::Next => BuiltInCycle::Next,
-    }
-}
-
-pub(super) const fn built_in_layout(value: DefaultLayout) -> BuiltInLayout {
-    match value {
-        DefaultLayout::BSP => BuiltInLayout::Bsp,
-        DefaultLayout::Columns => BuiltInLayout::Columns,
-        DefaultLayout::Rows => BuiltInLayout::Rows,
-        DefaultLayout::VerticalStack => BuiltInLayout::VerticalStack,
-        DefaultLayout::HorizontalStack => BuiltInLayout::HorizontalStack,
-        DefaultLayout::UltrawideVerticalStack => BuiltInLayout::UltrawideVerticalStack,
-        DefaultLayout::Grid => BuiltInLayout::Grid,
-        DefaultLayout::RightMainVerticalStack => BuiltInLayout::RightMainVerticalStack,
-        DefaultLayout::Scrolling => BuiltInLayout::Scrolling,
     }
 }
 

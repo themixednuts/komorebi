@@ -261,9 +261,7 @@ impl WindowManager {
                 | SocketMessage::FocusedWorkspaceContainerPadding(..)
                 | SocketMessage::NamedWorkspacePadding(..)
                 | SocketMessage::FocusedWorkspacePadding(..)
-                | SocketMessage::WorkspaceTiling(..)
                 | SocketMessage::NamedWorkspaceTiling(..)
-                | SocketMessage::WorkspaceLayout(..)
                 | SocketMessage::NamedWorkspaceLayout(..)
                 | SocketMessage::WorkspaceLayoutCustom(..)
                 | SocketMessage::NamedWorkspaceLayoutCustom(..)
@@ -1646,12 +1644,6 @@ mod tests {
     fn paused_padding_and_workspace_setup_actions_are_rejected() {
         assert_paused_rejects(SocketMessage::FocusedWorkspaceContainerPadding(8));
         assert_paused_rejects(SocketMessage::FocusedWorkspacePadding(8));
-        assert_paused_rejects(SocketMessage::WorkspaceTiling(0, 0, false));
-        assert_paused_rejects(SocketMessage::WorkspaceLayout(
-            0,
-            0,
-            crate::core::DefaultLayout::Columns,
-        ));
         assert_paused_rejects(SocketMessage::EnsureWorkspaces(0, 3));
         assert_paused_rejects(SocketMessage::ClearWorkspaceLayoutRules(0, 0));
         assert_paused_rejects(SocketMessage::ScrollingLayoutColumns(

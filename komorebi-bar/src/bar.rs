@@ -7,7 +7,7 @@ use crate::MAX_LABEL_WIDTH;
 use crate::MONITOR_LEFT;
 use crate::MONITOR_RIGHT;
 use crate::MONITOR_TOP;
-use crate::command::WorkAreaCommandQueue;
+use crate::command::CommandQueue;
 use crate::config::KomobarConfig;
 use crate::config::KomobarTheme;
 use crate::config::MonitorConfigOrIndex;
@@ -163,7 +163,7 @@ pub struct Komobar {
     pub scale_factor: f32,
     pub size_rect: komorebi_client::Rect,
     pub work_area_offset: komorebi_client::Rect,
-    work_area_commands: WorkAreaCommandQueue,
+    commands: CommandQueue,
     applied_theme_on_first_frame: bool,
     mouse_follows_focus: bool,
     input_config: InputConfig,
@@ -378,21 +378,33 @@ impl Komobar {
 
         for (idx, widget_config) in self.config.left_widgets.iter().enumerate() {
             if let WidgetConfig::Komorebi(config) = widget_config {
-                komorebi_widgets.push((Komorebi::from(config), idx, Alignment::Left));
+                komorebi_widgets.push((
+                    Komorebi::new(config, self.commands.clone()),
+                    idx,
+                    Alignment::Left,
+                ));
             }
         }
 
         if let Some(center_widgets) = &self.config.center_widgets {
             for (idx, widget_config) in center_widgets.iter().enumerate() {
                 if let WidgetConfig::Komorebi(config) = widget_config {
-                    komorebi_widgets.push((Komorebi::from(config), idx, Alignment::Center));
+                    komorebi_widgets.push((
+                        Komorebi::new(config, self.commands.clone()),
+                        idx,
+                        Alignment::Center,
+                    ));
                 }
             }
         }
 
         for (idx, widget_config) in self.config.right_widgets.iter().enumerate() {
             if let WidgetConfig::Komorebi(config) = widget_config {
-                komorebi_widgets.push((Komorebi::from(config), idx, Alignment::Right));
+                komorebi_widgets.push((
+                    Komorebi::new(config, self.commands.clone()),
+                    idx,
+                    Alignment::Right,
+                ));
             }
         }
 
@@ -401,14 +413,14 @@ impl Komobar {
             .left_widgets
             .iter()
             .filter(|config| config.enabled())
-            .map(|config| config.as_boxed_bar_widget())
+            .map(|config| config.as_boxed_bar_widget(&self.commands))
             .collect::<Vec<Box<dyn BarWidget>>>();
 
         let mut center_widgets = match &self.config.center_widgets {
             Some(center_widgets) => center_widgets
                 .iter()
                 .filter(|config| config.enabled())
-                .map(|config| config.as_boxed_bar_widget())
+                .map(|config| config.as_boxed_bar_widget(&self.commands))
                 .collect::<Vec<Box<dyn BarWidget>>>(),
             None => vec![],
         };
@@ -418,7 +430,7 @@ impl Komobar {
             .right_widgets
             .iter()
             .filter(|config| config.enabled())
-            .map(|config| config.as_boxed_bar_widget())
+            .map(|config| config.as_boxed_bar_widget(&self.commands))
             .collect::<Vec<Box<dyn BarWidget>>>();
 
         if !komorebi_widgets.is_empty() {
@@ -481,10 +493,7 @@ impl Komobar {
             {
                 if new_rect != prev_rect {
                     self.work_area_offset = *new_rect;
-                    if let Err(error) = self
-                        .work_area_commands
-                        .set_monitor_offset(monitor_index, *new_rect)
-                    {
+                    if let Err(error) = self.commands.set_monitor_offset(monitor_index, *new_rect) {
                         tracing::error!(
                             "error applying work area offset to monitor '{}': {}",
                             monitor_index,
@@ -515,10 +524,7 @@ impl Komobar {
 
                 if new_rect != self.work_area_offset {
                     self.work_area_offset = new_rect;
-                    if let Err(error) = self
-                        .work_area_commands
-                        .set_monitor_offset(monitor_index, new_rect)
-                    {
+                    if let Err(error) = self.commands.set_monitor_offset(monitor_index, new_rect) {
                         tracing::error!(
                             "error applying work area offset to monitor '{monitor_index}': {error}"
                         );
@@ -699,7 +705,7 @@ impl Komobar {
         rx_gui: Receiver<KomorebiEvent>,
         rx_config: Receiver<KomobarConfig>,
         config: KomobarConfig,
-        work_area_commands: WorkAreaCommandQueue,
+        commands: CommandQueue,
     ) -> Self {
         let mut komobar = Self {
             hwnd: process_hwnd(),
@@ -718,7 +724,7 @@ impl Komobar {
             scale_factor: cc.egui_ctx.native_pixels_per_point().unwrap_or(1.0),
             size_rect: komorebi_client::Rect::default(),
             work_area_offset: komorebi_client::Rect::default(),
-            work_area_commands,
+            commands,
             applied_theme_on_first_frame: false,
             mouse_follows_focus: false,
             input_config: InputConfig {
@@ -1016,7 +1022,7 @@ impl eframe::App for Komobar {
             Ok(KomorebiEvent::Reconnect) => {
                 if let Some(monitor_index) = self.monitor_index {
                     if let Err(error) = self
-                        .work_area_commands
+                        .commands
                         .set_monitor_offset(monitor_index, self.work_area_offset)
                     {
                         tracing::error!(

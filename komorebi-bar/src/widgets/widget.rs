@@ -1,3 +1,4 @@
+use crate::command::CommandQueue;
 use crate::render::RenderConfig;
 use crate::widgets::applications::Applications;
 use crate::widgets::applications::ApplicationsConfig;
@@ -83,14 +84,14 @@ pub enum WidgetConfig {
 }
 
 impl WidgetConfig {
-    pub fn as_boxed_bar_widget(&self) -> Box<dyn BarWidget> {
+    pub fn as_boxed_bar_widget(&self, commands: &CommandQueue) -> Box<dyn BarWidget> {
         match self {
             WidgetConfig::Applications(config) => Box::new(Applications::from(config)),
             WidgetConfig::Battery(config) => Box::new(Battery::from(*config)),
             WidgetConfig::Cpu(config) => Box::new(Cpu::from(*config)),
             WidgetConfig::Date(config) => Box::new(Date::from(config.clone())),
             WidgetConfig::Keyboard(config) => Box::new(Keyboard::from(*config)),
-            WidgetConfig::Komorebi(config) => Box::new(Komorebi::from(config)),
+            WidgetConfig::Komorebi(config) => Box::new(Komorebi::new(config, commands.clone())),
             WidgetConfig::Media(config) => Box::new(Media::from(*config)),
             WidgetConfig::Memory(config) => Box::new(Memory::from(*config)),
             WidgetConfig::Network(config) => Box::new(Network::from(*config)),

@@ -1,6 +1,7 @@
 use super::ImageIcon;
 use crate::MAX_LABEL_WIDTH;
 use crate::MONITOR_INDEX;
+use crate::command::CommandQueue;
 use crate::config::DisplayFormat;
 use crate::config::DisplayFormat::*;
 use crate::config::WorkspacesDisplayFormat;
@@ -137,8 +138,8 @@ pub struct KomorebiConfigurationSwitcherConfig {
     pub configurations: BTreeMap<String, String>,
 }
 
-impl From<&KomorebiConfig> for Komorebi {
-    fn from(cfg: &KomorebiConfig) -> Self {
+impl Komorebi {
+    pub fn new(cfg: &KomorebiConfig, commands: CommandQueue) -> Self {
         let configuration_switcher = cfg.configuration_switcher.clone().map(|mut cs| {
             for location in cs.configurations.values_mut() {
                 let path = Path::new(location).replace_env();
@@ -163,6 +164,7 @@ impl From<&KomorebiConfig> for Komorebi {
             workspace_layer: cfg.workspace_layer.and_then(WorkspaceLayerBar::try_from),
             locked_container: cfg.locked_container.and_then(LockedContainerBar::try_from),
             configuration_switcher,
+            commands,
         }
     }
 }
@@ -176,6 +178,7 @@ pub struct Komorebi {
     pub workspace_layer: Option<WorkspaceLayerBar>,
     pub locked_container: Option<LockedContainerBar>,
     pub configuration_switcher: Option<KomorebiConfigurationSwitcherConfig>,
+    commands: CommandQueue,
 }
 
 impl BarWidget for Komorebi {
@@ -284,9 +287,14 @@ impl Komorebi {
         {
             let monitor_info = &mut *self.monitor_info.borrow_mut();
             let workspace_idx = monitor_info.focused_workspace_idx;
-            monitor_info
-                .layout
-                .show(ctx, ui, config, layout_config, workspace_idx);
+            monitor_info.layout.show(
+                &self.commands,
+                ctx,
+                ui,
+                config,
+                layout_config,
+                workspace_idx,
+            );
         }
     }
 

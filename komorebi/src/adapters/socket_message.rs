@@ -126,9 +126,7 @@ pub fn classify(message: &SocketMessage) -> SocketMessageClass {
         | FocusedWorkspaceContainerPadding(_)
         | NamedWorkspacePadding(_, _)
         | FocusedWorkspacePadding(_)
-        | WorkspaceTiling(_, _, _)
         | NamedWorkspaceTiling(_, _)
-        | WorkspaceLayout(_, _, _)
         | NamedWorkspaceLayout(_, _)
         | WorkspaceLayoutCustom(_, _, _)
         | NamedWorkspaceLayoutCustom(_, _)
@@ -434,20 +432,6 @@ pub fn to_builtin_action(message: &SocketMessage) -> Option<BuiltinAction> {
         }
         SocketMessage::FocusedWorkspacePadding(size) => {
             Some(BuiltinAction::SetFocusedWorkspacePadding { size: *size })
-        }
-        SocketMessage::WorkspaceTiling(monitor, workspace, tile) => {
-            Some(BuiltinAction::SetWorkspaceTiling {
-                monitor: MonitorIndex::new(*monitor),
-                workspace: WorkspaceIndex::new(*workspace),
-                tile: *tile,
-            })
-        }
-        SocketMessage::WorkspaceLayout(monitor, workspace, layout) => {
-            Some(BuiltinAction::SetMonitorWorkspaceLayout {
-                monitor: MonitorIndex::new(*monitor),
-                workspace: WorkspaceIndex::new(*workspace),
-                layout: *layout,
-            })
         }
         SocketMessage::EnsureWorkspaces(monitor, count) => Some(BuiltinAction::EnsureWorkspaces {
             monitor: MonitorIndex::new(*monitor),

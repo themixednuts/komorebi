@@ -3,6 +3,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 
 use komorebi_client::BorderStyle;
+use komorebi_client::DefaultLayout;
 use komorebi_client::Rect;
 use komorebi_client::Rgb;
 use komorebi_client::StackbarLabel;
@@ -21,6 +22,7 @@ use komorebi_client::command::CommandClient;
 use komorebi_client::command::InvocationSubmissionReply;
 use komorebi_client::command::RoleHint;
 use komorebi_client::command::SessionLifetime;
+use komorebi_client::command::built_in_layout;
 use tokio::sync::watch;
 use tokio::task::JoinHandle;
 
@@ -43,6 +45,8 @@ enum WorkspaceCommandKind {
     Name,
     ContainerPadding,
     WorkspacePadding,
+    Tiling,
+    Layout,
 }
 
 impl WorkspaceCommandKind {
@@ -51,6 +55,8 @@ impl WorkspaceCommandKind {
             Self::Name => BuiltInActionId::SetWorkspaceName,
             Self::ContainerPadding => BuiltInActionId::SetContainerPadding,
             Self::WorkspacePadding => BuiltInActionId::SetWorkspacePadding,
+            Self::Tiling => BuiltInActionId::SetWorkspaceTiling,
+            Self::Layout => BuiltInActionId::SetMonitorWorkspaceLayout,
         }
     }
 }
@@ -226,6 +232,42 @@ impl CommandQueue {
             monitor,
             workspace,
             size,
+        )
+    }
+
+    pub fn set_workspace_tiling(
+        &self,
+        monitor: usize,
+        workspace: usize,
+        enabled: bool,
+    ) -> Result<(), CommandQueueError> {
+        let target = WorkspaceTarget::new(monitor, workspace)?;
+        self.send_to_workspace(
+            target,
+            WorkspaceCommandKind::Tiling,
+            [
+                BuiltInArgument::Monitor(target.monitor),
+                BuiltInArgument::Index(target.workspace),
+                BuiltInArgument::Enabled(enabled),
+            ],
+        )
+    }
+
+    pub fn set_workspace_layout(
+        &self,
+        monitor: usize,
+        workspace: usize,
+        layout: DefaultLayout,
+    ) -> Result<(), CommandQueueError> {
+        let target = WorkspaceTarget::new(monitor, workspace)?;
+        self.send_to_workspace(
+            target,
+            WorkspaceCommandKind::Layout,
+            [
+                BuiltInArgument::Monitor(target.monitor),
+                BuiltInArgument::Index(target.workspace),
+                BuiltInArgument::Layout(built_in_layout(layout)),
+            ],
         )
     }
 
@@ -540,8 +582,16 @@ mod tests {
             &mut pending,
             workspace_command(WorkspaceCommandKind::WorkspacePadding, 0, 0),
         );
+        enqueue(
+            &mut pending,
+            workspace_command(WorkspaceCommandKind::Tiling, 0, 0),
+        );
+        enqueue(
+            &mut pending,
+            workspace_command(WorkspaceCommandKind::Layout, 0, 0),
+        );
 
-        assert_eq!(pending.len(), 2);
+        assert_eq!(pending.len(), 4);
     }
 
     #[tokio::test]

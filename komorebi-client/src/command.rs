@@ -1,5 +1,6 @@
 use std::num::NonZeroU32;
 
+use crate::DefaultLayout;
 use komorebi_command_transport::CommandProtocolClient;
 use komorebi_command_transport::TransportError;
 pub use komorebi_protocol::ActionArguments;
@@ -51,6 +52,22 @@ pub use komorebi_protocol::InvocationSubmissionReply;
 pub use komorebi_protocol::RoleHint;
 pub use komorebi_protocol::WindowsPathInput;
 use thiserror::Error;
+
+/// Projects the public layout vocabulary onto its closed command-protocol shape.
+#[must_use]
+pub const fn built_in_layout(value: DefaultLayout) -> BuiltInLayout {
+    match value {
+        DefaultLayout::BSP => BuiltInLayout::Bsp,
+        DefaultLayout::Columns => BuiltInLayout::Columns,
+        DefaultLayout::Rows => BuiltInLayout::Rows,
+        DefaultLayout::VerticalStack => BuiltInLayout::VerticalStack,
+        DefaultLayout::HorizontalStack => BuiltInLayout::HorizontalStack,
+        DefaultLayout::UltrawideVerticalStack => BuiltInLayout::UltrawideVerticalStack,
+        DefaultLayout::Grid => BuiltInLayout::Grid,
+        DefaultLayout::RightMainVerticalStack => BuiltInLayout::RightMainVerticalStack,
+        DefaultLayout::Scrolling => BuiltInLayout::Scrolling,
+    }
+}
 
 const PERSISTENT_INVOCATION_LEASE_SIZE: NonZeroU32 = NonZeroU32::MIN.saturating_add(255);
 
