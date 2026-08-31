@@ -46,6 +46,13 @@ it inside a running extension. If the `JitEnabled` profile fails any containment
 proof, production uses `JitDisabled` until the design changes and the complete
 gate is rerun.
 
+The Windows worker build must also use one C runtime model end to end. The
+vendored `luajit-src` MSVC static build currently emits a `LIBCMT` conflict when
+linked into Rust's default dynamic-CRT executable. Production may either patch
+the pinned LuaJIT build to use `/MD` or build the isolated worker consistently
+with static CRT. Suppressing `LNK4098` with `/NODEFAULTLIB` is not an accepted
+fix because it can hide allocator/runtime ownership mismatches.
+
 ## Type-generation contract
 
 - Rust `UserData`, module tables, async functions, enums, documentation, and
@@ -57,4 +64,3 @@ gate is rerun.
   `any` is not used to bypass an unmodeled interface.
 - Generation is a build/CI developer step, not runtime reflection and not a
   recursive Cargo invocation from the extension host's `build.rs`.
-

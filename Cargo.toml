@@ -7,6 +7,7 @@ members = [
   "komorebi-command-palette",
   "komorebi-command-transport",
   "komorebi-command-store",
+  "komorebi-extensions",
   "komorebi-gui",
   "komorebi-layouts",
   "komorebi-protocol",
