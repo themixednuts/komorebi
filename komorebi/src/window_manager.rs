@@ -63,6 +63,7 @@ use crate::WORKSPACE_MATCHING_RULES;
 use crate::action::ActionSnapshot;
 use crate::action::CatalogState;
 use crate::action::CursorWarpPolicy;
+use crate::action::WorkspaceActionTarget;
 use crate::border_manager;
 use crate::border_manager::BORDER_OFFSET;
 use crate::border_manager::BORDER_WIDTH;
@@ -3484,9 +3485,18 @@ impl WindowManager {
     }
     #[tracing::instrument(skip(self))]
     pub fn focus_container_window(&mut self, idx: usize) -> eyre::Result<()> {
+        self.focus_container_window_with_cursor_warp(idx, CursorWarpPolicy::FollowConfiguration)
+    }
+
+    fn focus_container_window_with_cursor_warp(
+        &mut self,
+        idx: usize,
+        cursor_warp: CursorWarpPolicy,
+    ) -> eyre::Result<()> {
         self.handle_unmanaged_window_behaviour()?;
 
         tracing::info!("focusing container window at index {idx}");
+        let mouse_follows_focus = cursor_warp.should_warp(self.mouse_follows_focus);
 
         let container =
             if let Some(container) = &mut self.focused_workspace_mut()?.monocle_container {
@@ -3510,10 +3520,10 @@ impl WindowManager {
         container.load_focused_window();
 
         if let Some(window) = container.focused_window() {
-            window.focus(self.mouse_follows_focus)?;
+            window.focus(mouse_follows_focus)?;
         }
 
-        self.update_focused_workspace(self.mouse_follows_focus, true)
+        self.update_focused_workspace(mouse_follows_focus, true)
     }
 
     #[tracing::instrument(skip(self))]
@@ -3784,8 +3794,18 @@ impl WindowManager {
         self.update_focused_workspace(false, false)
     }
 
-    pub fn toggle_workspace_layer(&mut self) -> eyre::Result<()> {
-        let mouse_follows_focus = self.mouse_follows_focus;
+    fn toggle_workspace_layer_with_policy(
+        &mut self,
+        target: WorkspaceActionTarget,
+        cursor_warp: CursorWarpPolicy,
+    ) -> eyre::Result<()> {
+        if target == WorkspaceActionTarget::MonitorAtCursor
+            && let Some(monitor_idx) = self.monitor_idx_from_current_pos()
+        {
+            self.focus_monitor(monitor_idx)?;
+        }
+
+        let mouse_follows_focus = cursor_warp.should_warp(self.mouse_follows_focus);
         let workspace = self.focused_workspace_mut()?;
 
         let mut to_focus = None;

@@ -44,6 +44,7 @@ use komorebi_client::command::BuiltInSelector;
 use komorebi_client::command::BuiltInSizing;
 use komorebi_client::command::BuiltInStackbarMode;
 use komorebi_client::command::BuiltInWindowKind;
+use komorebi_client::command::BuiltInWorkspaceTarget;
 use komorebi_client::command::CommandClient;
 use komorebi_client::command::InvocationSubmissionReply;
 use komorebi_client::command::RoleHint;
@@ -80,6 +81,20 @@ pub(super) fn focus_monitor_workspace_arguments(
     built_in_arguments([
         BuiltInArgument::Monitor(monitor.try_into()?),
         BuiltInArgument::Index(workspace.try_into()?),
+        BuiltInArgument::CursorWarp(BuiltInCursorWarpPolicy::FollowConfiguration),
+    ])
+}
+
+pub(super) fn focus_stack_window_arguments(index: usize) -> eyre::Result<BuiltInArguments> {
+    built_in_arguments([
+        BuiltInArgument::Index(index.try_into()?),
+        BuiltInArgument::CursorWarp(BuiltInCursorWarpPolicy::FollowConfiguration),
+    ])
+}
+
+pub(super) fn toggle_workspace_layer_arguments() -> eyre::Result<BuiltInArguments> {
+    built_in_arguments([
+        BuiltInArgument::WorkspaceTarget(BuiltInWorkspaceTarget::FocusedAtExecution),
         BuiltInArgument::CursorWarp(BuiltInCursorWarpPolicy::FollowConfiguration),
     ])
 }
@@ -315,6 +330,26 @@ mod tests {
             built_in_arguments([
                 BuiltInArgument::Monitor(2),
                 BuiltInArgument::Index(3),
+                BuiltInArgument::CursorWarp(BuiltInCursorWarpPolicy::FollowConfiguration),
+            ])?
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn focus_sensitive_cli_actions_follow_configuration() -> Result<(), Box<dyn std::error::Error>>
+    {
+        assert_eq!(
+            focus_stack_window_arguments(2)?,
+            built_in_arguments([
+                BuiltInArgument::Index(2),
+                BuiltInArgument::CursorWarp(BuiltInCursorWarpPolicy::FollowConfiguration),
+            ])?
+        );
+        assert_eq!(
+            toggle_workspace_layer_arguments()?,
+            built_in_arguments([
+                BuiltInArgument::WorkspaceTarget(BuiltInWorkspaceTarget::FocusedAtExecution),
                 BuiltInArgument::CursorWarp(BuiltInCursorWarpPolicy::FollowConfiguration),
             ])?
         );

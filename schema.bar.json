@@ -5182,24 +5182,6 @@
         {
           "type": "object",
           "properties": {
-            "content": {
-              "type": "integer",
-              "format": "uint",
-              "minimum": 0
-            },
-            "type": {
-              "type": "string",
-              "const": "FocusStackWindow"
-            }
-          },
-          "required": [
-            "type",
-            "content"
-          ]
-        },
-        {
-          "type": "object",
-          "properties": {
             "type": {
               "type": "string",
               "const": "StackAll"
@@ -6940,18 +6922,6 @@
           "required": [
             "type",
             "content"
-          ]
-        },
-        {
-          "type": "object",
-          "properties": {
-            "type": {
-              "type": "string",
-              "const": "ToggleWorkspaceLayer"
-            }
-          },
-          "required": [
-            "type"
           ]
         },
         {

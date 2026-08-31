@@ -103,7 +103,6 @@ pub enum SocketMessage {
     UnstackWindow,
     CycleStack(CycleDirection),
     CycleStackIndex(CycleDirection),
-    FocusStackWindow(usize),
     StackAll,
     UnstackAll,
     ResizeWindowEdge(OperationDirection, Sizing),
@@ -205,7 +204,6 @@ pub enum SocketMessage {
     NamedWorkspaceLayoutCustomRule(String, usize, #[serde_as(as = "ResolvedPathBuf")] PathBuf),
     ClearWorkspaceLayoutRules(usize, usize),
     ClearNamedWorkspaceLayoutRules(String),
-    ToggleWorkspaceLayer,
     // Configuration
     ReloadConfiguration,
     ReplaceConfiguration(#[serde_as(as = "ResolvedPathBuf")] PathBuf),

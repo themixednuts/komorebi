@@ -309,6 +309,7 @@ const fn project_parameter_domain(value: definition::ParameterDomain) -> protoco
         definition::ParameterDomain::CursorWarpPolicy => {
             protocol::ParameterDomain::CursorWarpPolicy
         }
+        definition::ParameterDomain::WorkspaceTarget => protocol::ParameterDomain::WorkspaceTarget,
     }
 }
 

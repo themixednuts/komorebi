@@ -256,6 +256,7 @@ fn decode_domain(value: u8) -> Result<ParameterDomain, CommandCodecError> {
         40 => Ok(ParameterDomain::AnimationStyle),
         41 => Ok(ParameterDomain::WorkAreaOffset),
         42 => Ok(ParameterDomain::CursorWarpPolicy),
+        43 => Ok(ParameterDomain::WorkspaceTarget),
         _ => Err(CommandCodecError::UnknownParameterDomain(value)),
     }
 }

@@ -24,9 +24,11 @@ use action::built_in_stackbar_mode;
 use action::built_in_text;
 use action::built_in_window_kind;
 use action::focus_monitor_workspace_arguments;
+use action::focus_stack_window_arguments;
 use action::focused_window_arguments;
 use action::invoke_action;
 use action::scoped_animation_arguments;
+use action::toggle_workspace_layer_arguments;
 use action::work_area_arguments;
 use komorebi_client::command::built_in_layout;
 
@@ -3208,7 +3210,7 @@ if (Get-Command Get-CimInstance -ErrorAction SilentlyContinue) {
         SubCommand::FocusStackWindow(args) => {
             invoke_action(
                 BuiltInActionId::FocusStackWindow,
-                built_in_arguments([BuiltInArgument::Index(args.target.try_into()?)])?,
+                focus_stack_window_arguments(args.target)?,
             )
             .await?;
         }
@@ -3757,7 +3759,7 @@ if (Get-Command Get-CimInstance -ErrorAction SilentlyContinue) {
         SubCommand::ToggleWorkspaceLayer => {
             invoke_action(
                 BuiltInActionId::ToggleWorkspaceLayer,
-                BuiltInArguments::default(),
+                toggle_workspace_layer_arguments()?,
             )
             .await?;
         }

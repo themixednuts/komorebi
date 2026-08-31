@@ -218,7 +218,7 @@ pub const TOGGLE_WORKSPACE_LAYER: ActionDefinition = ActionDefinition {
     title: "Toggle workspace layer",
     description: "Toggle between tiling and floating layers",
     keywords: &["layer", "tiling", "floating"],
-    parameters: NONE,
+    parameters: WORKSPACE_TARGET_CURSOR_WARP,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
     undo: UndoPolicy::None,

@@ -660,11 +660,11 @@ impl WindowManager {
             NativeEffect::CycleStackIndex { direction } => {
                 self.cycle_container_window_index_in_direction(direction)?;
             }
-            NativeEffect::FocusStack { index } => {
+            NativeEffect::FocusStack { index, cursor_warp } => {
                 if let Some(monitor_idx) = self.monitor_idx_from_current_pos() {
                     self.focus_monitor(monitor_idx)?;
                 }
-                self.focus_container_window(index.get())?;
+                self.focus_container_window_with_cursor_warp(index.get(), cursor_warp)?;
             }
             NativeEffect::FocusWorkspace { index } => {
                 self.focus_workspace_number(index.get())?;
@@ -733,8 +733,11 @@ impl WindowManager {
             NativeEffect::FlipLayout { axis } => {
                 self.flip_layout(axis)?;
             }
-            NativeEffect::ToggleWorkspaceLayer => {
-                self.toggle_workspace_layer()?;
+            NativeEffect::ToggleWorkspaceLayer {
+                target,
+                cursor_warp,
+            } => {
+                self.toggle_workspace_layer_with_policy(target, cursor_warp)?;
             }
             NativeEffect::MoveContainerToLastWorkspace => {
                 self.move_container_to_last_workspace(true)?;

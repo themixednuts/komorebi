@@ -232,7 +232,7 @@ pub const FOCUS_STACK_WINDOW: ActionDefinition = ActionDefinition {
     title: "Focus stack window",
     description: "Focus a window in the focused stack by index",
     keywords: &["stack", "focus", "index"],
-    parameters: INDEX,
+    parameters: INDEX_CURSOR_WARP,
     permitted_uses: BOTH_USES,
     confirmation: ConfirmationPolicy::None,
     undo: UndoPolicy::None,

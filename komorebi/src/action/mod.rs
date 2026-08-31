@@ -16,6 +16,7 @@ pub use builtin::BuiltinActionKind;
 pub use builtin::CursorWarpPolicy;
 pub use builtin::Pixels;
 pub use builtin::WindowSelector;
+pub use builtin::WorkspaceActionTarget;
 pub use builtin::WorkspaceName;
 pub use builtin::WorkspaceSelector;
 pub use configuration::AnimationConfiguration;

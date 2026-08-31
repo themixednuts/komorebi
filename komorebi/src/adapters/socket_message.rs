@@ -1,7 +1,6 @@
 use crate::action::BuiltinAction;
 use crate::action::ContainerIndex;
 use crate::action::MonitorIndex;
-use crate::action::StackIndex;
 use crate::action::WindowSelector;
 use crate::action::WindowsPath;
 use crate::action::WorkspaceIndex;
@@ -44,7 +43,6 @@ pub fn classify(message: &SocketMessage) -> SocketMessageClass {
         | UnstackWindow
         | CycleStack(_)
         | CycleStackIndex(_)
-        | FocusStackWindow(_)
         | StackAll
         | UnstackAll
         | ResizeWindowEdge(_, _)
@@ -135,7 +133,6 @@ pub fn classify(message: &SocketMessage) -> SocketMessageClass {
         | NamedWorkspaceLayoutCustomRule(_, _, _)
         | ClearWorkspaceLayoutRules(_, _)
         | ClearNamedWorkspaceLayoutRules(_)
-        | ToggleWorkspaceLayer
         | FocusFollowsMouse(_, _)
         | ToggleFocusFollowsMouse(_)
         | MouseFollowsFocus(_)
@@ -254,9 +251,6 @@ pub fn to_builtin_action(message: &SocketMessage) -> Option<BuiltinAction> {
         SocketMessage::CycleStackIndex(direction) => Some(BuiltinAction::CycleStackIndex {
             direction: *direction,
         }),
-        SocketMessage::FocusStackWindow(index) => Some(BuiltinAction::FocusStackWindow {
-            index: StackIndex::new(*index),
-        }),
         SocketMessage::FocusWorkspaceNumber(index) => Some(BuiltinAction::FocusWorkspace {
             index: WorkspaceIndex::new(*index),
         }),
@@ -303,7 +297,6 @@ pub fn to_builtin_action(message: &SocketMessage) -> Option<BuiltinAction> {
             direction: *direction,
         }),
         SocketMessage::FlipLayout(axis) => Some(BuiltinAction::FlipLayout { axis: *axis }),
-        SocketMessage::ToggleWorkspaceLayer => Some(BuiltinAction::ToggleWorkspaceLayer),
         SocketMessage::MoveContainerToLastWorkspace => {
             Some(BuiltinAction::MoveContainerToLastWorkspace)
         }

@@ -91,6 +91,7 @@ known_ids! {
     Right => "right",
     Bottom => "bottom",
     CursorWarp => "cursor-warp",
+    WorkspaceTarget => "workspace-target",
 }
 
 known_ids! {
@@ -195,6 +196,12 @@ known_ids! {
     BuiltInCursorWarpPolicy, ChoiceId,
     FollowConfiguration => "follow-configuration",
     PreservePosition => "preserve-position",
+}
+
+known_ids! {
+    BuiltInWorkspaceTarget, ChoiceId,
+    FocusedAtExecution => "focused-at-execution",
+    MonitorAtCursor => "monitor-at-cursor",
 }
 
 known_ids! {
@@ -396,6 +403,7 @@ pub enum BuiltInArgument {
     Right(i32),
     Bottom(i32),
     CursorWarp(BuiltInCursorWarpPolicy),
+    WorkspaceTarget(BuiltInWorkspaceTarget),
 }
 
 impl BuiltInArgument {
@@ -483,6 +491,9 @@ impl BuiltInArgument {
             Self::Right(value) => signed(BuiltInParameterId::Right, value),
             Self::Bottom(value) => signed(BuiltInParameterId::Bottom, value),
             Self::CursorWarp(value) => choice(BuiltInParameterId::CursorWarp, value.into_wire()),
+            Self::WorkspaceTarget(value) => {
+                choice(BuiltInParameterId::WorkspaceTarget, value.into_wire())
+            }
         })
     }
 }
@@ -643,6 +654,28 @@ mod tests {
                 .into_action_arguments();
             assert!(matches!(
                 arguments.values().get(&ParameterId::parse("cursor-warp")?),
+                Some(ActionArgument::Scalar(ArgumentScalar::Choice(value)))
+                    if value.as_str() == expected
+            ));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn workspace_target_encodes_as_a_closed_choice() -> Result<(), Box<dyn std::error::Error>> {
+        for (target, expected) in [
+            (
+                BuiltInWorkspaceTarget::FocusedAtExecution,
+                "focused-at-execution",
+            ),
+            (BuiltInWorkspaceTarget::MonitorAtCursor, "monitor-at-cursor"),
+        ] {
+            let arguments = BuiltInArguments::new([BuiltInArgument::WorkspaceTarget(target)])?
+                .into_action_arguments();
+            assert!(matches!(
+                arguments
+                    .values()
+                    .get(&ParameterId::parse("workspace-target")?),
                 Some(ActionArgument::Scalar(ArgumentScalar::Choice(value)))
                     if value.as_str() == expected
             ));

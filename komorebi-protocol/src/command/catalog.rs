@@ -88,6 +88,7 @@ pub enum ParameterDomain {
     AnimationStyle = 40,
     WorkAreaOffset = 41,
     CursorWarpPolicy = 42,
+    WorkspaceTarget = 43,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

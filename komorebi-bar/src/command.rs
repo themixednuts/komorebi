@@ -9,6 +9,7 @@ use komorebi_client::command::BuiltInArgument;
 use komorebi_client::command::BuiltInArguments;
 use komorebi_client::command::BuiltInArgumentsError;
 use komorebi_client::command::BuiltInCursorWarpPolicy;
+use komorebi_client::command::BuiltInWorkspaceTarget;
 use komorebi_client::command::CommandClient;
 use komorebi_client::command::InvocationSubmissionReply;
 use komorebi_client::command::RoleHint;
@@ -28,6 +29,8 @@ enum BarCommandKey {
     MonitorWorkAreaOffset(u64),
     WorkspaceLayout(WorkspaceTarget),
     FocusMonitorWorkspace,
+    FocusStackWindow,
+    ToggleWorkspaceLayer,
 }
 
 impl BarCommandKey {
@@ -36,7 +39,13 @@ impl BarCommandKey {
             Self::MonitorWorkAreaOffset(_) => BuiltInActionId::SetMonitorWorkAreaOffset,
             Self::WorkspaceLayout(_) => BuiltInActionId::SetMonitorWorkspaceLayout,
             Self::FocusMonitorWorkspace => BuiltInActionId::FocusMonitorWorkspace,
+            Self::FocusStackWindow => BuiltInActionId::FocusStackWindow,
+            Self::ToggleWorkspaceLayer => BuiltInActionId::ToggleWorkspaceLayer,
         }
+    }
+
+    const fn coalesces(self) -> bool {
+        !matches!(self, Self::ToggleWorkspaceLayer)
     }
 }
 
@@ -113,6 +122,28 @@ impl CommandQueue {
         )
     }
 
+    pub fn focus_stack_window(&self, index: usize) -> Result<(), CommandQueueError> {
+        let index =
+            u64::try_from(index).map_err(|_| CommandQueueError::StackIndexOverflow(index))?;
+        self.send(
+            BarCommandKey::FocusStackWindow,
+            [
+                BuiltInArgument::Index(index),
+                BuiltInArgument::CursorWarp(BuiltInCursorWarpPolicy::PreservePosition),
+            ],
+        )
+    }
+
+    pub fn toggle_workspace_layer(&self) -> Result<(), CommandQueueError> {
+        self.send(
+            BarCommandKey::ToggleWorkspaceLayer,
+            [
+                BuiltInArgument::WorkspaceTarget(BuiltInWorkspaceTarget::MonitorAtCursor),
+                BuiltInArgument::CursorWarp(BuiltInCursorWarpPolicy::PreservePosition),
+            ],
+        )
+    }
+
     fn send<const N: usize>(
         &self,
         key: BarCommandKey,
@@ -150,9 +181,10 @@ impl WorkspaceTarget {
 }
 
 fn enqueue(pending: &mut VecDeque<BarCommand>, command: BarCommand) {
-    if let Some(index) = pending
-        .iter()
-        .position(|pending| pending.key == command.key)
+    if command.key.coalesces()
+        && let Some(index) = pending
+            .iter()
+            .position(|pending| pending.key == command.key)
     {
         pending.remove(index);
     }
@@ -220,6 +252,8 @@ pub enum CommandQueueError {
     MonitorIndexOverflow(usize),
     #[error("workspace index {0} cannot be represented by the command protocol")]
     WorkspaceIndexOverflow(usize),
+    #[error("stack index {0} cannot be represented by the command protocol")]
+    StackIndexOverflow(usize),
     #[error("bar command actor is closed")]
     Closed,
     #[error("bar command mailbox is poisoned")]
@@ -313,6 +347,24 @@ mod tests {
             [
                 BarCommandKey::MonitorWorkAreaOffset(0),
                 BarCommandKey::FocusMonitorWorkspace,
+            ]
+        );
+    }
+
+    #[test]
+    fn mailbox_preserves_each_toggle_edge() {
+        let mut pending = VecDeque::new();
+        enqueue(&mut pending, command(BarCommandKey::ToggleWorkspaceLayer));
+        enqueue(&mut pending, command(BarCommandKey::ToggleWorkspaceLayer));
+
+        assert_eq!(
+            pending
+                .iter()
+                .map(|command| command.key)
+                .collect::<Vec<_>>(),
+            [
+                BarCommandKey::ToggleWorkspaceLayer,
+                BarCommandKey::ToggleWorkspaceLayer,
             ]
         );
     }

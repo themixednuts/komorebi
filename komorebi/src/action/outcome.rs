@@ -502,6 +502,7 @@ pub enum NativeEffect {
     },
     FocusStack {
         index: StackIndex,
+        cursor_warp: crate::action::CursorWarpPolicy,
     },
     FocusWorkspace {
         index: WorkspaceIndex,
@@ -546,7 +547,10 @@ pub enum NativeEffect {
     FlipLayout {
         axis: Axis,
     },
-    ToggleWorkspaceLayer,
+    ToggleWorkspaceLayer {
+        target: crate::action::WorkspaceActionTarget,
+        cursor_warp: crate::action::CursorWarpPolicy,
+    },
     MoveContainerToLastWorkspace,
     SendContainerToLastWorkspace,
     MoveContainerToWorkspace {

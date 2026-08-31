@@ -251,13 +251,10 @@ impl Komorebi {
                     .show(ui, |ui| (bar.renderer)(ctx, ui, &layer, size))
                     .on_hover_text(layer.to_string());
 
-                if layer_frame.clicked() {
-                    let _ = Self::send_messages(&[
-                        FocusMonitorAtCursor,
-                        MouseFollowsFocus(false),
-                        ToggleWorkspaceLayer,
-                        MouseFollowsFocus(monitor_info.mouse_follows_focus),
-                    ]);
+                if layer_frame.clicked()
+                    && let Err(error) = self.commands.toggle_workspace_layer()
+                {
+                    tracing::error!(%error, "could not toggle workspace layer");
                 }
             });
         }
@@ -355,21 +352,14 @@ impl Komorebi {
                     (bar.renderer)(bar, ctx, ui, window, text_color, idx == focused_idx)
                 });
 
-                if response.clicked() && !selected {
-                    let _ = Self::send_with_mouse_follow_off(monitor_info, FocusStackWindow(idx));
+                if response.clicked()
+                    && !selected
+                    && let Err(error) = self.commands.focus_stack_window(idx)
+                {
+                    tracing::error!(%error, "could not focus stack window");
                 }
             }
         });
-    }
-
-    /// Sends a message to Komorebi, temporarily disabling MouseFollowsFocus if it's enabled.
-    fn send_with_mouse_follow_off(monitor: &MonitorInfo, message: SocketMessage) -> IoResult<()> {
-        let messages: &[SocketMessage] = if monitor.mouse_follows_focus {
-            &[MouseFollowsFocus(false), message, MouseFollowsFocus(true)]
-        } else {
-            &[message]
-        };
-        Self::send_messages(messages)
     }
 
     /// Sends a batch of messages to Komorebi, logging errors on failure.

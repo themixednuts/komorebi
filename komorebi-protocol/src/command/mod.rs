@@ -82,6 +82,7 @@ pub use builtin_argument::BuiltInSizing;
 pub use builtin_argument::BuiltInStackbarLabel;
 pub use builtin_argument::BuiltInStackbarMode;
 pub use builtin_argument::BuiltInWindowKind;
+pub use builtin_argument::BuiltInWorkspaceTarget;
 pub use builtin_id::BuiltInActionId;
 pub use catalog::ActionAvailability;
 pub use catalog::ActionCategory;

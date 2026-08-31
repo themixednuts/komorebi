@@ -78,6 +78,7 @@ pub use command::BuiltInSizing;
 pub use command::BuiltInStackbarLabel;
 pub use command::BuiltInStackbarMode;
 pub use command::BuiltInWindowKind;
+pub use command::BuiltInWorkspaceTarget;
 pub use command::CANCEL_INVOCATION_FRAME_KIND;
 pub use command::CANCEL_INVOCATION_REPLY_FRAME_KIND;
 pub use command::CATALOG_REPLY_FRAME_KIND;

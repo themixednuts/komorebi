@@ -37,6 +37,7 @@ pub use komorebi_protocol::BuiltInSizing;
 pub use komorebi_protocol::BuiltInStackbarLabel;
 pub use komorebi_protocol::BuiltInStackbarMode;
 pub use komorebi_protocol::BuiltInWindowKind;
+pub use komorebi_protocol::BuiltInWorkspaceTarget;
 use komorebi_protocol::CatalogQuery;
 use komorebi_protocol::CatalogReply;
 use komorebi_protocol::CatalogSnapshot;

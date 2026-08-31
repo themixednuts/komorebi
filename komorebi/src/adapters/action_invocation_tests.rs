@@ -179,6 +179,9 @@ fn scalar(
         D::CursorWarpPolicy => {
             protocol::ArgumentScalar::Choice(protocol::ChoiceId::parse("follow-configuration")?)
         }
+        D::WorkspaceTarget => {
+            protocol::ArgumentScalar::Choice(protocol::ChoiceId::parse("focused-at-execution")?)
+        }
     })
 }
 

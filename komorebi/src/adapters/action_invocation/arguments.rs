@@ -7,6 +7,7 @@ use crate::action::CursorWarpPolicy;
 use crate::action::Pixels;
 use crate::action::WindowSelector;
 use crate::action::WindowsPath;
+use crate::action::WorkspaceActionTarget;
 use crate::action::WorkspaceName;
 use crate::action::WorkspaceSelector;
 use crate::action::definition::ActionDefinition;
@@ -198,6 +199,17 @@ impl<'a> ValidatedArguments<'a> {
         match self.choice(id)? {
             "follow-configuration" => Ok(CursorWarpPolicy::FollowConfiguration),
             "preserve-position" => Ok(CursorWarpPolicy::PreservePosition),
+            value => Err(unknown_choice(id, value)),
+        }
+    }
+
+    pub(super) fn workspace_action_target(
+        &self,
+        id: ParameterId,
+    ) -> Result<WorkspaceActionTarget, ArgumentBindingError> {
+        match self.choice(id)? {
+            "focused-at-execution" => Ok(WorkspaceActionTarget::FocusedAtExecution),
+            "monitor-at-cursor" => Ok(WorkspaceActionTarget::MonitorAtCursor),
             value => Err(unknown_choice(id, value)),
         }
     }

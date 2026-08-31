@@ -292,6 +292,7 @@ fn bind_builtin(
         },
         K::FocusStackWindow => A::FocusStackWindow {
             index: StackIndex::new(args.usize(ParameterId::INDEX)?),
+            cursor_warp: args.cursor_warp_policy(ParameterId::CURSOR_WARP)?,
         },
         K::FocusWorkspace => A::FocusWorkspace {
             index: WorkspaceIndex::new(args.usize(ParameterId::INDEX)?),
@@ -342,7 +343,10 @@ fn bind_builtin(
         K::FlipLayout => A::FlipLayout {
             axis: args.axis(ParameterId::AXIS)?,
         },
-        K::ToggleWorkspaceLayer => A::ToggleWorkspaceLayer,
+        K::ToggleWorkspaceLayer => A::ToggleWorkspaceLayer {
+            target: args.workspace_action_target(ParameterId::WORKSPACE_TARGET)?,
+            cursor_warp: args.cursor_warp_policy(ParameterId::CURSOR_WARP)?,
+        },
         K::MoveContainerToLastWorkspace => A::MoveContainerToLastWorkspace,
         K::SendContainerToLastWorkspace => A::SendContainerToLastWorkspace,
         K::MoveContainerToWorkspace => A::MoveContainerToWorkspace {

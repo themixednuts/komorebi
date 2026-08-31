@@ -221,7 +221,7 @@ pub(super) fn directional_gap(
         | BuiltinAction::ToggleTiling
         | BuiltinAction::CycleLayout { .. }
         | BuiltinAction::FlipLayout { .. }
-        | BuiltinAction::ToggleWorkspaceLayer
+        | BuiltinAction::ToggleWorkspaceLayer { .. }
         | BuiltinAction::MoveContainerToLastWorkspace
         | BuiltinAction::SendContainerToLastWorkspace
         | BuiltinAction::MoveContainerToWorkspace { .. }
@@ -418,7 +418,7 @@ pub(super) fn apply_logical(snapshot: &mut ActionSnapshot, action: &BuiltinActio
         | BuiltinAction::ToggleTiling
         | BuiltinAction::CycleLayout { .. }
         | BuiltinAction::FlipLayout { .. }
-        | BuiltinAction::ToggleWorkspaceLayer
+        | BuiltinAction::ToggleWorkspaceLayer { .. }
         | BuiltinAction::MoveContainerToLastWorkspace
         | BuiltinAction::SendContainerToLastWorkspace
         | BuiltinAction::MoveContainerToWorkspace { .. }
@@ -567,7 +567,7 @@ pub(super) fn logical_result(action: &BuiltinAction, snapshot: &ActionSnapshot) 
         BuiltinAction::CycleStackIndex { direction } => {
             ActionResult::StackIndexCycled { direction }
         }
-        BuiltinAction::FocusStackWindow { index } => ActionResult::StackWindowFocused { index },
+        BuiltinAction::FocusStackWindow { index, .. } => ActionResult::StackWindowFocused { index },
         BuiltinAction::FocusWorkspace { index } => ActionResult::WorkspaceFocused { index },
         BuiltinAction::CycleFocusWorkspace { direction } => {
             ActionResult::WorkspaceCycled { direction }
@@ -597,7 +597,7 @@ pub(super) fn logical_result(action: &BuiltinAction, snapshot: &ActionSnapshot) 
         BuiltinAction::ToggleTiling => ActionResult::TilingToggled,
         BuiltinAction::CycleLayout { direction } => ActionResult::LayoutCycled { direction },
         BuiltinAction::FlipLayout { axis } => ActionResult::LayoutFlipped { axis },
-        BuiltinAction::ToggleWorkspaceLayer => ActionResult::WorkspaceLayerToggled,
+        BuiltinAction::ToggleWorkspaceLayer { .. } => ActionResult::WorkspaceLayerToggled,
         BuiltinAction::MoveContainerToLastWorkspace => ActionResult::ContainerMovedToLastWorkspace,
         BuiltinAction::SendContainerToLastWorkspace => ActionResult::ContainerSentToLastWorkspace,
         BuiltinAction::MoveContainerToWorkspace { index } => {
@@ -922,7 +922,9 @@ pub(super) fn effects(action: &BuiltinAction, snapshot: &ActionSnapshot) -> Vec<
         BuiltinAction::CycleStackIndex { direction } => {
             vec![NativeEffect::CycleStackIndex { direction }]
         }
-        BuiltinAction::FocusStackWindow { index } => vec![NativeEffect::FocusStack { index }],
+        BuiltinAction::FocusStackWindow { index, cursor_warp } => {
+            vec![NativeEffect::FocusStack { index, cursor_warp }]
+        }
         BuiltinAction::FocusWorkspace { index } => vec![NativeEffect::FocusWorkspace { index }],
         BuiltinAction::CycleFocusWorkspace { direction } => {
             vec![NativeEffect::CycleFocusWorkspace { direction }]
@@ -962,7 +964,13 @@ pub(super) fn effects(action: &BuiltinAction, snapshot: &ActionSnapshot) -> Vec<
         BuiltinAction::ToggleTiling => vec![NativeEffect::ToggleTiling],
         BuiltinAction::CycleLayout { direction } => vec![NativeEffect::CycleLayout { direction }],
         BuiltinAction::FlipLayout { axis } => vec![NativeEffect::FlipLayout { axis }],
-        BuiltinAction::ToggleWorkspaceLayer => vec![NativeEffect::ToggleWorkspaceLayer],
+        BuiltinAction::ToggleWorkspaceLayer {
+            target,
+            cursor_warp,
+        } => vec![NativeEffect::ToggleWorkspaceLayer {
+            target,
+            cursor_warp,
+        }],
         BuiltinAction::MoveContainerToLastWorkspace => {
             vec![NativeEffect::MoveContainerToLastWorkspace]
         }

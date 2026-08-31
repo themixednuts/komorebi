@@ -506,6 +506,12 @@ pub enum CursorWarpPolicy {
     PreservePosition,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
+pub enum WorkspaceActionTarget {
+    FocusedAtExecution,
+    MonitorAtCursor,
+}
+
 impl CursorWarpPolicy {
     #[must_use]
     pub const fn should_warp(self, configured: bool) -> bool {
@@ -631,6 +637,7 @@ pub enum BuiltinAction {
     },
     FocusStackWindow {
         index: StackIndex,
+        cursor_warp: CursorWarpPolicy,
     },
     FocusWorkspace {
         index: WorkspaceIndex,
@@ -681,7 +688,10 @@ pub enum BuiltinAction {
     FlipLayout {
         axis: Axis,
     },
-    ToggleWorkspaceLayer,
+    ToggleWorkspaceLayer {
+        target: WorkspaceActionTarget,
+        cursor_warp: CursorWarpPolicy,
+    },
     MoveContainerToLastWorkspace,
     SendContainerToLastWorkspace,
     MoveContainerToWorkspace {
@@ -1043,7 +1053,7 @@ impl BuiltinAction {
             Self::ToggleTiling => BuiltinActionKind::ToggleTiling,
             Self::CycleLayout { .. } => BuiltinActionKind::CycleLayout,
             Self::FlipLayout { .. } => BuiltinActionKind::FlipLayout,
-            Self::ToggleWorkspaceLayer => BuiltinActionKind::ToggleWorkspaceLayer,
+            Self::ToggleWorkspaceLayer { .. } => BuiltinActionKind::ToggleWorkspaceLayer,
             Self::MoveContainerToLastWorkspace => BuiltinActionKind::MoveContainerToLastWorkspace,
             Self::SendContainerToLastWorkspace => BuiltinActionKind::SendContainerToLastWorkspace,
             Self::MoveContainerToWorkspace { .. } => BuiltinActionKind::MoveContainerToWorkspace,

@@ -179,7 +179,6 @@ impl WindowManager {
                 | SocketMessage::UnstackWindow
                 | SocketMessage::CycleStack(..)
                 | SocketMessage::CycleStackIndex(..)
-                | SocketMessage::FocusStackWindow(..)
                 | SocketMessage::StackAll
                 | SocketMessage::UnstackAll
                 | SocketMessage::ResizeWindowEdge(..)
@@ -270,7 +269,6 @@ impl WindowManager {
                 | SocketMessage::NamedWorkspaceLayoutCustomRule(..)
                 | SocketMessage::ClearWorkspaceLayoutRules(..)
                 | SocketMessage::ClearNamedWorkspaceLayoutRules(..)
-                | SocketMessage::ToggleWorkspaceLayer
                 | SocketMessage::FocusFollowsMouse(..)
                 | SocketMessage::ToggleFocusFollowsMouse(..)
                 | SocketMessage::MouseFollowsFocus(..)
@@ -1197,6 +1195,34 @@ mod tests {
     }
 
     #[test]
+    fn live_workspace_layer_toggle_preserves_mouse_follow_configuration() {
+        let mut wm = window_manager();
+        let m = monitor::new(
+            0,
+            Rect::default(),
+            Rect::default(),
+            "TestMonitor".to_string(),
+            "TestDevice".to_string(),
+            "TestDeviceID".to_string(),
+            Some("TestMonitorID".to_string()),
+        );
+        wm.monitors_mut().push_back(m);
+        wm.mouse_follows_focus = true;
+
+        wm.admit_socket_action(crate::action::BuiltinAction::ToggleWorkspaceLayer {
+            target: crate::action::WorkspaceActionTarget::FocusedAtExecution,
+            cursor_warp: crate::action::CursorWarpPolicy::PreservePosition,
+        })
+        .unwrap();
+
+        assert_eq!(
+            wm.focused_workspace().unwrap().layer,
+            crate::workspace::WorkspaceLayer::Floating
+        );
+        assert!(wm.mouse_follows_focus);
+    }
+
+    #[test]
     fn paused_focus_window_is_rejected_instead_of_ignored() {
         let mut wm = window_manager();
         let m = monitor::new(
@@ -1507,7 +1533,6 @@ mod tests {
             crate::core::CycleDirection::Next,
         ));
         assert_paused_rejects(SocketMessage::FlipLayout(crate::core::Axis::Horizontal));
-        assert_paused_rejects(SocketMessage::ToggleWorkspaceLayer);
         assert_paused_rejects(SocketMessage::MoveContainerToLastWorkspace);
         assert_paused_rejects(SocketMessage::SendContainerToLastWorkspace);
         assert_paused_rejects(SocketMessage::MoveContainerToWorkspaceNumber(1));
