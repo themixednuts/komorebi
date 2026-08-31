@@ -104,7 +104,7 @@ pub enum ActionPreparation {
 pub struct PreparedAction {
     invocation_id: InvocationId,
     previous_state: StateStamp,
-    snapshot: ActionSnapshot,
+    snapshot: Box<ActionSnapshot>,
     logical_result: ActionResult,
     undo: Option<UndoRecord>,
     effects: Vec<PlannedEffect>,
@@ -354,7 +354,7 @@ impl CatalogState {
                             effect,
                         })
                         .collect(),
-                    snapshot,
+                    snapshot: Box::new(snapshot),
                     confirmation,
                 })
             }
@@ -386,7 +386,7 @@ impl CatalogState {
         }
 
         let state = prepared.snapshot.state;
-        self.snapshot = prepared.snapshot;
+        self.snapshot = *prepared.snapshot;
         let admission = ActionAdmission::Committed {
             state,
             logical_result: prepared.logical_result,

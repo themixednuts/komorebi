@@ -250,6 +250,10 @@ fn decode_domain(value: u8) -> Result<ParameterDomain, CommandCodecError> {
         34 => Ok(ParameterDomain::StackbarTabWidth),
         35 => Ok(ParameterDomain::StackbarFontSize),
         36 => Ok(ParameterDomain::StackbarFontFamily),
+        37 => Ok(ParameterDomain::AnimationPrefix),
+        38 => Ok(ParameterDomain::AnimationDuration),
+        39 => Ok(ParameterDomain::AnimationFps),
+        40 => Ok(ParameterDomain::AnimationStyle),
         _ => Err(CommandCodecError::UnknownParameterDomain(value)),
     }
 }

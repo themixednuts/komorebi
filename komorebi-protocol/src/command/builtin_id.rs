@@ -162,6 +162,10 @@ built_in_action_ids! {
     SetStackbarTabWidth => "set-stackbar-tab-width",
     SetStackbarFontSize => "set-stackbar-font-size",
     SetStackbarFontFamily => "set-stackbar-font-family",
+    SetAnimationEnabled => "set-animation-enabled",
+    SetAnimationDuration => "set-animation-duration",
+    SetAnimationFps => "set-animation-fps",
+    SetAnimationStyle => "set-animation-style",
 }
 
 impl fmt::Display for BuiltInActionId {

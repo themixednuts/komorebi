@@ -1,4 +1,5 @@
 use crate::animation::animation_manager::AnimationManager;
+use crate::core::AnimationFps;
 use crate::core::animation::AnimationStyle;
 
 use lazy_static::lazy_static;
@@ -7,6 +8,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::AtomicU64;
+use std::sync::atomic::Ordering;
 
 use parking_lot::Mutex;
 
@@ -79,5 +81,25 @@ lazy_static! {
         Arc::new(Mutex::new(HashMap::new()));
 }
 
-pub static ANIMATION_FPS: AtomicU64 = AtomicU64::new(DEFAULT_ANIMATION_FPS);
+static ANIMATION_FPS: AtomicU64 = AtomicU64::new(DEFAULT_ANIMATION_FPS);
 pub static GHOST_MOVEMENT_ENABLED: AtomicBool = AtomicBool::new(DEFAULT_GHOST_MOVEMENT);
+
+#[must_use]
+pub fn default_animation_fps() -> AnimationFps {
+    match AnimationFps::new(DEFAULT_ANIMATION_FPS) {
+        Ok(fps) => fps,
+        Err(_) => unreachable!("the built-in animation FPS is nonzero"),
+    }
+}
+
+#[must_use]
+pub fn animation_fps() -> AnimationFps {
+    match AnimationFps::new(ANIMATION_FPS.load(Ordering::Relaxed)) {
+        Ok(fps) => fps,
+        Err(_) => unreachable!("the private animation FPS store accepts only typed values"),
+    }
+}
+
+pub fn set_animation_fps(fps: AnimationFps) {
+    ANIMATION_FPS.store(fps.get(), Ordering::Relaxed);
+}

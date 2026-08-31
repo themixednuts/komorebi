@@ -7,6 +7,8 @@ use crate::action::ActionAdmission;
 use crate::action::ActionGrants;
 use crate::action::ActionRejection;
 use crate::action::ActionSnapshot;
+use crate::action::AnimationConfiguration;
+use crate::action::AnimationStyleSnapshot;
 use crate::action::BorderConfiguration;
 use crate::action::BuiltinAction;
 use crate::action::ConfigurationSnapshot;
@@ -22,6 +24,7 @@ use crate::action::NativeEffectFailure;
 use crate::action::ObservationChange;
 use crate::action::PlannedEffect;
 use crate::action::PrincipalId;
+use crate::action::ScopedAnimationValue;
 use crate::action::StackbarConfiguration;
 use crate::action::TransparencyConfiguration;
 use crate::action::WorkspaceIndex;
@@ -29,7 +32,17 @@ use crate::action::WorkspaceName;
 use crate::action::id::WindowId;
 use crate::adapters::action_catalog::CatalogProjectionError;
 use crate::adapters::action_catalog::reply as project_catalog_reply;
+use crate::animation::ANIMATION_DURATION_GLOBAL;
+use crate::animation::ANIMATION_DURATION_PER_ANIMATION;
+use crate::animation::ANIMATION_ENABLED_GLOBAL;
+use crate::animation::ANIMATION_ENABLED_PER_ANIMATION;
+use crate::animation::ANIMATION_STYLE_GLOBAL;
+use crate::animation::ANIMATION_STYLE_PER_ANIMATION;
+use crate::animation::animation_fps;
+use crate::animation::prefix::AnimationPrefix;
+use crate::animation::set_animation_fps;
 use crate::border_manager;
+use crate::core::AnimationDuration;
 use crate::core::BorderImplementation;
 use crate::core::BorderOffset;
 use crate::core::BorderWidth;
@@ -158,6 +171,7 @@ impl WindowManager {
             .focused_workspace()
             .ok()
             .is_some_and(|workspace| workspace.layer == WorkspaceLayer::Floating);
+        let animation = observe_animation_configuration();
         ActionSnapshot {
             state: self.catalog.snapshot().state,
             paused: self.is_paused,
@@ -213,6 +227,7 @@ impl WindowManager {
                         .clone()
                         .map(String::into_boxed_str),
                 },
+                animation: std::sync::Arc::new(animation),
             },
             focused_window_floating,
             named_workspaces: self.named_workspaces_for_catalog(),
@@ -522,6 +537,40 @@ impl WindowManager {
                 *stackbar_manager::STACKBAR_FONT_FAMILY.lock() = family;
                 stackbar_manager::send_notification();
             }
+            NativeEffect::SetAnimationEnabled { enabled, prefix } => match prefix {
+                Some(prefix) => {
+                    ANIMATION_ENABLED_PER_ANIMATION
+                        .lock()
+                        .insert(prefix, enabled);
+                }
+                None => {
+                    ANIMATION_ENABLED_GLOBAL.store(enabled, Ordering::SeqCst);
+                    ANIMATION_ENABLED_PER_ANIMATION.lock().clear();
+                }
+            },
+            NativeEffect::SetAnimationDuration { duration, prefix } => match prefix {
+                Some(prefix) => {
+                    ANIMATION_DURATION_PER_ANIMATION
+                        .lock()
+                        .insert(prefix, duration.milliseconds());
+                }
+                None => {
+                    ANIMATION_DURATION_GLOBAL.store(duration.milliseconds(), Ordering::SeqCst);
+                    ANIMATION_DURATION_PER_ANIMATION.lock().clear();
+                }
+            },
+            NativeEffect::SetAnimationFps { fps } => {
+                set_animation_fps(fps);
+            }
+            NativeEffect::SetAnimationStyle { style, prefix } => match prefix {
+                Some(prefix) => {
+                    ANIMATION_STYLE_PER_ANIMATION.lock().insert(prefix, style);
+                }
+                None => {
+                    *ANIMATION_STYLE_GLOBAL.lock() = style;
+                    ANIMATION_STYLE_PER_ANIMATION.lock().clear();
+                }
+            },
             NativeEffect::CycleFocus { direction } => {
                 let focused_workspace = self.focused_workspace()?;
                 match focused_workspace.layer {
@@ -891,6 +940,43 @@ impl WindowManager {
             }
         }
         Ok(())
+    }
+}
+
+fn observe_animation_configuration() -> AnimationConfiguration {
+    let enabled = ANIMATION_ENABLED_PER_ANIMATION.lock().clone();
+    let duration = ANIMATION_DURATION_PER_ANIMATION.lock().clone();
+    let global_style = *ANIMATION_STYLE_GLOBAL.lock();
+    let style = ANIMATION_STYLE_PER_ANIMATION.lock().clone();
+    AnimationConfiguration {
+        enabled: ScopedAnimationValue {
+            global: ANIMATION_ENABLED_GLOBAL.load(Ordering::SeqCst),
+            movement: enabled.get(&AnimationPrefix::Movement).copied(),
+            transparency: enabled.get(&AnimationPrefix::Transparency).copied(),
+        },
+        duration: ScopedAnimationValue {
+            global: AnimationDuration::new(ANIMATION_DURATION_GLOBAL.load(Ordering::SeqCst)),
+            movement: duration
+                .get(&AnimationPrefix::Movement)
+                .copied()
+                .map(AnimationDuration::new),
+            transparency: duration
+                .get(&AnimationPrefix::Transparency)
+                .copied()
+                .map(AnimationDuration::new),
+        },
+        style: ScopedAnimationValue {
+            global: global_style.into(),
+            movement: style
+                .get(&AnimationPrefix::Movement)
+                .copied()
+                .map(AnimationStyleSnapshot::from),
+            transparency: style
+                .get(&AnimationPrefix::Transparency)
+                .copied()
+                .map(AnimationStyleSnapshot::from),
+        },
+        fps: animation_fps(),
     }
 }
 

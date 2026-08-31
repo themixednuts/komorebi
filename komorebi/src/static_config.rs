@@ -38,13 +38,14 @@ use crate::animation::ANIMATION_DURATION_GLOBAL;
 use crate::animation::ANIMATION_DURATION_PER_ANIMATION;
 use crate::animation::ANIMATION_ENABLED_GLOBAL;
 use crate::animation::ANIMATION_ENABLED_PER_ANIMATION;
-use crate::animation::ANIMATION_FPS;
 use crate::animation::ANIMATION_STYLE_GLOBAL;
 use crate::animation::ANIMATION_STYLE_PER_ANIMATION;
 use crate::animation::DEFAULT_ANIMATION_FPS;
 use crate::animation::DEFAULT_GHOST_MOVEMENT;
 use crate::animation::GHOST_MOVEMENT_ENABLED;
 use crate::animation::PerAnimationPrefixConfig;
+use crate::animation::default_animation_fps;
+use crate::animation::set_animation_fps;
 use crate::asc::ApplicationSpecificConfiguration;
 use crate::asc::AscApplicationRulesOrSchema;
 use crate::border_manager;
@@ -52,6 +53,7 @@ use crate::border_manager::IMPLEMENTATION;
 use crate::border_manager::STYLE;
 use crate::border_manager::ZOrder;
 use crate::config_generation::WorkspaceMatchingRule;
+use crate::core::AnimationFps;
 use crate::core::AnimationStyle;
 use crate::core::BorderImplementation;
 use crate::core::BorderOffset;
@@ -713,8 +715,8 @@ pub struct AnimationsConfig {
     pub style: Option<PerAnimationPrefixConfig<AnimationStyle>>,
     /// Set the animation FPS
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "schemars", schemars(extend("default" = ANIMATION_FPS)))]
-    pub fps: Option<u64>,
+    #[cfg_attr(feature = "schemars", schemars(extend("default" = DEFAULT_ANIMATION_FPS)))]
+    pub fps: Option<AnimationFps>,
     /// Render movement animations on a GPU-composited ghost surface (recommended).
     /// When false, falls back to the legacy per-frame MoveWindow path.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -1048,10 +1050,7 @@ impl StaticConfig {
                 None => {}
             }
 
-            ANIMATION_FPS.store(
-                animations.fps.unwrap_or(DEFAULT_ANIMATION_FPS),
-                Ordering::SeqCst,
-            );
+            set_animation_fps(animations.fps.unwrap_or_else(default_animation_fps));
 
             let ghost_movement_enabled =
                 animations.ghost_movement.unwrap_or(DEFAULT_GHOST_MOVEMENT);

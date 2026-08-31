@@ -14,7 +14,6 @@ use strum::Display;
 use strum::EnumString;
 
 use crate::KomorebiTheme;
-use crate::animation::prefix::AnimationPrefix;
 use crate::state::State;
 
 // Re-export everything from komorebi-layouts
@@ -45,6 +44,9 @@ pub use komorebi_layouts::validate_ratios;
 
 // Local modules and exports
 pub use animation::AnimationStyle;
+pub use animation_configuration::AnimationDuration;
+pub use animation_configuration::AnimationFps;
+pub use animation_configuration::AnimationFpsError;
 pub use border_geometry::BorderOffset;
 pub use border_geometry::BorderOffsetError;
 pub use border_geometry::BorderWidth;
@@ -72,6 +74,7 @@ pub use transparency_alpha::TransparencyAlphaError;
 pub const DEFAULT_TRANSPARENCY_ENABLED: bool = false;
 
 pub mod animation;
+pub mod animation_configuration;
 pub mod asc;
 pub mod border_geometry;
 pub mod config_generation;
@@ -215,10 +218,6 @@ pub enum SocketMessage {
     CompleteConfiguration,
     AltFocusHack(bool),
     Theme(Box<KomorebiTheme>),
-    Animation(bool, Option<AnimationPrefix>),
-    AnimationDuration(u64, Option<AnimationPrefix>),
-    AnimationFps(u64),
-    AnimationStyle(AnimationStyle, Option<AnimationPrefix>),
     #[serde(alias = "ActiveWindowBorder")]
     Transparency(bool),
     ToggleTransparency,

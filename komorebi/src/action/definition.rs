@@ -68,6 +68,10 @@ pub enum ParameterDomain {
     StackbarTabWidth,
     StackbarFontSize,
     StackbarFontFamily,
+    AnimationPrefix,
+    AnimationDuration,
+    AnimationFps,
+    AnimationStyle,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -697,6 +701,48 @@ const STACKBAR_FONT_FAMILY: &[ParameterDefinition] = &[ParameterDefinition {
     cardinality: ArgumentCardinality::OptionalScalar,
 }];
 
+const ANIMATION_ENABLED: &[ParameterDefinition] = &[
+    ParameterDefinition {
+        id: ParameterId::ENABLED,
+        domain: ParameterDomain::Flag,
+        cardinality: ArgumentCardinality::RequiredScalar,
+    },
+    ParameterDefinition {
+        id: ParameterId::PREFIX,
+        domain: ParameterDomain::AnimationPrefix,
+        cardinality: ArgumentCardinality::OptionalScalar,
+    },
+];
+const ANIMATION_DURATION: &[ParameterDefinition] = &[
+    ParameterDefinition {
+        id: ParameterId::DURATION,
+        domain: ParameterDomain::AnimationDuration,
+        cardinality: ArgumentCardinality::RequiredScalar,
+    },
+    ParameterDefinition {
+        id: ParameterId::PREFIX,
+        domain: ParameterDomain::AnimationPrefix,
+        cardinality: ArgumentCardinality::OptionalScalar,
+    },
+];
+const ANIMATION_FPS: &[ParameterDefinition] = &[ParameterDefinition {
+    id: ParameterId::FPS,
+    domain: ParameterDomain::AnimationFps,
+    cardinality: ArgumentCardinality::RequiredScalar,
+}];
+const ANIMATION_STYLE: &[ParameterDefinition] = &[
+    ParameterDefinition {
+        id: ParameterId::STYLE,
+        domain: ParameterDomain::AnimationStyle,
+        cardinality: ArgumentCardinality::RequiredList,
+    },
+    ParameterDefinition {
+        id: ParameterId::PREFIX,
+        domain: ParameterDomain::AnimationPrefix,
+        cardinality: ArgumentCardinality::OptionalScalar,
+    },
+];
+
 const fn def(
     id: ActionId,
     kind: BuiltinActionKind,
@@ -871,12 +917,16 @@ impl BuiltinActionKind {
             Self::SetStackbarTabWidth => &configuration::SET_STACKBAR_TAB_WIDTH,
             Self::SetStackbarFontSize => &configuration::SET_STACKBAR_FONT_SIZE,
             Self::SetStackbarFontFamily => &configuration::SET_STACKBAR_FONT_FAMILY,
+            Self::SetAnimationEnabled => &configuration::SET_ANIMATION_ENABLED,
+            Self::SetAnimationDuration => &configuration::SET_ANIMATION_DURATION,
+            Self::SetAnimationFps => &configuration::SET_ANIMATION_FPS,
+            Self::SetAnimationStyle => &configuration::SET_ANIMATION_STYLE,
         }
     }
 }
 
 #[must_use]
-pub fn definitions() -> [&'static ActionDefinition; 134] {
+pub fn definitions() -> [&'static ActionDefinition; 138] {
     BuiltinActionKind::ALL.map(BuiltinActionKind::definition)
 }
 

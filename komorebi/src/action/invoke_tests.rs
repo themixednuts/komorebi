@@ -1,6 +1,8 @@
 use super::*;
 use crate::action::Pixels;
 use crate::action::id::WindowId;
+use crate::animation::prefix::AnimationPrefix;
+use crate::core::AnimationDuration;
 use crate::core::Axis;
 use crate::core::BorderImplementation;
 use crate::core::BorderOffset;
@@ -14,6 +16,7 @@ use crate::core::StackbarHeight;
 use crate::core::TransparencyAlpha;
 use crate::core::WindowKind;
 use komorebi_themes::colour::Rgb;
+use std::sync::Arc;
 
 fn invocation(sequence: u64) -> InvocationId {
     InvocationId::new(
@@ -405,6 +408,86 @@ fn stackbar_height_is_one_logical_transition_with_one_composite_native_effect() 
         .commit_prepared(prepared)
         .expect("stackbar height should commit");
     assert_eq!(state.snapshot().configuration.stackbar.height, height);
+}
+
+#[test]
+fn global_animation_setting_clears_scoped_overrides_and_plans_one_exact_effect() {
+    let mut state = live_state();
+    let animation = Arc::make_mut(&mut state.snapshot.configuration.animation);
+    animation.enabled.movement = Some(true);
+    animation.enabled.transparency = Some(true);
+    let request = InvokeAction {
+        invocation_id: invocation(18),
+        expected_state: stamp(10),
+        action: BuiltinAction::SetAnimationEnabled {
+            enabled: false,
+            prefix: None,
+        },
+        confirmation: None,
+    };
+
+    let ActionPreparation::Prepared(prepared) = state.prepare(&request, &context(), Instant::now())
+    else {
+        panic!("global animation setting should prepare");
+    };
+    assert_eq!(prepared.logical_result, ActionResult::AnimationEnabledSet);
+    assert_eq!(
+        prepared.effects,
+        vec![PlannedEffect {
+            id: EffectId::new(0),
+            effect: NativeEffect::SetAnimationEnabled {
+                enabled: false,
+                prefix: None,
+            },
+        }]
+    );
+
+    state
+        .commit_prepared(prepared)
+        .expect("global animation setting should commit");
+    let enabled = &state.snapshot().configuration.animation.enabled;
+    assert!(!enabled.global);
+    assert_eq!(enabled.movement, None);
+    assert_eq!(enabled.transparency, None);
+}
+
+#[test]
+fn scoped_animation_setting_changes_only_the_selected_override() {
+    let mut state = live_state();
+    let global = state.snapshot().configuration.animation.duration.global;
+    let duration = AnimationDuration::new(275);
+    let request = InvokeAction {
+        invocation_id: invocation(19),
+        expected_state: stamp(10),
+        action: BuiltinAction::SetAnimationDuration {
+            duration,
+            prefix: Some(AnimationPrefix::Movement),
+        },
+        confirmation: None,
+    };
+
+    let ActionPreparation::Prepared(prepared) = state.prepare(&request, &context(), Instant::now())
+    else {
+        panic!("scoped animation setting should prepare");
+    };
+    assert_eq!(
+        prepared.effects,
+        vec![PlannedEffect {
+            id: EffectId::new(0),
+            effect: NativeEffect::SetAnimationDuration {
+                duration,
+                prefix: Some(AnimationPrefix::Movement),
+            },
+        }]
+    );
+
+    state
+        .commit_prepared(prepared)
+        .expect("scoped animation setting should commit");
+    let configured = &state.snapshot().configuration.animation.duration;
+    assert_eq!(configured.global, global);
+    assert_eq!(configured.movement, Some(duration));
+    assert_eq!(configured.transparency, None);
 }
 
 #[test]

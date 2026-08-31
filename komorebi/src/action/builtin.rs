@@ -4,6 +4,10 @@ use thiserror::Error;
 
 use std::num::NonZeroUsize;
 
+use crate::animation::prefix::AnimationPrefix;
+use crate::core::AnimationDuration;
+use crate::core::AnimationFps;
+use crate::core::AnimationStyle;
 use crate::core::ApplicationIdentifier;
 use crate::core::Axis;
 use crate::core::BorderImplementation;
@@ -172,10 +176,14 @@ pub enum BuiltinActionKind {
     SetStackbarTabWidth,
     SetStackbarFontSize,
     SetStackbarFontFamily,
+    SetAnimationEnabled,
+    SetAnimationDuration,
+    SetAnimationFps,
+    SetAnimationStyle,
 }
 
 impl BuiltinActionKind {
-    pub const ALL: [Self; 134] = [
+    pub const ALL: [Self; 138] = [
         Self::FocusWindow,
         Self::MoveWindow,
         Self::ResizeWindow,
@@ -310,6 +318,10 @@ impl BuiltinActionKind {
         Self::SetStackbarTabWidth,
         Self::SetStackbarFontSize,
         Self::SetStackbarFontFamily,
+        Self::SetAnimationEnabled,
+        Self::SetAnimationDuration,
+        Self::SetAnimationFps,
+        Self::SetAnimationStyle,
     ];
 
     #[must_use]
@@ -457,6 +469,10 @@ impl BuiltinActionKind {
             Self::SetStackbarTabWidth => ActionId::SET_STACKBAR_TAB_WIDTH,
             Self::SetStackbarFontSize => ActionId::SET_STACKBAR_FONT_SIZE,
             Self::SetStackbarFontFamily => ActionId::SET_STACKBAR_FONT_FAMILY,
+            Self::SetAnimationEnabled => ActionId::SET_ANIMATION_ENABLED,
+            Self::SetAnimationDuration => ActionId::SET_ANIMATION_DURATION,
+            Self::SetAnimationFps => ActionId::SET_ANIMATION_FPS,
+            Self::SetAnimationStyle => ActionId::SET_ANIMATION_STYLE,
         }
     }
 }
@@ -922,6 +938,21 @@ pub enum BuiltinAction {
     SetStackbarFontFamily {
         family: Option<String>,
     },
+    SetAnimationEnabled {
+        enabled: bool,
+        prefix: Option<AnimationPrefix>,
+    },
+    SetAnimationDuration {
+        duration: AnimationDuration,
+        prefix: Option<AnimationPrefix>,
+    },
+    SetAnimationFps {
+        fps: AnimationFps,
+    },
+    SetAnimationStyle {
+        style: AnimationStyle,
+        prefix: Option<AnimationPrefix>,
+    },
 }
 
 impl BuiltinAction {
@@ -1114,6 +1145,10 @@ impl BuiltinAction {
             Self::SetStackbarTabWidth { .. } => BuiltinActionKind::SetStackbarTabWidth,
             Self::SetStackbarFontSize { .. } => BuiltinActionKind::SetStackbarFontSize,
             Self::SetStackbarFontFamily { .. } => BuiltinActionKind::SetStackbarFontFamily,
+            Self::SetAnimationEnabled { .. } => BuiltinActionKind::SetAnimationEnabled,
+            Self::SetAnimationDuration { .. } => BuiltinActionKind::SetAnimationDuration,
+            Self::SetAnimationFps { .. } => BuiltinActionKind::SetAnimationFps,
+            Self::SetAnimationStyle { .. } => BuiltinActionKind::SetAnimationStyle,
         }
     }
 }

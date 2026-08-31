@@ -228,5 +228,9 @@ pub(super) const fn policy(kind: BuiltinActionKind) -> OfferPolicy {
         | BuiltinActionKind::SetStackbarTabWidth
         | BuiltinActionKind::SetStackbarFontSize
         | BuiltinActionKind::SetStackbarFontFamily => AVAILABLE,
+        BuiltinActionKind::SetAnimationEnabled
+        | BuiltinActionKind::SetAnimationDuration
+        | BuiltinActionKind::SetAnimationFps
+        | BuiltinActionKind::SetAnimationStyle => AVAILABLE,
     }
 }

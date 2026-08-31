@@ -82,6 +82,10 @@ pub enum ParameterDomain {
     StackbarTabWidth = 34,
     StackbarFontSize = 35,
     StackbarFontFamily = 36,
+    AnimationPrefix = 37,
+    AnimationDuration = 38,
+    AnimationFps = 39,
+    AnimationStyle = 40,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

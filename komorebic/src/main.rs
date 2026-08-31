@@ -4,6 +4,7 @@
 
 mod action;
 
+use action::built_in_animation_style;
 use action::built_in_arguments;
 use action::built_in_axis;
 use action::built_in_border_implementation;
@@ -25,6 +26,7 @@ use action::built_in_text;
 use action::built_in_window_kind;
 use action::focused_window_arguments;
 use action::invoke_action;
+use action::scoped_animation_arguments;
 
 use chrono::Utc;
 use komorebi_client::PathExt;
@@ -36,6 +38,7 @@ use std::io;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::io::Write;
+use std::num::NonZeroU64;
 use std::num::NonZeroUsize;
 use std::path::PathBuf;
 use std::process::Command;
@@ -3691,25 +3694,43 @@ if (Get-Command Get-CimInstance -ErrorAction SilentlyContinue) {
             .await?;
         }
         SubCommand::Animation(args) => {
-            send_message(&SocketMessage::Animation(
-                args.boolean_state.into(),
-                args.animation_type,
-            ))?;
+            invoke_action(
+                BuiltInActionId::SetAnimationEnabled,
+                scoped_animation_arguments(
+                    BuiltInArgument::Enabled(args.boolean_state.into()),
+                    args.animation_type,
+                )?,
+            )
+            .await?;
         }
         SubCommand::AnimationDuration(args) => {
-            send_message(&SocketMessage::AnimationDuration(
-                args.duration,
-                args.animation_type,
-            ))?;
+            invoke_action(
+                BuiltInActionId::SetAnimationDuration,
+                scoped_animation_arguments(
+                    BuiltInArgument::Duration(args.duration),
+                    args.animation_type,
+                )?,
+            )
+            .await?;
         }
         SubCommand::AnimationFps(args) => {
-            send_message(&SocketMessage::AnimationFps(args.fps))?;
+            let fps = NonZeroU64::new(args.fps)
+                .ok_or_else(|| eyre::eyre!("animation FPS must be nonzero"))?;
+            invoke_action(
+                BuiltInActionId::SetAnimationFps,
+                built_in_arguments([BuiltInArgument::Fps(fps)])?,
+            )
+            .await?;
         }
         SubCommand::AnimationStyle(args) => {
-            send_message(&SocketMessage::AnimationStyle(
-                args.style,
-                args.animation_type,
-            ))?;
+            invoke_action(
+                BuiltInActionId::SetAnimationStyle,
+                scoped_animation_arguments(
+                    BuiltInArgument::AnimationStyle(built_in_animation_style(args.style)?),
+                    args.animation_type,
+                )?,
+            )
+            .await?;
         }
 
         SubCommand::ResizeStep(args) => {

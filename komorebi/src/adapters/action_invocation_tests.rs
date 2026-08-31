@@ -149,6 +149,12 @@ fn scalar(
         D::StackbarFontFamily => {
             protocol::ArgumentScalar::Text(protocol::BoundedText::new("Segoe UI")?)
         }
+        D::AnimationPrefix => {
+            protocol::ArgumentScalar::Choice(protocol::ChoiceId::parse("movement")?)
+        }
+        D::AnimationDuration => protocol::ArgumentScalar::Unsigned(250),
+        D::AnimationFps => protocol::ArgumentScalar::Unsigned(60),
+        D::AnimationStyle => protocol::ArgumentScalar::Choice(protocol::ChoiceId::parse("linear")?),
     })
 }
 
@@ -371,5 +377,73 @@ fn layout_ratios_are_accepted_exactly_or_rejected() -> Result<(), Box<dyn std::e
             ))
         ));
     }
+    Ok(())
+}
+
+#[test]
+fn animation_arguments_bind_exact_bezier_values_and_reject_zero_fps()
+-> Result<(), Box<dyn std::error::Error>> {
+    let catalog = catalog()?;
+    let style = protocol::ActionArgument::Scalars(protocol::ArgumentScalars::new([
+        protocol::ArgumentScalar::Decimal(protocol::FixedDecimal::new(25, 2)?),
+        protocol::ArgumentScalar::Decimal(protocol::FixedDecimal::new(-5, 1)?),
+        protocol::ArgumentScalar::Decimal(protocol::FixedDecimal::new(75, 2)?),
+        protocol::ArgumentScalar::Decimal(protocol::FixedDecimal::new(125, 2)?),
+    ])?);
+    let style_request = invocation(
+        &catalog,
+        BuiltinActionKind::SetAnimationStyle,
+        protocol::ActionArguments::new(BTreeMap::from([
+            (protocol::ParameterId::parse("style")?, style),
+            (
+                protocol::ParameterId::parse("prefix")?,
+                protocol::ActionArgument::Scalar(protocol::ArgumentScalar::Choice(
+                    protocol::ChoiceId::parse("movement")?,
+                )),
+            ),
+        ]))?,
+    )?;
+    let bound = action_invocation::bind(&catalog, &style_request)?;
+    let BuiltinAction::SetAnimationStyle { style, prefix } = bound.action else {
+        return Err("animation style bound to the wrong action".into());
+    };
+    assert_eq!(
+        style,
+        crate::core::AnimationStyle::CubicBezier(0.25, -0.5, 0.75, 1.25)
+    );
+    assert_eq!(
+        prefix,
+        Some(crate::animation::prefix::AnimationPrefix::Movement)
+    );
+
+    for named in protocol::BuiltInNamedAnimationStyle::ALL {
+        let arguments =
+            protocol::BuiltInArguments::new([protocol::BuiltInArgument::AnimationStyle(
+                protocol::BuiltInAnimationStyle::Named(*named),
+            )])?
+            .into_action_arguments();
+        let request = invocation(&catalog, BuiltinActionKind::SetAnimationStyle, arguments)?;
+        let bound = action_invocation::bind(&catalog, &request)
+            .map_err(|error| format!("animation style {named:?} did not bind: {error}"))?;
+        assert!(matches!(
+            bound.action,
+            BuiltinAction::SetAnimationStyle { .. }
+        ));
+    }
+
+    let fps_request = invocation(
+        &catalog,
+        BuiltinActionKind::SetAnimationFps,
+        protocol::ActionArguments::new(BTreeMap::from([(
+            protocol::ParameterId::parse("fps")?,
+            protocol::ActionArgument::Scalar(protocol::ArgumentScalar::Unsigned(0)),
+        )]))?,
+    )?;
+    assert!(matches!(
+        action_invocation::bind(&catalog, &fps_request),
+        Err(InvocationBindingError::Arguments(
+            action_invocation::ArgumentBindingError::Zero { .. }
+        ))
+    ));
     Ok(())
 }

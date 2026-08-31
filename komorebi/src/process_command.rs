@@ -37,13 +37,6 @@ use crate::WORKSPACE_MATCHING_RULES;
 use crate::adapters::socket_message::SocketMessageClass;
 use crate::adapters::socket_message::adapt_action;
 use crate::adapters::socket_message::classify;
-use crate::animation::ANIMATION_DURATION_GLOBAL;
-use crate::animation::ANIMATION_DURATION_PER_ANIMATION;
-use crate::animation::ANIMATION_ENABLED_GLOBAL;
-use crate::animation::ANIMATION_ENABLED_PER_ANIMATION;
-use crate::animation::ANIMATION_FPS;
-use crate::animation::ANIMATION_STYLE_GLOBAL;
-use crate::animation::ANIMATION_STYLE_PER_ANIMATION;
 use crate::border_manager;
 use crate::build;
 use crate::config_generation::WorkspaceMatchingRule;
@@ -895,41 +888,6 @@ if (!(Get-Process komorebi-bar -ErrorAction SilentlyContinue))
                 SocketMessage::RemoveSubscriberPipe(ref subscriber) => {
                     SUBSCRIBERS.lock().remove_pipe(subscriber);
                 }
-                SocketMessage::Animation(enable, prefix) => match prefix {
-                    Some(prefix) => {
-                        ANIMATION_ENABLED_PER_ANIMATION
-                            .lock()
-                            .insert(prefix, enable);
-                    }
-                    None => {
-                        ANIMATION_ENABLED_GLOBAL.store(enable, Ordering::SeqCst);
-                        ANIMATION_ENABLED_PER_ANIMATION.lock().clear();
-                    }
-                },
-                SocketMessage::AnimationDuration(duration, prefix) => match prefix {
-                    Some(prefix) => {
-                        ANIMATION_DURATION_PER_ANIMATION
-                            .lock()
-                            .insert(prefix, duration);
-                    }
-                    None => {
-                        ANIMATION_DURATION_GLOBAL.store(duration, Ordering::SeqCst);
-                        ANIMATION_DURATION_PER_ANIMATION.lock().clear();
-                    }
-                },
-                SocketMessage::AnimationFps(fps) => {
-                    ANIMATION_FPS.store(fps, Ordering::SeqCst);
-                }
-                SocketMessage::AnimationStyle(style, prefix) => match prefix {
-                    Some(prefix) => {
-                        ANIMATION_STYLE_PER_ANIMATION.lock().insert(prefix, style);
-                    }
-                    None => {
-                        let mut animation_style = ANIMATION_STYLE_GLOBAL.lock();
-                        *animation_style = style;
-                        ANIMATION_STYLE_PER_ANIMATION.lock().clear();
-                    }
-                },
                 SocketMessage::ApplicationSpecificConfigurationSchema => {
                     #[cfg(feature = "schemars")]
                     {

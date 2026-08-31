@@ -296,6 +296,12 @@ const fn project_parameter_domain(value: definition::ParameterDomain) -> protoco
         definition::ParameterDomain::StackbarFontFamily => {
             protocol::ParameterDomain::StackbarFontFamily
         }
+        definition::ParameterDomain::AnimationPrefix => protocol::ParameterDomain::AnimationPrefix,
+        definition::ParameterDomain::AnimationDuration => {
+            protocol::ParameterDomain::AnimationDuration
+        }
+        definition::ParameterDomain::AnimationFps => protocol::ParameterDomain::AnimationFps,
+        definition::ParameterDomain::AnimationStyle => protocol::ParameterDomain::AnimationStyle,
     }
 }
 

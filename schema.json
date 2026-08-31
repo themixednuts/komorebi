@@ -792,7 +792,7 @@
           ],
           "format": "uint64",
           "default": 60,
-          "minimum": 0
+          "minimum": 1
         },
         "ghost_movement": {
           "description": "Render movement animations on a GPU-composited ghost surface (recommended).\nWhen false, falls back to the legacy per-frame MoveWindow path.",

@@ -83,6 +83,9 @@ known_ids! {
     TabWidth => "tab-width",
     FontSize => "font-size",
     FontFamily => "font-family",
+    Prefix => "prefix",
+    Duration => "duration",
+    Fps => "fps",
 }
 
 known_ids! {
@@ -220,6 +223,63 @@ known_ids! {
 }
 
 known_ids! {
+    BuiltInAnimationPrefix, ChoiceId,
+    Movement => "movement",
+    Transparency => "transparency",
+}
+
+known_ids! {
+    BuiltInNamedAnimationStyle, ChoiceId,
+    Linear => "linear",
+    EaseInSine => "ease-in-sine",
+    EaseOutSine => "ease-out-sine",
+    EaseInOutSine => "ease-in-out-sine",
+    EaseInQuad => "ease-in-quad",
+    EaseOutQuad => "ease-out-quad",
+    EaseInOutQuad => "ease-in-out-quad",
+    EaseInCubic => "ease-in-cubic",
+    EaseOutCubic => "ease-out-cubic",
+    EaseInOutCubic => "ease-in-out-cubic",
+    EaseInQuart => "ease-in-quart",
+    EaseOutQuart => "ease-out-quart",
+    EaseInOutQuart => "ease-in-out-quart",
+    EaseInQuint => "ease-in-quint",
+    EaseOutQuint => "ease-out-quint",
+    EaseInOutQuint => "ease-in-out-quint",
+    EaseInExpo => "ease-in-expo",
+    EaseOutExpo => "ease-out-expo",
+    EaseInOutExpo => "ease-in-out-expo",
+    EaseInCirc => "ease-in-circ",
+    EaseOutCirc => "ease-out-circ",
+    EaseInOutCirc => "ease-in-out-circ",
+    EaseInBack => "ease-in-back",
+    EaseOutBack => "ease-out-back",
+    EaseInOutBack => "ease-in-out-back",
+    EaseInElastic => "ease-in-elastic",
+    EaseOutElastic => "ease-out-elastic",
+    EaseInOutElastic => "ease-in-out-elastic",
+    EaseInBounce => "ease-in-bounce",
+    EaseOutBounce => "ease-out-bounce",
+    EaseInOutBounce => "ease-in-out-bounce",
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum BuiltInAnimationStyle {
+    Named(BuiltInNamedAnimationStyle),
+    CubicBezier([FixedDecimal; 4]),
+}
+
+impl BuiltInAnimationStyle {
+    fn try_into_scalars(self) -> Result<ArgumentScalars, ArgumentError> {
+        let values: Box<[ArgumentScalar]> = match self {
+            Self::Named(style) => [ArgumentScalar::Choice(style.into_wire())].into(),
+            Self::CubicBezier(points) => points.map(ArgumentScalar::Decimal).into_iter().collect(),
+        };
+        ArgumentScalars::new(values)
+    }
+}
+
+known_ids! {
     BuiltInIdentifier, ChoiceId,
     Exe => "exe",
     Class => "class",
@@ -316,14 +376,18 @@ pub enum BuiltInArgument {
     TabWidth(i32),
     FontSize(i32),
     FontFamily(BoundedText),
+    AnimationPrefix(BuiltInAnimationPrefix),
+    Duration(u64),
+    Fps(NonZeroU64),
+    AnimationStyle(BuiltInAnimationStyle),
 }
 
 impl BuiltInArgument {
-    fn encode(self) -> (BuiltInParameterId, ActionArgument) {
+    fn encode(self) -> Result<(BuiltInParameterId, ActionArgument), ArgumentError> {
         use ActionArgument::Scalar;
         use ArgumentScalar as S;
 
-        match self {
+        Ok(match self {
             Self::Direction(value) => choice(BuiltInParameterId::Direction, value.into_wire()),
             Self::Axis(value) => choice(BuiltInParameterId::Axis, value.into_wire()),
             Self::Delta(value) => signed(BuiltInParameterId::Delta, value.get()),
@@ -391,7 +455,14 @@ impl BuiltInArgument {
             Self::TabWidth(value) => signed(BuiltInParameterId::TabWidth, value),
             Self::FontSize(value) => signed(BuiltInParameterId::FontSize, value),
             Self::FontFamily(value) => (BuiltInParameterId::FontFamily, Scalar(S::Text(value))),
-        }
+            Self::AnimationPrefix(value) => choice(BuiltInParameterId::Prefix, value.into_wire()),
+            Self::Duration(value) => (BuiltInParameterId::Duration, Scalar(S::Unsigned(value))),
+            Self::Fps(value) => (BuiltInParameterId::Fps, Scalar(S::Unsigned(value.get()))),
+            Self::AnimationStyle(value) => (
+                BuiltInParameterId::Style,
+                ActionArgument::Scalars(value.try_into_scalars()?),
+            ),
+        })
     }
 }
 
@@ -432,7 +503,7 @@ impl BuiltInArguments {
     ) -> Result<Self, BuiltInArgumentsError> {
         let mut values = BTreeMap::new();
         for argument in arguments {
-            let (id, value) = argument.encode();
+            let (id, value) = argument.encode()?;
             if values.insert(id.into_wire(), value).is_some() {
                 return Err(BuiltInArgumentsError::Duplicate(id));
             }
@@ -564,6 +635,27 @@ mod tests {
         assert!(matches!(
             arguments.values().get(&ParameterId::parse("offset")?),
             Some(ActionArgument::Scalar(ArgumentScalar::Signed(50)))
+        ));
+        Ok(())
+    }
+
+    #[test]
+    fn animation_style_preserves_exact_cubic_bezier_coordinates()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let points = [
+            FixedDecimal::new(25, 2)?,
+            FixedDecimal::new(-5, 1)?,
+            FixedDecimal::new(75, 2)?,
+            FixedDecimal::new(125, 2)?,
+        ];
+        let arguments = BuiltInArguments::new([BuiltInArgument::AnimationStyle(
+            BuiltInAnimationStyle::CubicBezier(points),
+        )])?
+        .into_action_arguments();
+        assert!(matches!(
+            arguments.values().get(&ParameterId::parse("style")?),
+            Some(ActionArgument::Scalars(values))
+                if values.values() == points.map(ArgumentScalar::Decimal)
         ));
         Ok(())
     }

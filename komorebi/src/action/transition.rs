@@ -169,6 +169,10 @@ pub(super) fn directional_gap(
         | BuiltinAction::SetStackbarTabWidth { .. }
         | BuiltinAction::SetStackbarFontSize { .. }
         | BuiltinAction::SetStackbarFontFamily { .. }
+        | BuiltinAction::SetAnimationEnabled { .. }
+        | BuiltinAction::SetAnimationDuration { .. }
+        | BuiltinAction::SetAnimationFps { .. }
+        | BuiltinAction::SetAnimationStyle { .. }
         | BuiltinAction::SetWorkspaceLayout { .. }
         | BuiltinAction::ToggleWindowFloat { .. }
         | BuiltinAction::CycleFocusWindow { .. }
@@ -333,6 +337,24 @@ pub(super) fn apply_logical(snapshot: &mut ActionSnapshot, action: &BuiltinActio
         }
         BuiltinAction::SetStackbarFontFamily { family } => {
             snapshot.configuration.stackbar.font_family = family.map(String::into_boxed_str);
+        }
+        BuiltinAction::SetAnimationEnabled { enabled, prefix } => {
+            std::sync::Arc::make_mut(&mut snapshot.configuration.animation)
+                .enabled
+                .set(prefix, enabled);
+        }
+        BuiltinAction::SetAnimationDuration { duration, prefix } => {
+            std::sync::Arc::make_mut(&mut snapshot.configuration.animation)
+                .duration
+                .set(prefix, duration);
+        }
+        BuiltinAction::SetAnimationFps { fps } => {
+            std::sync::Arc::make_mut(&mut snapshot.configuration.animation).fps = fps;
+        }
+        BuiltinAction::SetAnimationStyle { style, prefix } => {
+            std::sync::Arc::make_mut(&mut snapshot.configuration.animation)
+                .style
+                .set(prefix, style.into());
         }
         BuiltinAction::ToggleWindowFloat { .. } => {
             snapshot.focused_window_floating = !snapshot.focused_window_floating;
@@ -500,6 +522,10 @@ pub(super) fn logical_result(action: &BuiltinAction, snapshot: &ActionSnapshot) 
         BuiltinAction::SetStackbarTabWidth { .. } => ActionResult::StackbarTabWidthSet,
         BuiltinAction::SetStackbarFontSize { .. } => ActionResult::StackbarFontSizeSet,
         BuiltinAction::SetStackbarFontFamily { .. } => ActionResult::StackbarFontFamilySet,
+        BuiltinAction::SetAnimationEnabled { .. } => ActionResult::AnimationEnabledSet,
+        BuiltinAction::SetAnimationDuration { .. } => ActionResult::AnimationDurationSet,
+        BuiltinAction::SetAnimationFps { .. } => ActionResult::AnimationFpsSet,
+        BuiltinAction::SetAnimationStyle { .. } => ActionResult::AnimationStyleSet,
         BuiltinAction::SetWorkspaceLayout { layout, .. } => ActionResult::LayoutSet { layout },
         BuiltinAction::ToggleWindowFloat { .. } => ActionResult::FloatToggled {
             floating: snapshot.focused_window_floating,
@@ -832,6 +858,16 @@ pub(super) fn effects(action: &BuiltinAction, snapshot: &ActionSnapshot) -> Vec<
         }
         BuiltinAction::SetStackbarFontFamily { family } => {
             vec![NativeEffect::SetStackbarFontFamily { family }]
+        }
+        BuiltinAction::SetAnimationEnabled { enabled, prefix } => {
+            vec![NativeEffect::SetAnimationEnabled { enabled, prefix }]
+        }
+        BuiltinAction::SetAnimationDuration { duration, prefix } => {
+            vec![NativeEffect::SetAnimationDuration { duration, prefix }]
+        }
+        BuiltinAction::SetAnimationFps { fps } => vec![NativeEffect::SetAnimationFps { fps }],
+        BuiltinAction::SetAnimationStyle { style, prefix } => {
+            vec![NativeEffect::SetAnimationStyle { style, prefix }]
         }
         BuiltinAction::SetWorkspaceLayout { layout, .. } => {
             vec![NativeEffect::SetLayout { layout }]

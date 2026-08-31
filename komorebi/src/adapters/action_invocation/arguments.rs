@@ -11,6 +11,9 @@ use crate::action::WorkspaceSelector;
 use crate::action::definition::ActionDefinition;
 use crate::action::definition::ArgumentCardinality;
 use crate::action::id::ParameterId;
+use crate::animation::prefix::AnimationPrefix;
+use crate::core::AnimationFps;
+use crate::core::AnimationStyle;
 use crate::core::ApplicationIdentifier;
 use crate::core::Axis;
 use crate::core::BorderImplementation;
@@ -92,6 +95,13 @@ impl<'a> ValidatedArguments<'a> {
         match self.scalar(id)? {
             protocol::ArgumentScalar::Unsigned(value) => usize::try_from(*value)
                 .map_err(|_| ArgumentBindingError::OutsideUsize { parameter: id }),
+            _ => Err(wrong_scalar(id, ScalarKind::Unsigned)),
+        }
+    }
+
+    pub(super) fn u64(&self, id: ParameterId) -> Result<u64, ArgumentBindingError> {
+        match self.scalar(id)? {
+            protocol::ArgumentScalar::Unsigned(value) => Ok(*value),
             _ => Err(wrong_scalar(id, ScalarKind::Unsigned)),
         }
     }
@@ -389,6 +399,55 @@ impl<'a> ValidatedArguments<'a> {
         }
     }
 
+    pub(super) fn animation_prefix(
+        &self,
+        id: ParameterId,
+    ) -> Result<Option<AnimationPrefix>, ArgumentBindingError> {
+        match find(self.values, id) {
+            Some(protocol::ActionArgument::Scalar(protocol::ArgumentScalar::Choice(value))) => {
+                match value.as_str() {
+                    "movement" => Ok(Some(AnimationPrefix::Movement)),
+                    "transparency" => Ok(Some(AnimationPrefix::Transparency)),
+                    value => Err(unknown_choice(id, value)),
+                }
+            }
+            Some(protocol::ActionArgument::Scalar(_)) => Err(wrong_scalar(id, ScalarKind::Choice)),
+            Some(protocol::ActionArgument::Scalars(_)) => {
+                Err(wrong_cardinality(id, ArgumentCardinality::OptionalScalar))
+            }
+            None => Ok(None),
+        }
+    }
+
+    pub(super) fn animation_fps(
+        &self,
+        id: ParameterId,
+    ) -> Result<AnimationFps, ArgumentBindingError> {
+        AnimationFps::new(self.u64(id)?).map_err(|_| ArgumentBindingError::Zero { parameter: id })
+    }
+
+    pub(super) fn animation_style(
+        &self,
+        id: ParameterId,
+    ) -> Result<AnimationStyle, ArgumentBindingError> {
+        let values = self.list(id)?;
+        match values {
+            [protocol::ArgumentScalar::Choice(value)] => named_animation_style(id, value.as_str()),
+            [
+                protocol::ArgumentScalar::Decimal(x1),
+                protocol::ArgumentScalar::Decimal(y1),
+                protocol::ArgumentScalar::Decimal(x2),
+                protocol::ArgumentScalar::Decimal(y2),
+            ] => Ok(AnimationStyle::CubicBezier(
+                decimal_f64(*x1),
+                decimal_f64(*y1),
+                decimal_f64(*x2),
+                decimal_f64(*y2),
+            )),
+            _ => Err(ArgumentBindingError::InvalidAnimationStyle { parameter: id }),
+        }
+    }
+
     pub(super) fn application_identifier(
         &self,
         id: ParameterId,
@@ -448,6 +507,50 @@ fn find(values: &protocol::ActionArguments, id: ParameterId) -> Option<&protocol
         .iter()
         .find(|(candidate, _)| candidate.as_str() == id.as_str())
         .map(|(_, value)| value)
+}
+
+fn decimal_f64(value: protocol::FixedDecimal) -> f64 {
+    value.coefficient() as f64 / 10_f64.powi(i32::from(value.scale()))
+}
+
+fn named_animation_style(
+    parameter: ParameterId,
+    value: &str,
+) -> Result<AnimationStyle, ArgumentBindingError> {
+    Ok(match value {
+        "linear" => AnimationStyle::Linear,
+        "ease-in-sine" => AnimationStyle::EaseInSine,
+        "ease-out-sine" => AnimationStyle::EaseOutSine,
+        "ease-in-out-sine" => AnimationStyle::EaseInOutSine,
+        "ease-in-quad" => AnimationStyle::EaseInQuad,
+        "ease-out-quad" => AnimationStyle::EaseOutQuad,
+        "ease-in-out-quad" => AnimationStyle::EaseInOutQuad,
+        "ease-in-cubic" => AnimationStyle::EaseInCubic,
+        "ease-out-cubic" => AnimationStyle::EaseOutCubic,
+        "ease-in-out-cubic" => AnimationStyle::EaseInOutCubic,
+        "ease-in-quart" => AnimationStyle::EaseInQuart,
+        "ease-out-quart" => AnimationStyle::EaseOutQuart,
+        "ease-in-out-quart" => AnimationStyle::EaseInOutQuart,
+        "ease-in-quint" => AnimationStyle::EaseInQuint,
+        "ease-out-quint" => AnimationStyle::EaseOutQuint,
+        "ease-in-out-quint" => AnimationStyle::EaseInOutQuint,
+        "ease-in-expo" => AnimationStyle::EaseInExpo,
+        "ease-out-expo" => AnimationStyle::EaseOutExpo,
+        "ease-in-out-expo" => AnimationStyle::EaseInOutExpo,
+        "ease-in-circ" => AnimationStyle::EaseInCirc,
+        "ease-out-circ" => AnimationStyle::EaseOutCirc,
+        "ease-in-out-circ" => AnimationStyle::EaseInOutCirc,
+        "ease-in-back" => AnimationStyle::EaseInBack,
+        "ease-out-back" => AnimationStyle::EaseOutBack,
+        "ease-in-out-back" => AnimationStyle::EaseInOutBack,
+        "ease-in-elastic" => AnimationStyle::EaseInElastic,
+        "ease-out-elastic" => AnimationStyle::EaseOutElastic,
+        "ease-in-out-elastic" => AnimationStyle::EaseInOutElastic,
+        "ease-in-bounce" => AnimationStyle::EaseInBounce,
+        "ease-out-bounce" => AnimationStyle::EaseOutBounce,
+        "ease-in-out-bounce" => AnimationStyle::EaseInOutBounce,
+        value => return Err(unknown_choice(parameter, value)),
+    })
 }
 
 const RATIO_SCALE: u32 = 18;
@@ -571,6 +674,10 @@ pub enum ArgumentBindingError {
         "parameter {parameter} must contain at most five ratios in [0.1, 0.9] whose sum is below 1"
     )]
     InvalidRatio { parameter: ParameterId },
+    #[error(
+        "parameter {parameter} must contain one named animation style or four exact decimal bezier coordinates"
+    )]
+    InvalidAnimationStyle { parameter: ParameterId },
     #[error("parameter {parameter} is not a valid lossless Windows path: {source}")]
     WindowsPath {
         parameter: ParameterId,

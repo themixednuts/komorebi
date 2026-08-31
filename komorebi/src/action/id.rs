@@ -153,6 +153,10 @@ impl ActionId {
     pub const SET_STACKBAR_TAB_WIDTH: Self = Self("set-stackbar-tab-width");
     pub const SET_STACKBAR_FONT_SIZE: Self = Self("set-stackbar-font-size");
     pub const SET_STACKBAR_FONT_FAMILY: Self = Self("set-stackbar-font-family");
+    pub const SET_ANIMATION_ENABLED: Self = Self("set-animation-enabled");
+    pub const SET_ANIMATION_DURATION: Self = Self("set-animation-duration");
+    pub const SET_ANIMATION_FPS: Self = Self("set-animation-fps");
+    pub const SET_ANIMATION_STYLE: Self = Self("set-animation-style");
 
     #[must_use]
     pub const fn as_str(self) -> &'static str {
@@ -212,8 +216,11 @@ impl ParameterId {
     pub const TAB_WIDTH: Self = Self("tab-width");
     pub const FONT_SIZE: Self = Self("font-size");
     pub const FONT_FAMILY: Self = Self("font-family");
+    pub const PREFIX: Self = Self("prefix");
+    pub const DURATION: Self = Self("duration");
+    pub const FPS: Self = Self("fps");
 
-    pub const ALL: [Self; 41] = [
+    pub const ALL: [Self; 44] = [
         Self::DIRECTION,
         Self::AXIS,
         Self::DELTA,
@@ -255,6 +262,9 @@ impl ParameterId {
         Self::TAB_WIDTH,
         Self::FONT_SIZE,
         Self::FONT_FAMILY,
+        Self::PREFIX,
+        Self::DURATION,
+        Self::FPS,
     ];
 
     #[must_use]

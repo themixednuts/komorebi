@@ -7,9 +7,9 @@ use std::time::Duration;
 use std::time::Instant;
 
 use super::ANIMATION_DURATION_GLOBAL;
-use super::ANIMATION_FPS;
 use super::ANIMATION_MANAGER;
 use super::RenderDispatcher;
+use super::animation_fps;
 
 #[derive(Debug, Default, Clone, Copy, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
@@ -72,8 +72,7 @@ impl AnimationEngine {
 
             ANIMATION_MANAGER.lock().start(animation_key.as_str());
 
-            let target_frame_time =
-                Duration::from_millis(1000 / ANIMATION_FPS.load(Ordering::Relaxed));
+            let target_frame_time = Duration::from_millis(1000 / animation_fps().get());
             let mut progress = 0.0;
             let animation_start = Instant::now();
 

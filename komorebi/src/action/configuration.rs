@@ -1,4 +1,14 @@
 use crate::DEFAULT_RESIZE_STEP;
+use std::sync::Arc;
+
+use crate::animation::DEFAULT_ANIMATION_DURATION;
+use crate::animation::DEFAULT_ANIMATION_ENABLED;
+use crate::animation::DEFAULT_ANIMATION_STYLE;
+use crate::animation::default_animation_fps;
+use crate::animation::prefix::AnimationPrefix;
+use crate::core::AnimationDuration;
+use crate::core::AnimationFps;
+use crate::core::AnimationStyle;
 use crate::core::BorderImplementation;
 use crate::core::BorderOffset;
 use crate::core::BorderStyle;
@@ -24,6 +34,7 @@ pub struct ConfigurationSnapshot {
     pub border: BorderConfiguration,
     pub transparency: TransparencyConfiguration,
     pub stackbar: StackbarConfiguration,
+    pub animation: Arc<AnimationConfiguration>,
 }
 
 impl Default for ConfigurationSnapshot {
@@ -33,6 +44,74 @@ impl Default for ConfigurationSnapshot {
             border: BorderConfiguration::default(),
             transparency: TransparencyConfiguration::default(),
             stackbar: StackbarConfiguration::default(),
+            animation: Arc::new(AnimationConfiguration::default()),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct AnimationConfiguration {
+    pub enabled: ScopedAnimationValue<bool>,
+    pub duration: ScopedAnimationValue<AnimationDuration>,
+    pub style: ScopedAnimationValue<AnimationStyleSnapshot>,
+    pub fps: AnimationFps,
+}
+
+impl Default for AnimationConfiguration {
+    fn default() -> Self {
+        Self {
+            enabled: ScopedAnimationValue::global(DEFAULT_ANIMATION_ENABLED),
+            duration: ScopedAnimationValue::global(AnimationDuration::new(
+                DEFAULT_ANIMATION_DURATION,
+            )),
+            style: ScopedAnimationValue::global(DEFAULT_ANIMATION_STYLE.into()),
+            fps: default_animation_fps(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ScopedAnimationValue<T> {
+    pub global: T,
+    pub movement: Option<T>,
+    pub transparency: Option<T>,
+}
+
+impl<T> ScopedAnimationValue<T> {
+    pub const fn global(value: T) -> Self {
+        Self {
+            global: value,
+            movement: None,
+            transparency: None,
+        }
+    }
+
+    pub fn set(&mut self, prefix: Option<AnimationPrefix>, value: T) {
+        match prefix {
+            Some(AnimationPrefix::Movement) => self.movement = Some(value),
+            Some(AnimationPrefix::Transparency) => self.transparency = Some(value),
+            None => {
+                self.global = value;
+                self.movement = None;
+                self.transparency = None;
+            }
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum AnimationStyleSnapshot {
+    Named(Box<str>),
+    CubicBezier([u64; 4]),
+}
+
+impl From<AnimationStyle> for AnimationStyleSnapshot {
+    fn from(value: AnimationStyle) -> Self {
+        match value {
+            AnimationStyle::CubicBezier(x1, y1, x2, y2) => {
+                Self::CubicBezier([x1.to_bits(), y1.to_bits(), x2.to_bits(), y2.to_bits()])
+            }
+            named => Self::Named(named.to_string().into_boxed_str()),
         }
     }
 }

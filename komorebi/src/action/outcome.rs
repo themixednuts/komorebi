@@ -1,5 +1,9 @@
 use std::num::NonZeroUsize;
 
+use crate::animation::prefix::AnimationPrefix;
+use crate::core::AnimationDuration;
+use crate::core::AnimationFps;
+use crate::core::AnimationStyle;
 use crate::core::ApplicationIdentifier;
 use crate::core::Axis;
 use crate::core::BorderImplementation;
@@ -85,6 +89,10 @@ pub enum ActionResult {
     StackbarTabWidthSet,
     StackbarFontSizeSet,
     StackbarFontFamilySet,
+    AnimationEnabledSet,
+    AnimationDurationSet,
+    AnimationFpsSet,
+    AnimationStyleSet,
     LayoutSet {
         layout: DefaultLayout,
     },
@@ -426,6 +434,21 @@ pub enum NativeEffect {
     },
     SetStackbarFontFamily {
         family: Option<String>,
+    },
+    SetAnimationEnabled {
+        enabled: bool,
+        prefix: Option<AnimationPrefix>,
+    },
+    SetAnimationDuration {
+        duration: AnimationDuration,
+        prefix: Option<AnimationPrefix>,
+    },
+    SetAnimationFps {
+        fps: AnimationFps,
+    },
+    SetAnimationStyle {
+        style: AnimationStyle,
+        prefix: Option<AnimationPrefix>,
     },
     SetLayout {
         layout: DefaultLayout,

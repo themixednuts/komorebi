@@ -5,6 +5,8 @@ use std::path::Path;
 
 use color_eyre::eyre;
 use color_eyre::eyre::OptionExt;
+use komorebi_client::AnimationPrefix;
+use komorebi_client::AnimationStyle;
 use komorebi_client::ApplicationIdentifier;
 use komorebi_client::Axis;
 use komorebi_client::BorderImplementation;
@@ -22,6 +24,8 @@ use komorebi_client::StackbarMode;
 use komorebi_client::WindowKind;
 use komorebi_client::command::BoundedText;
 use komorebi_client::command::BuiltInActionId;
+use komorebi_client::command::BuiltInAnimationPrefix;
+use komorebi_client::command::BuiltInAnimationStyle;
 use komorebi_client::command::BuiltInArgument;
 use komorebi_client::command::BuiltInArguments;
 use komorebi_client::command::BuiltInAxis;
@@ -35,6 +39,7 @@ use komorebi_client::command::BuiltInImplementation;
 use komorebi_client::command::BuiltInLayout;
 use komorebi_client::command::BuiltInMonocleBehaviour;
 use komorebi_client::command::BuiltInMoveBehaviour;
+use komorebi_client::command::BuiltInNamedAnimationStyle;
 use komorebi_client::command::BuiltInOperationBehaviour;
 use komorebi_client::command::BuiltInSelector;
 use komorebi_client::command::BuiltInSizing;
@@ -67,6 +72,72 @@ pub(super) fn built_in_arguments<const N: usize>(
     arguments: [BuiltInArgument; N],
 ) -> eyre::Result<BuiltInArguments> {
     Ok(BuiltInArguments::new(arguments)?)
+}
+
+pub(super) fn scoped_animation_arguments(
+    value: BuiltInArgument,
+    prefix: Option<AnimationPrefix>,
+) -> eyre::Result<BuiltInArguments> {
+    let mut arguments = vec![value];
+    if let Some(prefix) = prefix {
+        arguments.push(BuiltInArgument::AnimationPrefix(built_in_animation_prefix(
+            prefix,
+        )));
+    }
+    Ok(BuiltInArguments::new(arguments)?)
+}
+
+pub(super) const fn built_in_animation_prefix(value: AnimationPrefix) -> BuiltInAnimationPrefix {
+    match value {
+        AnimationPrefix::Movement => BuiltInAnimationPrefix::Movement,
+        AnimationPrefix::Transparency => BuiltInAnimationPrefix::Transparency,
+    }
+}
+
+pub(super) fn built_in_animation_style(
+    value: AnimationStyle,
+) -> eyre::Result<BuiltInAnimationStyle> {
+    use BuiltInNamedAnimationStyle as S;
+
+    let style = match value {
+        AnimationStyle::Linear => S::Linear,
+        AnimationStyle::EaseInSine => S::EaseInSine,
+        AnimationStyle::EaseOutSine => S::EaseOutSine,
+        AnimationStyle::EaseInOutSine => S::EaseInOutSine,
+        AnimationStyle::EaseInQuad => S::EaseInQuad,
+        AnimationStyle::EaseOutQuad => S::EaseOutQuad,
+        AnimationStyle::EaseInOutQuad => S::EaseInOutQuad,
+        AnimationStyle::EaseInCubic => S::EaseInCubic,
+        AnimationStyle::EaseOutCubic => S::EaseOutCubic,
+        AnimationStyle::EaseInOutCubic => S::EaseInOutCubic,
+        AnimationStyle::EaseInQuart => S::EaseInQuart,
+        AnimationStyle::EaseOutQuart => S::EaseOutQuart,
+        AnimationStyle::EaseInOutQuart => S::EaseInOutQuart,
+        AnimationStyle::EaseInQuint => S::EaseInQuint,
+        AnimationStyle::EaseOutQuint => S::EaseOutQuint,
+        AnimationStyle::EaseInOutQuint => S::EaseInOutQuint,
+        AnimationStyle::EaseInExpo => S::EaseInExpo,
+        AnimationStyle::EaseOutExpo => S::EaseOutExpo,
+        AnimationStyle::EaseInOutExpo => S::EaseInOutExpo,
+        AnimationStyle::EaseInCirc => S::EaseInCirc,
+        AnimationStyle::EaseOutCirc => S::EaseOutCirc,
+        AnimationStyle::EaseInOutCirc => S::EaseInOutCirc,
+        AnimationStyle::EaseInBack => S::EaseInBack,
+        AnimationStyle::EaseOutBack => S::EaseOutBack,
+        AnimationStyle::EaseInOutBack => S::EaseInOutBack,
+        AnimationStyle::EaseInElastic => S::EaseInElastic,
+        AnimationStyle::EaseOutElastic => S::EaseOutElastic,
+        AnimationStyle::EaseInOutElastic => S::EaseInOutElastic,
+        AnimationStyle::EaseInBounce => S::EaseInBounce,
+        AnimationStyle::EaseOutBounce => S::EaseOutBounce,
+        AnimationStyle::EaseInOutBounce => S::EaseInOutBounce,
+        AnimationStyle::CubicBezier(..) => {
+            eyre::bail!(
+                "the CLI accepts named animation styles; exact cubic bezier values are available through the typed action API"
+            )
+        }
+    };
+    Ok(BuiltInAnimationStyle::Named(style))
 }
 
 pub(super) fn focused_window_arguments() -> eyre::Result<BuiltInArguments> {

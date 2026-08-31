@@ -140,8 +140,8 @@ pub const SET_BORDER_IMPLEMENTATION: ActionDefinition = ActionDefinition {
     undo: UndoPolicy::None,
 };
 
-macro_rules! stackbar_definition {
-    ($name:ident, $kind:ident, $title:literal, $description:literal, $parameters:ident) => {
+macro_rules! configuration_definition {
+    ($name:ident, $kind:ident, $title:literal, $description:literal, $parameters:ident, $keyword:literal) => {
         pub const $name: ActionDefinition = ActionDefinition {
             id: ActionId::$name,
             schema_version: ActionSchemaVersion::V1,
@@ -149,7 +149,7 @@ macro_rules! stackbar_definition {
             category: ActionCategory::Configuration,
             title: $title,
             description: $description,
-            keywords: &["stackbar", "configuration"],
+            keywords: &[$keyword, "configuration"],
             parameters: $parameters,
             permitted_uses: BOTH_USES,
             confirmation: ConfirmationPolicy::None,
@@ -158,66 +158,107 @@ macro_rules! stackbar_definition {
     };
 }
 
-stackbar_definition!(
+configuration_definition!(
     SET_STACKBAR_MODE,
     SetStackbarMode,
     "Set stackbar mode",
     "Choose when stackbars are displayed",
-    STACKBAR_MODE
+    STACKBAR_MODE,
+    "stackbar"
 );
-stackbar_definition!(
+configuration_definition!(
+    SET_ANIMATION_ENABLED,
+    SetAnimationEnabled,
+    "Set animations enabled",
+    "Enable or disable animations globally or for one animation kind",
+    ANIMATION_ENABLED,
+    "animation"
+);
+configuration_definition!(
+    SET_ANIMATION_DURATION,
+    SetAnimationDuration,
+    "Set animation duration",
+    "Set animation duration globally or for one animation kind",
+    ANIMATION_DURATION,
+    "animation"
+);
+configuration_definition!(
+    SET_ANIMATION_FPS,
+    SetAnimationFps,
+    "Set animation FPS",
+    "Set the nonzero animation frame rate",
+    ANIMATION_FPS,
+    "animation"
+);
+configuration_definition!(
+    SET_ANIMATION_STYLE,
+    SetAnimationStyle,
+    "Set animation style",
+    "Set the easing style globally or for one animation kind",
+    ANIMATION_STYLE,
+    "animation"
+);
+configuration_definition!(
     SET_STACKBAR_LABEL,
     SetStackbarLabel,
     "Set stackbar label",
     "Choose the text displayed on stackbar tabs",
-    STACKBAR_LABEL
+    STACKBAR_LABEL,
+    "stackbar"
 );
-stackbar_definition!(
+configuration_definition!(
     SET_STACKBAR_FOCUSED_TEXT_COLOUR,
     SetStackbarFocusedTextColour,
     "Set focused stackbar text colour",
     "Set the focused stackbar tab text colour",
-    COLOUR
+    COLOUR,
+    "stackbar"
 );
-stackbar_definition!(
+configuration_definition!(
     SET_STACKBAR_UNFOCUSED_TEXT_COLOUR,
     SetStackbarUnfocusedTextColour,
     "Set unfocused stackbar text colour",
     "Set the unfocused stackbar tab text colour",
-    COLOUR
+    COLOUR,
+    "stackbar"
 );
-stackbar_definition!(
+configuration_definition!(
     SET_STACKBAR_BACKGROUND_COLOUR,
     SetStackbarBackgroundColour,
     "Set stackbar background colour",
     "Set the stackbar tab background colour",
-    COLOUR
+    COLOUR,
+    "stackbar"
 );
-stackbar_definition!(
+configuration_definition!(
     SET_STACKBAR_HEIGHT,
     SetStackbarHeight,
     "Set stackbar height",
     "Set the stackbar height in pixels",
-    STACKBAR_HEIGHT
+    STACKBAR_HEIGHT,
+    "stackbar"
 );
-stackbar_definition!(
+configuration_definition!(
     SET_STACKBAR_TAB_WIDTH,
     SetStackbarTabWidth,
     "Set stackbar tab width",
     "Set the stackbar tab width in pixels",
-    STACKBAR_TAB_WIDTH
+    STACKBAR_TAB_WIDTH,
+    "stackbar"
 );
-stackbar_definition!(
+configuration_definition!(
     SET_STACKBAR_FONT_SIZE,
     SetStackbarFontSize,
     "Set stackbar font size",
     "Set the stackbar font size; zero selects the system default",
-    STACKBAR_FONT_SIZE
+    STACKBAR_FONT_SIZE,
+    "stackbar"
 );
-stackbar_definition!(
+configuration_definition!(
     SET_STACKBAR_FONT_FAMILY,
     SetStackbarFontFamily,
     "Set stackbar font family",
     "Set the stackbar font family; omit it to select the system default",
-    STACKBAR_FONT_FAMILY
+    STACKBAR_FONT_FAMILY,
+    "stackbar"
 );

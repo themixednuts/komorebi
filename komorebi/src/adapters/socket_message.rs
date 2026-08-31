@@ -170,10 +170,6 @@ pub fn classify(message: &SocketMessage) -> SocketMessageClass {
         | CompleteConfiguration
         | AltFocusHack(_)
         | Theme(_)
-        | Animation(_, _)
-        | AnimationDuration(_, _)
-        | AnimationFps(_)
-        | AnimationStyle(_, _)
         | InvisibleBorders(_)
         | WorkAreaOffset(_)
         | MonitorWorkAreaOffset(_, _)

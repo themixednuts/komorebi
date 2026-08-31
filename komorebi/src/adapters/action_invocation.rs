@@ -16,6 +16,7 @@ use crate::action::MonitorIndex;
 use crate::action::StackIndex;
 use crate::action::WorkspaceIndex;
 use crate::action::id::ParameterId;
+use crate::core::AnimationDuration;
 use crate::core::BorderOffset;
 use crate::core::BorderWidth;
 use crate::core::StackbarFontSize;
@@ -224,6 +225,21 @@ fn bind_builtin(
             family: args
                 .optional_text(ParameterId::FONT_FAMILY)?
                 .map(str::to_owned),
+        },
+        K::SetAnimationEnabled => A::SetAnimationEnabled {
+            enabled: args.boolean(ParameterId::ENABLED)?,
+            prefix: args.animation_prefix(ParameterId::PREFIX)?,
+        },
+        K::SetAnimationDuration => A::SetAnimationDuration {
+            duration: AnimationDuration::new(args.u64(ParameterId::DURATION)?),
+            prefix: args.animation_prefix(ParameterId::PREFIX)?,
+        },
+        K::SetAnimationFps => A::SetAnimationFps {
+            fps: args.animation_fps(ParameterId::FPS)?,
+        },
+        K::SetAnimationStyle => A::SetAnimationStyle {
+            style: args.animation_style(ParameterId::STYLE)?,
+            prefix: args.animation_prefix(ParameterId::PREFIX)?,
         },
         K::SetWorkspaceLayout => A::SetWorkspaceLayout {
             workspace: args.workspace_selector(ParameterId::WORKSPACE)?,
