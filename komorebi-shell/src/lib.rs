@@ -2,6 +2,7 @@
 
 mod action_binding;
 mod command_palette;
+mod palette_controller;
 mod projection;
 mod session;
 mod shortcut_guide;
@@ -21,6 +22,16 @@ pub use command_palette::PaletteSearchTerms;
 pub use command_palette::PaletteSelectionMove;
 pub use command_palette::WebSearchRequest;
 pub use command_palette::WebSearchTerms;
+pub use palette_controller::PaletteAttemptId;
+pub use palette_controller::PaletteCompletion;
+pub use palette_controller::PaletteCompletionDisposition;
+pub use palette_controller::PaletteController;
+pub use palette_controller::PaletteEffect;
+pub use palette_controller::PaletteFailure;
+pub use palette_controller::PaletteInvocation;
+pub use palette_controller::PaletteStatus;
+pub use palette_controller::PaletteSubmission;
+pub use palette_controller::PendingPaletteInvocation;
 pub use projection::built_in_layout;
 pub use session::ActionInvocationError;
 pub use session::CatalogReadError;

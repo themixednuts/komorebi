@@ -41,9 +41,11 @@ use komorebi_protocol::ServerSupport;
 use komorebi_protocol::StateStamp;
 use komorebi_protocol::UndoPolicy;
 use komorebi_shell::CommandPalette;
-use komorebi_shell::PaletteActionState;
-use komorebi_shell::PaletteQuery;
-use komorebi_shell::PaletteResults;
+use komorebi_shell::PaletteController;
+use komorebi_shell::PaletteEffect;
+use komorebi_shell::PaletteFailure;
+use komorebi_shell::PaletteStatus;
+use komorebi_shell::PaletteSubmission;
 use komorebi_shell::SessionLifetime;
 use komorebi_shell::ShellSession;
 
@@ -196,20 +198,22 @@ async fn dropped_ticket_does_not_cancel_or_poison_the_owned_session()
         handle.invoke_builtin(BuiltInActionId::TogglePause, ActionArguments::default())?;
     drop(abandoned);
     let palette = CommandPalette::project(&observed_catalog);
-    let PaletteResults::Actions(matches) = palette.query(PaletteQuery::parse("pause")) else {
-        return Err("pause query should search local actions".into());
+    let mut controller = PaletteController::new(palette);
+    controller.update_query("pause");
+    let Some(PaletteEffect::Invoke(invocation)) = controller.activate() else {
+        return Err("pause action should emit an invocation".into());
     };
-    let PaletteActionState::Ready(binding) = matches
-        .selected(&palette)
-        .ok_or("pause action should be searchable")?
-        .state()
-    else {
-        return Err("pause action should be immediately invokable".into());
+    let PaletteSubmission::Pending(pending) = invocation.submit(&handle) else {
+        return Err("active session should accept the palette request".into());
     };
-    assert_eq!(
-        handle.invoke_binding(binding)?.outcome().await?,
-        InvocationSubmissionReply::Rejected(InvocationRejection::Unauthorized)
-    );
+    _ = controller.complete(pending.complete().await);
+    assert!(matches!(
+        controller.status(),
+        PaletteStatus::Failed {
+            failure: PaletteFailure::Rejected(InvocationRejection::Unauthorized),
+            ..
+        }
+    ));
     session.shutdown().await?;
     server_task.await??;
     Ok(())

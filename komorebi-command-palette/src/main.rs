@@ -9,7 +9,6 @@ use gpui::InteractiveElement as _;
 use gpui::IntoElement;
 use gpui::ParentElement as _;
 use gpui::Render;
-use gpui::SharedString;
 use gpui::StatefulInteractiveElement as _;
 use gpui::Styled as _;
 use gpui::Subscription;
@@ -34,33 +33,25 @@ use gpui_component::input::MoveUp;
 use gpui_component::scroll::ScrollableElement as _;
 use komorebi_protocol::ActionAvailability;
 use komorebi_protocol::ActionCategory;
-use komorebi_protocol::InvocationSubmissionReply;
 use komorebi_protocol::RoleHint;
 use komorebi_shell::CommandPalette;
 use komorebi_shell::PaletteAction;
-use komorebi_shell::PaletteActionState;
-use komorebi_shell::PaletteMatches;
+use komorebi_shell::PaletteController;
+use komorebi_shell::PaletteEffect;
+use komorebi_shell::PaletteFailure;
 use komorebi_shell::PaletteSelectionMove;
+use komorebi_shell::PaletteStatus;
+use komorebi_shell::PaletteSubmission;
 use komorebi_shell::SessionLifetime;
 use komorebi_shell::ShellHandle;
 use komorebi_shell::ShellSession;
 
 const TITLE: &str = "komorebi command palette";
 
-#[derive(Clone, Debug)]
-enum ActivationStatus {
-    Idle,
-    Submitting { action: Box<str> },
-    Success { message: SharedString },
-    Failure { message: SharedString },
-}
-
 struct CommandPaletteView {
-    palette: CommandPalette,
-    matches: PaletteMatches,
+    controller: PaletteController,
     query: gpui::Entity<InputState>,
     shell: ShellHandle,
-    status: ActivationStatus,
     invocation: Option<Task<()>>,
     _subscriptions: Vec<Subscription>,
 }
@@ -72,15 +63,15 @@ impl CommandPaletteView {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Self {
-        let matches = palette.search("");
+        let controller = PaletteController::new(palette);
         let query = cx.new(|cx| InputState::new(window, cx).placeholder("Search commands"));
         let input_subscription = cx.subscribe_in(
             &query,
             window,
             |this, input, event: &InputEvent, window, cx| match event {
                 InputEvent::Change => {
-                    this.matches = this.palette.search(input.read(cx).value().as_ref());
-                    this.status = ActivationStatus::Idle;
+                    this.controller
+                        .update_query(input.read(cx).value().as_ref());
                     cx.notify();
                 }
                 InputEvent::PressEnter { .. } => this.activate_selected(window, cx),
@@ -89,11 +80,9 @@ impl CommandPaletteView {
         );
         query.update(cx, |query, cx| query.focus(window, cx));
         Self {
-            palette,
-            matches,
+            controller,
             query,
             shell,
-            status: ActivationStatus::Idle,
             invocation: None,
             _subscriptions: vec![input_subscription],
         }
@@ -105,7 +94,7 @@ impl CommandPaletteView {
         _: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        self.matches.move_selection(movement);
+        self.controller.move_selection(movement);
         cx.notify();
     }
 
@@ -123,75 +112,32 @@ impl CommandPaletteView {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if self.matches.select_position(position) {
+        if self.controller.select_position(position) {
             self.activate_selected(window, cx);
         }
     }
 
     fn activate_selected(&mut self, _: &mut Window, cx: &mut Context<Self>) {
-        if matches!(self.status, ActivationStatus::Submitting { .. }) {
-            return;
-        }
-        let Some(action) = self.matches.selected(&self.palette) else {
+        let Some(effect) = self.controller.activate() else {
+            cx.notify();
             return;
         };
-        let title = action.title().to_owned().into_boxed_str();
-        match action.state() {
-            PaletteActionState::Unavailable(reason) => {
-                self.status = ActivationStatus::Failure {
-                    message: format!("Command unavailable: {reason:?}").into(),
-                };
-                cx.notify();
+        let PaletteEffect::Invoke(invocation) = effect;
+        match invocation.submit(&self.shell) {
+            PaletteSubmission::Complete(completion) => {
+                _ = self.controller.complete(completion);
             }
-            PaletteActionState::RequiresInput(parameters) => {
-                self.status = ActivationStatus::Failure {
-                    message: format!(
-                        "{} requires {} argument{}",
-                        action.title(),
-                        parameters.len(),
-                        if parameters.len() == 1 { "" } else { "s" }
-                    )
-                    .into(),
-                };
-                cx.notify();
+            PaletteSubmission::Pending(pending) => {
+                self.invocation = Some(cx.spawn(async move |this, cx| {
+                    let completion = pending.complete().await;
+                    _ = this.update(cx, |this, cx| {
+                        _ = this.controller.complete(completion);
+                        cx.notify();
+                    });
+                }));
             }
-            PaletteActionState::Ready(binding) => match self.shell.invoke_binding(binding) {
-                Err(error) => {
-                    self.status = ActivationStatus::Failure {
-                        message: error.to_string().into(),
-                    };
-                    cx.notify();
-                }
-                Ok(ticket) => {
-                    self.status = ActivationStatus::Submitting {
-                        action: title.clone(),
-                    };
-                    self.invocation = Some(cx.spawn(async move |this, cx| {
-                        let result = ticket.outcome().await;
-                        _ = this.update(cx, |this, cx| {
-                            this.status = match result {
-                                Ok(
-                                    InvocationSubmissionReply::Accepted(_)
-                                    | InvocationSubmissionReply::Retained(_),
-                                ) => ActivationStatus::Success {
-                                    message: format!("Ran {title}").into(),
-                                },
-                                Ok(InvocationSubmissionReply::Rejected(reason)) => {
-                                    ActivationStatus::Failure {
-                                        message: format!("Command rejected: {reason:?}").into(),
-                                    }
-                                }
-                                Err(error) => ActivationStatus::Failure {
-                                    message: error.to_string().into(),
-                                },
-                            };
-                            cx.notify();
-                        });
-                    }));
-                    cx.notify();
-                }
-            },
         }
+        cx.notify();
     }
 
     fn row(
@@ -272,20 +218,47 @@ impl CommandPaletteView {
 
 impl Render for CommandPaletteView {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let selected = self.matches.selected_position();
+        let selected = self.controller.selected_position();
         let rows = self
-            .matches
-            .actions(&self.palette)
+            .controller
+            .actions()
             .enumerate()
             .map(|(position, action)| Self::row(position, action, selected == Some(position), cx))
             .collect::<Vec<_>>();
-        let status = match &self.status {
-            ActivationStatus::Idle => None,
-            ActivationStatus::Submitting { action } => {
+        let status = match self.controller.status() {
+            PaletteStatus::Idle => None,
+            PaletteStatus::RequiresInput { action, parameters } => Some((
+                format!(
+                    "{action} requires {} argument{}",
+                    parameters.len(),
+                    if parameters.len() == 1 { "" } else { "s" }
+                ),
+                rgb(0xe4_8f_8f),
+            )),
+            PaletteStatus::Unavailable { action, reason } => Some((
+                format!("{action} is unavailable: {reason:?}"),
+                rgb(0xe4_8f_8f),
+            )),
+            PaletteStatus::Submitting { action, .. } => {
                 Some((format!("Running {action}…"), rgb(0x8f_b9_ec)))
             }
-            ActivationStatus::Success { message } => Some((message.to_string(), rgb(0x6f_d9_9a))),
-            ActivationStatus::Failure { message } => Some((message.to_string(), rgb(0xe4_8f_8f))),
+            PaletteStatus::Succeeded { action } => Some((format!("Ran {action}"), rgb(0x6f_d9_9a))),
+            PaletteStatus::Failed { action, failure } => Some((
+                match failure {
+                    PaletteFailure::Submission(error) => {
+                        format!("Could not queue {action}: {error}")
+                    }
+                    PaletteFailure::Rejected(reason) => {
+                        format!("{action} was rejected: {reason:?}")
+                    }
+                    PaletteFailure::Execution(error) => format!("{action} failed: {error}"),
+                },
+                rgb(0xe4_8f_8f),
+            )),
+            PaletteStatus::AttemptIdsExhausted => Some((
+                "The palette exhausted its invocation identity space.".to_owned(),
+                rgb(0xe4_8f_8f),
+            )),
         };
 
         div()
@@ -313,7 +286,7 @@ impl Render for CommandPaletteView {
                     .min_h_0()
                     .overflow_y_scrollbar()
                     .children(rows)
-                    .when(self.matches.is_empty(), |list| {
+                    .when(self.controller.is_empty(), |list| {
                         list.child(
                             div()
                                 .p_8()

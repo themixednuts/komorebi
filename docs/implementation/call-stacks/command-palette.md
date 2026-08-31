@@ -4,8 +4,9 @@
 
 The command palette is a renderer-neutral shell capability with GPUI as its
 first adapter. The shell owns query interpretation, result identity, ranking,
-availability, argument requirements, and activation. GPUI owns focus,
-selection, and presentation only.
+availability, argument requirements, selection, activation state, and stale
+completion fencing. GPUI owns physical input translation, focus, windowing,
+and presentation only.
 
 Three designs were considered:
 
@@ -51,8 +52,18 @@ lossy; activation paths must remain lossless WTF-16.
 
 ```rust
 pub struct CommandPalette { /* immutable projected actions and search index */ }
+pub struct PaletteController { /* results, selection, status, attempt sequence */ }
 pub struct PaletteAction { /* presentation, availability, input contract */ }
 pub struct PaletteMatches { /* ordered action identities and bounded cursor */ }
+
+pub enum PaletteEffect {
+    Invoke(PaletteInvocation),
+}
+
+pub enum PaletteSubmission {
+    Pending(PendingPaletteInvocation),
+    Complete(PaletteCompletion),
+}
 
 pub enum PaletteActionState<'a> {
     Ready(ActionBinding),
@@ -73,30 +84,51 @@ availability and parameter requirements come from the current manager state.
 Only `Ready` can produce an `ActionBinding`; required arguments cannot be
 silently omitted.
 
+`PaletteController` is the sole mutable owner. Renderers borrow visible rows
+and status from it and submit the typed effect it returns. `PaletteAttemptId`
+is a non-zero 128-bit sequence value. A completion changes state only while its
+attempt is the one currently submitting; delayed or duplicated completions are
+reported as `IgnoredStale`.
+
 ## Action search and activation stack
 
 ```text
-GPUI input change: &str
-  -> CommandPalette::search(&str) [hot-local, synchronous]
-    -> neo_frizbee::match_list(search keys) [SIMD fuzzy rank]
-      <- ordered borrowed PaletteAction values
-  -> GPUI selection
+GPUI InputEvent::Change: &str
+  -> PaletteController::update_query(&str) [hot-local, synchronous]
+    -> PaletteQuery::parse(&str)
+      -> CommandPalette::query(PaletteQuery)
+        -> neo_frizbee action rank [SIMD, hot-local]
+  <- controller-owned rows, bounded selection, and PaletteStatus
+
+GPUI Enter/click
+  -> PaletteController::activate() -> Option<PaletteEffect>
     -> PaletteAction::state()
+      -> RequiresInput(parameters) -> PaletteStatus::RequiresInput [no effect]
+      -> Unavailable(reason) -> PaletteStatus::Unavailable [no effect]
       -> Ready(ActionBinding)
-        -> ShellHandle::invoke_binding(ActionBinding) -> InvocationTicket
-          [bounded enqueue; caller cancellation does not cancel pipe I/O]
-          -> shell session actor refreshes and binds current catalog
-            -> authenticated command protocol
-              -> manager admission
-                -> native Windows effect
-      -> RequiresInput(parameters) [no side effect]
-      -> Unavailable(reason) [no side effect]
+        -> PaletteInvocation { PaletteAttemptId, ActionBinding }
+          -> PaletteInvocation::submit(&ShellHandle) -> PaletteSubmission
+            -> immediate queue failure -> PaletteCompletion { result: Err(_) }
+            -> InvocationTicket -> PendingPaletteInvocation [owned GPUI task]
+              -> ShellSession actor [bounded queue; caller cancellation-safe]
+                -> refresh and bind current catalog
+                  -> authenticated command protocol
+                    -> manager admission
+                      -> native Windows effect
+              <- accepted | retained | rejected | typed execution failure
+            <- PaletteCompletion { attempt, typed result }
+          -> PaletteController::complete(PaletteCompletion)
+            -> Applied | IgnoredStale
+  <- borrowed PaletteStatus for presentation
 ```
 
 Transport, catalog refresh, lease allocation, and cancellation remain owned by
 `ShellSession`. Search never performs I/O or holds a lock. A stale projected
 action is rebound against the current catalog at activation and may be rejected
-without retry.
+without retry. Dropping the GPUI wait task drops only result interest; the
+session actor still owns the admitted operation and converges it independently.
+The view retains at most one pending task because the controller suppresses a
+second activation while one attempt is submitting.
 
 ## Future source stacks
 
@@ -125,6 +157,8 @@ but never cancel a filesystem operation at a point that corrupts an index.
   unavailable actions, and parameter-required selection.
 - A real command protocol integration test proves palette activation reaches
   manager admission through `ShellHandle` without a second command path.
+- Controller tests prove bounded selection, duplicate-activation suppression,
+  attempt uniqueness, and stale-completion rejection.
 - The filesystem adapter must prove exact round trips for unpaired UTF-16
   surrogates before any FFF-derived result can be opened.
 - The GPUI adapter must prove keyboard-only selection, dismissal, focus

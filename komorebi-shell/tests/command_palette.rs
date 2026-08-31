@@ -26,10 +26,15 @@ use komorebi_protocol::StateStamp;
 use komorebi_protocol::UndoPolicy;
 use komorebi_shell::CommandPalette;
 use komorebi_shell::PaletteActionState;
+use komorebi_shell::PaletteCompletion;
+use komorebi_shell::PaletteCompletionDisposition;
+use komorebi_shell::PaletteController;
+use komorebi_shell::PaletteEffect;
 use komorebi_shell::PaletteMatches;
 use komorebi_shell::PaletteQuery;
 use komorebi_shell::PaletteResults;
 use komorebi_shell::PaletteSelectionMove;
+use komorebi_shell::PaletteStatus;
 
 fn action_results(palette: &CommandPalette, input: &str) -> Result<PaletteMatches, &'static str> {
     match palette.query(PaletteQuery::parse(input)) {
@@ -264,5 +269,95 @@ fn palette_query_results_preserve_source_specific_activation_data()
         return Err("web terms should produce a broker request".into());
     };
     assert_eq!(request.terms(), "windows reactor");
+    Ok(())
+}
+
+#[test]
+fn palette_controller_owns_query_selection_and_single_action_activation()
+-> Result<(), Box<dyn std::error::Error>> {
+    let mut controller = PaletteController::new(CommandPalette::project(&catalog()?));
+
+    controller.update_query("focus");
+    assert_eq!(
+        controller
+            .selected_action()
+            .ok_or("focus query should select an action")?
+            .action_id(),
+        "focus-window"
+    );
+
+    let Some(PaletteEffect::Invoke(invocation)) = controller.activate() else {
+        return Err("ready action should emit an invocation".into());
+    };
+    assert_eq!(invocation.binding().action().as_str(), "focus-window");
+    assert!(matches!(
+        controller.status(),
+        PaletteStatus::Submitting { attempt, action }
+            if *attempt == invocation.attempt() && action.as_ref() == "Focus window"
+    ));
+    assert!(controller.activate().is_none());
+    Ok(())
+}
+
+#[test]
+fn palette_controller_rejects_stale_completion_without_overwriting_current_attempt()
+-> Result<(), Box<dyn std::error::Error>> {
+    let mut controller = PaletteController::new(CommandPalette::project(&catalog()?));
+    controller.update_query("focus");
+
+    let Some(PaletteEffect::Invoke(first)) = controller.activate() else {
+        return Err("first activation should emit an invocation".into());
+    };
+    assert_eq!(
+        controller.complete(PaletteCompletion::succeeded(first.attempt())),
+        PaletteCompletionDisposition::Applied
+    );
+    assert!(matches!(
+        controller.status(),
+        PaletteStatus::Succeeded { action } if action.as_ref() == "Focus window"
+    ));
+
+    let Some(PaletteEffect::Invoke(second)) = controller.activate() else {
+        return Err("completed activation should permit another invocation".into());
+    };
+    assert_ne!(first.attempt(), second.attempt());
+    assert_eq!(
+        controller.complete(PaletteCompletion::succeeded(first.attempt())),
+        PaletteCompletionDisposition::IgnoredStale
+    );
+    assert!(matches!(
+        controller.status(),
+        PaletteStatus::Submitting { attempt, .. } if *attempt == second.attempt()
+    ));
+    assert_eq!(
+        controller.complete(PaletteCompletion::succeeded(second.attempt())),
+        PaletteCompletionDisposition::Applied
+    );
+    Ok(())
+}
+
+#[test]
+fn palette_controller_exposes_bounded_rows_and_selection_for_renderers()
+-> Result<(), Box<dyn std::error::Error>> {
+    let mut controller = PaletteController::new(CommandPalette::project(&catalog()?));
+
+    assert_eq!(controller.actions().count(), 3);
+    assert_eq!(controller.selected_position(), Some(0));
+    controller.move_selection(PaletteSelectionMove::Previous);
+    assert_eq!(controller.selected_position(), Some(2));
+    assert!(!controller.select_position(3));
+    assert!(controller.select_position(1));
+    assert_eq!(
+        controller
+            .selected_action()
+            .ok_or("selected row should resolve")?
+            .action_id(),
+        "focus-window"
+    );
+
+    controller.update_query("this cannot match any action");
+    assert!(controller.is_empty());
+    assert_eq!(controller.actions().count(), 0);
+    assert_eq!(controller.selected_position(), None);
     Ok(())
 }
