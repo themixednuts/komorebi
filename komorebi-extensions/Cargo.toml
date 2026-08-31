@@ -5,6 +5,7 @@ edition = "2024"
 publish = false
 
 [dependencies]
+komorebi-protocol = { path = "../komorebi-protocol" }
 mlua = { version = "=0.12.1", features = ["luajit", "vendored"] }
 parking_lot = { workspace = true }
 thiserror = "2"

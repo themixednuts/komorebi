@@ -4,6 +4,7 @@ use komorebi_command_transport::CommandProtocolClient;
 use komorebi_command_transport::TransportError;
 use komorebi_protocol::ActionArguments;
 use komorebi_protocol::ActionId;
+use komorebi_protocol::ActionIntent;
 use komorebi_protocol::ActionKey;
 use komorebi_protocol::BuiltInActionId;
 use komorebi_protocol::CatalogQuery;
@@ -30,6 +31,7 @@ use tokio_util::sync::CancellationToken;
 
 use crate::ActionBinding;
 use crate::ActionBindingError;
+use crate::BoundAction;
 
 const PERSISTENT_INVOCATION_LEASE_SIZE: NonZeroU32 = NonZeroU32::MIN.saturating_add(255);
 const COMMAND_QUEUE_CAPACITY: usize = 64;
@@ -117,6 +119,13 @@ impl ShellHandle {
         self.submit(RequestedAction::Binding(binding))
     }
 
+    pub fn invoke_intent(
+        &self,
+        intent: ActionIntent,
+    ) -> Result<InvocationTicket, ShellRequestError> {
+        self.submit(RequestedAction::Intent(intent))
+    }
+
     /// Requests the latest authorized manager catalog through the owned actor.
     pub fn catalog_snapshot(&self) -> Result<CatalogTicket, ShellRequestError> {
         let (snapshot, receiver) = oneshot::channel();
@@ -197,6 +206,7 @@ enum RequestedAction {
         arguments: ActionArguments,
     },
     Binding(ActionBinding),
+    Intent(ActionIntent),
 }
 
 async fn run(
@@ -293,6 +303,11 @@ async fn invoke(
         }
         RequestedAction::Binding(binding) => {
             let bound = binding.bind(connection.catalog())?;
+            let (action, arguments) = bound.into_parts();
+            connection.invoke(&action, arguments).await?
+        }
+        RequestedAction::Intent(intent) => {
+            let bound = BoundAction::from_intent(intent, connection.catalog())?;
             let (action, arguments) = bound.into_parts();
             connection.invoke(&action, arguments).await?
         }

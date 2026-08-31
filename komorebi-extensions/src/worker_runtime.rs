@@ -9,9 +9,9 @@ use parking_lot::Mutex;
 use crate::PluginLimits;
 use crate::PluginLoadFailure;
 use crate::PluginLoadReport;
-use crate::PluginLogRecord;
-use crate::PluginLogSink;
 use crate::PluginManifest;
+use crate::PluginOutput;
+use crate::PluginOutputSink;
 use crate::PluginProgram;
 use crate::PluginVm;
 use crate::run_worker_containment_probe;
@@ -128,14 +128,14 @@ fn load_candidate(
     limits: PluginLimits,
     program: PluginProgram,
 ) -> Result<Option<PluginVm>, WireError> {
-    let logs = RecordingLogs::default();
-    let result = PluginVm::new(manifest, limits, logs.clone()).and_then(|vm| {
+    let outputs = RecordingOutputs::default();
+    let result = PluginVm::new(manifest, limits, outputs.clone()).and_then(|vm| {
         vm.load(program)?;
         Ok(vm)
     });
     match result {
         Ok(vm) => {
-            let report = PluginLoadReport::new(logs.take());
+            let report = PluginLoadReport::new(outputs.take());
             wire::write_response(writer, &Response::Loaded(report))?;
             Ok(Some(vm))
         }
@@ -147,16 +147,16 @@ fn load_candidate(
 }
 
 #[derive(Clone, Default)]
-struct RecordingLogs(std::sync::Arc<Mutex<Vec<PluginLogRecord>>>);
+struct RecordingOutputs(std::sync::Arc<Mutex<Vec<PluginOutput>>>);
 
-impl RecordingLogs {
-    fn take(&self) -> Vec<PluginLogRecord> {
+impl RecordingOutputs {
+    fn take(&self) -> Vec<PluginOutput> {
         std::mem::take(&mut *self.0.lock())
     }
 }
 
-impl PluginLogSink for RecordingLogs {
-    fn emit(&self, record: PluginLogRecord) {
-        self.0.lock().push(record);
+impl PluginOutputSink for RecordingOutputs {
+    fn emit(&self, output: PluginOutput) {
+        self.0.lock().push(output);
     }
 }

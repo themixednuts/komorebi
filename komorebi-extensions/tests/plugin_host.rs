@@ -12,15 +12,75 @@ use komorebi_extensions::PluginHostService;
 use komorebi_extensions::PluginId;
 use komorebi_extensions::PluginLimits;
 use komorebi_extensions::PluginLoadFailure;
+use komorebi_extensions::PluginLoadReport;
 use komorebi_extensions::PluginLogLevel;
+use komorebi_extensions::PluginLogRecord;
 use komorebi_extensions::PluginManifest;
+use komorebi_extensions::PluginOutput;
 use komorebi_extensions::PluginProgram;
 
+fn only_log(report: &PluginLoadReport) -> Result<&PluginLogRecord, Box<dyn Error>> {
+    let [PluginOutput::Log(record)] = report.outputs() else {
+        return Err("expected one log output".into());
+    };
+    Ok(record)
+}
+
 fn manifest(id: &str) -> Result<PluginManifest, Box<dyn Error>> {
-    Ok(PluginManifest::new(
-        PluginId::parse(id)?,
-        PluginCapabilitySet::only([PluginCapability::Log]),
-    ))
+    manifest_with(id, PluginCapabilitySet::only([PluginCapability::Log]))
+}
+
+fn manifest_with(
+    id: &str,
+    capabilities: PluginCapabilitySet,
+) -> Result<PluginManifest, Box<dyn Error>> {
+    Ok(PluginManifest::new(PluginId::parse(id)?, capabilities))
+}
+
+#[tokio::test]
+async fn lpac_host_transports_typed_action_output() -> Result<(), Box<dyn Error>> {
+    let worker = PathBuf::from(env!("CARGO_BIN_EXE_komorebi-extension-worker"));
+    let capacity = PluginHostQueueCapacity::new(1).ok_or("queue capacity must be nonzero")?;
+    let host = PluginHostService::start(
+        worker,
+        manifest_with(
+            "broker-action-test",
+            PluginCapabilitySet::only([PluginCapability::Log, PluginCapability::InvokeAction]),
+        )?,
+        limits()?,
+        PluginProgram::new(
+            "action",
+            r#"
+                return {
+                    on_load = function(context)
+                        context:info("before")
+                        local action = context:action("focus-window")
+                        action:set("direction", context:choice("left"))
+                        context:invoke(action)
+                        context:info("after")
+                    end
+                }
+            "#,
+        )?,
+        capacity,
+    )
+    .await?;
+
+    let [
+        PluginOutput::Log(before),
+        PluginOutput::InvokeAction(request),
+        PluginOutput::Log(after),
+    ] = host.initial_load().outputs()
+    else {
+        return Err("expected an ordered log, action, log output batch".into());
+    };
+    assert_eq!(before.message(), "before");
+    assert_eq!(request.plugin().as_str(), "broker-action-test");
+    assert_eq!(request.intent().action().as_str(), "focus-window");
+    assert_eq!(after.message(), "after");
+
+    host.shutdown().await?;
+    Ok(())
 }
 
 fn limits() -> Result<PluginLimits, Box<dyn Error>> {
@@ -51,13 +111,11 @@ async fn lpac_host_loads_and_transactionally_reloads_a_plugin() -> Result<(), Bo
     )
     .await?;
 
-    assert_eq!(host.initial_load().logs().len(), 1);
-    assert_eq!(host.initial_load().logs()[0].level(), PluginLogLevel::Info);
-    assert_eq!(host.initial_load().logs()[0].message(), "first");
+    assert_eq!(only_log(host.initial_load())?.level(), PluginLogLevel::Info);
+    assert_eq!(only_log(host.initial_load())?.message(), "first");
 
     let report = host.client().reload(program("reload", "second")?).await?;
-    assert_eq!(report.logs().len(), 1);
-    assert_eq!(report.logs()[0].message(), "second");
+    assert_eq!(only_log(&report)?.message(), "second");
 
     let rejected = host
         .client()
@@ -73,7 +131,7 @@ async fn lpac_host_loads_and_transactionally_reloads_a_plugin() -> Result<(), Bo
         .client()
         .reload(program("after-rejection", "last-good-worker")?)
         .await?;
-    assert_eq!(recovered.logs()[0].message(), "last-good-worker");
+    assert_eq!(only_log(&recovered)?.message(), "last-good-worker");
 
     host.shutdown().await?;
     Ok(())
@@ -101,7 +159,7 @@ async fn dropping_reload_interest_does_not_stop_the_owned_worker() -> Result<(),
     let report = client
         .reload(program("after-cancel", "still-alive")?)
         .await?;
-    assert_eq!(report.logs()[0].message(), "still-alive");
+    assert_eq!(only_log(&report)?.message(), "still-alive");
 
     host.shutdown().await?;
     Ok(())

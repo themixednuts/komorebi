@@ -1,4 +1,5 @@
-mod logging;
+mod action;
+mod context;
 
 use std::sync::Arc;
 use std::sync::atomic::AtomicU64;
@@ -20,11 +21,12 @@ use crate::PluginLimits;
 use crate::PluginManifest;
 use crate::PluginProgram;
 
-use self::logging::HostCallFailure;
-pub use self::logging::PluginContext;
-pub use self::logging::PluginLogLevel;
-pub use self::logging::PluginLogRecord;
-pub use self::logging::PluginLogSink;
+pub use self::action::PluginActionBuilder;
+use self::context::HostCallFailure;
+pub use self::context::PluginContext;
+pub use self::context::PluginLogLevel;
+pub use self::context::PluginLogRecord;
+use crate::PluginOutputSink;
 
 const HOOK_INTERVAL: u32 = 1_000;
 
@@ -47,7 +49,7 @@ impl PluginVm {
     pub fn new(
         manifest: PluginManifest,
         limits: PluginLimits,
-        logs: impl PluginLogSink,
+        outputs: impl PluginOutputSink,
     ) -> Result<Self, PluginVmError> {
         let (plugin, capabilities) = manifest.into_parts();
         let libraries = StdLib::TABLE | StdLib::STRING | StdLib::MATH | StdLib::BIT | StdLib::JIT;
@@ -61,7 +63,7 @@ impl PluginVm {
         let environment =
             safe_environment(&lua).map_err(|error| PluginVmError::from_lua(&error))?;
         let context = lua
-            .create_userdata(PluginContext::new(plugin, capabilities, logs))
+            .create_userdata(PluginContext::new(plugin, capabilities, outputs))
             .map_err(|error| PluginVmError::from_lua(&error))?;
 
         let absolute_memory_limit = lua
@@ -161,8 +163,8 @@ pub enum PluginVmError {
     MissingOnLoad,
     #[error("plugin log message exceeds the 16 KiB broker boundary")]
     LogMessageTooLarge,
-    #[error("plugin lifecycle exceeded its structured log budget")]
-    LogBudgetExceeded,
+    #[error("plugin lifecycle exceeded its structured output budget")]
+    OutputBudgetExceeded,
     #[error("LuaJIT rejected the plugin: {0}")]
     Lua(Box<str>),
 }
@@ -176,7 +178,7 @@ impl PluginVmError {
                 }
                 HostCallFailure::InstructionBudgetExhausted => Self::InstructionBudgetExhausted,
                 HostCallFailure::LogMessageTooLarge => Self::LogMessageTooLarge,
-                HostCallFailure::LogBudgetExceeded => Self::LogBudgetExceeded,
+                HostCallFailure::OutputBudgetExceeded => Self::OutputBudgetExceeded,
             };
         }
         if matches!(error, mlua::Error::MemoryError(_)) {

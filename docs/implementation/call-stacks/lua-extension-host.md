@@ -38,8 +38,16 @@ extension UTF-8 source bytes
         -> required `on_load(context)` callback
           -> PluginContext::info/debug/warn/error/trace(message)
             -> PluginCapabilitySet::allows(Log)
-              -> PluginLogSink [consumer-owned broker port]
-                -> accepted structured record | typed denial/failure
+              -> PluginOutputSink::emit(Log)
+                -> accepted ordered output | typed denial/failure
+          -> PluginContext::action(ActionId)
+            -> PluginActionBuilder
+              -> set(ParameterId, PluginValue)
+              -> set_list(ParameterId, PluginValue[])
+          -> PluginContext::invoke(PluginActionBuilder)
+            -> PluginCapabilitySet::allows(InvokeAction)
+              -> ActionIntent { ActionId, ActionArguments }
+                -> PluginOutputSink::emit(InvokeAction)
     <- Loaded | typed syntax/API/budget/memory failure
 ```
 
@@ -53,6 +61,9 @@ by Lua.
 
 The in-process VM contract remains independently testable with consumer-owned
 fake ports. Production source is admitted only to the isolated worker below.
+Only implemented authorities exist in `PluginCapability`: `Log` and
+`InvokeAction`. Observation, filesystem, and web names are not placeholders;
+they enter the closed vocabulary only with real broker implementations.
 
 The native containment seam now proves the worker process itself:
 
@@ -107,6 +118,7 @@ PluginHostClient::reload
   -> blocking owner completes WorkerSession::reload
   -> worker loads a replacement PluginVm
   -> worker swaps the VM only after successful load
+  -> ordered PluginOutput batch crosses the bounded wire response
   -> oneshot reply [caller cancellation drops result interest only]
 
 PluginHostService::shutdown
@@ -123,22 +135,49 @@ handles and a generated four-entry environment: `LOCALAPPDATA`, `SystemRoot`,
 `TEMP`, and `TMP`. Windows supplies the AppContainer profile and system paths;
 the desktop process environment is never inherited.
 
+Action output reaches the existing cancellation-safe command owner without a
+second command path:
+
+```text
+PluginOutput::InvokeAction { PluginId, ActionIntent }
+  -> ShellHandle::invoke_intent [bounded nonblocking admission]
+    -> ShellSession actor [owns accepted request to terminal completion]
+      -> BoundAction::from_intent(current CatalogSnapshot)
+        -> exact action schema + cardinality + domain + dynamic-choice checks
+      -> CommandProtocolClient::invoke
+        -> manager terminal submission outcome
+```
+
+The LPAC worker never receives a command socket, manager handle, or catalog.
+It emits a pure typed intent. The desktop shell revalidates that intent against
+the latest authorized catalog before the owned command actor performs the
+effect. Dropping a result ticket removes observation only; it cannot cancel an
+accepted manager action.
+
 ## Type generation
 
-`PluginContext` and its closed value types are ordinary `mlua::UserData` and
-`FromLua` implementations. `E:\Projects\mlua-typegen` extracts the complete
+`PluginContext`, `PluginActionBuilder`, and `PluginValue` are ordinary
+`mlua::UserData` and `FromLua` implementations. `E:\Projects\mlua-typegen`
+extracts the complete
 LuaCATS snapshot from these registrations. The generated file is a committed
 developer artifact; `build.rs` does not recursively invoke Cargo, and runtime
 startup performs no reflection or generation.
 
 The five logging methods intentionally avoid a free-form level string. Invalid
 severity names are absent from the generated API instead of becoming runtime
-validation branches or a hand-maintained union mapping.
+validation branches or a hand-maintained union mapping. Action values use
+explicit constructors (`boolean`, `signed`, `unsigned`, `decimal`, `text`,
+`choice`, `color`, `unit`, `entity`, `selector`, and `windows_path`) so Lua
+cannot silently guess a catalog domain. `windows_path` accepts raw UTF-16 units
+and therefore preserves unpaired surrogates end to end.
 
 ## Proof obligations
 
 - A useful lifecycle script can emit a structured log through the granted port.
 - Removing the log capability produces a typed denial and no broker call.
+- Removing the action capability produces a typed denial and no action output.
+- A typed action and WTF-16 path survive the LPAC wire round trip byte-exactly.
+- The desktop shell rejects action values that do not match the live catalog.
 - Every ambient authority name is absent from the script environment.
 - Binary Lua chunks are rejected before VM execution and text mode is forced.
 - An infinite loop terminates at the instruction budget with JIT disabled.

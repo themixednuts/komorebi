@@ -78,12 +78,12 @@ impl<'frame> Decoder<'frame> {
                 self.string()?.to_owned().into_boxed_str(),
             )),
             7 => Ok(PluginLoadFailure::LogMessageTooLarge),
-            8 => Ok(PluginLoadFailure::LogBudgetExceeded),
+            8 => Ok(PluginLoadFailure::OutputBudgetExceeded),
             _ => Err(WireError::Invalid("load failure")),
         }
     }
 
-    fn bytes(&mut self) -> Result<&'frame [u8], WireError> {
+    pub(super) fn bytes(&mut self) -> Result<&'frame [u8], WireError> {
         let length = usize::try_from(self.u32()?).map_err(|_| WireError::FrameTooLarge)?;
         self.take(length)
     }

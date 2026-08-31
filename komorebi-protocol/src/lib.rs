@@ -36,6 +36,8 @@ pub use command::ActionContractFingerprint;
 pub use command::ActionDefinition;
 pub use command::ActionDefinitionSpec;
 pub use command::ActionId;
+pub use command::ActionIntent;
+pub use command::ActionIntentCodec;
 pub use command::ActionInvocation;
 pub use command::ActionInvocationCodec;
 pub use command::ActionKey;

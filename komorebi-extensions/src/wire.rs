@@ -4,10 +4,12 @@ use std::io;
 use std::io::Read;
 use std::io::Write;
 
+use komorebi_protocol::ActionIntentCodec;
 use thiserror::Error;
 
 use crate::InstructionBudget;
 use crate::MemoryBudget;
+use crate::PluginActionRequest;
 use crate::PluginCapabilitySet;
 use crate::PluginId;
 use crate::PluginLimits;
@@ -16,13 +18,14 @@ use crate::PluginLoadReport;
 use crate::PluginLogLevel;
 use crate::PluginLogRecord;
 use crate::PluginManifest;
+use crate::PluginOutput;
 use crate::PluginProgram;
-use crate::host_domain::MAX_PLUGIN_LOG_RECORDS;
+use crate::host_domain::MAX_PLUGIN_OUTPUTS;
 
 use self::decoder::Decoder;
 
 const MAGIC: [u8; 4] = *b"KEXT";
-const VERSION: u16 = 1;
+const VERSION: u16 = 2;
 const MAX_FRAME_BYTES: usize = 2 * 1024 * 1024;
 
 pub(crate) enum Request {
@@ -119,11 +122,23 @@ pub(crate) fn write_response(
         Response::Ready => body.push(0),
         Response::Loaded(report) => {
             body.push(1);
-            let count = u16::try_from(report.logs().len()).map_err(|_| WireError::FrameTooLarge)?;
+            let count =
+                u16::try_from(report.outputs().len()).map_err(|_| WireError::FrameTooLarge)?;
             put_u16(&mut body, count);
-            for log in report.logs() {
-                body.push(log.level().code());
-                put_string(&mut body, log.message())?;
+            for output in report.outputs() {
+                match output {
+                    PluginOutput::Log(log) => {
+                        body.push(0);
+                        body.push(log.level().code());
+                        put_string(&mut body, log.message())?;
+                    }
+                    PluginOutput::InvokeAction(request) => {
+                        body.push(1);
+                        let encoded = ActionIntentCodec::encode(request.intent())
+                            .map_err(|_| WireError::Invalid("action intent"))?;
+                        put_bytes(&mut body, &encoded)?;
+                    }
+                }
             }
         }
         Response::Rejected(failure) => {
@@ -146,17 +161,28 @@ pub(crate) fn read_response(
         0 => Response::Ready,
         1 => {
             let count = usize::from(decoder.u16()?);
-            if count > MAX_PLUGIN_LOG_RECORDS {
-                return Err(WireError::Invalid("log count"));
+            if count > MAX_PLUGIN_OUTPUTS {
+                return Err(WireError::Invalid("output count"));
             }
-            let mut logs = Vec::with_capacity(count);
+            let mut outputs = Vec::with_capacity(count);
             for _ in 0..count {
-                let level = PluginLogLevel::from_code(decoder.u8()?)
-                    .ok_or(WireError::Invalid("log level"))?;
-                let message = decoder.string()?.to_owned().into_boxed_str();
-                logs.push(PluginLogRecord::new(plugin.clone(), level, message));
+                let output = match decoder.u8()? {
+                    0 => {
+                        let level = PluginLogLevel::from_code(decoder.u8()?)
+                            .ok_or(WireError::Invalid("log level"))?;
+                        let message = decoder.string()?.to_owned().into_boxed_str();
+                        PluginOutput::Log(PluginLogRecord::new(plugin.clone(), level, message))
+                    }
+                    1 => {
+                        let intent = ActionIntentCodec::decode(decoder.bytes()?)
+                            .map_err(|_| WireError::Invalid("action intent"))?;
+                        PluginOutput::InvokeAction(PluginActionRequest::new(plugin.clone(), intent))
+                    }
+                    _ => return Err(WireError::Invalid("output tag")),
+                };
+                outputs.push(output);
             }
-            Response::Loaded(PluginLoadReport::new(logs))
+            Response::Loaded(PluginLoadReport::new(outputs))
         }
         2 => Response::Rejected(decoder.failure()?),
         3 => Response::Stopped,
@@ -194,7 +220,7 @@ fn put_failure(body: &mut Vec<u8>, failure: &PluginLoadFailure) -> Result<(), Wi
             put_string(body, message)?;
         }
         PluginLoadFailure::LogMessageTooLarge => body.push(7),
-        PluginLoadFailure::LogBudgetExceeded => body.push(8),
+        PluginLoadFailure::OutputBudgetExceeded => body.push(8),
     }
     Ok(())
 }

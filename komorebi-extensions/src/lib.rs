@@ -24,8 +24,11 @@ pub use domain::PluginLimits;
 pub use domain::PluginManifest;
 pub use domain::PluginProgram;
 pub use domain::PluginProgramError;
+pub use host_domain::PluginActionRequest;
 pub use host_domain::PluginLoadFailure;
 pub use host_domain::PluginLoadReport;
+pub use host_domain::PluginOutput;
+pub use host_domain::PluginOutputSink;
 #[cfg(windows)]
 pub use plugin_host::PluginHostClient;
 #[cfg(windows)]
@@ -38,11 +41,11 @@ pub use plugin_host::PluginHostShutdownError;
 pub use plugin_host::PluginHostStartError;
 #[cfg(windows)]
 pub use plugin_host::PluginReloadError;
+pub use plugin_vm::PluginActionBuilder;
 pub use plugin_vm::PluginContext;
 pub use plugin_vm::PluginExecutionProfile;
 pub use plugin_vm::PluginLogLevel;
 pub use plugin_vm::PluginLogRecord;
-pub use plugin_vm::PluginLogSink;
 pub use plugin_vm::PluginVm;
 pub use plugin_vm::PluginVmError;
 pub use sandbox::SandboxIdentity;

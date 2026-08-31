@@ -1,28 +1,65 @@
+use komorebi_protocol::ActionIntent;
 use thiserror::Error;
 
 use crate::PluginCapability;
+use crate::PluginId;
 use crate::PluginLogRecord;
 use crate::PluginVmError;
 
-pub(crate) const MAX_PLUGIN_LOG_RECORDS: usize = 64;
+pub(crate) const MAX_PLUGIN_OUTPUTS: usize = 64;
 pub(crate) const MAX_PLUGIN_LOG_MESSAGE_BYTES: usize = 16 * 1024;
+
+/// An authorized manager action requested by one identified extension.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PluginActionRequest {
+    plugin: PluginId,
+    intent: ActionIntent,
+}
+
+impl PluginActionRequest {
+    pub(crate) const fn new(plugin: PluginId, intent: ActionIntent) -> Self {
+        Self { plugin, intent }
+    }
+
+    #[must_use]
+    pub const fn plugin(&self) -> &PluginId {
+        &self.plugin
+    }
+
+    #[must_use]
+    pub const fn intent(&self) -> &ActionIntent {
+        &self.intent
+    }
+}
+
+/// Ordered, bounded output from one extension lifecycle callback.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum PluginOutput {
+    Log(PluginLogRecord),
+    InvokeAction(PluginActionRequest),
+}
+
+/// Consumer-owned port that records callback output without granting authority.
+pub trait PluginOutputSink: Send + Sync + 'static {
+    fn emit(&self, output: PluginOutput);
+}
 
 /// Successful replacement of the worker's active plugin VM.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PluginLoadReport {
-    logs: Box<[PluginLogRecord]>,
+    outputs: Box<[PluginOutput]>,
 }
 
 impl PluginLoadReport {
-    pub(crate) fn new(logs: Vec<PluginLogRecord>) -> Self {
+    pub(crate) fn new(outputs: Vec<PluginOutput>) -> Self {
         Self {
-            logs: logs.into_boxed_slice(),
+            outputs: outputs.into_boxed_slice(),
         }
     }
 
     #[must_use]
-    pub fn logs(&self) -> &[PluginLogRecord] {
-        &self.logs
+    pub fn outputs(&self) -> &[PluginOutput] {
+        &self.outputs
     }
 }
 
@@ -43,8 +80,8 @@ pub enum PluginLoadFailure {
     MissingOnLoad,
     #[error("plugin log message exceeds the 16 KiB broker boundary")]
     LogMessageTooLarge,
-    #[error("plugin lifecycle exceeded its structured log budget")]
-    LogBudgetExceeded,
+    #[error("plugin lifecycle exceeded its structured output budget")]
+    OutputBudgetExceeded,
     #[error("LuaJIT rejected the plugin: {0}")]
     Lua(Box<str>),
 }
@@ -59,7 +96,7 @@ impl From<PluginVmError> for PluginLoadFailure {
             PluginVmError::MemoryLimitUnavailable => Self::MemoryLimitUnavailable,
             PluginVmError::MissingOnLoad => Self::MissingOnLoad,
             PluginVmError::LogMessageTooLarge => Self::LogMessageTooLarge,
-            PluginVmError::LogBudgetExceeded => Self::LogBudgetExceeded,
+            PluginVmError::OutputBudgetExceeded => Self::OutputBudgetExceeded,
             PluginVmError::Lua(message) => Self::Lua(message),
         }
     }

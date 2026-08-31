@@ -12,6 +12,7 @@ use komorebi_protocol::ActionCategory;
 use komorebi_protocol::ActionDefinition;
 use komorebi_protocol::ActionDefinitionSpec;
 use komorebi_protocol::ActionId;
+use komorebi_protocol::ActionIntent;
 use komorebi_protocol::ActionKey;
 use komorebi_protocol::ActionOffer;
 use komorebi_protocol::ActionSchemaVersion;
@@ -195,8 +196,10 @@ async fn dropped_ticket_does_not_cancel_or_poison_the_owned_session()
     let handle = session.handle();
     let observed_catalog = handle.catalog_snapshot()?.snapshot().await?;
     assert_eq!(observed_catalog.stamp(), catalog_stamp);
-    let abandoned =
-        handle.invoke_builtin(BuiltInActionId::TogglePause, ActionArguments::default())?;
+    let abandoned = handle.invoke_intent(ActionIntent::new(
+        BuiltInActionId::TogglePause.into_action_id(),
+        ActionArguments::default(),
+    ))?;
     drop(abandoned);
     let palette = CommandPalette::project(&observed_catalog, ApplicationCatalog::default());
     let mut controller = PaletteController::new(palette);

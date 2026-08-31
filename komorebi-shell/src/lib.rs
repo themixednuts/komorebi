@@ -1,8 +1,10 @@
 //! Renderer-neutral shell domain primitives.
 
 mod action_binding;
+mod action_input;
 mod application_activation;
 mod application_catalog;
+mod bound_action;
 mod command_palette;
 mod file_activation;
 mod palette_activation;
@@ -22,9 +24,8 @@ mod windows_web;
 
 pub use action_binding::ActionBinding;
 pub use action_binding::ActionBindingError;
-pub use action_binding::ActionInput;
-pub use action_binding::ActionInputScalar;
-pub use action_binding::BoundAction;
+pub use action_input::ActionInput;
+pub use action_input::ActionInputScalar;
 pub use application_activation::ApplicationActivationClient;
 pub use application_activation::ApplicationActivationCompletionError;
 pub use application_activation::ApplicationActivationQueueCapacity;
@@ -37,6 +38,7 @@ pub use application_activation::ApplicationLauncher;
 pub use application_catalog::ApplicationCatalog;
 pub use application_catalog::ApplicationDescriptor;
 pub use application_catalog::ApplicationId;
+pub use bound_action::BoundAction;
 pub use command_palette::CommandPalette;
 pub use command_palette::PaletteAction;
 pub use command_palette::PaletteActionState;

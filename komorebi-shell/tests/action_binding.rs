@@ -7,6 +7,7 @@ use komorebi_protocol::ActionCategory;
 use komorebi_protocol::ActionDefinition;
 use komorebi_protocol::ActionDefinitionSpec;
 use komorebi_protocol::ActionId;
+use komorebi_protocol::ActionIntent;
 use komorebi_protocol::ActionKey;
 use komorebi_protocol::ActionOffer;
 use komorebi_protocol::ActionParameter;
@@ -32,6 +33,7 @@ use komorebi_shell::ActionBinding;
 use komorebi_shell::ActionBindingError;
 use komorebi_shell::ActionInput;
 use komorebi_shell::ActionInputScalar;
+use komorebi_shell::BoundAction;
 
 fn snapshot(
     action_id: &str,
@@ -217,6 +219,68 @@ fn domain_mismatch_identifies_the_failing_parameter() -> Result<(), Box<dyn std:
             ArgumentCardinality::RequiredScalar,
             vec![],
         )?),
+        Err(ActionBindingError::InputDomainMismatch { parameter, domain })
+            if parameter.as_str() == "direction" && domain == ParameterDomain::Direction
+    ));
+    Ok(())
+}
+
+#[test]
+fn typed_intent_binds_without_reinterpreting_wtf16_or_choice_values()
+-> Result<(), Box<dyn std::error::Error>> {
+    let intent = ActionIntent::new(
+        ActionId::parse("focus-window")?,
+        komorebi_protocol::ActionArguments::new(BTreeMap::from([(
+            ParameterId::parse("direction")?,
+            ActionArgument::Scalar(ArgumentScalar::Choice(ChoiceId::parse("left")?)),
+        )]))?,
+    );
+
+    let bound = BoundAction::from_intent(
+        intent,
+        &snapshot(
+            "focus-window",
+            "direction",
+            ParameterDomain::Direction,
+            ArgumentCardinality::RequiredScalar,
+            vec![ArgumentScalar::Choice(ChoiceId::parse("left")?)],
+        )?,
+    )?;
+
+    assert_eq!(bound.action().id().as_str(), "focus-window");
+    assert!(matches!(
+        bound
+            .arguments()
+            .values()
+            .get(&ParameterId::parse("direction")?),
+        Some(ActionArgument::Scalar(ArgumentScalar::Choice(choice)))
+            if choice.as_str() == "left"
+    ));
+    Ok(())
+}
+
+#[test]
+fn typed_intent_rejects_a_protocol_value_outside_the_catalog_domain()
+-> Result<(), Box<dyn std::error::Error>> {
+    let intent = ActionIntent::new(
+        ActionId::parse("focus-window")?,
+        komorebi_protocol::ActionArguments::new(BTreeMap::from([(
+            ParameterId::parse("direction")?,
+            ActionArgument::Scalar(ArgumentScalar::Bool(true)),
+        )]))?,
+    );
+
+    assert!(matches!(
+        BoundAction::from_intent(
+            intent,
+            &snapshot(
+                "focus-window",
+                "direction",
+                ParameterDomain::Direction,
+                ArgumentCardinality::RequiredScalar,
+                vec![],
+            )?,
+        ),
         Err(ActionBindingError::InputDomainMismatch { parameter, domain })
             if parameter.as_str() == "direction" && domain == ParameterDomain::Direction
     ));

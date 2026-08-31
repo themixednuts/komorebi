@@ -343,7 +343,7 @@ pub(super) fn decode_catalog(decoder: &mut Decoder<'_>) -> Result<CatalogStamp, 
     ))
 }
 
-fn encode_arguments(
+pub(super) fn encode_arguments(
     encoder: &mut Encoder<Vec<u8>>,
     arguments: &ActionArguments,
 ) -> Result<(), CommandCodecError> {
@@ -355,7 +355,9 @@ fn encode_arguments(
     Ok(())
 }
 
-fn decode_arguments(decoder: &mut Decoder<'_>) -> Result<ActionArguments, CommandCodecError> {
+pub(super) fn decode_arguments(
+    decoder: &mut Decoder<'_>,
+) -> Result<ActionArguments, CommandCodecError> {
     let count = definite(decoder.array()?)?;
     let capacity = to_usize(count)?;
     if capacity > MAX_ARGUMENTS {

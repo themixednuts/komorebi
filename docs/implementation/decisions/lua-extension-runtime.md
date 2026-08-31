@@ -10,7 +10,8 @@ open filesystem or network handles, or load native modules directly.
 LuaLS/EmmyLua metadata is generated from the real `mlua` registrations with
 the `mlua-typegen` tool in `E:\Projects\mlua-typegen`. Hand-maintained shadow
 declarations are not authoritative. The integration will run
-`cargo mlua-typegen` for the extension-host crate, commit or package its one
+`cargo mlua-typegen --output komorebi-extensions/lua-types -p komorebi-extensions`,
+commit or package its one
 complete generated snapshot, and use explicit mappings only where native Rust
 types do not prove their Lua representation.
 

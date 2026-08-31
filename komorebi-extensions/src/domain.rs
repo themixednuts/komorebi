@@ -52,9 +52,6 @@ pub struct PluginIdError;
 pub enum PluginCapability {
     Log,
     InvokeAction,
-    ObserveWindows,
-    ReadFiles,
-    WebRequest,
 }
 
 impl PluginCapability {
@@ -70,9 +67,6 @@ impl PluginCapability {
         match code {
             0 => Some(Self::Log),
             1 => Some(Self::InvokeAction),
-            2 => Some(Self::ObserveWindows),
-            3 => Some(Self::ReadFiles),
-            4 => Some(Self::WebRequest),
             _ => None,
         }
     }
@@ -83,7 +77,7 @@ impl PluginCapability {
 pub struct PluginCapabilitySet(u32);
 
 impl PluginCapabilitySet {
-    const KNOWN_BITS: u32 = (1 << 5) - 1;
+    const KNOWN_BITS: u32 = (1 << 2) - 1;
 
     #[must_use]
     pub const fn empty() -> Self {
