@@ -64,6 +64,7 @@ pub enum PaletteEffect {
     Invoke(PaletteInvocation),
     Web(PaletteWebInvocation),
     File(PaletteFileInvocation),
+    Application(PaletteApplicationInvocation),
 }
 
 pub enum PaletteSubmission {
@@ -85,7 +86,10 @@ pub trait WebUriLauncher {
 }
 
 impl CommandPalette {
-    pub fn project(catalog: &CatalogSnapshot) -> Self;
+    pub fn project(
+        catalog: &CatalogSnapshot,
+        applications: ApplicationCatalog,
+    ) -> Self;
     pub fn actions(&self) -> &[PaletteAction];
     pub fn search(&self, query: &str) -> PaletteMatches;
 }
@@ -245,6 +249,54 @@ web selection: WebQuery
   -> percent-encoded HTTPS search URL
     -> broker policy -> Windows.System.Launcher::LaunchUriAsync adapter
 ```
+
+## Installed-application stack
+
+The installed-application source is the public Windows Shell namespace, not
+the uninstall registry, package manifests, or Explorer's private Start-menu
+database. `shell:AppsFolder` contains both desktop and packaged applications.
+Its `IShellItem` binds to `BHID_EnumItems`, the documented handler that returns
+`IEnumShellItems`. Every entry supplies a presentation name and an absolute
+Shell parsing name. The parsing name remains opaque UTF-16; it is never
+round-tripped through UTF-8 or reconstructed from the displayed label.
+
+```text
+komorebi-command-palette::main [Tokio composition root]
+  -> discover_installed_applications
+    -> Tokio blocking worker [COM MTA initialized and balanced]
+      -> SHCreateItemFromParsingName("shell:AppsFolder") -> IShellItem
+        -> BindToHandler(BHID_EnumItems) -> IEnumShellItems
+          -> Next [eventless synchronous enumeration, once at startup]
+            -> SIGDN_NORMALDISPLAY -> lossy presentation String
+            -> SIGDN_DESKTOPABSOLUTEPARSING -> exact Vec<u16>
+              -> ApplicationId [nonempty, no interior NUL, opaque]
+      <- immutable ApplicationCatalog [sorted and identity-deduplicated]
+    -> CommandPalette::project(manager catalog, application catalog)
+      -> one neo_frizbee pass over actions + applications
+      <- ranked PaletteLocalResult rows preserving source authority
+
+GPUI Enter/click on an application row
+  -> PaletteController::activate
+    -> PaletteEffect::Application(PaletteApplicationInvocation)
+      -> ApplicationActivationClient::submit [bounded async admission]
+      <- ApplicationActivationTicket [actor owns the non-repeatable effect]
+        -> WindowsApplicationLauncher [Tokio blocking pool]
+          -> exact ApplicationId + terminal NUL
+            -> ShellExecuteExW [default Shell verb; no command-line parsing]
+      <- typed PaletteCompletion [attempt fence]
+```
+
+`IApplicationActivationManager` is not the common abstraction: its documented
+contract activates packaged applications by AUMID, while AppsFolder also
+contains desktop applications. Using the absolute parsing name through the
+Shell keeps discovery and activation on one public namespace contract.
+
+The application catalog is a startup snapshot. Querying is entirely in memory;
+no palette keystroke touches COM, the registry, or SQLite. A later persistent
+shell-host slice can own refresh notifications, but this slice deliberately
+does not poll. Cancellation before actor admission performs no launch. After a
+ticket is returned, dropping result interest cannot cancel or duplicate the
+admitted native effect, and shutdown drains accepted launches before joining.
 
 File indexing and content search run in owned background tasks with explicit
 startup, cancellation, and join. Query updates may supersede result interest,

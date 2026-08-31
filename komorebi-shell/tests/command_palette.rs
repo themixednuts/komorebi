@@ -28,6 +28,9 @@ use komorebi_search::ContentSearchLimit;
 use komorebi_search::FileSearchLimit;
 use komorebi_search::FileSearchQueueCapacity;
 use komorebi_search::FileSearchService;
+use komorebi_shell::ApplicationCatalog;
+use komorebi_shell::ApplicationDescriptor;
+use komorebi_shell::ApplicationId;
 use komorebi_shell::CommandPalette;
 use komorebi_shell::FileActivationQueueCapacity;
 use komorebi_shell::FileActivationService;
@@ -67,7 +70,7 @@ impl WebUriLauncher for SuccessfulWebLauncher {
 
 fn action_results(palette: &CommandPalette, input: &str) -> Result<PaletteMatches, &'static str> {
     match palette.query(PaletteQuery::parse(input)) {
-        PaletteResults::Actions(matches) => Ok(matches),
+        PaletteResults::Local(matches) => Ok(matches),
         PaletteResults::ContentPrompt
         | PaletteResults::ContentSearch(_)
         | PaletteResults::WebPrompt
@@ -162,7 +165,7 @@ fn catalog() -> Result<CatalogSnapshot, Box<dyn std::error::Error>> {
 #[test]
 fn palette_ranks_catalog_actions_and_exposes_typed_selection_states()
 -> Result<(), Box<dyn std::error::Error>> {
-    let palette = CommandPalette::project(&catalog()?);
+    let palette = CommandPalette::project(&catalog()?, ApplicationCatalog::default());
 
     assert_eq!(palette.actions().len(), 3);
     assert_eq!(
@@ -211,6 +214,44 @@ fn palette_ranks_catalog_actions_and_exposes_typed_selection_states()
 }
 
 #[test]
+fn palette_ranks_installed_applications_and_preserves_their_opaque_identity()
+-> Result<(), Box<dyn std::error::Error>> {
+    let id = ApplicationId::from_utf16(
+        "shell:AppsFolder\\Microsoft.WindowsTerminal_8wekyb3d8bbwe!App"
+            .encode_utf16()
+            .collect::<Vec<_>>(),
+    )
+    .ok_or("the shell parsing name is valid")?;
+    let applications = ApplicationCatalog::new(vec![ApplicationDescriptor::new(
+        id.clone(),
+        "Windows Terminal",
+    )]);
+    let palette = CommandPalette::project(&catalog()?, applications);
+    let matches = action_results(&palette, "termnal")?;
+    let application = matches
+        .application_at(&palette, 0)
+        .ok_or("the installed application should be the best local match")?;
+
+    assert_eq!(application.name(), "Windows Terminal");
+    assert_eq!(application.id(), &id);
+
+    let mut controller = PaletteController::new(palette);
+    _ = controller.update_query("termnal");
+    assert_eq!(
+        controller
+            .selected_application()
+            .ok_or("the application should be selected")?
+            .name(),
+        "Windows Terminal"
+    );
+    let Some(PaletteEffect::Application(invocation)) = controller.activate() else {
+        return Err("the application row should emit its dedicated effect".into());
+    };
+    assert_eq!(invocation.id(), &id);
+    Ok(())
+}
+
+#[test]
 fn palette_query_parser_makes_web_activation_explicit_and_non_empty()
 -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!(PaletteQuery::parse("   "), PaletteQuery::Browse);
@@ -237,9 +278,9 @@ fn palette_query_parser_makes_web_activation_explicit_and_non_empty()
 #[test]
 fn palette_query_results_preserve_source_specific_activation_data()
 -> Result<(), Box<dyn std::error::Error>> {
-    let palette = CommandPalette::project(&catalog()?);
+    let palette = CommandPalette::project(&catalog()?, ApplicationCatalog::default());
 
-    let PaletteResults::Actions(actions) = palette.query(PaletteQuery::parse("focus")) else {
+    let PaletteResults::Local(actions) = palette.query(PaletteQuery::parse("focus")) else {
         return Err("local search should produce action matches".into());
     };
     assert_eq!(
@@ -271,7 +312,10 @@ fn palette_query_results_preserve_source_specific_activation_data()
 #[test]
 fn palette_controller_owns_query_selection_and_single_action_activation()
 -> Result<(), Box<dyn std::error::Error>> {
-    let mut controller = PaletteController::new(CommandPalette::project(&catalog()?));
+    let mut controller = PaletteController::new(CommandPalette::project(
+        &catalog()?,
+        ApplicationCatalog::default(),
+    ));
 
     _ = controller.update_query("focus");
     assert_eq!(
@@ -298,7 +342,10 @@ fn palette_controller_owns_query_selection_and_single_action_activation()
 #[test]
 fn palette_controller_rejects_stale_completion_without_overwriting_current_attempt()
 -> Result<(), Box<dyn std::error::Error>> {
-    let mut controller = PaletteController::new(CommandPalette::project(&catalog()?));
+    let mut controller = PaletteController::new(CommandPalette::project(
+        &catalog()?,
+        ApplicationCatalog::default(),
+    ));
     _ = controller.update_query("focus");
 
     let Some(PaletteEffect::Invoke(first)) = controller.activate() else {
@@ -335,7 +382,10 @@ fn palette_controller_rejects_stale_completion_without_overwriting_current_attem
 #[test]
 fn palette_controller_exposes_bounded_rows_and_selection_for_renderers()
 -> Result<(), Box<dyn std::error::Error>> {
-    let mut controller = PaletteController::new(CommandPalette::project(&catalog()?));
+    let mut controller = PaletteController::new(CommandPalette::project(
+        &catalog()?,
+        ApplicationCatalog::default(),
+    ));
 
     assert_eq!(controller.actions().count(), 3);
     assert_eq!(controller.selected_position(), Some(0));
@@ -361,7 +411,10 @@ fn palette_controller_exposes_bounded_rows_and_selection_for_renderers()
 #[test]
 fn palette_controller_emits_one_typed_web_activation_for_bang_terms()
 -> Result<(), Box<dyn std::error::Error>> {
-    let mut controller = PaletteController::new(CommandPalette::project(&catalog()?));
+    let mut controller = PaletteController::new(CommandPalette::project(
+        &catalog()?,
+        ApplicationCatalog::default(),
+    ));
 
     _ = controller.update_query("! rust windows shell");
     assert!(matches!(
@@ -390,7 +443,10 @@ async fn palette_web_effect_completes_through_the_owned_broker()
         SuccessfulWebLauncher,
         WebActivationQueueCapacity::new(1).ok_or("one is a valid capacity")?,
     );
-    let mut controller = PaletteController::new(CommandPalette::project(&catalog()?));
+    let mut controller = PaletteController::new(CommandPalette::project(
+        &catalog()?,
+        ApplicationCatalog::default(),
+    ));
     _ = controller.update_query("! typed rust");
     let Some(PaletteEffect::Web(invocation)) = controller.activate() else {
         return Err("web terms should emit a brokered activation".into());
@@ -414,7 +470,10 @@ async fn palette_web_effect_completes_through_the_owned_broker()
 #[tokio::test]
 async fn unconfigured_web_search_completes_with_a_typed_failure()
 -> Result<(), Box<dyn std::error::Error>> {
-    let mut controller = PaletteController::new(CommandPalette::project(&catalog()?));
+    let mut controller = PaletteController::new(CommandPalette::project(
+        &catalog()?,
+        ApplicationCatalog::default(),
+    ));
     _ = controller.update_query("! no implicit provider");
     let Some(PaletteEffect::Web(invocation)) = controller.activate() else {
         return Err("web terms should emit a brokered activation".into());
@@ -454,7 +513,10 @@ async fn palette_applies_file_results_from_its_typed_query_effect()
         FileSearchLimit::new(8).ok_or("eight is a valid limit")?,
         ContentSearchLimit::new(8).ok_or("eight is a valid content limit")?,
     );
-    let mut controller = PaletteController::new(CommandPalette::project(&catalog()?));
+    let mut controller = PaletteController::new(CommandPalette::project(
+        &catalog()?,
+        ApplicationCatalog::default(),
+    ));
 
     let search = controller
         .update_query("command palete")
@@ -500,7 +562,10 @@ async fn palette_ignores_results_from_a_superseded_provider_query()
         FileSearchLimit::new(8).ok_or("eight is a valid limit")?,
         ContentSearchLimit::new(8).ok_or("eight is a valid content limit")?,
     );
-    let mut controller = PaletteController::new(CommandPalette::project(&catalog()?));
+    let mut controller = PaletteController::new(CommandPalette::project(
+        &catalog()?,
+        ApplicationCatalog::default(),
+    ));
 
     let alpha = controller
         .update_query("alpha")
@@ -554,7 +619,10 @@ async fn palette_applies_indexed_content_results_from_an_explicit_content_query(
         launcher.clone(),
         FileActivationQueueCapacity::new(1).ok_or("one is a valid activation capacity")?,
     );
-    let mut controller = PaletteController::new(CommandPalette::project(&catalog()?));
+    let mut controller = PaletteController::new(CommandPalette::project(
+        &catalog()?,
+        ApplicationCatalog::default(),
+    ));
 
     let search = controller
         .update_query("? native compositor")
@@ -608,7 +676,10 @@ async fn one_controller_cursor_moves_across_action_and_file_rows()
         FileSearchLimit::new(8).ok_or("eight is a valid limit")?,
         ContentSearchLimit::new(8).ok_or("eight is a valid content limit")?,
     );
-    let mut controller = PaletteController::new(CommandPalette::project(&catalog()?));
+    let mut controller = PaletteController::new(CommandPalette::project(
+        &catalog()?,
+        ApplicationCatalog::default(),
+    ));
 
     let search = controller
         .update_query("focus window")
@@ -680,7 +751,10 @@ async fn selected_file_activation_resolves_and_launches_the_exact_index_path()
         launcher.clone(),
         FileActivationQueueCapacity::new(1).ok_or("one is a valid activation capacity")?,
     );
-    let mut controller = PaletteController::new(CommandPalette::project(&catalog()?));
+    let mut controller = PaletteController::new(CommandPalette::project(
+        &catalog()?,
+        ApplicationCatalog::default(),
+    ));
 
     let query = controller
         .update_query("launch me")

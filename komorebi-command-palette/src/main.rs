@@ -6,6 +6,8 @@ use komorebi_search::FileSearchLimit;
 use komorebi_search::FileSearchQueueCapacity;
 use komorebi_search::FileSearchService;
 use komorebi_settings::SettingsStore;
+use komorebi_shell::ApplicationActivationQueueCapacity;
+use komorebi_shell::ApplicationActivationService;
 use komorebi_shell::CommandPalette;
 use komorebi_shell::FileActivationQueueCapacity;
 use komorebi_shell::FileActivationService;
@@ -15,8 +17,10 @@ use komorebi_shell::ShellSession;
 use komorebi_shell::WebActivationQueueCapacity;
 use komorebi_shell::WebActivationService;
 use komorebi_shell::WebSearchBroker;
+use komorebi_shell::WindowsApplicationLauncher;
 use komorebi_shell::WindowsFileLauncher;
 use komorebi_shell::WindowsWebLauncher;
+use komorebi_shell::discover_installed_applications;
 
 mod palette_window;
 
@@ -25,6 +29,7 @@ const FILE_SEARCH_CAPACITY: usize = 4;
 const FILE_RESULT_LIMIT: usize = 32;
 const CONTENT_RESULT_LIMIT: usize = 32;
 const FILE_ACTIVATION_CAPACITY: usize = 1;
+const APPLICATION_ACTIVATION_CAPACITY: usize = 1;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -70,16 +75,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         WindowsFileLauncher,
         file_activation_capacity,
     );
+    let application_activation_capacity =
+        ApplicationActivationQueueCapacity::new(APPLICATION_ACTIVATION_CAPACITY)
+            .ok_or_else(|| std::io::Error::other("application-activation capacity is invalid"))?;
+    let application_activation_service = ApplicationActivationService::start(
+        WindowsApplicationLauncher,
+        application_activation_capacity,
+    );
+    let applications = discover_installed_applications().await?;
     let session = ShellSession::start(RoleHint::OwnerControl, SessionLifetime::Persistent)?;
     let catalog = session.handle().catalog_snapshot()?.snapshot().await?;
-    let palette = CommandPalette::project(&catalog);
+    let palette = CommandPalette::project(&catalog, applications);
     palette_window::run_palette(
         palette,
         session.handle(),
         web,
         search,
         file_activation_service.client(),
+        application_activation_service.client(),
     );
+    application_activation_service.shutdown().await?;
     file_activation_service.shutdown().await?;
     file_service.shutdown().await?;
     if let Some(web_service) = web_service {

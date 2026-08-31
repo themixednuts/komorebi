@@ -4,15 +4,18 @@ use std::num::NonZeroU128;
 use komorebi_protocol::ActionParameter;
 use komorebi_protocol::ActionUnavailability;
 
+use crate::ApplicationDescriptor;
 use crate::CommandPalette;
 use crate::PaletteAction;
 use crate::PaletteActionState;
+use crate::PaletteApplicationInvocation;
 use crate::PaletteCompletion;
 use crate::PaletteCompletionDisposition;
 use crate::PaletteEffect;
 use crate::PaletteFailure;
 use crate::PaletteFileInvocation;
 use crate::PaletteInvocation;
+use crate::PaletteLocalResult;
 use crate::PaletteMatches;
 use crate::PaletteQuery;
 use crate::PaletteQueryRevision;
@@ -61,7 +64,7 @@ impl PaletteController {
     pub fn update_query(&mut self, input: &str) -> Option<PaletteSearch> {
         let query = PaletteQuery::parse(input);
         self.results = self.palette.query(query.clone());
-        self.selection = (self.action_count() > 0).then_some(0);
+        self.selection = (self.local_count() > 0).then_some(0);
         if !matches!(self.status, PaletteStatus::Submitting { .. }) {
             self.status = PaletteStatus::Idle;
         }
@@ -94,17 +97,23 @@ impl PaletteController {
         self.matches()?.action_at(&self.palette, position)
     }
 
+    #[must_use]
+    pub fn selected_application(&self) -> Option<&ApplicationDescriptor> {
+        let position = self.selection?;
+        self.matches()?.application_at(&self.palette, position)
+    }
+
     /// Returns the selected file only when the row cursor addresses file results.
     #[must_use]
     pub fn selected_file(&self) -> Option<&FileSearchMatch> {
-        let position = self.selection?.checked_sub(self.action_count())?;
+        let position = self.selection?.checked_sub(self.local_count())?;
         self.file_slice().get(position)
     }
 
     /// Returns the selected content match when the cursor addresses content results.
     #[must_use]
     pub fn selected_content(&self) -> Option<&ContentSearchMatch> {
-        let position = self.selection?.checked_sub(self.action_count())?;
+        let position = self.selection?.checked_sub(self.local_count())?;
         self.content_slice().get(position)
     }
 
@@ -113,6 +122,19 @@ impl PaletteController {
         self.matches()
             .into_iter()
             .flat_map(|matches| matches.actions(&self.palette))
+    }
+
+    /// Iterates ranked local rows in the order used by the selection cursor.
+    pub fn local_results(&self) -> impl Iterator<Item = PaletteLocalResult<'_>> {
+        self.matches()
+            .into_iter()
+            .flat_map(|matches| matches.results(&self.palette))
+    }
+
+    pub fn applications(&self) -> impl Iterator<Item = &ApplicationDescriptor> {
+        self.matches()
+            .into_iter()
+            .flat_map(|matches| matches.applications(&self.palette))
     }
 
     /// Iterates file rows belonging to the latest completed local query.
@@ -169,7 +191,7 @@ impl PaletteController {
     #[must_use]
     pub fn content(&self) -> PaletteContent<'_> {
         match &self.results {
-            PaletteResults::Actions(_) => PaletteContent::Actions,
+            PaletteResults::Local(_) => PaletteContent::Actions,
             PaletteResults::ContentPrompt => PaletteContent::ContentPrompt,
             PaletteResults::ContentSearch(terms) => PaletteContent::ContentSearch(terms),
             PaletteResults::WebPrompt => PaletteContent::WebPrompt,
@@ -222,7 +244,7 @@ impl PaletteController {
         }
         match &self.results {
             PaletteResults::ContentPrompt | PaletteResults::WebPrompt => None,
-            PaletteResults::Actions(_) | PaletteResults::ContentSearch(_) => self.activate_local(),
+            PaletteResults::Local(_) | PaletteResults::ContentSearch(_) => self.activate_local(),
             PaletteResults::WebSearch(request) => {
                 let request = request.clone();
                 let attempt = self.begin_submission("Search the web".into())?;
@@ -236,11 +258,22 @@ impl PaletteController {
     fn activate_local(&mut self) -> Option<PaletteEffect> {
         if self.selected_action().is_some() {
             self.activate_action()
+        } else if self.selected_application().is_some() {
+            self.activate_application()
         } else if self.selected_file().is_some() {
             self.activate_file()
         } else {
             self.activate_content()
         }
+    }
+
+    fn activate_application(&mut self) -> Option<PaletteEffect> {
+        let application = self.selected_application()?;
+        let id = application.id().clone();
+        let attempt = self.begin_submission(application.name().into())?;
+        Some(PaletteEffect::Application(
+            PaletteApplicationInvocation::new(attempt, id),
+        ))
     }
 
     fn activate_action(&mut self) -> Option<PaletteEffect> {
@@ -317,7 +350,7 @@ impl PaletteController {
         action_matches(&self.results)
     }
 
-    fn action_count(&self) -> usize {
+    fn local_count(&self) -> usize {
         self.matches().map_or(0, PaletteMatches::len)
     }
 
@@ -344,13 +377,13 @@ impl PaletteController {
     }
 
     fn row_count(&self) -> usize {
-        self.action_count() + self.file_slice().len() + self.content_slice().len()
+        self.local_count() + self.file_slice().len() + self.content_slice().len()
     }
 }
 
 fn action_matches(results: &PaletteResults) -> Option<&PaletteMatches> {
     match results {
-        PaletteResults::Actions(matches) => Some(matches),
+        PaletteResults::Local(matches) => Some(matches),
         PaletteResults::ContentPrompt
         | PaletteResults::ContentSearch(_)
         | PaletteResults::WebPrompt

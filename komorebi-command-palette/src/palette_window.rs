@@ -36,6 +36,8 @@ use komorebi_protocol::ActionAvailability;
 use komorebi_protocol::ActionCategory;
 use komorebi_search::ContentSearchMatch;
 use komorebi_search::FileSearchMatch;
+use komorebi_shell::ApplicationActivationClient;
+use komorebi_shell::ApplicationDescriptor;
 use komorebi_shell::CommandPalette;
 use komorebi_shell::FileActivationClient;
 use komorebi_shell::PaletteAction;
@@ -43,6 +45,7 @@ use komorebi_shell::PaletteContent;
 use komorebi_shell::PaletteController;
 use komorebi_shell::PaletteEffect;
 use komorebi_shell::PaletteFailure;
+use komorebi_shell::PaletteLocalResult;
 use komorebi_shell::PaletteSearch;
 use komorebi_shell::PaletteSearchBroker;
 use komorebi_shell::PaletteSearchStatus;
@@ -57,22 +60,25 @@ const TITLE: &str = "komorebi command palette";
 struct CommandPaletteView {
     controller: PaletteController,
     query: gpui::Entity<InputState>,
-    shell: ShellHandle,
-    web: WebSearchBroker,
-    search: PaletteSearchBroker,
-    file_activation: FileActivationClient,
+    services: PaletteServices,
     invocation: Option<Task<()>>,
     query_task: Option<Task<()>>,
     _subscriptions: Vec<Subscription>,
 }
 
+#[derive(Clone)]
+struct PaletteServices {
+    shell: ShellHandle,
+    web: WebSearchBroker,
+    search: PaletteSearchBroker,
+    file_activation: FileActivationClient,
+    application_activation: ApplicationActivationClient,
+}
+
 impl CommandPaletteView {
     fn new(
         palette: CommandPalette,
-        shell: ShellHandle,
-        web: WebSearchBroker,
-        search: PaletteSearchBroker,
-        file_activation: FileActivationClient,
+        services: PaletteServices,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Self {
@@ -101,10 +107,7 @@ impl CommandPaletteView {
         Self {
             controller,
             query,
-            shell,
-            web,
-            search,
-            file_activation,
+            services,
             invocation: None,
             query_task: None,
             _subscriptions: vec![input_subscription],
@@ -147,16 +150,20 @@ impl CommandPaletteView {
         };
         match effect {
             PaletteEffect::Invoke(invocation) => {
-                let submission = invocation.submit(&self.shell);
+                let submission = invocation.submit(&self.services.shell);
                 self.observe_submission(std::future::ready(submission), cx);
             }
             PaletteEffect::Web(invocation) => {
-                let web = self.web.clone();
+                let web = self.services.web.clone();
                 self.observe_submission(async move { invocation.submit(&web).await }, cx);
             }
             PaletteEffect::File(invocation) => {
-                let files = self.file_activation.clone();
+                let files = self.services.file_activation.clone();
                 self.observe_submission(async move { invocation.submit(&files).await }, cx);
+            }
+            PaletteEffect::Application(invocation) => {
+                let applications = self.services.application_activation.clone();
+                self.observe_submission(async move { invocation.submit(&applications).await }, cx);
             }
         }
         cx.notify();
@@ -177,7 +184,7 @@ impl CommandPaletteView {
     }
 
     fn search_index(&mut self, search: PaletteSearch, cx: &mut Context<Self>) {
-        let broker = self.search.clone();
+        let broker = self.services.search.clone();
         self.query_task = Some(cx.spawn(async move |this, cx| {
             let completion = search.submit(&broker).await;
             _ = this.update(cx, |this, cx| {
@@ -312,6 +319,42 @@ impl CommandPaletteView {
             .into_any_element()
     }
 
+    fn application_row(
+        position: usize,
+        application: &ApplicationDescriptor,
+        selected: bool,
+        cx: &mut Context<Self>,
+    ) -> gpui::AnyElement {
+        div()
+            .id(("palette-application", position))
+            .flex()
+            .items_center()
+            .gap_3()
+            .px_4()
+            .py_3()
+            .border_b_1()
+            .border_color(rgb(0x28_31_3d))
+            .when(selected, |row| row.bg(rgb(0x22_30_42)))
+            .cursor_pointer()
+            .on_click(cx.listener(move |this, _, window, cx| {
+                this.select_and_activate(position, window, cx);
+            }))
+            .child(
+                div()
+                    .w(px(96.0))
+                    .flex_none()
+                    .text_xs()
+                    .text_color(rgb(0x87_98_ad))
+                    .child("application"),
+            )
+            .child(
+                div()
+                    .font_weight(gpui::FontWeight::SEMIBOLD)
+                    .child(application.name().to_owned()),
+            )
+            .into_any_element()
+    }
+
     fn content_row(
         position: usize,
         content: &ContentSearchMatch,
@@ -372,13 +415,20 @@ impl CommandPaletteView {
         let selected = self.controller.selected_position();
         let mut rows = self
             .controller
-            .actions()
+            .local_results()
             .enumerate()
-            .map(|(position, action)| Self::row(position, action, selected == Some(position), cx))
+            .map(|(position, result)| match result {
+                PaletteLocalResult::Action(action) => {
+                    Self::row(position, action, selected == Some(position), cx)
+                }
+                PaletteLocalResult::Application(application) => {
+                    Self::application_row(position, application, selected == Some(position), cx)
+                }
+            })
             .collect::<Vec<_>>();
-        let action_count = rows.len();
+        let local_count = rows.len();
         rows.extend(self.controller.files().enumerate().map(|(offset, file)| {
-            let position = action_count + offset;
+            let position = local_count + offset;
             Self::file_row(position, file, selected == Some(position), cx)
         }));
         let file_count = self.controller.files().count();
@@ -387,7 +437,7 @@ impl CommandPaletteView {
                 .content_results()
                 .enumerate()
                 .map(|(offset, content)| {
-                    let position = action_count + file_count + offset;
+                    let position = local_count + file_count + offset;
                     Self::content_row(position, content, selected == Some(position), cx)
                 }),
         );
@@ -569,6 +619,15 @@ fn status_message(status: &PaletteStatus) -> Option<(String, Rgba)> {
                 PaletteFailure::FileActivation(error) => {
                     format!("Windows could not open {label}: {error}")
                 }
+                PaletteFailure::ApplicationSubmission(error) => {
+                    format!("Could not queue application activation: {error}")
+                }
+                PaletteFailure::ApplicationCompletion(error) => {
+                    format!("Application activation stopped before completion: {error}")
+                }
+                PaletteFailure::ApplicationLaunch(error) => {
+                    format!("Windows could not open {label}: {error}")
+                }
             },
             rgb(0xe4_8f_8f),
         )),
@@ -593,6 +652,7 @@ pub(crate) fn run_palette(
     web: WebSearchBroker,
     search: PaletteSearchBroker,
     file_activation: FileActivationClient,
+    application_activation: ApplicationActivationClient,
 ) {
     Application::new().run(move |cx: &mut App| {
         gpui_component::init(cx);
@@ -615,23 +675,16 @@ pub(crate) fn run_palette(
             },
             {
                 let palette = palette.clone();
-                let shell = shell.clone();
-                let web = web.clone();
-                let search = search.clone();
-                let file_activation = file_activation.clone();
+                let services = PaletteServices {
+                    shell: shell.clone(),
+                    web: web.clone(),
+                    search: search.clone(),
+                    file_activation: file_activation.clone(),
+                    application_activation: application_activation.clone(),
+                };
                 move |window, cx| {
                     window.set_window_title(TITLE);
-                    let view = cx.new(|cx| {
-                        CommandPaletteView::new(
-                            palette,
-                            shell,
-                            web,
-                            search,
-                            file_activation,
-                            window,
-                            cx,
-                        )
-                    });
+                    let view = cx.new(|cx| CommandPaletteView::new(palette, services, window, cx));
                     cx.new(|cx| Root::new(view, window, cx))
                 }
             },

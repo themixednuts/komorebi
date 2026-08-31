@@ -3,6 +3,12 @@ use komorebi_protocol::InvocationSubmissionReply;
 
 use crate::ActionBinding;
 use crate::ActionInvocationError;
+use crate::ApplicationActivationClient;
+use crate::ApplicationActivationCompletionError;
+use crate::ApplicationActivationSubmitError;
+use crate::ApplicationActivationTicket;
+use crate::ApplicationId;
+use crate::ApplicationLaunchFailure;
 use crate::FileActivationClient;
 use crate::FileActivationCompletionError;
 use crate::FileActivationFailure;
@@ -59,6 +65,9 @@ pub enum PaletteFailure {
     FileSubmission(FileActivationSubmitError),
     FileCompletion(FileActivationCompletionError),
     FileActivation(FileActivationFailure),
+    ApplicationSubmission(ApplicationActivationSubmitError),
+    ApplicationCompletion(ApplicationActivationCompletionError),
+    ApplicationLaunch(ApplicationLaunchFailure),
 }
 
 /// Whether a completion changed the currently visible controller state.
@@ -75,6 +84,43 @@ pub enum PaletteEffect {
     Invoke(PaletteInvocation),
     Web(PaletteWebInvocation),
     File(PaletteFileInvocation),
+    Application(PaletteApplicationInvocation),
+}
+
+/// One brokered installed-application activation carrying its completion fence.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PaletteApplicationInvocation {
+    attempt: PaletteAttemptId,
+    id: ApplicationId,
+}
+
+impl PaletteApplicationInvocation {
+    pub(crate) const fn new(attempt: PaletteAttemptId, id: ApplicationId) -> Self {
+        Self { attempt, id }
+    }
+
+    #[must_use]
+    pub const fn attempt(&self) -> PaletteAttemptId {
+        self.attempt
+    }
+
+    #[must_use]
+    pub const fn id(&self) -> &ApplicationId {
+        &self.id
+    }
+
+    pub async fn submit(self, applications: &ApplicationActivationClient) -> PaletteSubmission {
+        match applications.submit(self.id).await {
+            Ok(ticket) => PaletteSubmission::Pending(PendingPaletteInvocation {
+                attempt: self.attempt,
+                effect: PendingPaletteEffect::Application(ticket),
+            }),
+            Err(error) => PaletteSubmission::Complete(PaletteCompletion::failed(
+                self.attempt,
+                PaletteFailure::ApplicationSubmission(error),
+            )),
+        }
+    }
 }
 
 /// One authorized action invocation carrying its stale-completion fence.
@@ -216,6 +262,7 @@ enum PendingPaletteEffect {
     Action(InvocationTicket),
     Web(WebActivationTicket),
     File(FileActivationTicket),
+    Application(ApplicationActivationTicket),
 }
 
 impl PendingPaletteInvocation {
@@ -241,6 +288,11 @@ impl PendingPaletteInvocation {
                 Ok(Ok(())) => Ok(()),
                 Ok(Err(error)) => Err(PaletteFailure::FileActivation(error)),
                 Err(error) => Err(PaletteFailure::FileCompletion(error)),
+            },
+            PendingPaletteEffect::Application(ticket) => match ticket.complete().await {
+                Ok(Ok(())) => Ok(()),
+                Ok(Err(error)) => Err(PaletteFailure::ApplicationLaunch(error)),
+                Err(error) => Err(PaletteFailure::ApplicationCompletion(error)),
             },
         };
         PaletteCompletion {

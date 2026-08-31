@@ -40,6 +40,7 @@ use komorebi_protocol::RoleHint;
 use komorebi_protocol::ServerSupport;
 use komorebi_protocol::StateStamp;
 use komorebi_protocol::UndoPolicy;
+use komorebi_shell::ApplicationCatalog;
 use komorebi_shell::CommandPalette;
 use komorebi_shell::PaletteController;
 use komorebi_shell::PaletteEffect;
@@ -197,7 +198,7 @@ async fn dropped_ticket_does_not_cancel_or_poison_the_owned_session()
     let abandoned =
         handle.invoke_builtin(BuiltInActionId::TogglePause, ActionArguments::default())?;
     drop(abandoned);
-    let palette = CommandPalette::project(&observed_catalog);
+    let palette = CommandPalette::project(&observed_catalog, ApplicationCatalog::default());
     let mut controller = PaletteController::new(palette);
     _ = controller.update_query("pause");
     let Some(PaletteEffect::Invoke(invocation)) = controller.activate() else {

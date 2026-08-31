@@ -14,6 +14,8 @@ use neo_frizbee::Matcher;
 use neo_frizbee::radix_sort_matches;
 
 use crate::ActionBinding;
+use crate::ApplicationCatalog;
+use crate::ApplicationDescriptor;
 
 const QUERY_BYTES_PER_TYPO: usize = 4;
 const MINIMUM_TYPOS: u16 = 2;
@@ -86,11 +88,18 @@ impl<'query> WebSearchTerms<'query> {
 /// Renderer-neutral results whose variant retains the authority needed to activate it.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum PaletteResults {
-    Actions(PaletteMatches),
+    Local(PaletteMatches),
     ContentPrompt,
     ContentSearch(ContentSearchTerms),
     WebPrompt,
     WebSearch(WebSearchRequest),
+}
+
+/// One ranked local result without erasing its activation authority.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PaletteLocalResult<'a> {
+    Action(&'a PaletteAction),
+    Application(&'a ApplicationDescriptor),
 }
 
 /// An owned, non-empty web query awaiting the configured URL-launch broker.
@@ -126,12 +135,13 @@ impl WebSearchRequest {
 pub struct CommandPalette {
     stamp: CatalogStamp,
     actions: Box<[PaletteAction]>,
+    applications: ApplicationCatalog,
 }
 
 impl CommandPalette {
     /// Projects the interactive portion of one authorized manager catalog.
     #[must_use]
-    pub fn project(catalog: &CatalogSnapshot) -> Self {
+    pub fn project(catalog: &CatalogSnapshot, applications: ApplicationCatalog) -> Self {
         let actions = catalog
             .definitions()
             .iter()
@@ -159,6 +169,7 @@ impl CommandPalette {
         Self {
             stamp: catalog.stamp(),
             actions,
+            applications,
         }
     }
 
@@ -167,12 +178,17 @@ impl CommandPalette {
         &self.actions
     }
 
+    #[must_use]
+    pub fn applications(&self) -> &[ApplicationDescriptor] {
+        self.applications.applications()
+    }
+
     /// Routes one parsed query without erasing source-specific activation data.
     #[must_use]
     pub fn query(&self, query: PaletteQuery<'_>) -> PaletteResults {
         match query {
-            PaletteQuery::Browse => PaletteResults::Actions(self.search("")),
-            PaletteQuery::Search(terms) => PaletteResults::Actions(self.search(terms.as_str())),
+            PaletteQuery::Browse => PaletteResults::Local(self.search("")),
+            PaletteQuery::Search(terms) => PaletteResults::Local(self.search(terms.as_str())),
             PaletteQuery::ContentPrompt => PaletteResults::ContentPrompt,
             PaletteQuery::ContentSearch(terms) => PaletteResults::ContentSearch(terms),
             PaletteQuery::WebPrompt => PaletteResults::WebPrompt,
@@ -190,7 +206,11 @@ impl CommandPalette {
     pub fn search(&self, query: &str) -> PaletteMatches {
         let query = query.trim();
         if query.is_empty() {
-            return PaletteMatches::new(self.stamp, (0..self.actions.len()).collect());
+            let items = (0..self.actions.len())
+                .map(PaletteLocalItem::Action)
+                .chain((0..self.applications().len()).map(PaletteLocalItem::Application))
+                .collect();
+            return PaletteMatches::new(self.stamp, items);
         }
 
         let config = Config {
@@ -198,15 +218,27 @@ impl CommandPalette {
             sort: false,
             ..Config::default()
         };
+        let search_text = self.actions.iter().map(PaletteAction::search_text).chain(
+            self.applications()
+                .iter()
+                .map(ApplicationDescriptor::search_text),
+        );
         let mut matches = Matcher::new(query, &config)
-            .match_iter(self.actions.iter().map(PaletteAction::search_text))
+            .match_iter(search_text)
             .collect::<Vec<_>>();
         radix_sort_matches(&mut matches);
         PaletteMatches::new(
             self.stamp,
             matches
                 .into_iter()
-                .filter_map(|matched| usize::try_from(matched.index).ok())
+                .filter_map(|matched| {
+                    let index = usize::try_from(matched.index).ok()?;
+                    Some(if index < self.actions.len() {
+                        PaletteLocalItem::Action(index)
+                    } else {
+                        PaletteLocalItem::Application(index.checked_sub(self.actions.len())?)
+                    })
+                })
                 .collect(),
         )
     }
@@ -222,25 +254,25 @@ fn typo_budget(query: &str) -> u16 {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PaletteMatches {
     stamp: CatalogStamp,
-    action_indices: Box<[usize]>,
+    items: Box<[PaletteLocalItem]>,
 }
 
 impl PaletteMatches {
-    fn new(stamp: CatalogStamp, action_indices: Vec<usize>) -> Self {
+    fn new(stamp: CatalogStamp, items: Vec<PaletteLocalItem>) -> Self {
         Self {
             stamp,
-            action_indices: action_indices.into_boxed_slice(),
+            items: items.into_boxed_slice(),
         }
     }
 
     #[must_use]
     pub const fn len(&self) -> usize {
-        self.action_indices.len()
+        self.items.len()
     }
 
     #[must_use]
     pub const fn is_empty(&self) -> bool {
-        self.action_indices.is_empty()
+        self.items.is_empty()
     }
 
     /// Resolves one result against the catalog projection that made this set.
@@ -250,10 +282,22 @@ impl PaletteMatches {
         palette: &'a CommandPalette,
         position: usize,
     ) -> Option<&'a PaletteAction> {
-        (self.stamp == palette.stamp)
-            .then_some(())
-            .and_then(|()| self.action_indices.get(position))
-            .and_then(|index| palette.actions.get(*index))
+        match (self.stamp == palette.stamp).then(|| self.items.get(position))?? {
+            PaletteLocalItem::Action(index) => palette.actions.get(*index),
+            PaletteLocalItem::Application(_) => None,
+        }
+    }
+
+    #[must_use]
+    pub fn application_at<'a>(
+        &self,
+        palette: &'a CommandPalette,
+        position: usize,
+    ) -> Option<&'a ApplicationDescriptor> {
+        match (self.stamp == palette.stamp).then(|| self.items.get(position))?? {
+            PaletteLocalItem::Application(index) => palette.applications().get(*index),
+            PaletteLocalItem::Action(_) => None,
+        }
     }
 
     /// Iterates results against the catalog projection that made this set.
@@ -262,10 +306,51 @@ impl PaletteMatches {
         palette: &'a CommandPalette,
     ) -> impl Iterator<Item = &'a PaletteAction> + 'a {
         let same_catalog = self.stamp == palette.stamp;
-        self.action_indices
-            .iter()
-            .filter_map(move |index| same_catalog.then(|| palette.actions.get(*index)).flatten())
+        self.items.iter().filter_map(move |item| match item {
+            PaletteLocalItem::Action(index) if same_catalog => palette.actions.get(*index),
+            PaletteLocalItem::Action(_) | PaletteLocalItem::Application(_) => None,
+        })
     }
+
+    pub fn applications<'a>(
+        &'a self,
+        palette: &'a CommandPalette,
+    ) -> impl Iterator<Item = &'a ApplicationDescriptor> + 'a {
+        let same_catalog = self.stamp == palette.stamp;
+        self.items.iter().filter_map(move |item| match item {
+            PaletteLocalItem::Application(index) if same_catalog => {
+                palette.applications().get(*index)
+            }
+            PaletteLocalItem::Action(_) | PaletteLocalItem::Application(_) => None,
+        })
+    }
+
+    pub fn results<'a>(
+        &'a self,
+        palette: &'a CommandPalette,
+    ) -> impl Iterator<Item = PaletteLocalResult<'a>> + 'a {
+        let same_catalog = self.stamp == palette.stamp;
+        self.items.iter().filter_map(move |item| {
+            if !same_catalog {
+                return None;
+            }
+            match item {
+                PaletteLocalItem::Action(index) => {
+                    palette.actions.get(*index).map(PaletteLocalResult::Action)
+                }
+                PaletteLocalItem::Application(index) => palette
+                    .applications()
+                    .get(*index)
+                    .map(PaletteLocalResult::Application),
+            }
+        })
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum PaletteLocalItem {
+    Action(usize),
+    Application(usize),
 }
 
 /// Direction of one bounded palette-selection transition.

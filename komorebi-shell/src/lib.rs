@@ -1,6 +1,8 @@
 //! Renderer-neutral shell domain primitives.
 
 mod action_binding;
+mod application_activation;
+mod application_catalog;
 mod command_palette;
 mod file_activation;
 mod palette_activation;
@@ -12,6 +14,8 @@ mod shortcut_guide;
 mod web_activation;
 mod web_search;
 #[cfg(windows)]
+mod windows_application;
+#[cfg(windows)]
 mod windows_file;
 #[cfg(windows)]
 mod windows_web;
@@ -21,9 +25,22 @@ pub use action_binding::ActionBindingError;
 pub use action_binding::ActionInput;
 pub use action_binding::ActionInputScalar;
 pub use action_binding::BoundAction;
+pub use application_activation::ApplicationActivationClient;
+pub use application_activation::ApplicationActivationCompletionError;
+pub use application_activation::ApplicationActivationQueueCapacity;
+pub use application_activation::ApplicationActivationService;
+pub use application_activation::ApplicationActivationShutdownError;
+pub use application_activation::ApplicationActivationSubmitError;
+pub use application_activation::ApplicationActivationTicket;
+pub use application_activation::ApplicationLaunchFailure;
+pub use application_activation::ApplicationLauncher;
+pub use application_catalog::ApplicationCatalog;
+pub use application_catalog::ApplicationDescriptor;
+pub use application_catalog::ApplicationId;
 pub use command_palette::CommandPalette;
 pub use command_palette::PaletteAction;
 pub use command_palette::PaletteActionState;
+pub use command_palette::PaletteLocalResult;
 pub use command_palette::PaletteMatches;
 pub use command_palette::PaletteQuery;
 pub use command_palette::PaletteResults;
@@ -41,6 +58,7 @@ pub use file_activation::FileActivationSubmitError;
 pub use file_activation::FileActivationTicket;
 pub use file_activation::FileLaunchFailure;
 pub use file_activation::FileLauncher;
+pub use palette_activation::PaletteApplicationInvocation;
 pub use palette_activation::PaletteCompletion;
 pub use palette_activation::PaletteCompletionDisposition;
 pub use palette_activation::PaletteEffect;
@@ -89,6 +107,12 @@ pub use web_activation::WebUriLauncher;
 pub use web_search::WebSearchEndpoint;
 pub use web_search::WebSearchEndpointError;
 pub use web_search::WebSearchTarget;
+#[cfg(windows)]
+pub use windows_application::ApplicationDiscoveryError;
+#[cfg(windows)]
+pub use windows_application::WindowsApplicationLauncher;
+#[cfg(windows)]
+pub use windows_application::discover_installed_applications;
 #[cfg(windows)]
 pub use windows_file::WindowsFileLauncher;
 #[cfg(windows)]
