@@ -52,11 +52,36 @@ path. Rust panics are resumed at the Rust boundary rather than made catchable
 by Lua.
 
 The current slice proves the in-process VM contract with consumer-owned fake
-ports. It is not yet a production trust boundary. Wiring untrusted source into
-the desktop host is forbidden; the next slice places this exact VM behind the
-LPAC worker/broker process and gives the worker no ambient handles. Once a call
-is admitted to that broker, the broker owns it through terminal completion;
-dropping UI or plugin result interest cannot split or duplicate its effect.
+ports. Untrusted source is still forbidden in the desktop host.
+
+The native containment seam now proves the worker process itself:
+
+```text
+PluginId
+  -> SandboxIdentity [stable profile identity per plugin]
+  -> LpacWorkerLauncher::launch_probe(worker path)
+    -> CreateAppContainerProfile | DeriveAppContainerSidFromAppContainerName
+    -> STARTUPINFOEX attribute list
+      -> SECURITY_CAPABILITIES [zero ambient capabilities]
+      -> ALL_APPLICATION_PACKAGES opt-out [LPAC]
+      -> child-process restricted
+      -> immutable Win32k/dynamic-code/extension-point/strict-handle mitigations
+    -> CreateProcessW [explicit absolute image, suspended, inherits zero handles]
+    -> Job Object [one active process, kill on owner close]
+    -> assign before resume
+    -> trusted worker containment probe
+      -> AppContainer token + LPAC access-check behavior
+      -> low integrity + zero capability groups
+      -> child/Win32k/dynamic-code mitigations
+      -> Job membership
+    <- VerifiedLpacWorker typestate | typed rejection
+```
+
+This is a live Windows integration proof, not the finished broker. The next
+slice replaces the probe-only lifetime with an allowlisted broker channel and
+loads the VM only after the same proof succeeds. Once a call is admitted to
+that broker, the broker owns it through terminal completion; dropping UI or
+plugin result interest cannot split or duplicate its effect.
 
 ## Type generation
 
@@ -80,5 +105,7 @@ validation branches or a hand-maintained union mapping.
 - Allocations beyond the configured VM ceiling fail without poisoning a new VM.
 - LuaCATS generation reflects the Rust registration and contains no
   hand-maintained shadow API.
-- The later LPAC integration proves token identity, handle allowlisting,
-  mitigation policy, per-extension broker identity, termination, and hot reload.
+- The native LPAC probe proves token identity, zero ambient capabilities,
+  mitigation policy, Job containment, and deterministic termination.
+- The later broker integration proves exact handle allowlisting,
+  per-extension broker identity, capability dispatch, and hot reload.

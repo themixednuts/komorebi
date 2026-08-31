@@ -8,6 +8,23 @@ publish = false
 mlua = { version = "=0.12.1", features = ["luajit", "vendored"] }
 thiserror = "2"
 
+[target.'cfg(windows)'.dependencies]
+windows-core = { workspace = true }
+windows-sys = { version = "=0.61.2", features = [
+  "Win32_Foundation",
+  "Win32_Security",
+  "Win32_Security_Isolation",
+  "Win32_System_JobObjects",
+  "Win32_System_Memory",
+  "Win32_System_SystemServices",
+  "Win32_System_Threading",
+  "Win32_System_WindowsProgramming",
+] }
+
+[[bin]]
+name = "komorebi-extension-worker"
+path = "src/bin/komorebi-extension-worker.rs"
+
 [lints.rust]
 unsafe_op_in_unsafe_fn = "deny"
 unused_must_use = "deny"
