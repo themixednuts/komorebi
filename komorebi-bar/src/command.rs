@@ -15,13 +15,18 @@ use komorebi_client::command::InvocationSubmissionReply;
 use komorebi_client::command::RoleHint;
 use komorebi_client::command::SessionLifetime;
 use komorebi_client::command::built_in_layout;
+use komorebi_shell::ActionBinding;
+use komorebi_shell::ActionBindingError;
 use tokio::sync::watch;
 use tokio::task::JoinHandle;
 
-#[derive(Debug)]
-struct BarCommand {
-    key: BarCommandKey,
-    arguments: BuiltInArguments,
+#[derive(Clone, Debug, Eq, PartialEq)]
+enum BarCommand {
+    BuiltIn {
+        key: BarCommandKey,
+        arguments: BuiltInArguments,
+    },
+    Binding(ActionBinding),
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -70,6 +75,23 @@ impl BarCommandKey {
             | Self::WorkspaceActiveContainerLock(_)
             | Self::FocusMonitorWorkspace
             | Self::FocusStackWindow => DeliveryPolicy::Latest,
+        }
+    }
+}
+
+impl BarCommand {
+    const fn delivery(&self) -> DeliveryPolicy {
+        match self {
+            Self::BuiltIn { key, .. } => key.delivery(),
+            Self::Binding(_) => DeliveryPolicy::Every,
+        }
+    }
+
+    fn coalesces(&self, pending: &Self) -> bool {
+        match (self, pending) {
+            (Self::BuiltIn { key, .. }, Self::BuiltIn { key: pending, .. }) => key == pending,
+            (Self::BuiltIn { .. } | Self::Binding(_), Self::Binding(_))
+            | (Self::Binding(_), Self::BuiltIn { .. }) => false,
         }
     }
 }
@@ -224,18 +246,26 @@ impl CommandQueue {
         self.send(BarCommandKey::TogglePause, [])
     }
 
+    pub fn invoke(&self, binding: ActionBinding) -> Result<(), CommandQueueError> {
+        self.enqueue(BarCommand::Binding(binding))
+    }
+
     fn send<const N: usize>(
         &self,
         key: BarCommandKey,
         arguments: [BuiltInArgument; N],
     ) -> Result<(), CommandQueueError> {
-        if self.changed.is_closed() {
-            return Err(CommandQueueError::Closed);
-        }
-        let command = BarCommand {
+        let command = BarCommand::BuiltIn {
             key,
             arguments: BuiltInArguments::new(arguments)?,
         };
+        self.enqueue(command)
+    }
+
+    fn enqueue(&self, command: BarCommand) -> Result<(), CommandQueueError> {
+        if self.changed.is_closed() {
+            return Err(CommandQueueError::Closed);
+        }
         let mut pending = self
             .pending
             .lock()
@@ -261,10 +291,10 @@ impl WorkspaceTarget {
 }
 
 fn enqueue(pending: &mut VecDeque<BarCommand>, command: BarCommand) {
-    if command.key.delivery() == DeliveryPolicy::Latest
+    if command.delivery() == DeliveryPolicy::Latest
         && let Some(index) = pending
             .iter()
-            .position(|pending| pending.key == command.key)
+            .position(|pending| command.coalesces(pending))
     {
         pending.remove(index);
     }
@@ -301,27 +331,43 @@ async fn run(pending: Arc<Mutex<VecDeque<BarCommand>>>, mut changed: watch::Rece
 async fn dispatch(
     current: &mut Option<CommandClient>,
     command: BarCommand,
-) -> Result<InvocationSubmissionReply, komorebi_client::command::CommandClientError> {
+) -> Result<InvocationSubmissionReply, CommandDispatchError> {
     if let Some(client) = current.as_mut() {
         client.refresh_catalog().await?;
-        return client
-            .invoke_builtin(
-                command.key.action(),
-                command.arguments.into_action_arguments(),
-            )
-            .await;
+        return invoke(client, command).await;
     }
 
     let mut client =
         CommandClient::connect(RoleHint::OwnerControl, SessionLifetime::Persistent).await?;
-    let reply = client
-        .invoke_builtin(
-            command.key.action(),
-            command.arguments.into_action_arguments(),
-        )
-        .await?;
+    let reply = invoke(&mut client, command).await?;
     *current = Some(client);
     Ok(reply)
+}
+
+async fn invoke(
+    client: &mut CommandClient,
+    command: BarCommand,
+) -> Result<InvocationSubmissionReply, CommandDispatchError> {
+    Ok(match command {
+        BarCommand::BuiltIn { key, arguments } => {
+            client
+                .invoke_builtin(key.action(), arguments.into_action_arguments())
+                .await?
+        }
+        BarCommand::Binding(binding) => {
+            let bound = binding.bind(client.catalog())?;
+            let (action, arguments) = bound.into_parts();
+            client.invoke(&action, arguments).await?
+        }
+    })
+}
+
+#[derive(Debug, thiserror::Error)]
+enum CommandDispatchError {
+    #[error(transparent)]
+    Client(#[from] komorebi_client::command::CommandClientError),
+    #[error(transparent)]
+    Binding(#[from] ActionBindingError),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -362,7 +408,7 @@ mod tests {
     }
 
     fn command(key: BarCommandKey) -> BarCommand {
-        BarCommand {
+        BarCommand::BuiltIn {
             key,
             arguments: BuiltInArguments::default(),
         }
@@ -387,7 +433,10 @@ mod tests {
         assert_eq!(
             pending
                 .iter()
-                .map(|command| command.key)
+                .filter_map(|command| match command {
+                    BarCommand::BuiltIn { key, .. } => Some(*key),
+                    BarCommand::Binding(_) => None,
+                })
                 .collect::<Vec<_>>(),
             [
                 BarCommandKey::MonitorWorkAreaOffset(1),
@@ -417,7 +466,10 @@ mod tests {
         assert_eq!(
             pending
                 .iter()
-                .map(|command| command.key)
+                .filter_map(|command| match command {
+                    BarCommand::BuiltIn { key, .. } => Some(*key),
+                    BarCommand::Binding(_) => None,
+                })
                 .collect::<Vec<_>>(),
             [
                 BarCommandKey::WorkspaceLayout(second),
@@ -439,7 +491,10 @@ mod tests {
         assert_eq!(
             pending
                 .iter()
-                .map(|command| command.key)
+                .filter_map(|command| match command {
+                    BarCommand::BuiltIn { key, .. } => Some(*key),
+                    BarCommand::Binding(_) => None,
+                })
                 .collect::<Vec<_>>(),
             [
                 BarCommandKey::MonitorWorkAreaOffset(0),
@@ -457,7 +512,10 @@ mod tests {
         assert_eq!(
             pending
                 .iter()
-                .map(|command| command.key)
+                .filter_map(|command| match command {
+                    BarCommand::BuiltIn { key, .. } => Some(*key),
+                    BarCommand::Binding(_) => None,
+                })
                 .collect::<Vec<_>>(),
             [
                 BarCommandKey::ToggleWorkspaceLayer,
@@ -476,9 +534,36 @@ mod tests {
         assert_eq!(
             queued
                 .iter()
-                .map(|command| (command.key.action(), command.arguments.clone()))
+                .filter_map(|command| match command {
+                    BarCommand::BuiltIn { key, arguments } => {
+                        Some((key.action(), arguments.clone()))
+                    }
+                    BarCommand::Binding(_) => None,
+                })
                 .collect::<Vec<_>>(),
             [(BuiltInActionId::TogglePause, BuiltInArguments::default())]
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn configured_pointer_actions_preserve_every_input_edge()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let (queue, pending, _receiver) = queue_without_actor();
+        let binding: ActionBinding = serde_json::from_value(serde_json::json!({
+            "action": "toggle-pause"
+        }))?;
+
+        queue.invoke(binding.clone())?;
+        queue.invoke(binding.clone())?;
+
+        let queued = pending.lock().map_err(|_| CommandQueueError::Poisoned)?;
+        assert_eq!(
+            queued.iter().collect::<Vec<_>>(),
+            [
+                &BarCommand::Binding(binding.clone()),
+                &BarCommand::Binding(binding)
+            ]
         );
         Ok(())
     }
@@ -493,7 +578,12 @@ mod tests {
         assert_eq!(
             queued
                 .iter()
-                .map(|command| (command.key.action(), command.arguments.clone()))
+                .filter_map(|command| match command {
+                    BarCommand::BuiltIn { key, arguments } => {
+                        Some((key.action(), arguments.clone()))
+                    }
+                    BarCommand::Binding(_) => None,
+                })
                 .collect::<Vec<_>>(),
             [(
                 BuiltInActionId::SetWorkspaceTiling,
@@ -517,7 +607,12 @@ mod tests {
         assert_eq!(
             queued
                 .iter()
-                .map(|command| (command.key.action(), command.arguments.clone()))
+                .filter_map(|command| match command {
+                    BarCommand::BuiltIn { key, arguments } => {
+                        Some((key.action(), arguments.clone()))
+                    }
+                    BarCommand::Binding(_) => None,
+                })
                 .collect::<Vec<_>>(),
             [(
                 BuiltInActionId::SetWorkspaceMonocle,
@@ -542,7 +637,12 @@ mod tests {
         assert_eq!(
             queued
                 .iter()
-                .map(|command| (command.key.action(), command.arguments.clone()))
+                .filter_map(|command| match command {
+                    BarCommand::BuiltIn { key, arguments } => {
+                        Some((key.action(), arguments.clone()))
+                    }
+                    BarCommand::Binding(_) => None,
+                })
                 .collect::<Vec<_>>(),
             [(
                 BuiltInActionId::SetWorkspaceActiveContainerLock,

@@ -1,17 +1,15 @@
 use crate::DEFAULT_PADDING;
-use crate::bar::exec_powershell;
 use crate::render::Grouping;
 use crate::widgets::widget::WidgetConfig;
 use eframe::egui::Pos2;
-use eframe::egui::TextBuffer;
 use eframe::egui::Vec2;
-use komorebi_client::PathExt;
 use komorebi_client::Rect;
-use komorebi_client::SocketMessage;
+use komorebi_shell::ActionBinding;
 use serde::Deserialize;
 use serde::Serialize;
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::ffi::OsStr;
+use std::path::Path;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
@@ -359,145 +357,49 @@ pub fn get_individual_spacing(
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
-#[serde(untagged)]
-/// Mouse message
-pub enum MouseMessage {
-    /// Send a message to the komorebi client.
-    /// By default, the target monitor is focused before the configured message is sent.
-    ///
-    /// Example:
-    /// ```json
-    /// "on_extra2_click": {
-    ///   "message": {
-    ///     "type": "NewWorkspace"
-    ///   }
-    /// },
-    /// ```
-    /// or:
-    /// ```json
-    /// "on_middle_click": {
-    ///   "focus_monitor_at_cursor": false,
-    ///   "message": {
-    ///     "type": "TogglePause"
-    ///   }
-    /// }
-    /// ```
-    /// or:
-    /// ```json
-    /// "on_scroll_up": {
-    ///   "message": {
-    ///     "type": "CycleFocusWorkspace",
-    ///     "content": "Previous"
-    ///   }
-    /// }
-    /// ```
-    Komorebi(KomorebiMouseMessage),
-    /// Execute a custom command.
-    /// CMD (%variable%), Bash ($variable) and PowerShell ($Env:variable) variables will be resolved.
-    /// Example: `komorebic toggle-pause`
-    Command(String),
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
-#[serde(deny_unknown_fields)]
-/// Komorebi socket mouse message
-pub struct KomorebiMouseMessage {
-    /// Send the FocusMonitorAtCursor message
-    #[cfg_attr(feature = "schemars", schemars(extend("default" = true)))]
-    pub focus_monitor_at_cursor: Option<bool>,
-    /// The message to send to the komorebi client
-    pub message: komorebi_client::SocketMessage,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 /// Mouse configuration
+///
+/// For example, cycle focus on each vertical scroll tick:
+/// `{"on_scroll_up":{"action":"cycle-focus-workspace","arguments":{"cycle":"previous"}}}`.
 pub struct MouseConfig {
-    /// Command to send on primary/left double button click
-    pub on_primary_double_click: Option<MouseMessage>,
-    /// Command to send on secondary/right button click
-    pub on_secondary_click: Option<MouseMessage>,
-    /// Command to send on middle button click
-    pub on_middle_click: Option<MouseMessage>,
-    /// Command to send on extra1/back button click
-    pub on_extra1_click: Option<MouseMessage>,
-    /// Command to send on extra2/forward button click
-    pub on_extra2_click: Option<MouseMessage>,
+    /// Catalog action to invoke on primary/left double button click
+    pub on_primary_double_click: Option<ActionBinding>,
+    /// Catalog action to invoke on secondary/right button click
+    pub on_secondary_click: Option<ActionBinding>,
+    /// Catalog action to invoke on middle button click
+    pub on_middle_click: Option<ActionBinding>,
+    /// Catalog action to invoke on extra1/back button click
+    pub on_extra1_click: Option<ActionBinding>,
+    /// Catalog action to invoke on extra2/forward button click
+    pub on_extra2_click: Option<ActionBinding>,
 
     /// Defines how many points a user needs to scroll vertically to make a "tick" on a mouse/touchpad/touchscreen
     #[cfg_attr(feature = "schemars", schemars(extend("default" = 30.0)))]
     pub vertical_scroll_threshold: Option<f32>,
-    /// Command to send on scrolling up (every tick)
-    pub on_scroll_up: Option<MouseMessage>,
-    /// Command to send on scrolling down (every tick)
-    pub on_scroll_down: Option<MouseMessage>,
+    /// Catalog action to invoke on scrolling up (every tick)
+    pub on_scroll_up: Option<ActionBinding>,
+    /// Catalog action to invoke on scrolling down (every tick)
+    pub on_scroll_down: Option<ActionBinding>,
 
     /// Defines how many points a user needs to scroll horizontally to make a "tick" on a mouse/touchpad/touchscreen
     #[cfg_attr(feature = "schemars", schemars(extend("default" = 30.0)))]
     pub horizontal_scroll_threshold: Option<f32>,
-    /// Command to send on scrolling left (every tick)
-    pub on_scroll_left: Option<MouseMessage>,
-    /// Command to send on scrolling right (every tick)
-    pub on_scroll_right: Option<MouseMessage>,
-}
-
-impl MouseConfig {
-    pub fn has_command(&self) -> bool {
-        [
-            &self.on_primary_double_click,
-            &self.on_secondary_click,
-            &self.on_middle_click,
-            &self.on_extra1_click,
-            &self.on_extra2_click,
-            &self.on_scroll_up,
-            &self.on_scroll_down,
-            &self.on_scroll_left,
-            &self.on_scroll_right,
-        ]
-        .iter()
-        .any(|opt| matches!(opt, Some(MouseMessage::Command(_))))
-    }
-}
-
-impl MouseMessage {
-    pub fn execute(&self) {
-        match self {
-            MouseMessage::Komorebi(config) => {
-                let mut messages = Vec::new();
-
-                if config.focus_monitor_at_cursor.unwrap_or(true) {
-                    messages.push(SocketMessage::FocusMonitorAtCursor);
-                }
-
-                messages.push(config.message.clone());
-
-                tracing::debug!("Sending messages: {messages:?}");
-
-                if komorebi_client::send_batch(messages).is_err() {
-                    tracing::error!("could not send commands");
-                }
-            }
-            MouseMessage::Command(cmd) => {
-                tracing::debug!("Executing command: {}", cmd);
-
-                let cmd_no_env = cmd.replace_env();
-
-                if exec_powershell(cmd_no_env.to_str().expect("Invalid command")).is_err() {
-                    tracing::error!("Failed to execute '{}'", cmd);
-                }
-            }
-        };
-    }
+    /// Catalog action to invoke on scrolling left (every tick)
+    pub on_scroll_left: Option<ActionBinding>,
+    /// Catalog action to invoke on scrolling right (every tick)
+    pub on_scroll_right: Option<ActionBinding>,
 }
 
 impl KomobarConfig {
-    pub fn read(path: &PathBuf) -> color_eyre::Result<Self> {
+    pub fn read(path: &Path) -> color_eyre::Result<Self> {
+        if path.extension() != Some(OsStr::new("json")) {
+            return Err(color_eyre::eyre::eyre!(
+                "bar configuration path must have a .json extension: {}",
+                path.display()
+            ));
+        }
         let content = std::fs::read_to_string(path)?;
-        let mut value: Self = match path.extension().unwrap().to_string_lossy().as_str() {
-            "json" => serde_json::from_str(&content)?,
-            _ => panic!("unsupported format"),
-        };
+        let mut value: Self = serde_json::from_str(&content)?;
 
         if value.frame.is_none() {
             value.frame = Some(FrameConfig {
@@ -630,7 +532,8 @@ pub enum MediaDisplayFormat {
 
 #[cfg(test)]
 mod tests {
-    use super::KomorebiMouseMessage;
+    use super::KomobarConfig;
+    use komorebi_shell::ActionBinding;
     use serde::Deserialize;
     use serde::Serialize;
     use serde_json::json;
@@ -684,18 +587,32 @@ mod tests {
     }
 
     #[test]
-    fn removed_mouse_follow_wrapper_is_rejected_at_the_config_boundary() {
+    fn pointer_binding_accepts_only_catalog_action_input() {
         let current = json!({
-            "focus_monitor_at_cursor": false,
-            "message": { "type": "TogglePause" }
+            "action": "toggle-pause"
         });
-        assert!(serde_json::from_value::<KomorebiMouseMessage>(current).is_ok());
+        assert!(serde_json::from_value::<ActionBinding>(current).is_ok());
 
         let removed = json!({
             "focus_monitor_at_cursor": false,
-            "ignore_mouse_follows_focus": true,
             "message": { "type": "TogglePause" }
         });
-        assert!(serde_json::from_value::<KomorebiMouseMessage>(removed).is_err());
+        assert!(serde_json::from_value::<ActionBinding>(removed).is_err());
+    }
+
+    #[test]
+    fn config_path_without_json_extension_is_a_typed_error()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let path = std::env::temp_dir().join(format!(
+            "komorebi-bar-config-no-extension-{}",
+            std::process::id()
+        ));
+        std::fs::write(&path, b"{}")?;
+
+        let result = KomobarConfig::read(&path);
+
+        std::fs::remove_file(path)?;
+        assert!(result.is_err());
+        Ok(())
     }
 }

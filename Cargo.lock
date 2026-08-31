@@ -3578,6 +3578,7 @@ dependencies = [
  "hotwatch",
  "image 0.25.10",
  "komorebi-client",
+ "komorebi-shell",
  "komorebi-themes",
  "lazy_static",
  "netdev",
@@ -3680,6 +3681,17 @@ dependencies = [
  "minicbor",
  "proptest",
  "sha2 0.10.9",
+ "thiserror 2.0.20",
+]
+
+[[package]]
+name = "komorebi-shell"
+version = "0.1.0"
+dependencies = [
+ "komorebi-protocol",
+ "schemars 1.2.2",
+ "serde",
+ "serde_json_lenient",
  "thiserror 2.0.20",
 ]
 

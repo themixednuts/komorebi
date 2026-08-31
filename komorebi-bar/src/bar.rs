@@ -24,7 +24,6 @@ use crate::widgets::komorebi::Komorebi;
 use crate::widgets::komorebi::MonitorInfo;
 use crate::widgets::widget::BarWidget;
 use crate::widgets::widget::WidgetConfig;
-use color_eyre::eyre;
 use crossbeam_channel::Receiver;
 use crossbeam_channel::TryRecvError;
 use eframe::egui::Align;
@@ -61,90 +60,12 @@ use komorebi_themes::KomobarThemeBase16;
 use komorebi_themes::KomobarThemeCatppuccin;
 use komorebi_themes::KomobarThemeCustom;
 use komorebi_themes::catppuccin_egui;
-use lazy_static::lazy_static;
-use parking_lot::Mutex;
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::io::Error;
-use std::io::ErrorKind;
-use std::io::Write;
-use std::os::windows::process::CommandExt;
 use std::path::PathBuf;
-use std::process::ChildStdin;
-use std::process::Command;
-use std::process::Stdio;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
-
-const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-
-lazy_static! {
-    static ref SESSION_STDIN: Mutex<Option<ChildStdin>> = Mutex::new(None);
-}
-
-fn start_powershell() -> eyre::Result<()> {
-    // found running session, do nothing
-    if SESSION_STDIN.lock().as_mut().is_some() {
-        tracing::debug!("PowerShell session already started");
-        return Ok(());
-    }
-
-    tracing::debug!("Starting PowerShell session");
-
-    let mut child = Command::new("powershell.exe")
-        .args(["-NoLogo", "-NoProfile", "-Command", "-"])
-        .stdin(Stdio::piped())
-        .creation_flags(CREATE_NO_WINDOW)
-        .spawn()?;
-
-    let stdin = child.stdin.take().expect("stdin piped");
-
-    // Store stdin for later commands
-    let mut session_stdin = SESSION_STDIN.lock();
-    *session_stdin = Option::from(stdin);
-
-    Ok(())
-}
-
-fn stop_powershell() -> eyre::Result<()> {
-    tracing::debug!("Stopping PowerShell session");
-
-    if let Some(mut session_stdin) = SESSION_STDIN.lock().take() {
-        if let Err(e) = session_stdin.write_all(b"exit\n") {
-            tracing::error!(error = %e, "failed to write exit command to PowerShell stdin");
-            return Err(e.into());
-        }
-        if let Err(e) = session_stdin.flush() {
-            tracing::error!(error = %e, "failed to flush PowerShell stdin");
-            return Err(e.into());
-        }
-
-        tracing::debug!("PowerShell session stopped");
-    } else {
-        tracing::debug!("PowerShell session already stopped");
-    }
-
-    Ok(())
-}
-
-pub fn exec_powershell(cmd: &str) -> eyre::Result<()> {
-    if let Some(session_stdin) = SESSION_STDIN.lock().as_mut() {
-        if let Err(e) = writeln!(session_stdin, "{cmd}") {
-            tracing::error!(error = %e, cmd = cmd, "failed to write command to PowerShell stdin");
-            return Err(e.into());
-        }
-
-        if let Err(e) = session_stdin.flush() {
-            tracing::error!(error = %e, "failed to flush PowerShell stdin");
-            return Err(e.into());
-        }
-
-        return Ok(());
-    }
-
-    Err(Error::new(ErrorKind::NotFound, "PowerShell session not started").into())
-}
 
 pub struct Komobar {
     pub hwnd: Option<isize>,
@@ -558,16 +479,6 @@ impl Komobar {
                 self.input_config.vertical_scroll_threshold * 3.0;
             self.input_config.horizontal_scroll_max_threshold =
                 self.input_config.horizontal_scroll_threshold * 3.0;
-
-            if mouse.has_command() {
-                start_powershell().unwrap_or_else(|_| {
-                    tracing::error!("failed to start powershell session");
-                });
-            } else {
-                stop_powershell().unwrap_or_else(|_| {
-                    tracing::error!("failed to stop powershell session");
-                });
-            }
         }
 
         tracing::info!("widget configuration options applied");
@@ -1092,7 +1003,7 @@ impl eframe::App for Komobar {
         CentralPanel::default().frame(frame).show(ctx, |ui| {
             // Variable to store command to execute after widgets are rendered
             // This allows widgets to mark clicks as consumed before bar processes them
-            let mut pending_command: Option<crate::config::MouseMessage> = None;
+            let mut pending_command: Option<komorebi_shell::ActionBinding> = None;
 
             if let Some(mouse_config) = &self.config.mouse {
                 let command = if ui
@@ -1332,8 +1243,9 @@ impl eframe::App for Komobar {
             // Execute the deferred mouse command only if no widget consumed the click
             if let Some(command) = pending_command
                 && !take_widget_clicked()
+                && let Err(error) = self.commands.invoke(command)
             {
-                command.execute();
+                tracing::error!(%error, "could not enqueue pointer action");
             }
         });
     }

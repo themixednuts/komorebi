@@ -7,6 +7,7 @@ edition = "2024"
 
 [dependencies]
 komorebi-client = { path = "../komorebi-client", default-features = false }
+komorebi-shell = { path = "../komorebi-shell", default-features = false }
 komorebi-themes = { path = "../komorebi-themes", default-features = false }
 
 chrono-tz = { workspace = true }
@@ -52,5 +53,6 @@ default = ["schemars"]
 schemars = [
   "dep:schemars",
   "komorebi-client/default",
+  "komorebi-shell/schemars",
   "komorebi-themes/default",
 ]
