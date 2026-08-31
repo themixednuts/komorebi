@@ -1,3 +1,5 @@
+use komorebi_search::ContentSearchLimit;
+use komorebi_search::ContentSearchTerms;
 use komorebi_search::FileSearchLimit;
 use komorebi_search::FileSearchQueueCapacity;
 use komorebi_search::FileSearchRequestError;
@@ -36,6 +38,35 @@ async fn owned_service_searches_resolves_and_stops_external_clients()
             .await,
         Err(FileSearchRequestError::Stopped)
     ));
+    Ok(())
+}
+
+#[tokio::test]
+async fn owned_service_runs_content_search_on_the_blocking_owner()
+-> Result<(), Box<dyn std::error::Error>> {
+    let directory = tempfile::tempdir()?;
+    let path = directory.path().join("effects.rs");
+    std::fs::write(&path, b"fn gpu_particle_border() {}\n")?;
+    let service = FileSearchService::start(
+        directory.path().to_path_buf(),
+        FileSearchQueueCapacity::new(2).ok_or("two is a valid queue capacity")?,
+    )
+    .await?;
+    let client = service.client();
+    let terms =
+        ContentSearchTerms::new("particle border").ok_or("content terms should be nonempty")?;
+
+    let matches = client
+        .search_content(
+            terms,
+            ContentSearchLimit::new(4).ok_or("four is a valid content result limit")?,
+        )
+        .await?;
+
+    assert_eq!(matches.len(), 1);
+    assert_eq!(matches[0].display_path(), "effects.rs");
+    assert_eq!(client.resolve(matches[0].id().clone()).await?, Some(path));
+    service.shutdown().await?;
     Ok(())
 }
 

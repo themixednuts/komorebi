@@ -181,6 +181,21 @@ FileIndex::search(&str, FileSearchLimit)
        },
      }
 
+FileIndex::search_content(&ContentSearchTerms, ContentSearchLimit)
+  -> fff_search::QueryParser
+  -> FilePicker::grep(GrepMode::Fuzzy)
+    -> exact retained PathBuf for every filesystem read
+  -> validate result-local file index and one-based line number
+  -> hard-truncate FFF's soft page bound
+  <- ContentSearchMatch {
+       id: OpaquePathId,
+       display_path: String,
+       line_number: NonZeroU64,
+       byte_column,
+       byte_offset,
+       line_content,
+     }
+
 file activation
   -> FileIndex::resolve(&OpaquePathId)
     -> foreign/stale index identity -> None [no effect]
@@ -214,6 +229,11 @@ FileSearchClient::resolve(OpaquePathId)
   -> same bounded admission
   -> blocking worker owns FileIndex::resolve
   <- Option<PathBuf>
+
+FileSearchClient::search_content(terms, limit)
+  -> same bounded admission and worker ownership
+  -> FileIndex::search_content
+  <- Vec<ContentSearchMatch> | typed invariant failure
 
 FileSearchService::shutdown / Drop
   -> close admission semaphore

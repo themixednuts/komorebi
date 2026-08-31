@@ -10,6 +10,10 @@ use tokio::sync::oneshot;
 use tokio::task::JoinError;
 use tokio::task::JoinHandle;
 
+use crate::ContentSearchError;
+use crate::ContentSearchLimit;
+use crate::ContentSearchMatch;
+use crate::ContentSearchTerms;
 use crate::FileIndex;
 use crate::FileIndexBuildError;
 use crate::FileSearchLimit;
@@ -146,6 +150,40 @@ impl FileSearchClient {
         result.await.map_err(|_| FileSearchRequestError::Stopped)
     }
 
+    /// Searches indexed file contents on the blocking index owner.
+    ///
+    /// Cancelling this future drops only result interest; an admitted read-only
+    /// search may complete before the worker accepts its next request.
+    ///
+    /// # Errors
+    ///
+    /// Returns a stopped error when the service exits, or an invalid-result
+    /// error if the vendored engine violates a documented result invariant.
+    pub async fn search_content(
+        &self,
+        terms: ContentSearchTerms,
+        limit: ContentSearchLimit,
+    ) -> Result<Vec<ContentSearchMatch>, ContentSearchRequestError> {
+        let permit = self
+            .acquire_permit()
+            .await
+            .map_err(|_| ContentSearchRequestError::Stopped)?;
+        let (reply, result) = oneshot::channel();
+        self.sender
+            .send(Command::SearchContent {
+                terms,
+                limit,
+                reply,
+                permit,
+            })
+            .await
+            .map_err(|_| ContentSearchRequestError::Stopped)?;
+        result
+            .await
+            .map_err(|_| ContentSearchRequestError::Stopped)?
+            .map_err(ContentSearchRequestError::InvalidResult)
+    }
+
     /// Resolves an opaque identity inside the worker that owns its index.
     ///
     /// # Errors
@@ -178,6 +216,12 @@ enum Command {
         query: String,
         limit: FileSearchLimit,
         reply: oneshot::Sender<Vec<FileSearchMatch>>,
+        permit: OwnedSemaphorePermit,
+    },
+    SearchContent {
+        terms: ContentSearchTerms,
+        limit: ContentSearchLimit,
+        reply: oneshot::Sender<Result<Vec<ContentSearchMatch>, ContentSearchError>>,
         permit: OwnedSemaphorePermit,
     },
     Resolve {
@@ -220,6 +264,15 @@ fn run_worker(
                 let _ = reply.send(resolved);
                 drop(permit);
             }
+            Command::SearchContent {
+                terms,
+                limit,
+                reply,
+                permit,
+            } => {
+                let _ = reply.send(index.search_content(&terms, limit));
+                drop(permit);
+            }
             Command::Shutdown => break,
         }
     }
@@ -245,6 +298,17 @@ pub enum FileSearchRequestError {
     /// The service no longer accepts or completes requests.
     #[error("file-search service is stopped")]
     Stopped,
+}
+
+/// Failure to complete a content-search request.
+#[derive(Clone, Copy, Debug, Eq, Error, PartialEq)]
+pub enum ContentSearchRequestError {
+    /// The service no longer accepts or completes requests.
+    #[error("file-search service is stopped")]
+    Stopped,
+    /// The vendored engine violated a documented result invariant.
+    #[error(transparent)]
+    InvalidResult(#[from] ContentSearchError),
 }
 
 /// Failure while joining the owned file-search worker.

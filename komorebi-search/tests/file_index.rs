@@ -1,3 +1,5 @@
+use komorebi_search::ContentSearchLimit;
+use komorebi_search::ContentSearchTerms;
 use komorebi_search::FileIndex;
 use komorebi_search::FileSearchLimit;
 
@@ -21,6 +23,35 @@ fn file_search_returns_only_index_owned_resolvable_identities()
     assert_eq!(selected.display_path(), "settings.json");
     assert_eq!(first.resolve(selected.id()), Some(first_path.as_path()));
     assert_eq!(second.resolve(selected.id()), None);
+    Ok(())
+}
+
+#[test]
+fn content_search_returns_bounded_lines_with_file_identities()
+-> Result<(), Box<dyn std::error::Error>> {
+    let directory = tempfile::tempdir()?;
+    let path = directory.path().join("renderer.rs");
+    std::fs::write(
+        &path,
+        b"fn render_native_compositor() {}\nfn unrelated() {}\n",
+    )?;
+    let index = FileIndex::build(directory.path().to_path_buf())?;
+    let terms =
+        ContentSearchTerms::new("native compositor").ok_or("content terms should be nonempty")?;
+
+    let matches = index.search_content(
+        &terms,
+        ContentSearchLimit::new(10).ok_or("ten is a valid content result limit")?,
+    )?;
+
+    assert_eq!(matches.len(), 1);
+    assert_eq!(matches[0].display_path(), "renderer.rs");
+    assert_eq!(matches[0].line_number().get(), 1);
+    assert_eq!(
+        matches[0].line_content(),
+        "fn render_native_compositor() {}"
+    );
+    assert_eq!(index.resolve(matches[0].id()), Some(path.as_path()));
     Ok(())
 }
 
@@ -60,5 +91,18 @@ fn file_search_identity_preserves_unpaired_utf16_root_and_filename()
     assert!(resolved_units.contains(&0xd801));
     assert!(resolved_units.contains(&0xd800));
     assert!(!resolved_units.contains(&0xfffd));
+
+    let terms = ContentSearchTerms::new("lossless").ok_or("content terms should be nonempty")?;
+    let content_matches = index.search_content(
+        &terms,
+        ContentSearchLimit::new(1).ok_or("one is a valid content result limit")?,
+    )?;
+    let content = content_matches
+        .first()
+        .ok_or("content search should read the exact WTF-16 path")?;
+    assert_eq!(
+        std::fs::read(index.resolve(content.id()).ok_or("id should resolve")?)?,
+        b"lossless"
+    );
     Ok(())
 }
