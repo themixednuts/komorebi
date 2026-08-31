@@ -25,7 +25,9 @@ use windows::Win32::UI::Shell::APPBARDATA;
 use windows::Win32::UI::Shell::SHAppBarMessage;
 use windows::Win32::UI::WindowsAndMessaging::GetShellWindow;
 use windows::Win32::UI::WindowsAndMessaging::GetWindowThreadProcessId;
-use windows::Win32::UI::WindowsAndMessaging::WM_APP;
+use windows::Win32::UI::WindowsAndMessaging::RegisterWindowMessageW;
+use windows::core::PCWSTR;
+use windows::core::w;
 
 use crate::AppBarEdge;
 use crate::AppBarGeometry;
@@ -34,20 +36,73 @@ use crate::PhysicalRectError;
 use crate::ShellGeneration;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct AppBarCallbackMessage(u32);
+pub struct AppBarCallbackMessage(NonZeroU32);
 
 impl AppBarCallbackMessage {
     #[must_use]
-    pub const fn new(message: u32) -> Option<Self> {
-        if message >= WM_APP && message < 0xc000 {
-            Some(Self(message))
-        } else {
-            None
-        }
+    pub const fn id(self) -> u32 {
+        self.0.get()
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct AppBarPositionMessage(NonZeroU32);
+
+impl AppBarPositionMessage {
+    #[must_use]
+    pub const fn id(self) -> u32 {
+        self.0.get()
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct TaskbarCreatedMessage(NonZeroU32);
+
+impl TaskbarCreatedMessage {
+    #[must_use]
+    pub const fn id(self) -> u32 {
+        self.0.get()
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct WindowsAppBarMessages {
+    callback: AppBarCallbackMessage,
+    position: AppBarPositionMessage,
+    taskbar_created: TaskbarCreatedMessage,
+}
+
+impl WindowsAppBarMessages {
+    pub fn register() -> Result<Self, WindowsAppBarError> {
+        Ok(Self {
+            callback: AppBarCallbackMessage(register_message(
+                w!("komorebi.shell.appbar.callback.v1"),
+                "appbar callback",
+            )?),
+            position: AppBarPositionMessage(register_message(
+                w!("komorebi.shell.appbar.position.v1"),
+                "appbar position",
+            )?),
+            taskbar_created: TaskbarCreatedMessage(register_message(
+                w!("TaskbarCreated"),
+                "TaskbarCreated",
+            )?),
+        })
     }
 
-    const fn get(self) -> u32 {
-        self.0
+    #[must_use]
+    pub const fn callback(self) -> AppBarCallbackMessage {
+        self.callback
+    }
+
+    #[must_use]
+    pub const fn position(self) -> AppBarPositionMessage {
+        self.position
+    }
+
+    #[must_use]
+    pub const fn taskbar_created(self) -> TaskbarCreatedMessage {
+        self.taskbar_created
     }
 }
 
@@ -111,7 +166,7 @@ impl WindowsAppBarApi {
         callback: AppBarCallbackMessage,
     ) -> Result<(), WindowsAppBarError> {
         let mut data = appbar_data(window)?;
-        data.uCallbackMessage = callback.get();
+        data.uCallbackMessage = callback.id();
         appbar_call(ABM_NEW, &mut data, "ABM_NEW")
     }
 
@@ -134,6 +189,12 @@ impl WindowsAppBarApi {
         appbar_call(ABM_SETPOS, &mut data, "ABM_SETPOS")?;
         physical_rect(data.rc).map_err(WindowsAppBarError::Geometry)
     }
+}
+
+fn register_message(name: PCWSTR, label: &'static str) -> Result<NonZeroU32, WindowsAppBarError> {
+    // SAFETY: each pointer comes from a static, NUL-terminated `w!` string.
+    NonZeroU32::new(unsafe { RegisterWindowMessageW(name) })
+        .ok_or(WindowsAppBarError::WindowMessageRegistrationFailed(label))
 }
 
 fn edge_code(geometry: AppBarGeometry) -> u32 {
@@ -191,6 +252,8 @@ impl Drop for OwnedProcess {
 
 #[derive(Debug, Error)]
 pub enum WindowsAppBarError {
+    #[error("could not register the {0} window message")]
+    WindowMessageRegistrationFailed(&'static str),
     #[error("the Windows shell window is unavailable")]
     ShellWindowUnavailable,
     #[error("the Windows shell process is unavailable")]

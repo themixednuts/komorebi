@@ -129,11 +129,17 @@ pub use web_search::WebSearchTarget;
 #[cfg(windows)]
 pub use windows_appbar::AppBarCallbackMessage;
 #[cfg(windows)]
+pub use windows_appbar::AppBarPositionMessage;
+#[cfg(windows)]
 pub use windows_appbar::BorrowedAppBarWindow;
+#[cfg(windows)]
+pub use windows_appbar::TaskbarCreatedMessage;
 #[cfg(windows)]
 pub use windows_appbar::WindowsAppBarApi;
 #[cfg(windows)]
 pub use windows_appbar::WindowsAppBarError;
+#[cfg(windows)]
+pub use windows_appbar::WindowsAppBarMessages;
 #[cfg(windows)]
 pub use windows_application::ApplicationDiscoveryError;
 #[cfg(windows)]

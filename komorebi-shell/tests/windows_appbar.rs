@@ -2,9 +2,8 @@
 
 use std::error::Error;
 
-use komorebi_shell::AppBarCallbackMessage;
 use komorebi_shell::WindowsAppBarApi;
-use windows::Win32::UI::WindowsAndMessaging::WM_APP;
+use komorebi_shell::WindowsAppBarMessages;
 
 #[test]
 fn current_shell_generation_has_stable_nonzero_native_identity() -> Result<(), Box<dyn Error>> {
@@ -18,9 +17,15 @@ fn current_shell_generation_has_stable_nonzero_native_identity() -> Result<(), B
 }
 
 #[test]
-fn appbar_callback_message_is_confined_to_application_message_space() {
-    assert!(AppBarCallbackMessage::new(WM_APP).is_some());
-    assert!(AppBarCallbackMessage::new(0xbfff).is_some());
-    assert!(AppBarCallbackMessage::new(WM_APP - 1).is_none());
-    assert!(AppBarCallbackMessage::new(0xc000).is_none());
+fn appbar_messages_are_registered_by_name_without_numeric_collisions() -> Result<(), Box<dyn Error>>
+{
+    let first = WindowsAppBarMessages::register()?;
+    let second = WindowsAppBarMessages::register()?;
+
+    assert_eq!(first, second);
+    assert_ne!(first.callback().id(), first.position().id());
+    assert_ne!(first.callback().id(), first.taskbar_created().id());
+    assert_ne!(first.position().id(), first.taskbar_created().id());
+    assert!((0xc000..=0xffff).contains(&first.callback().id()));
+    Ok(())
 }
