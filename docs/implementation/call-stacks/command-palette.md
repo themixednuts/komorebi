@@ -61,6 +61,7 @@ pub struct PaletteMatches { /* ordered action identities and bounded cursor */ }
 pub enum PaletteEffect {
     Invoke(PaletteInvocation),
     Web(PaletteWebInvocation),
+    File(PaletteFileInvocation),
 }
 
 pub enum PaletteSubmission {
@@ -182,13 +183,14 @@ The broker does not query support before every launch. That would add a race and
 a second native round trip without changing launch authority. A read-only native
 test exercises `QueryUriSupportAsync` only as adapter evidence.
 
-## Durable web-search configuration stack
+## Durable palette configuration stack
 
-The endpoint is durable configuration, not JSON state and not a compiled-in
-provider. `komorebi-settings` owns its typed Drizzle schema, generated migration,
-validation on load, and atomic singleton upsert. The composition root reads it
-once; the configured broker then owns the validated endpoint in memory for the
-process lifetime, so palette queries never touch SQLite.
+The web endpoint and exact file-search root are durable configuration, not JSON
+state or compiled-in providers. `komorebi-settings` owns their typed Drizzle
+schema, generated migrations, validation on load, and atomic singleton upserts.
+The composition root reads them once; the configured brokers then own hot
+in-memory projections for the process lifetime, so palette queries never touch
+SQLite.
 
 ```text
 komorebi-command-palette::main [Tokio composition root]
@@ -205,12 +207,23 @@ komorebi-command-palette::main [Tokio composition root]
           -> WebActivationService::start -> WebSearchBroker::Configured
         -> None
           -> WebSearchBroker::Unconfigured [explicit typed activation failure]
+    -> SettingsStore::file_search_root
+      -> typed Drizzle select -> FileSearchRow: SQLiteFromRow
+      -> root_wtf16: BLOB -> exact PathBuf
+        -> Some(root)
+        -> None -> derive Windows home once -> typed Drizzle singleton upsert
 ```
 
-`SettingsStore::set_web_search` uses Drizzle's typed insert/conflict/update query
-API; it does not interpolate raw SQL or maintain manual migrations. The database
-is the durable source of truth and the broker is the hot in-memory projection,
-so there is no cache-invalidation protocol.
+`SettingsStore::set_web_search` and `set_file_search_root` use Drizzle's typed
+insert/conflict/update query API; they do not interpolate raw SQL or maintain
+manual migrations. The database is the durable source of truth and each broker
+is a hot in-memory projection, so there is no cache-invalidation protocol.
+
+The file root uses a raw BLOB column containing little-endian UTF-16 code units,
+not JSON or JSONB. JSON strings cannot represent an unpaired surrogate, while a
+Windows path may legally contain one. The codec rejects malformed odd-length
+rows and reconstructs the original `OsString` without normalization. Other
+platforms use the same BLOB column for their native path bytes.
 
 SQLite internally passes even `sqlite3_open16` filenames through UTF-8. An
 unpaired-WTF-16 database path therefore cannot preserve its filesystem identity.
@@ -218,17 +231,13 @@ The shared opener rejects such a path as `rusqlite::Error::InvalidPath`; it neve
 normalizes or silently opens a different file. Exact user file operands remain
 opaque `PathBuf` values in the file-search stack and do not pass through SQLite.
 
-## Future source stacks
+## Remaining source stacks
 
 ```text
 query parse
   -> default query -> actions + applications + files
   -> content mode -> fff-search grep adapter
   -> !query -> WebQuery (never interpreted as a shell command)
-
-file selection: OpaquePathId
-  -> originating index identity check -> PathBuf / WindowsPathInput
-    -> ShellExecuteExW adapter
 
 web selection: WebQuery
   -> percent-encoded HTTPS search URL
@@ -285,9 +294,11 @@ FileIndex::search_content(&ContentSearchTerms, ContentSearchLimit)
 file activation
   -> FileIndex::resolve(&OpaquePathId)
     -> foreign/stale index identity -> None [no effect]
-    -> matching identity -> &Path
-      -> future WindowsPathInput boundary
-        -> ShellExecuteExW adapter
+    -> matching identity -> exact PathBuf
+      -> FileLauncher::launch(PathBuf) [consumer-owned port]
+        -> WindowsFileLauncher
+          -> UTF-16 with checked terminal NUL
+          -> ShellExecuteExW adapter
 ```
 
 `OpaquePathId` carries an exact path only for the bounded result page. The
@@ -335,6 +346,60 @@ the read-only operation, releases the permit, and accepts later requests. The
 service owner can therefore signal shutdown from `Drop` without a timer,
 best-effort retry loop, or full-queue deadlock. Executables own the Tokio
 runtime; this library neither creates one nor calls `block_on`.
+
+The renderer-neutral integration adds a second fence distinct from activation
+attempt identity:
+
+```text
+GPUI InputEvent::Change(raw query)
+  -> PaletteController::update_query(&str)
+    -> local action matches immediately [hot-local]
+    -> nonempty local terms
+      -> PaletteFileSearch { PaletteQueryRevision, owned terms }
+  <- optional typed query effect + immediately renderable action rows
+    -> PaletteFileSearch::submit(&PaletteFileSearchBroker)
+      -> configured broker -> FileSearchClient::search [owned blocking worker]
+      -> unconfigured broker -> typed Unavailable completion [no effect]
+    <- PaletteFileSearchCompletion { revision, typed result }
+      -> PaletteController::complete_file_search
+        -> current loading revision -> apply bounded opaque file rows
+        -> superseded revision -> IgnoredStale
+  <- controller-borrowed presentation rows
+```
+
+`PaletteQueryRevision` and `PaletteAttemptId` are different domain identities:
+query revisions fence replaceable read-only search results, while attempt IDs
+fence non-repeatable activation outcomes. GPUI owns result interest only. It may
+discard a superseded task, but it cannot cancel or corrupt work already admitted
+to the index owner.
+
+Activation uses a separate owned actor because native launch is non-repeatable:
+
+```text
+PaletteController::activate [selected row is a file]
+  -> PaletteEffect::File(PaletteFileInvocation { attempt, opaque identity })
+    -> PaletteFileInvocation::submit(&FileActivationClient)
+      -> bounded actor admission
+      <- FileActivationTicket [actor now owns the effect]
+        -> FileSearchClient::resolve(OpaquePathId)
+          -> None -> typed StaleIdentity [no native effect]
+          -> exact PathBuf
+            -> FileLauncher::launch(PathBuf)
+              -> WindowsFileLauncher
+                -> Tokio blocking pool [owned; no async-worker blocking]
+                  -> ShellExecuteExW [native side effect]
+        <- typed terminal result
+      -> PaletteCompletion { attempt, result }
+    -> PaletteController::complete [attempt fence]
+```
+
+Dropping the palette wait after ticket admission cannot cancel resolution or
+split it from launch. The activation actor owns both steps and drains admitted
+commands during shutdown. `WindowsFileLauncher` moves synchronous
+`ShellExecuteExW` work to Tokio's blocking pool and awaits its owned join; a
+cancelled UI future cannot detach or duplicate the native effect. The adapter
+receives only the resolved exact path; presentation strings never cross this
+boundary.
 
 ## Proof obligations
 

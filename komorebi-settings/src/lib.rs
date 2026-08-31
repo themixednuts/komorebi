@@ -1,5 +1,6 @@
 //! Durable, typed application settings.
 
+mod path;
 mod schema;
 mod store;
 

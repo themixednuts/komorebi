@@ -1,4 +1,5 @@
 use std::path::Path;
+use std::path::PathBuf;
 
 use drizzle::core::expr::eq;
 use drizzle::core::expr::excluded;
@@ -10,12 +11,16 @@ use komorebi_shell::WebSearchEndpointError;
 use komorebi_sqlite::open_durable;
 use thiserror::Error;
 
+use crate::path::PathEncodingError;
+use crate::schema::FileSearchRow;
+use crate::schema::InsertFileSearchSettings;
 use crate::schema::InsertWebSearchSettings;
 use crate::schema::SettingsSchema;
+use crate::schema::UpdateFileSearchSettings;
 use crate::schema::UpdateWebSearchSettings;
 use crate::schema::WebSearchRow;
 
-const WEB_SEARCH_SINGLETON: i64 = 1;
+const SETTINGS_SINGLETON: i64 = 1;
 
 type SettingsDb = Drizzle<SettingsSchema>;
 
@@ -53,7 +58,7 @@ impl SettingsStore {
             .db
             .select((table.base_url, table.query_parameter))
             .from(table)
-            .r#where(eq(table.singleton, WEB_SEARCH_SINGLETON))
+            .r#where(eq(table.singleton, SETTINGS_SINGLETON))
             .get();
         match row {
             Ok(row) => WebSearchEndpoint::new(&row.base_url, &row.query_parameter)
@@ -77,12 +82,53 @@ impl SettingsStore {
                 endpoint.base_url().to_owned(),
                 endpoint.query_parameter().to_owned(),
             )
-            .with_singleton(WEB_SEARCH_SINGLETON)])
+            .with_singleton(SETTINGS_SINGLETON)])
             .on_conflict(table.singleton)
             .do_update(
                 UpdateWebSearchSettings::default()
                     .with_base_url(excluded(table.base_url))
                     .with_query_parameter(excluded(table.query_parameter)),
+            )
+            .execute()?;
+        Ok(())
+    }
+
+    /// Loads the exact root of the optional first-party file index.
+    ///
+    /// # Errors
+    ///
+    /// Returns a typed query or stored-path representation failure.
+    pub fn file_search_root(&self) -> Result<Option<PathBuf>, SettingsError> {
+        let table = self.schema.file_search;
+        let row: Result<FileSearchRow, DrizzleError> = self
+            .db
+            .select(table.root_wtf16)
+            .from(table)
+            .r#where(eq(table.singleton, SETTINGS_SINGLETON))
+            .get();
+        match row {
+            Ok(row) => crate::path::decode(&row.root_wtf16)
+                .map(Some)
+                .map_err(Into::into),
+            Err(error) if is_missing(&error) => Ok(None),
+            Err(error) => Err(error.into()),
+        }
+    }
+
+    /// Atomically inserts or replaces the exact first-party file-index root.
+    ///
+    /// # Errors
+    ///
+    /// Returns a typed Drizzle failure without changing the prior row.
+    pub fn set_file_search_root(&mut self, root: &Path) -> Result<(), SettingsError> {
+        let table = self.schema.file_search;
+        self.db
+            .insert(table)
+            .values([InsertFileSearchSettings::new(crate::path::encode(root))
+                .with_singleton(SETTINGS_SINGLETON)])
+            .on_conflict(table.singleton)
+            .do_update(
+                UpdateFileSearchSettings::default().with_root_wtf16(excluded(table.root_wtf16)),
             )
             .execute()?;
         Ok(())
@@ -108,4 +154,16 @@ pub enum SettingsError {
     Drizzle(#[from] DrizzleError),
     #[error("persisted web-search configuration is invalid: {0}")]
     WebSearch(#[from] WebSearchEndpointError),
+    #[error("persisted WTF-16 path contains an odd byte count: {byte_length}")]
+    PathEncoding { byte_length: usize },
+}
+
+impl From<PathEncodingError> for SettingsError {
+    fn from(error: PathEncodingError) -> Self {
+        match error {
+            PathEncodingError::OddUtf16ByteLength(byte_length) => {
+                Self::PathEncoding { byte_length }
+            }
+        }
+    }
 }

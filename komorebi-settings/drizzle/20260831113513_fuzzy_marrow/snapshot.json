@@ -1,0 +1,106 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "id": "474ec66f-8067-4a1b-afae-61fa81ce18aa",
+  "prevIds": [
+    "a6bf8d66-8597-4cf6-bc1f-306ac628e61d"
+  ],
+  "ddl": [
+    {
+      "entityType": "tables",
+      "name": "web_search_settings",
+      "strict": true
+    },
+    {
+      "entityType": "columns",
+      "table": "web_search_settings",
+      "name": "singleton",
+      "type": "INTEGER",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "checks",
+      "table": "web_search_settings",
+      "name": "web_search_settings_singleton_check",
+      "value": "singleton = 1"
+    },
+    {
+      "entityType": "columns",
+      "table": "web_search_settings",
+      "name": "base_url",
+      "type": "TEXT",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "columns",
+      "table": "web_search_settings",
+      "name": "query_parameter",
+      "type": "TEXT",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "pks",
+      "table": "web_search_settings",
+      "name": "web_search_settings_pk",
+      "columns": [
+        "singleton"
+      ],
+      "nameExplicit": false
+    },
+    {
+      "entityType": "tables",
+      "name": "file_search_settings",
+      "strict": true
+    },
+    {
+      "entityType": "columns",
+      "table": "file_search_settings",
+      "name": "singleton",
+      "type": "INTEGER",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "checks",
+      "table": "file_search_settings",
+      "name": "file_search_settings_singleton_check",
+      "value": "singleton = 1"
+    },
+    {
+      "entityType": "columns",
+      "table": "file_search_settings",
+      "name": "root_wtf16",
+      "type": "BLOB",
+      "notNull": true,
+      "autoincrement": null,
+      "default": null,
+      "generated": null,
+      "collate": null
+    },
+    {
+      "entityType": "pks",
+      "table": "file_search_settings",
+      "name": "file_search_settings_pk",
+      "columns": [
+        "singleton"
+      ],
+      "nameExplicit": false
+    }
+  ],
+  "renames": []
+}

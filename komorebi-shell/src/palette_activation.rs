@@ -3,6 +3,11 @@ use komorebi_protocol::InvocationSubmissionReply;
 
 use crate::ActionBinding;
 use crate::ActionInvocationError;
+use crate::FileActivationClient;
+use crate::FileActivationCompletionError;
+use crate::FileActivationFailure;
+use crate::FileActivationSubmitError;
+use crate::FileActivationTicket;
 use crate::InvocationTicket;
 use crate::PaletteAttemptId;
 use crate::ShellHandle;
@@ -14,6 +19,7 @@ use crate::WebLaunchDisposition;
 use crate::WebLaunchFailure;
 use crate::WebSearchBroker;
 use crate::WebSearchRequest;
+use komorebi_search::OpaquePathId;
 
 /// The terminal completion of one palette invocation attempt.
 #[derive(Debug)]
@@ -50,6 +56,9 @@ pub enum PaletteFailure {
     WebLaunch(WebLaunchFailure),
     WebRejected,
     WebUnavailable,
+    FileSubmission(FileActivationSubmitError),
+    FileCompletion(FileActivationCompletionError),
+    FileActivation(FileActivationFailure),
 }
 
 /// Whether a completion changed the currently visible controller state.
@@ -61,10 +70,11 @@ pub enum PaletteCompletionDisposition {
 }
 
 /// A side effect selected by a pure controller transition.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug)]
 pub enum PaletteEffect {
     Invoke(PaletteInvocation),
     Web(PaletteWebInvocation),
+    File(PaletteFileInvocation),
 }
 
 /// One authorized action invocation carrying its stale-completion fence.
@@ -148,6 +158,38 @@ impl PaletteWebInvocation {
     }
 }
 
+/// One brokered exact-file activation carrying its stale-completion fence.
+#[derive(Clone, Debug)]
+pub struct PaletteFileInvocation {
+    attempt: PaletteAttemptId,
+    id: OpaquePathId,
+}
+
+impl PaletteFileInvocation {
+    pub(crate) const fn new(attempt: PaletteAttemptId, id: OpaquePathId) -> Self {
+        Self { attempt, id }
+    }
+
+    #[must_use]
+    pub const fn attempt(&self) -> PaletteAttemptId {
+        self.attempt
+    }
+
+    /// Hands the opaque identity to the actor that owns resolution and launch.
+    pub async fn submit(self, files: &FileActivationClient) -> PaletteSubmission {
+        match files.submit(self.id).await {
+            Ok(ticket) => PaletteSubmission::Pending(PendingPaletteInvocation {
+                attempt: self.attempt,
+                effect: PendingPaletteEffect::File(ticket),
+            }),
+            Err(error) => PaletteSubmission::Complete(PaletteCompletion::failed(
+                self.attempt,
+                PaletteFailure::FileSubmission(error),
+            )),
+        }
+    }
+}
+
 /// The immediate result of handing an invocation to its owned effect service.
 pub enum PaletteSubmission {
     Pending(PendingPaletteInvocation),
@@ -173,6 +215,7 @@ pub struct PendingPaletteInvocation {
 enum PendingPaletteEffect {
     Action(InvocationTicket),
     Web(WebActivationTicket),
+    File(FileActivationTicket),
 }
 
 impl PendingPaletteInvocation {
@@ -193,6 +236,11 @@ impl PendingPaletteInvocation {
                 Ok(Ok(WebLaunchDisposition::Rejected)) => Err(PaletteFailure::WebRejected),
                 Ok(Err(error)) => Err(PaletteFailure::WebLaunch(error)),
                 Err(error) => Err(PaletteFailure::WebCompletion(error)),
+            },
+            PendingPaletteEffect::File(ticket) => match ticket.complete().await {
+                Ok(Ok(())) => Ok(()),
+                Ok(Err(error)) => Err(PaletteFailure::FileActivation(error)),
+                Err(error) => Err(PaletteFailure::FileCompletion(error)),
             },
         };
         PaletteCompletion {

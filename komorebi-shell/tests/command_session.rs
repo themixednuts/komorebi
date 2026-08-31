@@ -199,7 +199,7 @@ async fn dropped_ticket_does_not_cancel_or_poison_the_owned_session()
     drop(abandoned);
     let palette = CommandPalette::project(&observed_catalog);
     let mut controller = PaletteController::new(palette);
-    controller.update_query("pause");
+    _ = controller.update_query("pause");
     let Some(PaletteEffect::Invoke(invocation)) = controller.activate() else {
         return Err("pause action should emit an invocation".into());
     };

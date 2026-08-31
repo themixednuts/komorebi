@@ -204,21 +204,18 @@ fn typo_budget(query: &str) -> u16 {
         .clamp(MINIMUM_TYPOS, MAXIMUM_TYPOS)
 }
 
-/// An ordered palette result set with one internally bounded selection.
+/// An ordered palette result set tied to one catalog projection.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PaletteMatches {
     stamp: CatalogStamp,
     action_indices: Box<[usize]>,
-    selected: Option<usize>,
 }
 
 impl PaletteMatches {
     fn new(stamp: CatalogStamp, action_indices: Vec<usize>) -> Self {
-        let selected = (!action_indices.is_empty()).then_some(0);
         Self {
             stamp,
             action_indices: action_indices.into_boxed_slice(),
-            selected,
         }
     }
 
@@ -232,27 +229,16 @@ impl PaletteMatches {
         self.action_indices.is_empty()
     }
 
+    /// Resolves one result against the catalog projection that made this set.
     #[must_use]
-    pub const fn selected_position(&self) -> Option<usize> {
-        self.selected
-    }
-
-    /// Selects one visible result, returning whether the position exists.
-    pub fn select_position(&mut self, position: usize) -> bool {
-        if position >= self.action_indices.len() {
-            return false;
-        }
-        self.selected = Some(position);
-        true
-    }
-
-    /// Resolves the selected action against the catalog projection that made this set.
-    #[must_use]
-    pub fn selected<'a>(&self, palette: &'a CommandPalette) -> Option<&'a PaletteAction> {
+    pub fn action_at<'a>(
+        &self,
+        palette: &'a CommandPalette,
+        position: usize,
+    ) -> Option<&'a PaletteAction> {
         (self.stamp == palette.stamp)
             .then_some(())
-            .and(self.selected)
-            .and_then(|position| self.action_indices.get(position))
+            .and_then(|()| self.action_indices.get(position))
             .and_then(|index| palette.actions.get(*index))
     }
 
@@ -265,18 +251,6 @@ impl PaletteMatches {
         self.action_indices
             .iter()
             .filter_map(move |index| same_catalog.then(|| palette.actions.get(*index)).flatten())
-    }
-
-    pub fn move_selection(&mut self, movement: PaletteSelectionMove) {
-        let Some(selected) = self.selected else {
-            return;
-        };
-        self.selected = Some(match movement {
-            PaletteSelectionMove::Next if selected + 1 == self.action_indices.len() => 0,
-            PaletteSelectionMove::Next => selected + 1,
-            PaletteSelectionMove::Previous if selected == 0 => self.action_indices.len() - 1,
-            PaletteSelectionMove::Previous => selected - 1,
-        });
     }
 }
 

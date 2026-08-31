@@ -2,13 +2,17 @@
 
 mod action_binding;
 mod command_palette;
+mod file_activation;
 mod palette_activation;
 mod palette_controller;
+mod palette_file_search;
 mod projection;
 mod session;
 mod shortcut_guide;
 mod web_activation;
 mod web_search;
+#[cfg(windows)]
+mod windows_file;
 #[cfg(windows)]
 mod windows_web;
 
@@ -27,10 +31,21 @@ pub use command_palette::PaletteSearchTerms;
 pub use command_palette::PaletteSelectionMove;
 pub use command_palette::WebSearchRequest;
 pub use command_palette::WebSearchTerms;
+pub use file_activation::FileActivationClient;
+pub use file_activation::FileActivationCompletionError;
+pub use file_activation::FileActivationFailure;
+pub use file_activation::FileActivationQueueCapacity;
+pub use file_activation::FileActivationService;
+pub use file_activation::FileActivationShutdownError;
+pub use file_activation::FileActivationSubmitError;
+pub use file_activation::FileActivationTicket;
+pub use file_activation::FileLaunchFailure;
+pub use file_activation::FileLauncher;
 pub use palette_activation::PaletteCompletion;
 pub use palette_activation::PaletteCompletionDisposition;
 pub use palette_activation::PaletteEffect;
 pub use palette_activation::PaletteFailure;
+pub use palette_activation::PaletteFileInvocation;
 pub use palette_activation::PaletteInvocation;
 pub use palette_activation::PaletteSubmission;
 pub use palette_activation::PaletteWebInvocation;
@@ -38,7 +53,14 @@ pub use palette_activation::PendingPaletteInvocation;
 pub use palette_controller::PaletteAttemptId;
 pub use palette_controller::PaletteContent;
 pub use palette_controller::PaletteController;
+pub use palette_controller::PaletteFileSearchStatus;
 pub use palette_controller::PaletteStatus;
+pub use palette_file_search::PaletteFileSearch;
+pub use palette_file_search::PaletteFileSearchBroker;
+pub use palette_file_search::PaletteFileSearchCompletion;
+pub use palette_file_search::PaletteFileSearchCompletionDisposition;
+pub use palette_file_search::PaletteFileSearchFailure;
+pub use palette_file_search::PaletteQueryRevision;
 pub use projection::built_in_layout;
 pub use session::ActionInvocationError;
 pub use session::CatalogReadError;
@@ -67,6 +89,8 @@ pub use web_activation::WebUriLauncher;
 pub use web_search::WebSearchEndpoint;
 pub use web_search::WebSearchEndpointError;
 pub use web_search::WebSearchTarget;
+#[cfg(windows)]
+pub use windows_file::WindowsFileLauncher;
 #[cfg(windows)]
 pub use windows_web::WebUriSupport;
 #[cfg(windows)]

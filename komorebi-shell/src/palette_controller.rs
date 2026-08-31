@@ -11,46 +11,83 @@ use crate::PaletteCompletion;
 use crate::PaletteCompletionDisposition;
 use crate::PaletteEffect;
 use crate::PaletteFailure;
+use crate::PaletteFileInvocation;
+use crate::PaletteFileSearch;
+use crate::PaletteFileSearchCompletion;
+use crate::PaletteFileSearchCompletionDisposition;
+use crate::PaletteFileSearchFailure;
 use crate::PaletteInvocation;
 use crate::PaletteMatches;
 use crate::PaletteQuery;
+use crate::PaletteQueryRevision;
 use crate::PaletteResults;
 use crate::PaletteWebInvocation;
 use crate::WebSearchRequest;
+use komorebi_search::FileSearchMatch;
 
 /// Renderer-neutral state and transitions for one command-palette surface.
 #[derive(Debug)]
 pub struct PaletteController {
     palette: CommandPalette,
     results: PaletteResults,
+    files: PaletteFileResults,
+    selection: Option<usize>,
     status: PaletteStatus,
     next_attempt: Option<PaletteAttemptId>,
+    next_query_revision: Option<PaletteQueryRevision>,
 }
 
 impl PaletteController {
     #[must_use]
     pub fn new(palette: CommandPalette) -> Self {
         let results = palette.query(PaletteQuery::Browse);
+        let selection = action_matches(&results)
+            .filter(|matches| !matches.is_empty())
+            .map(|_| 0);
         Self {
             palette,
             results,
+            files: PaletteFileResults::Hidden,
+            selection,
             status: PaletteStatus::Idle,
             next_attempt: Some(PaletteAttemptId::FIRST),
+            next_query_revision: Some(PaletteQueryRevision::FIRST),
         }
     }
 
     /// Replaces visible results while preserving an invocation already in flight.
-    pub fn update_query(&mut self, input: &str) {
-        self.results = self.palette.query(PaletteQuery::parse(input));
+    #[must_use]
+    pub fn update_query(&mut self, input: &str) -> Option<PaletteFileSearch> {
+        let query = PaletteQuery::parse(input);
+        self.results = self.palette.query(query);
+        self.selection = (self.action_count() > 0).then_some(0);
         if !matches!(self.status, PaletteStatus::Submitting { .. }) {
             self.status = PaletteStatus::Idle;
         }
+        let PaletteQuery::Search(terms) = query else {
+            self.files = PaletteFileResults::Hidden;
+            return None;
+        };
+        let Some(revision) = self.next_query_revision else {
+            self.files = PaletteFileResults::RevisionsExhausted;
+            return None;
+        };
+        self.next_query_revision = revision.next();
+        self.files = PaletteFileResults::Loading(revision);
+        Some(PaletteFileSearch::new(revision, terms.as_str()))
     }
 
     #[must_use]
     pub fn selected_action(&self) -> Option<&PaletteAction> {
-        self.matches()
-            .and_then(|matches| matches.selected(&self.palette))
+        let position = self.selection?;
+        self.matches()?.action_at(&self.palette, position)
+    }
+
+    /// Returns the selected file only when the row cursor addresses file results.
+    #[must_use]
+    pub fn selected_file(&self) -> Option<&FileSearchMatch> {
+        let position = self.selection?.checked_sub(self.action_count())?;
+        self.file_slice().get(position)
     }
 
     /// Iterates the currently visible manager-action rows.
@@ -58,6 +95,51 @@ impl PaletteController {
         self.matches()
             .into_iter()
             .flat_map(|matches| matches.actions(&self.palette))
+    }
+
+    /// Iterates file rows belonging to the latest completed local query.
+    pub fn files(&self) -> impl Iterator<Item = &FileSearchMatch> {
+        match self.file_search_status() {
+            PaletteFileSearchStatus::Ready(files) => files,
+            PaletteFileSearchStatus::Hidden
+            | PaletteFileSearchStatus::Loading
+            | PaletteFileSearchStatus::Failed(_)
+            | PaletteFileSearchStatus::RevisionsExhausted => &[],
+        }
+        .iter()
+    }
+
+    /// Returns the current file-provider projection without exposing worker state.
+    #[must_use]
+    pub fn file_search_status(&self) -> PaletteFileSearchStatus<'_> {
+        match &self.files {
+            PaletteFileResults::Hidden => PaletteFileSearchStatus::Hidden,
+            PaletteFileResults::Loading(_) => PaletteFileSearchStatus::Loading,
+            PaletteFileResults::Ready(files) => PaletteFileSearchStatus::Ready(files),
+            PaletteFileResults::Failed(error) => PaletteFileSearchStatus::Failed(*error),
+            PaletteFileResults::RevisionsExhausted => PaletteFileSearchStatus::RevisionsExhausted,
+        }
+    }
+
+    /// Applies file results only while their query revision is still current.
+    pub fn complete_file_search(
+        &mut self,
+        completion: PaletteFileSearchCompletion,
+    ) -> PaletteFileSearchCompletionDisposition {
+        if !matches!(self.files, PaletteFileResults::Loading(revision) if revision == completion.revision)
+        {
+            return PaletteFileSearchCompletionDisposition::IgnoredStale;
+        }
+        self.files = match completion.result {
+            Ok(files) => {
+                if self.selection.is_none() && !files.is_empty() {
+                    self.selection = Some(0);
+                }
+                PaletteFileResults::Ready(files.into_boxed_slice())
+            }
+            Err(error) => PaletteFileResults::Failed(error),
+        };
+        PaletteFileSearchCompletionDisposition::Applied
     }
 
     /// Identifies the source-specific content currently presented by a renderer.
@@ -72,24 +154,34 @@ impl PaletteController {
 
     #[must_use]
     pub fn is_empty(&self) -> bool {
-        self.matches().is_none_or(PaletteMatches::is_empty)
+        self.row_count() == 0
     }
 
     #[must_use]
     pub fn selected_position(&self) -> Option<usize> {
-        self.matches().and_then(PaletteMatches::selected_position)
+        self.selection
     }
 
     /// Selects one visible result, returning whether the position exists.
     pub fn select_position(&mut self, position: usize) -> bool {
-        self.matches_mut()
-            .is_some_and(|matches| matches.select_position(position))
+        if position >= self.row_count() {
+            return false;
+        }
+        self.selection = Some(position);
+        true
     }
 
     pub fn move_selection(&mut self, movement: crate::PaletteSelectionMove) {
-        if let Some(matches) = self.matches_mut() {
-            matches.move_selection(movement);
-        }
+        let Some(selected) = self.selection else {
+            return;
+        };
+        let row_count = self.row_count();
+        self.selection = Some(match movement {
+            crate::PaletteSelectionMove::Next if selected + 1 == row_count => 0,
+            crate::PaletteSelectionMove::Next => selected + 1,
+            crate::PaletteSelectionMove::Previous if selected == 0 => row_count - 1,
+            crate::PaletteSelectionMove::Previous => selected - 1,
+        });
     }
 
     #[must_use]
@@ -112,7 +204,15 @@ impl PaletteController {
                     attempt, request,
                 )))
             }
-            PaletteResults::Actions(_) => self.activate_action(),
+            PaletteResults::Actions(_) => self.activate_local(),
+        }
+    }
+
+    fn activate_local(&mut self) -> Option<PaletteEffect> {
+        if self.selected_action().is_some() {
+            self.activate_action()
+        } else {
+            self.activate_file()
         }
     }
 
@@ -141,6 +241,13 @@ impl PaletteController {
                 )))
             }
         }
+    }
+
+    fn activate_file(&mut self) -> Option<PaletteEffect> {
+        let file = self.selected_file()?;
+        let id = file.id().clone();
+        let attempt = self.begin_submission(file.display_path().into())?;
+        Some(PaletteEffect::File(PaletteFileInvocation::new(attempt, id)))
     }
 
     fn begin_submission(&mut self, label: Box<str>) -> Option<PaletteAttemptId> {
@@ -172,18 +279,52 @@ impl PaletteController {
     }
 
     fn matches(&self) -> Option<&PaletteMatches> {
-        match &self.results {
-            PaletteResults::Actions(matches) => Some(matches),
-            PaletteResults::WebPrompt | PaletteResults::WebSearch(_) => None,
+        action_matches(&self.results)
+    }
+
+    fn action_count(&self) -> usize {
+        self.matches().map_or(0, PaletteMatches::len)
+    }
+
+    fn file_slice(&self) -> &[FileSearchMatch] {
+        match &self.files {
+            PaletteFileResults::Ready(files) => files,
+            PaletteFileResults::Hidden
+            | PaletteFileResults::Loading(_)
+            | PaletteFileResults::Failed(_)
+            | PaletteFileResults::RevisionsExhausted => &[],
         }
     }
 
-    fn matches_mut(&mut self) -> Option<&mut PaletteMatches> {
-        match &mut self.results {
-            PaletteResults::Actions(matches) => Some(matches),
-            PaletteResults::WebPrompt | PaletteResults::WebSearch(_) => None,
-        }
+    fn row_count(&self) -> usize {
+        self.action_count() + self.file_slice().len()
     }
+}
+
+fn action_matches(results: &PaletteResults) -> Option<&PaletteMatches> {
+    match results {
+        PaletteResults::Actions(matches) => Some(matches),
+        PaletteResults::WebPrompt | PaletteResults::WebSearch(_) => None,
+    }
+}
+
+#[derive(Debug)]
+enum PaletteFileResults {
+    Hidden,
+    Loading(PaletteQueryRevision),
+    Ready(Box<[FileSearchMatch]>),
+    Failed(PaletteFileSearchFailure),
+    RevisionsExhausted,
+}
+
+/// Renderer-neutral state of the replaceable file-result projection.
+#[derive(Clone, Copy, Debug)]
+pub enum PaletteFileSearchStatus<'a> {
+    Hidden,
+    Loading,
+    Ready(&'a [FileSearchMatch]),
+    Failed(PaletteFileSearchFailure),
+    RevisionsExhausted,
 }
 
 /// Source-specific palette content without renderer or adapter types.

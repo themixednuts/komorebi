@@ -24,13 +24,22 @@ use komorebi_protocol::PermittedUse;
 use komorebi_protocol::Revision;
 use komorebi_protocol::StateStamp;
 use komorebi_protocol::UndoPolicy;
+use komorebi_search::FileSearchLimit;
+use komorebi_search::FileSearchQueueCapacity;
+use komorebi_search::FileSearchService;
 use komorebi_shell::CommandPalette;
+use komorebi_shell::FileActivationQueueCapacity;
+use komorebi_shell::FileActivationService;
+use komorebi_shell::FileLaunchFailure;
+use komorebi_shell::FileLauncher;
 use komorebi_shell::PaletteActionState;
 use komorebi_shell::PaletteCompletion;
 use komorebi_shell::PaletteCompletionDisposition;
 use komorebi_shell::PaletteContent;
 use komorebi_shell::PaletteController;
 use komorebi_shell::PaletteEffect;
+use komorebi_shell::PaletteFileSearchBroker;
+use komorebi_shell::PaletteFileSearchCompletionDisposition;
 use komorebi_shell::PaletteMatches;
 use komorebi_shell::PaletteQuery;
 use komorebi_shell::PaletteResults;
@@ -156,14 +165,14 @@ fn palette_ranks_catalog_actions_and_exposes_typed_selection_states()
     assert_eq!(palette.actions().len(), 3);
     assert_eq!(
         action_results(&palette, "foc windw")?
-            .selected(&palette)
+            .action_at(&palette, 0)
             .ok_or("focus search should match")?
             .action_id(),
         "focus-window"
     );
     assert_eq!(
         action_results(&palette, "neigbor")?
-            .selected(&palette)
+            .action_at(&palette, 0)
             .ok_or("neighbor search should match")?
             .title(),
         "Focus window"
@@ -171,7 +180,7 @@ fn palette_ranks_catalog_actions_and_exposes_typed_selection_states()
 
     let focus_results = action_results(&palette, "focus")?;
     let focus = focus_results
-        .selected(&palette)
+        .action_at(&palette, 0)
         .ok_or("focus search should match")?;
     let PaletteActionState::Ready(binding) = focus.state() else {
         return Err("focus-window should be immediately invokable".into());
@@ -180,7 +189,7 @@ fn palette_ranks_catalog_actions_and_exposes_typed_selection_states()
 
     let close_results = action_results(&palette, "close")?;
     let close = close_results
-        .selected(&palette)
+        .action_at(&palette, 0)
         .ok_or("close search should match")?;
     assert_eq!(
         close.state(),
@@ -189,59 +198,13 @@ fn palette_ranks_catalog_actions_and_exposes_typed_selection_states()
 
     let move_results = action_results(&palette, "move")?;
     let move_window = move_results
-        .selected(&palette)
+        .action_at(&palette, 0)
         .ok_or("move search should match")?;
     let PaletteActionState::RequiresInput(parameters) = move_window.state() else {
         return Err("move-window should require its direction".into());
     };
     assert_eq!(parameters.len(), 1);
     assert_eq!(parameters[0].id().as_str(), "direction");
-    Ok(())
-}
-
-#[test]
-fn palette_results_own_bounded_wraparound_selection() -> Result<(), Box<dyn std::error::Error>> {
-    let palette = CommandPalette::project(&catalog()?);
-    let mut results = action_results(&palette, "")?;
-
-    assert_eq!(
-        results
-            .selected(&palette)
-            .ok_or("all actions should select the first result")?
-            .action_id(),
-        "close-window"
-    );
-    results.move_selection(PaletteSelectionMove::Next);
-    assert_eq!(
-        results
-            .selected(&palette)
-            .ok_or("next action should remain selected")?
-            .action_id(),
-        "focus-window"
-    );
-    results.move_selection(PaletteSelectionMove::Previous);
-    results.move_selection(PaletteSelectionMove::Previous);
-    assert_eq!(
-        results
-            .selected(&palette)
-            .ok_or("previous should wrap to the last action")?
-            .action_id(),
-        "move-window"
-    );
-    assert!(!results.select_position(3));
-    assert!(results.select_position(1));
-    assert_eq!(
-        results
-            .selected(&palette)
-            .ok_or("an in-range row should be selectable")?
-            .action_id(),
-        "focus-window"
-    );
-
-    let mut empty = action_results(&palette, "this cannot match any catalog action")?;
-    assert!(empty.selected(&palette).is_none());
-    empty.move_selection(PaletteSelectionMove::Next);
-    assert!(empty.selected(&palette).is_none());
     Ok(())
 }
 
@@ -273,7 +236,7 @@ fn palette_query_results_preserve_source_specific_activation_data()
     };
     assert_eq!(
         actions
-            .selected(&palette)
+            .action_at(&palette, 0)
             .ok_or("focus search should select an action")?
             .action_id(),
         "focus-window"
@@ -296,7 +259,7 @@ fn palette_controller_owns_query_selection_and_single_action_activation()
 -> Result<(), Box<dyn std::error::Error>> {
     let mut controller = PaletteController::new(CommandPalette::project(&catalog()?));
 
-    controller.update_query("focus");
+    _ = controller.update_query("focus");
     assert_eq!(
         controller
             .selected_action()
@@ -322,7 +285,7 @@ fn palette_controller_owns_query_selection_and_single_action_activation()
 fn palette_controller_rejects_stale_completion_without_overwriting_current_attempt()
 -> Result<(), Box<dyn std::error::Error>> {
     let mut controller = PaletteController::new(CommandPalette::project(&catalog()?));
-    controller.update_query("focus");
+    _ = controller.update_query("focus");
 
     let Some(PaletteEffect::Invoke(first)) = controller.activate() else {
         return Err("first activation should emit an invocation".into());
@@ -374,7 +337,7 @@ fn palette_controller_exposes_bounded_rows_and_selection_for_renderers()
         "focus-window"
     );
 
-    controller.update_query("this cannot match any action");
+    _ = controller.update_query("this cannot match any action");
     assert!(controller.is_empty());
     assert_eq!(controller.actions().count(), 0);
     assert_eq!(controller.selected_position(), None);
@@ -386,7 +349,7 @@ fn palette_controller_emits_one_typed_web_activation_for_bang_terms()
 -> Result<(), Box<dyn std::error::Error>> {
     let mut controller = PaletteController::new(CommandPalette::project(&catalog()?));
 
-    controller.update_query("! rust windows shell");
+    _ = controller.update_query("! rust windows shell");
     assert!(matches!(
         controller.content(),
         PaletteContent::WebSearch(request) if request.terms() == "rust windows shell"
@@ -414,7 +377,7 @@ async fn palette_web_effect_completes_through_the_owned_broker()
         WebActivationQueueCapacity::new(1).ok_or("one is a valid capacity")?,
     );
     let mut controller = PaletteController::new(CommandPalette::project(&catalog()?));
-    controller.update_query("! typed rust");
+    _ = controller.update_query("! typed rust");
     let Some(PaletteEffect::Web(invocation)) = controller.activate() else {
         return Err("web terms should emit a brokered activation".into());
     };
@@ -438,7 +401,7 @@ async fn palette_web_effect_completes_through_the_owned_broker()
 async fn unconfigured_web_search_completes_with_a_typed_failure()
 -> Result<(), Box<dyn std::error::Error>> {
     let mut controller = PaletteController::new(CommandPalette::project(&catalog()?));
-    controller.update_query("! no implicit provider");
+    _ = controller.update_query("! no implicit provider");
     let Some(PaletteEffect::Web(invocation)) = controller.activate() else {
         return Err("web terms should emit a brokered activation".into());
     };
@@ -456,5 +419,216 @@ async fn unconfigured_web_search_completes_with_a_typed_failure()
             failure: komorebi_shell::PaletteFailure::WebUnavailable,
         } if label.as_ref() == "Search the web"
     ));
+    Ok(())
+}
+
+#[tokio::test]
+async fn palette_applies_file_results_from_its_typed_query_effect()
+-> Result<(), Box<dyn std::error::Error>> {
+    let directory = tempfile::tempdir()?;
+    std::fs::write(
+        directory.path().join("command-palette.rs"),
+        b"fn palette() {}",
+    )?;
+    let files = FileSearchService::start(
+        directory.path().to_path_buf(),
+        FileSearchQueueCapacity::new(1).ok_or("one is a valid capacity")?,
+    )
+    .await?;
+    let broker = PaletteFileSearchBroker::configured(
+        files.client(),
+        FileSearchLimit::new(8).ok_or("eight is a valid limit")?,
+    );
+    let mut controller = PaletteController::new(CommandPalette::project(&catalog()?));
+
+    let search = controller
+        .update_query("command palete")
+        .ok_or("nonempty local terms should request file search")?;
+    let completion = search.submit(&broker).await;
+    assert_eq!(
+        controller.complete_file_search(completion),
+        PaletteFileSearchCompletionDisposition::Applied
+    );
+    assert_eq!(
+        controller
+            .files()
+            .map(komorebi_search::FileSearchMatch::display_path)
+            .collect::<Vec<_>>(),
+        ["command-palette.rs"]
+    );
+    assert_eq!(controller.selected_position(), Some(0));
+    assert_eq!(
+        controller
+            .selected_file()
+            .ok_or("the first file row should become selected")?
+            .display_path(),
+        "command-palette.rs"
+    );
+
+    files.shutdown().await?;
+    Ok(())
+}
+
+#[tokio::test]
+async fn palette_ignores_file_results_from_a_superseded_query()
+-> Result<(), Box<dyn std::error::Error>> {
+    let directory = tempfile::tempdir()?;
+    std::fs::write(directory.path().join("alpha.rs"), b"alpha")?;
+    std::fs::write(directory.path().join("beta.rs"), b"beta")?;
+    let files = FileSearchService::start(
+        directory.path().to_path_buf(),
+        FileSearchQueueCapacity::new(2).ok_or("two is a valid capacity")?,
+    )
+    .await?;
+    let broker = PaletteFileSearchBroker::configured(
+        files.client(),
+        FileSearchLimit::new(8).ok_or("eight is a valid limit")?,
+    );
+    let mut controller = PaletteController::new(CommandPalette::project(&catalog()?));
+
+    let alpha = controller
+        .update_query("alpha")
+        .ok_or("first local query should request file search")?;
+    let beta = controller
+        .update_query("beta")
+        .ok_or("second local query should request file search")?;
+    assert_eq!(
+        controller.complete_file_search(alpha.submit(&broker).await),
+        PaletteFileSearchCompletionDisposition::IgnoredStale
+    );
+    assert_eq!(controller.files().count(), 0);
+    assert_eq!(
+        controller.complete_file_search(beta.submit(&broker).await),
+        PaletteFileSearchCompletionDisposition::Applied
+    );
+    assert_eq!(
+        controller
+            .files()
+            .map(komorebi_search::FileSearchMatch::display_path)
+            .collect::<Vec<_>>(),
+        ["beta.rs"]
+    );
+
+    files.shutdown().await?;
+    Ok(())
+}
+
+#[tokio::test]
+async fn one_controller_cursor_moves_across_action_and_file_rows()
+-> Result<(), Box<dyn std::error::Error>> {
+    let directory = tempfile::tempdir()?;
+    std::fs::write(directory.path().join("focus-window-notes.md"), b"focus")?;
+    let files = FileSearchService::start(
+        directory.path().to_path_buf(),
+        FileSearchQueueCapacity::new(1).ok_or("one is a valid capacity")?,
+    )
+    .await?;
+    let broker = PaletteFileSearchBroker::configured(
+        files.client(),
+        FileSearchLimit::new(8).ok_or("eight is a valid limit")?,
+    );
+    let mut controller = PaletteController::new(CommandPalette::project(&catalog()?));
+
+    let search = controller
+        .update_query("focus window")
+        .ok_or("local terms should request file search")?;
+    assert_eq!(
+        controller.complete_file_search(search.submit(&broker).await),
+        PaletteFileSearchCompletionDisposition::Applied
+    );
+    let action_count = controller.actions().count();
+    assert!(action_count > 0);
+    assert_eq!(controller.selected_position(), Some(0));
+    assert!(controller.selected_action().is_some());
+    assert!(controller.selected_file().is_none());
+
+    for _ in 0..action_count {
+        controller.move_selection(PaletteSelectionMove::Next);
+    }
+    assert_eq!(controller.selected_position(), Some(action_count));
+    assert!(controller.selected_action().is_none());
+    assert_eq!(
+        controller
+            .selected_file()
+            .ok_or("second row should be the file result")?
+            .display_path(),
+        "focus-window-notes.md"
+    );
+
+    controller.move_selection(PaletteSelectionMove::Next);
+    assert_eq!(controller.selected_position(), Some(0));
+    assert!(controller.selected_action().is_some());
+    files.shutdown().await?;
+    Ok(())
+}
+
+#[derive(Clone, Default)]
+struct RecordingFileLauncher {
+    paths: std::sync::Arc<std::sync::Mutex<Vec<std::path::PathBuf>>>,
+}
+
+impl FileLauncher for RecordingFileLauncher {
+    async fn launch(&self, path: std::path::PathBuf) -> Result<(), FileLaunchFailure> {
+        self.paths
+            .lock()
+            .map_err(|_| FileLaunchFailure::new("recording launcher lock was poisoned"))?
+            .push(path);
+        Ok(())
+    }
+}
+
+#[tokio::test]
+async fn selected_file_activation_resolves_and_launches_the_exact_index_path()
+-> Result<(), Box<dyn std::error::Error>> {
+    let directory = tempfile::tempdir()?;
+    let exact_path = directory.path().join("launch-me.txt");
+    std::fs::write(&exact_path, b"launch")?;
+    let files = FileSearchService::start(
+        directory.path().to_path_buf(),
+        FileSearchQueueCapacity::new(2).ok_or("two is a valid search capacity")?,
+    )
+    .await?;
+    let search = PaletteFileSearchBroker::configured(
+        files.client(),
+        FileSearchLimit::new(8).ok_or("eight is a valid limit")?,
+    );
+    let launcher = RecordingFileLauncher::default();
+    let activation = FileActivationService::start(
+        files.client(),
+        launcher.clone(),
+        FileActivationQueueCapacity::new(1).ok_or("one is a valid activation capacity")?,
+    );
+    let mut controller = PaletteController::new(CommandPalette::project(&catalog()?));
+
+    let query = controller
+        .update_query("launch me")
+        .ok_or("local terms should request file search")?;
+    assert_eq!(
+        controller.complete_file_search(query.submit(&search).await),
+        PaletteFileSearchCompletionDisposition::Applied
+    );
+    let Some(PaletteEffect::File(invocation)) = controller.activate() else {
+        return Err("selected file should emit brokered activation".into());
+    };
+    let submission = invocation.submit(&activation.client()).await;
+    assert_eq!(
+        controller.complete(submission.complete().await),
+        PaletteCompletionDisposition::Applied
+    );
+    assert!(matches!(
+        controller.status(),
+        PaletteStatus::Succeeded { .. }
+    ));
+    assert_eq!(
+        launcher
+            .paths
+            .lock()
+            .map_err(|_| "recording launcher lock was poisoned")?
+            .as_slice(),
+        [exact_path]
+    );
+
+    activation.shutdown().await?;
+    files.shutdown().await?;
     Ok(())
 }
